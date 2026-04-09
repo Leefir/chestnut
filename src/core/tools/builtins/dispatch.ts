@@ -58,11 +58,6 @@ export class DispatchTool implements ITool {
   };
 
   async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
-    // 防止递归：dispatcher 不能再调 dispatch
-    if (isDispatchCaller(ctx.callerType)) {
-      return { success: false, content: 'dispatch subagent cannot call dispatch (recursion not allowed).' };
-    }
-
     // 扫描 clawspace/dispatch-skills/ 生成简介（结构同普通 skill：子目录 + SKILL.md）
     let skillsSummary = '';
     try {

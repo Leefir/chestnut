@@ -6,7 +6,6 @@
  */
 
 import type { ITool, ToolResult, ExecContext } from '../executor.js';
-import { isDispatchCaller } from '../caller-type.js';
 import type { TaskSystem } from '../../task/system.js';
 import type { StreamSink } from '../../../foundation/recording/context.js';
 import { SPAWN_DEFAULT_TIMEOUT_S, DEFAULT_LLM_IDLE_TIMEOUT_MS, DEFAULT_MAX_STEPS } from '../../../constants.js';
@@ -106,22 +105,6 @@ export const spawnTool: ITool = {
   idempotent: false,
 
   async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
-    // Prevent recursive spawning from subagents
-    if (ctx.callerType === 'subagent') {
-      return {
-        success: false,
-        content: 'Subagents cannot spawn other subagents (recursion not allowed).',
-        error: 'Spawn recursion prevented',
-      };
-    }
-    if (isDispatchCaller(ctx.callerType)) {
-      return {
-        success: false,
-        content: 'dispatch 子代理不能直接调用 spawn。请在最终回复中说明需要 spawn 的 prompt，由 Motion 来执行。',
-        error: 'dispatch subagent spawn prevented',
-      };
-    }
-
     const taskSystem = ctx.taskSystem;
     
     if (!taskSystem) {

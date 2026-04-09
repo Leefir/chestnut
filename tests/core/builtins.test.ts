@@ -914,21 +914,6 @@ describe('Builtin Tools', () => {
   });
 
   describe('spawn tool', () => {
-    it('should reject spawn in subagent context', async () => {
-      const subagentCtx = new ExecContextImpl({
-        clawId: 'test-subagent',
-        clawDir: tempDir,
-        profile: 'subagent',
-        callerType: 'subagent',
-        fs: mockFs,
-      });
-
-      const result = await spawnTool.execute({ prompt: 'test task' }, subagentCtx);
-
-      expect(result.success).toBe(false);
-      expect(result.content).toContain('recursion') || expect(result.content).toContain('cannot');
-    });
-
     it('should require TaskSystem', async () => {
       const result = await spawnTool.execute({ prompt: 'test task' }, ctx);
 
