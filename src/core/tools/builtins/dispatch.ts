@@ -1,4 +1,4 @@
-import type { ITool, ToolResult, ExecContext, ToolPermissions } from '../executor.js';
+import type { ITool, ToolResult, ExecContext } from '../executor.js';
 import type { TaskSystem } from '../../task/system.js';
 import type { Message, ToolDefinition } from '../../../types/message.js';
 import { SkillRegistry } from '../../skill/registry.js';
@@ -26,7 +26,6 @@ export class DispatchTool implements ITool {
 
 已知确切 prompt 的一次性任务，Motion 直接用 spawn 即可。`;
 
-  readonly requiredPermissions: (keyof ToolPermissions)[] = ['spawn'];
   readonly readonly = false;
   readonly idempotent = false;
 

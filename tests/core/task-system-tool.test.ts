@@ -26,7 +26,7 @@ const createMockTool = (supportsAsync: boolean): ITool => ({
   name: 'mockAsyncTool',
   description: 'Mock tool for async testing',
   schema: { type: 'object', properties: {} },
-  requiredPermissions: [],
+
   readonly: false,
   idempotent: false,
   supportsAsync,
@@ -1068,8 +1068,6 @@ describe('ToolExecutor async routing', () => {
       callerType: 'claw',
       fs: createMockFs() as any,
       profile: { name: 'test', permissions: { read: true, write: true, execute: true, send: true, spawn: true } },
-      permissions: { read: true, write: true, execute: true, send: true, spawn: true },
-      hasPermission: () => true,
       stepNumber: 1,
       maxSteps: 20,
       getElapsedMs: () => 1000,
@@ -1084,7 +1082,7 @@ describe('ToolExecutor async routing', () => {
       name: 'asyncTool',
       description: 'Tool with async support',
       schema: { type: 'object', properties: {} },
-      requiredPermissions: [],
+
       readonly: false,
       idempotent: false,
       supportsAsync: true,
@@ -1114,7 +1112,7 @@ describe('ToolExecutor async routing', () => {
       name: 'nonAsyncTool',
       description: 'Tool without async support',
       schema: { type: 'object', properties: {} },
-      requiredPermissions: [],
+
       readonly: false,
       idempotent: false,
       // supportsAsync is undefined (false by default)
@@ -1142,7 +1140,7 @@ describe('ToolExecutor async routing', () => {
       name: 'asyncTool',
       description: 'Tool with async support',
       schema: { type: 'object', properties: {} },
-      requiredPermissions: [],
+
       readonly: false,
       idempotent: false,
       supportsAsync: true,
@@ -1171,7 +1169,7 @@ describe('ToolExecutor async routing', () => {
       name: 'asyncTool',
       description: 'Tool with async support',
       schema: { type: 'object', properties: {} },
-      requiredPermissions: [],
+
       readonly: false,
       idempotent: false,
       supportsAsync: true,
@@ -1226,7 +1224,7 @@ describe('ToolExecutor async routing', () => {
       name: 'syncTool',
       description: 'Regular sync tool',
       schema: { type: 'object', properties: {} },
-      requiredPermissions: [],
+
       readonly: false,
       idempotent: false,
       async execute(): Promise<ToolResult> {

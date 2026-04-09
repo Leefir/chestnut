@@ -37,7 +37,6 @@ export const execTool: ITool = {
     },
     required: ['command'],
   },
-  requiredPermissions: ['execute'],
   readonly: false,
   idempotent: false,
   supportsAsync: true,

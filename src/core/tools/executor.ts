@@ -24,7 +24,6 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import {
   ToolNotFoundError,
-  PermissionError,
   ToolTimeoutError,
   ToolInvalidInputError,
 } from '../../types/errors.js';
@@ -39,79 +38,6 @@ function escapeForLog(s: string): string {
 // ============================================================================
 // Phase 0: Interface Definitions (Frozen)
 // ============================================================================
-
-/**
- * Tool permissions - What a tool can do
- */
-export interface ToolPermissions {
-  read: boolean;
-  write: boolean;
-  execute: boolean;
-  spawn: boolean;
-  send: boolean;
-  network: boolean;
-  system: boolean;
-}
-
-/**
- * Permission presets for tool profiles
- */
-export const PERMISSION_PRESETS: Record<ToolProfile, ToolPermissions> = {
-  full: {
-    read: true,
-    write: true,
-    execute: true,
-    spawn: true,
-    send: true,
-    network: false,
-    system: false,
-  },
-  readonly: {
-    read: true,
-    write: false,
-    execute: false,
-    spawn: false,
-    send: false,
-    network: false,
-    system: false,
-  },
-  subagent: {
-    read: true,
-    write: true,
-    execute: true,
-    spawn: false,
-    send: false,
-    network: false,
-    system: false,
-  },
-  miner: {
-    read: true,
-    write: true,
-    execute: true,
-    spawn: false,
-    send: false,
-    network: false,
-    system: false,
-  },
-  dream: {
-    read: true,
-    write: true,
-    execute: false,
-    spawn: false,
-    send: false,
-    network: false,
-    system: false,
-  },
-  verifier: {
-    read: true,
-    write: false,
-    execute: true,
-    spawn: false,
-    send: false,
-    network: false,
-    system: false,
-  },
-};
 
 /**
  * Tool execution result
@@ -140,8 +66,6 @@ export interface ExecContext {
   llm?: ILLMService;
   monitor?: Logger;
   profile: ToolProfile;
-  permissions: ToolPermissions;
-  hasPermission(permission: keyof ToolPermissions): boolean;
   stepNumber: number;
   maxSteps: number;
   signal?: AbortSignal;
@@ -172,7 +96,6 @@ export interface ITool {
   name: string;
   description: string;
   schema: JSONSchema7;
-  requiredPermissions: (keyof ToolPermissions)[];
   readonly: boolean;
   idempotent: boolean;        // 多次调用结果相同（只读工具均为 true）
   supportsAsync?: boolean;    // 是否支持异步调用（默认 false）
@@ -246,17 +169,7 @@ export class ToolExecutorImpl implements IToolExecutor {
       throw new ToolNotFoundError(toolName);
     }
 
-    // 2. Check permissions
-    for (const perm of tool.requiredPermissions) {
-      if (!ctx.hasPermission(perm)) {
-        throw new PermissionError(
-          `Tool "${toolName}" requires "${perm}" permission`,
-          { toolName, required: perm, profile: ctx.profile }
-        );
-      }
-    }
-
-    // 3. Schema validation (simple check)
+    // 2. Schema validation (simple check)
     const validation = this.validateArgs(toolName, args);
     if (!validation.valid) {
       throw new ToolInvalidInputError(toolName, validation.errors?.[0] ?? 'Invalid input');

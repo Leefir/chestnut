@@ -119,7 +119,6 @@ export const statusTool: ITool = {
     },
     required: [],
   },
-  requiredPermissions: ['read'],
   readonly: true,
   idempotent: true,
   supportsAsync: true,

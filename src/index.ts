@@ -25,7 +25,7 @@ export type { ITransport, InboxMessage, InboxStatus, ClawHealth } from './founda
 export { LocalTransport } from './foundation/transport/local.js';
 
 // Re-export commonly used types
-export type { ToolPermissions, ToolResult, ExecContext, ITool, IToolRegistry, IToolExecutor } from './core/tools/executor.js';
+export type { ToolResult, ExecContext, ITool, IToolRegistry, IToolExecutor } from './core/tools/executor.js';
 export type { SkillMeta } from './core/skill/registry.js';
 export type { SubAgentTask } from './core/task/system.js';
 export type { ProgressData, AcceptanceResult } from './core/contract/manager.js';

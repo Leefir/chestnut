@@ -12,8 +12,7 @@ import type { IFileSystem } from '../../foundation/fs/types.js';
 import type { Logger } from '../../foundation/monitor/types.js';
 import type { ILLMService } from '../../foundation/llm/index.js';
 import type { ToolProfile } from '../../types/config.js';
-import type { ExecContext, ToolPermissions } from './executor.js';
-import { PERMISSION_PRESETS } from './executor.js';
+import type { ExecContext } from './executor.js';
 import { MOTION_CLAW_ID, DEFAULT_MAX_STEPS } from '../../constants.js';
 import type { TaskSystem } from '../task/system.js';
 import type { SkillRegistry } from '../skill/registry.js';
@@ -89,7 +88,6 @@ export class ExecContextImpl implements ExecContext {
   clawDir: string;
   profile: ToolProfile;
   callerType: CallerType;
-  permissions: ToolPermissions;
   fs: IFileSystem;
   monitor?: Logger;
   llm?: ILLMService;
@@ -113,7 +111,6 @@ export class ExecContextImpl implements ExecContext {
     this.clawDir = options.clawDir;
     this.profile = options.profile;
     this.callerType = options.callerType ?? 'claw';
-    this.permissions = PERMISSION_PRESETS[options.profile];
     this.fs = options.fs;
     this.monitor = options.monitor;
     this.llm = options.llm;
@@ -130,13 +127,6 @@ export class ExecContextImpl implements ExecContext {
     this.auditWriter = options.auditWriter;
     this.stepNumber = 0;
     this.startTime = Date.now();
-  }
-
-  /**
-   * Check if a specific permission is granted
-   */
-  hasPermission(permission: keyof ToolPermissions): boolean {
-    return this.permissions[permission] ?? false;
   }
 
   /**

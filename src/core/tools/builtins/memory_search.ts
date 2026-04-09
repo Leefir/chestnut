@@ -35,7 +35,6 @@ export const memorySearchTool: ITool = {
     },
     // query 和 filter 至少一个必填，用 description 约束而非 required
   },
-  requiredPermissions: ['read'],
   readonly: true,
   idempotent: true,
   supportsAsync: true,

@@ -17,6 +17,7 @@ import { ToolRegistry } from '../tools/registry.js';
 import { registerBuiltinTools } from '../tools/builtins/index.js';
 import type { ILLMService } from '../../foundation/llm/index.js';
 import type { CallerType } from '../tools/caller-type.js';
+import { callerTypeToProfile } from '../tools/caller-type.js';
 import type { ToolResult, ITool } from '../tools/executor.js';
 import type { Message, ToolDefinition } from '../../types/message.js';
 import type { OutboxWriter } from '../communication/outbox.js';
@@ -543,15 +544,14 @@ export class TaskSystem {
         ? task.toolsForLLM
         : this.registry.formatForLLM(allowedTools);
 
-      // Merge registry with extraTools if provided
-      const effectiveRegistry = task.extraTools?.length
-        ? (() => {
-            const r = new ToolRegistry();
-            for (const t of this.registry.getAll()) r.register(t);
-            for (const t of task.extraTools!) r.register(t);
-            return r;
-          })()
-        : this.registry;
+      // Build per-task registry filtered by caller profile + extraTools
+      const subagentProfile = callerTypeToProfile(task.callerType ?? 'subagent');
+      const effectiveRegistry = (() => {
+        const r = new ToolRegistry();
+        for (const t of this.registry.getForProfile(subagentProfile)) r.register(t);
+        for (const t of task.extraTools ?? []) r.register(t);
+        return r;
+      })();
 
       const subAgent = new SubAgent({
         agentId: task.id,

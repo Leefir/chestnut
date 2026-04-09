@@ -91,7 +91,6 @@ export const searchTool: ITool = {
     },
     required: ['query'],
   },
-  requiredPermissions: ['read'],
   readonly: true,
   idempotent: true,
   supportsAsync: true,

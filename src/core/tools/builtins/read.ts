@@ -53,7 +53,6 @@ export const readTool: ITool = {
     },
     required: ['path'],
   },
-  requiredPermissions: ['read'],
   readonly: true,
   idempotent: true,
   supportsAsync: true,

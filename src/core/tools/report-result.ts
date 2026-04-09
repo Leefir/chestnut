@@ -46,7 +46,6 @@ export class ReportResultTool implements ITool {
     },
     required: ['passed', 'reason'],
   };
-  readonly requiredPermissions: never[] = [];
   readonly readonly = true;
   readonly idempotent = false;
 

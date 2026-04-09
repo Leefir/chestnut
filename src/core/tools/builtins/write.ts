@@ -89,7 +89,6 @@ export const writeTool: ITool = {
     },
     required: ['path', 'content'],
   },
-  requiredPermissions: ['write'],
   readonly: false,
   idempotent: false,
 

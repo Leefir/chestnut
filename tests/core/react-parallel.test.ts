@@ -68,7 +68,7 @@ describe('ReAct Loop Parallel Execution', () => {
       name: 'readA',
       description: 'Read A',
       schema: { type: 'object', properties: {} } as JSONSchema7,
-      requiredPermissions: [],
+
       readonly: true,
       idempotent: true,
       async execute(): Promise<ToolResult> {
@@ -84,7 +84,7 @@ describe('ReAct Loop Parallel Execution', () => {
       name: 'readB',
       description: 'Read B',
       schema: { type: 'object', properties: {} } as JSONSchema7,
-      requiredPermissions: [],
+
       readonly: true,
       idempotent: true,
       async execute(): Promise<ToolResult> {
@@ -137,7 +137,7 @@ describe('ReAct Loop Parallel Execution', () => {
       name: 'writeA',
       description: 'Write A',
       schema: { type: 'object', properties: {} } as JSONSchema7,
-      requiredPermissions: [],
+
       readonly: false,
       idempotent: false,
       async execute(): Promise<ToolResult> {
@@ -152,7 +152,7 @@ describe('ReAct Loop Parallel Execution', () => {
       name: 'writeB',
       description: 'Write B',
       schema: { type: 'object', properties: {} } as JSONSchema7,
-      requiredPermissions: [],
+
       readonly: false,
       idempotent: false,
       async execute(): Promise<ToolResult> {
@@ -205,7 +205,7 @@ describe('ReAct Loop Parallel Execution', () => {
       name: 'readX',
       description: 'Read X',
       schema: { type: 'object', properties: {} } as JSONSchema7,
-      requiredPermissions: [],
+
       readonly: true,
       idempotent: true,
       async execute(): Promise<ToolResult> {
@@ -219,7 +219,7 @@ describe('ReAct Loop Parallel Execution', () => {
       name: 'writeY',
       description: 'Write Y',
       schema: { type: 'object', properties: {} } as JSONSchema7,
-      requiredPermissions: [],
+
       readonly: false,
       idempotent: false,
       async execute(): Promise<ToolResult> {
@@ -233,7 +233,7 @@ describe('ReAct Loop Parallel Execution', () => {
       name: 'readZ',
       description: 'Read Z',
       schema: { type: 'object', properties: {} } as JSONSchema7,
-      requiredPermissions: [],
+
       readonly: true,
       idempotent: true,
       async execute(): Promise<ToolResult> {
@@ -288,7 +288,7 @@ describe('ReAct Loop Parallel Execution', () => {
       name: 'toolA',
       description: 'Tool A',
       schema: { type: 'object', properties: {} } as JSONSchema7,
-      requiredPermissions: [],
+
       readonly: true,
       idempotent: true,
       async execute(): Promise<ToolResult> {
@@ -303,7 +303,7 @@ describe('ReAct Loop Parallel Execution', () => {
       name: 'toolB',
       description: 'Tool B',
       schema: { type: 'object', properties: {} } as JSONSchema7,
-      requiredPermissions: [],
+
       readonly: true,
       idempotent: true,
       async execute(): Promise<ToolResult> {
@@ -349,7 +349,7 @@ describe('ReAct Loop Parallel Execution', () => {
       name: 'slowRead',
       description: 'Slow Read',
       schema: { type: 'object', properties: {} } as JSONSchema7,
-      requiredPermissions: [],
+
       readonly: true,
       idempotent: true,
       async execute(): Promise<ToolResult> {
@@ -362,7 +362,7 @@ describe('ReAct Loop Parallel Execution', () => {
       name: 'fastWrite',
       description: 'Fast Write',
       schema: { type: 'object', properties: {} } as JSONSchema7,
-      requiredPermissions: [],
+
       readonly: false,
       idempotent: false,
       async execute(): Promise<ToolResult> {

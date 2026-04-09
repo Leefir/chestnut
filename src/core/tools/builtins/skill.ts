@@ -30,7 +30,6 @@ export const skillTool: ITool & { skillRegistry?: SkillRegistry } = {
     },
     required: ['name'],
   },
-  requiredPermissions: ['read'],
   readonly: true,
   idempotent: true,
 

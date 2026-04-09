@@ -102,7 +102,6 @@ export const spawnTool: ITool = {
     },
     required: ['prompt'],
   },
-  requiredPermissions: ['spawn'],
   readonly: false,
   idempotent: false,
 

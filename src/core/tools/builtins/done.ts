@@ -37,7 +37,6 @@ export const doneTool: ITool & { contractManager?: ContractManager } = {
     },
     required: ['subtask', 'evidence'],
   },
-  requiredPermissions: ['write'],
   readonly: false,
   idempotent: false,
 

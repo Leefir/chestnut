@@ -520,13 +520,6 @@ describe('Task System + SubAgent', () => {
       expect(result).toContain('Command output');
     });
 
-    it('should have spawn permission disabled', async () => {
-      // SubAgent uses 'subagent' profile which has spawn: false
-      // This is verified by checking the profile permissions
-      const { PERMISSION_PRESETS } = await import('../../src/core/tools/executor.js');
-      expect(PERMISSION_PRESETS.subagent.spawn).toBe(false);
-    });
-
     it('should timeout on long running task', async () => {
       const mockLLM = createMockLLM([
         {

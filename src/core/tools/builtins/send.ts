@@ -28,7 +28,6 @@ export const sendTool: ITool = {
     },
     required: ['content', 'type'],
   },
-  requiredPermissions: ['send'],
   readonly: false,
   idempotent: false,
 

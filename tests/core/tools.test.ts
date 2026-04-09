@@ -16,7 +16,6 @@ import type { ITool, ToolResult } from '../../src/core/tools/executor.js';
 import type { IFileSystem } from '../../src/foundation/fs/types.js';
 import {
   ToolNotFoundError,
-  PermissionError,
   ToolTimeoutError,
   ToolInvalidInputError,
 } from '../../src/types/errors.js';
@@ -59,7 +58,7 @@ describe('Tools', () => {
         name: 'test-tool',
         description: 'A test tool',
         schema: { type: 'object' },
-        requiredPermissions: ['read'],
+
         readonly: true,
         execute: async () => ({ success: true, content: 'ok' }),
       };
@@ -76,7 +75,7 @@ describe('Tools', () => {
         name: 'same',
         description: 'First',
         schema: { type: 'object' },
-        requiredPermissions: [],
+
         readonly: true,
         execute: async () => ({ success: true, content: 'v1' }),
       };
@@ -85,7 +84,7 @@ describe('Tools', () => {
         name: 'same',
         description: 'Second',
         schema: { type: 'object' },
-        requiredPermissions: [],
+
         readonly: true,
         execute: async () => ({ success: true, content: 'v2' }),
       };
@@ -102,7 +101,7 @@ describe('Tools', () => {
         name: 'exists',
         description: 'Test',
         schema: { type: 'object' },
-        requiredPermissions: [],
+
         readonly: true,
         execute: async () => ({ success: true, content: '' }),
       };
@@ -118,7 +117,7 @@ describe('Tools', () => {
         name: 'to-remove',
         description: 'Test',
         schema: { type: 'object' },
-        requiredPermissions: [],
+
         readonly: true,
         execute: async () => ({ success: true, content: '' }),
       };
@@ -135,7 +134,7 @@ describe('Tools', () => {
         name: 'tool-a',
         description: 'A',
         schema: { type: 'object' },
-        requiredPermissions: [],
+
         readonly: true,
         execute: async () => ({ success: true, content: '' }),
       });
@@ -144,7 +143,7 @@ describe('Tools', () => {
         name: 'tool-b',
         description: 'B',
         schema: { type: 'object' },
-        requiredPermissions: [],
+
         readonly: true,
         execute: async () => ({ success: true, content: '' }),
       });
@@ -160,7 +159,7 @@ describe('Tools', () => {
           name,
           description: `Tool ${name}`,
           schema: { type: 'object' },
-          requiredPermissions: [],
+
           readonly: true,
           execute: async () => ({ success: true, content: '' }),
         });
@@ -171,7 +170,7 @@ describe('Tools', () => {
         name: 'write',
         description: 'Write tool',
         schema: { type: 'object' },
-        requiredPermissions: ['write'],
+
         readonly: false,
         execute: async () => ({ success: true, content: '' }),
       });
@@ -191,7 +190,7 @@ describe('Tools', () => {
           properties: { path: { type: 'string' } },
           required: ['path'],
         },
-        requiredPermissions: ['read'],
+
         readonly: true,
         execute: async () => ({ success: true, content: '' }),
       });
@@ -213,34 +212,6 @@ describe('Tools', () => {
 
   describe('ExecContext', () => {
     const mockFs = {} as IFileSystem;
-
-    it('should check permissions for full profile', () => {
-      const ctx = new ExecContextImpl({
-        clawId: 'test',
-        clawDir: '/test',
-        profile: 'full',
-        fs: mockFs,
-      });
-
-      expect(ctx.hasPermission('read')).toBe(true);
-      expect(ctx.hasPermission('write')).toBe(true);
-      expect(ctx.hasPermission('execute')).toBe(true);
-      expect(ctx.hasPermission('spawn')).toBe(true);
-    });
-
-    it('should check permissions for readonly profile', () => {
-      const ctx = new ExecContextImpl({
-        clawId: 'test',
-        clawDir: '/test',
-        profile: 'readonly',
-        fs: mockFs,
-      });
-
-      expect(ctx.hasPermission('read')).toBe(true);
-      expect(ctx.hasPermission('write')).toBe(false);
-      expect(ctx.hasPermission('execute')).toBe(false);
-      expect(ctx.hasPermission('spawn')).toBe(false);
-    });
 
     it('should track elapsed time', async () => {
       const ctx = new ExecContextImpl({
@@ -283,28 +254,6 @@ describe('Tools', () => {
       ).rejects.toThrow(ToolNotFoundError);
     });
 
-    it('should throw PermissionError for insufficient permissions', async () => {
-      registry.register({
-        name: 'write-tool',
-        description: 'Needs write',
-        schema: { type: 'object' },
-        requiredPermissions: ['write'],
-        readonly: false,
-        execute: async () => ({ success: true, content: '' }),
-      });
-
-      const ctx = new ExecContextImpl({
-        clawId: 'test',
-        clawDir: '/test',
-        profile: 'readonly',
-        fs: mockFs,
-      });
-
-      await expect(
-        executor.execute({ toolName: 'write-tool', args: {}, ctx })
-      ).rejects.toThrow(PermissionError);
-    });
-
     it('should execute tool successfully', async () => {
       const mockExecute = vi.fn(async (): Promise<ToolResult> => ({
         success: true,
@@ -315,7 +264,7 @@ describe('Tools', () => {
         name: 'test',
         description: 'Test tool',
         schema: { type: 'object' },
-        requiredPermissions: [],
+
         readonly: true,
         execute: mockExecute,
       });
@@ -343,7 +292,7 @@ describe('Tools', () => {
         name: 'slow',
         description: 'Slow tool',
         schema: { type: 'object' },
-        requiredPermissions: [],
+
         readonly: true,
         execute: async () => {
           // Sleep for a long time - longer than timeoutMs
@@ -377,7 +326,7 @@ describe('Tools', () => {
         name: 'explosive',
         description: 'Tool that always throws',
         schema: { type: 'object' },
-        requiredPermissions: [],
+
         readonly: true,
         execute: async () => {
           throw new Error('something went badly wrong');
@@ -408,7 +357,7 @@ describe('Tools', () => {
         name: 'tool1',
         description: 'Tool 1',
         schema: { type: 'object' },
-        requiredPermissions: [],
+
         readonly: true,
         execute: async () => {
           executionOrder.push(1);
@@ -422,7 +371,7 @@ describe('Tools', () => {
         name: 'tool2',
         description: 'Tool 2',
         schema: { type: 'object' },
-        requiredPermissions: [],
+
         readonly: true,
         execute: async () => {
           executionOrder.push(2);
@@ -436,7 +385,7 @@ describe('Tools', () => {
         name: 'tool3',
         description: 'Tool 3',
         schema: { type: 'object' },
-        requiredPermissions: [],
+
         readonly: true,
         execute: async () => {
           executionOrder.push(3);
@@ -483,7 +432,7 @@ describe('Tools', () => {
           required: ['path'],
           properties: { path: { type: 'string' } },
         },
-        requiredPermissions: [],
+
         readonly: true,
         idempotent: true,
         execute: async () => ({ success: true, content: 'ok' }),
@@ -506,7 +455,7 @@ describe('Tools', () => {
         name: 'async-capable',
         description: 'Supports async',
         schema: { type: 'object' },
-        requiredPermissions: [],
+
         readonly: true,
         idempotent: true,
         supportsAsync: true,
@@ -537,7 +486,7 @@ describe('Tools', () => {
         name: 'no-async',
         description: 'No async support',
         schema: { type: 'object' },
-        requiredPermissions: [],
+
         readonly: false,
         idempotent: false,
         supportsAsync: false,
@@ -572,7 +521,7 @@ describe('Tools', () => {
         name: 'long-task',
         description: 'Long running task',
         schema: { type: 'object' },
-        requiredPermissions: [],
+
         readonly: false,
         idempotent: true,
         supportsAsync: true,
@@ -609,7 +558,7 @@ describe('Tools', () => {
         name: 'read-op',
         description: 'Read',
         schema: { type: 'object' },
-        requiredPermissions: [],
+
         readonly: true,
         idempotent: true,
         execute: async () => ({ success: true, content: 'read-result' }),
@@ -619,7 +568,7 @@ describe('Tools', () => {
         name: 'write-op',
         description: 'Write',
         schema: { type: 'object' },
-        requiredPermissions: [],
+
         readonly: false,
         idempotent: false,
         execute: async () => ({ success: true, content: 'write-result' }),

@@ -64,7 +64,7 @@ describe('ToolExecutor', () => {
         name: 'echo-a',
         description: 'echo a',
         schema: { type: 'object', properties: {}, required: [] },
-        requiredPermissions: [],
+
         readonly: true,
         async execute() { return { success: true, content: 'result-a' }; },
       });
@@ -72,7 +72,7 @@ describe('ToolExecutor', () => {
         name: 'echo-b',
         description: 'echo b',
         schema: { type: 'object', properties: {}, required: [] },
-        requiredPermissions: [],
+
         readonly: true,
         async execute() { return { success: true, content: 'result-b' }; },
       });
@@ -92,7 +92,7 @@ describe('ToolExecutor', () => {
         name: 'write-tool',
         description: 'write',
         schema: { type: 'object', properties: {}, required: [] },
-        requiredPermissions: [],
+
         readonly: false,
         async execute() { return { success: true, content: 'written' }; },
       });
@@ -100,7 +100,7 @@ describe('ToolExecutor', () => {
         name: 'read-tool',
         description: 'read',
         schema: { type: 'object', properties: {}, required: [] },
-        requiredPermissions: [],
+
         readonly: true,
         async execute() { return { success: true, content: 'read-result' }; },
       });
@@ -120,7 +120,7 @@ describe('ToolExecutor', () => {
         name: 'exploding-tool',
         description: 'explodes',
         schema: { type: 'object', properties: {}, required: [] },
-        requiredPermissions: [],
+
         readonly: true,
         async execute() { throw new Error('boom'); },
       });
@@ -134,38 +134,6 @@ describe('ToolExecutor', () => {
       expect(results[0].success).toBe(false);
       expect(results[0].content).toContain('boom');
     });
-
-    it('should return error result when readonly tool has unmet permission requirement', async () => {
-      // 注册一个 readonly 但需要 execute 权限的工具
-      registry.register({
-        name: 'perm-tool',
-        description: 'requires execute permission',
-        schema: { type: 'object', properties: {}, required: [] },
-        requiredPermissions: ['execute'],
-        readonly: true,
-        idempotent: true,
-        async execute() { return { success: true, content: 'ran' }; },
-      });
-
-      // ctx 用 readonly profile（execute: false）
-      const readonlyCtx = new ExecContextImpl({
-        clawId: 'test-claw',
-        clawDir: tempDir,
-        profile: 'readonly',
-        fs: mockFs,
-      });
-
-      // 修复前：Promise.all reject，整批失败
-      // 修复后：.catch() 兜住，返回 error ToolResult
-      const results = await executor.executeParallel(
-        [{ toolName: 'perm-tool', args: {} }],
-        readonlyCtx,
-      );
-
-      expect(results).toHaveLength(1);
-      expect(results[0].success).toBe(false);
-      expect(results[0].content).toContain('execute');  // PermissionError 消息含 "execute"
-    });
   });
 
   // Phase 2 质量审查：audit.tsv 测试
@@ -176,7 +144,7 @@ describe('ToolExecutor', () => {
         name: 'test-tool',
         description: 'Test tool',
         schema: { type: 'object', properties: {}, required: [] },
-        requiredPermissions: ['read'],
+
         readonly: true,
         async execute() {
           return { success: true, content: 'ok' };
@@ -207,7 +175,7 @@ describe('ToolExecutor', () => {
         name: 'failing-tool',
         description: 'Failing tool',
         schema: { type: 'object', properties: {}, required: [] },
-        requiredPermissions: ['read'],
+
         readonly: true,
         async execute() {
           return { success: false, content: 'Something went wrong' };
@@ -250,7 +218,7 @@ describe('ToolExecutor', () => {
         name: 'test-tool',
         description: 'Test tool',
         schema: { type: 'object', properties: {}, required: [] },
-        requiredPermissions: ['read'],
+
         readonly: true,
         async execute() {
           return { success: true, content: 'ok' };

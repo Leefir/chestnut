@@ -77,7 +77,7 @@ describe('ToolExecutor validateArgs', () => {
       },
       required: ['name'],
     },
-    requiredPermissions: ['read'],
+
     readonly: true,
     execute: async () => ({ success: true, content: 'ok' }),
   });
@@ -185,7 +185,7 @@ describe('ToolRegistry getForProfile', () => {
       name: 'read',
       description: 'Read tool',
       schema: { type: 'object', properties: {} },
-      requiredPermissions: ['read'],
+
       readonly: true,
       execute: async () => ({ success: true }),
     });
@@ -194,7 +194,7 @@ describe('ToolRegistry getForProfile', () => {
       name: 'write',
       description: 'Write tool',
       schema: { type: 'object', properties: {} },
-      requiredPermissions: ['write'],
+
       readonly: false,
       execute: async () => ({ success: true }),
     });
@@ -203,7 +203,7 @@ describe('ToolRegistry getForProfile', () => {
       name: 'exec',
       description: 'Exec tool',
       schema: { type: 'object', properties: {} },
-      requiredPermissions: ['write'],
+
       readonly: false,
       execute: async () => ({ success: true }),
     });
@@ -234,7 +234,7 @@ describe('ToolRegistry getForProfile', () => {
       name: 'customTool',
       description: 'Custom tool',
       schema: { type: 'object', properties: {} },
-      requiredPermissions: ['read'],
+
       readonly: true,
       execute: async () => ({ success: true }),
     });

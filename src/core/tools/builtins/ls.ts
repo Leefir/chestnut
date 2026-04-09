@@ -30,7 +30,6 @@ export const lsTool: ITool = {
     },
     required: [],
   },
-  requiredPermissions: ['read'],
   readonly: true,
   idempotent: true,
   supportsAsync: true,

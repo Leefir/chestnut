@@ -10,7 +10,6 @@ export { ToolRegistry } from './registry.js';
 export {
   ToolExecutorImpl,
   ToolExecutor,
-  PERMISSION_PRESETS,
 } from './executor.js';
 
 // Context
@@ -21,7 +20,6 @@ export { TOOL_PROFILES } from './profiles.js';
 
 // Types (from executor.ts - Phase 0 interfaces)
 export type {
-  ToolPermissions,
   ToolResult,
   ExecContext,
   ITool,

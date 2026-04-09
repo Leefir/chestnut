@@ -190,18 +190,6 @@ describe('Builtin Tools', () => {
       expect(content).toBe('First line\nSecond line');
     });
 
-    it('should deny write for readonly profile', async () => {
-      const readonlyCtx = new ExecContextImpl({
-        clawId: 'test',
-        clawDir: tempDir,
-        profile: 'readonly',
-        callerType: 'claw',
-        fs: mockFs,
-      });
-
-      expect(readonlyCtx.hasPermission('write')).toBe(false);
-    });
-
     // Phase 2 质量审查补充：版本清理测试
     it('should keep only last 10 versions when writing', async () => {
       await mockFs.ensureDir('clawspace');
