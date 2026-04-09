@@ -203,6 +203,7 @@ export class ClawRuntime {
     this.toolRegistry.register(new DispatchTool(
       () => this.buildSystemPrompt(),           // 每个 Claw 用自己的 system prompt
       () => this.toolRegistry.formatForLLM(this.toolRegistry.getAll()),  // Motion 完整工具列表
+      (profile) => this.toolRegistry.formatForLLM(this.toolRegistry.getForProfile(profile as import('../types/config.js').ToolProfile)),  // 按 profile 获取工具列表
     ));
 
     // 8. Create TaskSystem

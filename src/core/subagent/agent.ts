@@ -151,9 +151,9 @@ export class SubAgent {
     this.auditWriter?.write('turn_start');
 
     try {
-      // Initialize executor with appropriate profile (spawn disabled for subagent, enabled for dispatcher)
+      // spawnProfile 防止递归：dispatcher 可 spawn，subagent 不行
       const callerType = this.callerType ?? 'subagent';
-      const executorProfile = isDispatchCaller(callerType) ? 'full' : 'subagent';
+      const spawnProfile = isDispatchCaller(callerType) ? 'full' : 'subagent';
       const executor = new ToolExecutor({
         registry: this.registry,
         clawDir: this.clawDir,
@@ -165,7 +165,7 @@ export class SubAgent {
         contractManager: this.contractManager,
         skillRegistry: this.skillRegistry,
         subagentMaxSteps: this.subagentMaxSteps ?? this.maxSteps,
-        profile: executorProfile,
+        profile: spawnProfile,
       });
 
       // Setup messages（若传入 messages 则直接使用，否则从 prompt 构建）
@@ -247,7 +247,7 @@ export class SubAgent {
           systemPrompt,
           llm: this.llm,
           executor,
-          ctx: executor.getExecContext(executorProfile, {
+          ctx: executor.getExecContext(spawnProfile, {
             clawId: this.agentId,
             signal: timeoutController.signal,
             callerType,

@@ -33,6 +33,7 @@ export class DispatchTool implements ITool {
   constructor(
     private getSystemPrompt: () => Promise<string>,  // buildSystemPrompt() 是 async
     private getToolsForLLM: () => ToolDefinition[], // Motion 完整工具列表（KV cache 关键）
+    private getToolsForProfile: (profile: string) => ToolDefinition[], // 按 profile 获取工具列表
   ) {}
 
   schema = {
@@ -216,8 +217,21 @@ export class DispatchTool implements ITool {
       });
     }
 
-    // 使用 Motion 的完整工具列表，确保 KV cache 命中（system prompt + tools 前缀一致）
-    const toolsForLLM = this.getToolsForLLM();
+    // miner 使用专属工具列表（miner profile + ask_motion）；describer 用 Motion 完整列表确保 KV cache 命中
+    const askMotionInstance = isMining
+      ? new AskMotionTool(
+          ctx.llm!,
+          this.getSystemPrompt.bind(this),
+          this.getToolsForLLM.bind(this),
+          [...dispatcherMessages],  // Motion 上下文快照
+        )
+      : null;
+    const toolsForLLM = isMining
+      ? [
+          ...this.getToolsForProfile('miner'),
+          { name: askMotionInstance!.name, description: askMotionInstance!.description, input_schema: askMotionInstance!.schema },
+        ]
+      : this.getToolsForLLM();
 
     // 调度 dispatcher（之后填入 dispatcherTaskId 供钩子定向）
     try {
@@ -234,18 +248,9 @@ export class DispatchTool implements ITool {
         systemPrompt,
         idleTimeoutMs,
         originClawId: ctx.originClawId ?? ctx.clawId,
-        toolsForLLM,                   // 使用 Motion 完整工具列表，确保 KV cache 命中
+        toolsForLLM,
         callerType,                    // 'describer' 或 'miner'
-        extraTools: isMining
-          ? [
-              new AskMotionTool(
-                ctx.llm!,
-                this.getSystemPrompt.bind(this),
-                this.getToolsForLLM.bind(this),
-                [...dispatcherMessages],  // Motion 上下文快照
-              ),
-            ]
-          : undefined,
+        extraTools: askMotionInstance ? [askMotionInstance] : undefined,
       });
     } catch (e) {
       removeHandler?.();  // scheduleSubAgent 失败，任务未创建，注销未使用的 handler

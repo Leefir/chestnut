@@ -28,6 +28,7 @@ describe('DispatchTool', () => {
     tool = new DispatchTool(
       async () => 'mock system prompt',
       () => [{ name: 'mock_tool', description: 'Mock tool', input_schema: { type: 'object' } }],
+      () => [{ name: 'mock_tool', description: 'Mock tool', input_schema: { type: 'object' } }],
     );
   });
 

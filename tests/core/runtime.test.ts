@@ -95,6 +95,12 @@ function createMockLLM(responses: LLMResponse[]) {
 describe('ClawRuntime', () => {
   let tempDir: string;
   let clawDir: string;
+  const runtimesToStop: ClawRuntime[] = [];
+
+  function trackRuntime(r: ClawRuntime): ClawRuntime {
+    runtimesToStop.push(r);
+    return r;
+  }
 
   beforeEach(async () => {
     tempDir = await createTempDir();
@@ -102,16 +108,19 @@ describe('ClawRuntime', () => {
   });
 
   afterEach(async () => {
+    for (const r of runtimesToStop.splice(0)) {
+      await r.stop().catch(() => {});
+    }
     await cleanupTempDir(tempDir);
   });
 
   describe('initialization', () => {
     it('should create all necessary directories', async () => {
-      const runtime = new ClawRuntime({
+      const runtime = trackRuntime(new ClawRuntime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
 
       await runtime.initialize();
 
@@ -136,11 +145,11 @@ describe('ClawRuntime', () => {
     });
 
     it('should be initialized after initialize()', async () => {
-      const runtime = new ClawRuntime({
+      const runtime = trackRuntime(new ClawRuntime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
 
       expect(runtime.getStatus().initialized).toBe(false);
       await runtime.initialize();
@@ -150,11 +159,11 @@ describe('ClawRuntime', () => {
 
   describe('chat()', () => {
     it('should return text response from LLM', async () => {
-      const runtime = new ClawRuntime({
+      const runtime = trackRuntime(new ClawRuntime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
 
       // Mock LLM responses
       const mockLLM = createMockLLM([{
@@ -171,11 +180,11 @@ describe('ClawRuntime', () => {
     });
 
     it('should maintain conversation history across calls', async () => {
-      const runtime = new ClawRuntime({
+      const runtime = trackRuntime(new ClawRuntime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
 
       const mockLLM = createMockLLM([
         { content: [{ type: 'text', text: 'First' }], stop_reason: 'end_turn' },
@@ -197,11 +206,11 @@ describe('ClawRuntime', () => {
     });
 
     it('should save session after chat', async () => {
-      const runtime = new ClawRuntime({
+      const runtime = trackRuntime(new ClawRuntime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
 
       const mockLLM = createMockLLM([{
         content: [{ type: 'text', text: 'Saved!' }],
@@ -228,11 +237,11 @@ describe('ClawRuntime', () => {
 
   describe('start/stop', () => {
     it('should start and stop without error', async () => {
-      const runtime = new ClawRuntime({
+      const runtime = trackRuntime(new ClawRuntime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
 
       await runtime.start();
       expect(runtime.getStatus().running).toBe(true);
@@ -242,11 +251,11 @@ describe('ClawRuntime', () => {
     });
 
     it('should auto-initialize on start', async () => {
-      const runtime = new ClawRuntime({
+      const runtime = trackRuntime(new ClawRuntime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
 
       expect(runtime.getStatus().initialized).toBe(false);
       await runtime.start();
@@ -256,11 +265,11 @@ describe('ClawRuntime', () => {
 
   describe('status', () => {
     it('should return correct clawId', async () => {
-      const runtime = new ClawRuntime({
+      const runtime = trackRuntime(new ClawRuntime({
         clawId: 'my-claw-123',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
 
       expect(runtime.getStatus().clawId).toBe('my-claw-123');
     });
@@ -268,11 +277,11 @@ describe('ClawRuntime', () => {
 
   describe('processBatch()', () => {
     it('should return 0 when inbox is empty', async () => {
-      const runtime = new ClawRuntime({
+      const runtime = trackRuntime(new ClawRuntime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
       await runtime.initialize();
 
       const count = await runtime.processBatch();
@@ -280,11 +289,11 @@ describe('ClawRuntime', () => {
     });
 
     it('should process messages in priority order', async () => {
-      const runtime = new ClawRuntime({
+      const runtime = trackRuntime(new ClawRuntime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
       await runtime.initialize();
 
       // Create messages with different priorities
@@ -343,11 +352,11 @@ ${msg.content}
     });
 
     it('should move messages to done before LLM call', async () => {
-      const runtime = new ClawRuntime({
+      const runtime = trackRuntime(new ClawRuntime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
       await runtime.initialize();
 
       // Create a message
@@ -386,11 +395,11 @@ Test message
 
   describe('resumeContractIfPaused()', () => {
     it('should not throw when no active contract', async () => {
-      const runtime = new ClawRuntime({
+      const runtime = trackRuntime(new ClawRuntime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
       await runtime.initialize();
 
       // Should not throw
@@ -402,11 +411,11 @@ Test message
 
   describe('_drainOwnInbox edge cases', () => {
     async function makeRuntime() {
-      const runtime = new ClawRuntime({
+      const runtime = trackRuntime(new ClawRuntime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
       await runtime.initialize();
       return runtime;
     }
@@ -575,11 +584,11 @@ Test message
 
     // H3 fix: non-MaxSteps errors should notify sender via outbox
     it('should notify sender when LLM throws non-MaxSteps error (H3)', async () => {
-      const runtime = new ClawRuntime({
+      const runtime = trackRuntime(new ClawRuntime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
       await runtime.initialize();
 
       // Create a message with 'from' field
@@ -643,11 +652,11 @@ Test message`;
         }
       }
 
-      const runtime = new UserInterruptRuntime({
+      const runtime = trackRuntime(new UserInterruptRuntime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
       await runtime.initialize();
 
       await expect(runtime.processBatch()).rejects.toBeInstanceOf(UserInterrupt);
@@ -664,11 +673,11 @@ Test message`;
 
   describe('retryLastTurn()', () => {
     it('returns immediately when session has no messages (empty session guard)', async () => {
-      const runtime = new ClawRuntime({
+      const runtime = trackRuntime(new ClawRuntime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
       await runtime.initialize();
 
       const mockLLM = createMockLLM([]);
@@ -683,11 +692,11 @@ Test message`;
     });
 
     it('replays last turn by calling LLM with existing session messages', async () => {
-      const runtime = new ClawRuntime({
+      const runtime = trackRuntime(new ClawRuntime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
       await runtime.initialize();
 
       // Populate session via chat()
@@ -714,11 +723,11 @@ Test message`;
     });
 
     it('cleans up AbortController even when _runReact throws', async () => {
-      const runtime = new ClawRuntime({
+      const runtime = trackRuntime(new ClawRuntime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
       await runtime.initialize();
 
       // Build a session first
@@ -744,11 +753,11 @@ Test message`;
     });
 
     it('cleans up AbortController on successful completion', async () => {
-      const runtime = new ClawRuntime({
+      const runtime = trackRuntime(new ClawRuntime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
-      });
+      }));
       await runtime.initialize();
 
       // Build a session first
@@ -793,6 +802,7 @@ Test message`;
 
     let testClawDir: string;
     let testTempDir: string;
+    const edgeRuntimes: ClawRuntime[] = [];
 
     beforeEach(async () => {
       testTempDir = path.join(tmpdir(), `clawforum-runtime-edge-${randomUUID()}`);
@@ -801,6 +811,9 @@ Test message`;
     });
 
     afterEach(async () => {
+      for (const r of edgeRuntimes.splice(0)) {
+        await r.stop().catch(() => {});
+      }
       await fs.rm(testTempDir, { recursive: true, force: true }).catch(() => {});
     });
 
@@ -810,6 +823,7 @@ Test message`;
         clawDir: testClawDir,
         llmConfig: createMockLLMConfig(),
       });
+      edgeRuntimes.push(runtime);
       await runtime.initialize();
 
       runtime.drainResult = {
@@ -839,6 +853,7 @@ Test message`;
         clawDir: testClawDir,
         llmConfig: createMockLLMConfig(),
       });
+      edgeRuntimes.push(runtime);
       await runtime.initialize();
 
       runtime.drainResult = {
@@ -882,6 +897,7 @@ Test message`;
     });
 
     afterEach(async () => {
+      await runtime.stop().catch(() => {});
       await fs.rm(interruptTempDir, { recursive: true, force: true }).catch(() => {});
     });
 
@@ -947,6 +963,7 @@ Test message`;
 
     let tempDir2: string;
     let clawDir2: string;
+    const signalRuntimes: ClawRuntime[] = [];
 
     beforeEach(async () => {
       tempDir2 = path.join(tmpdir(), `clawforum-signal-test-${randomUUID()}`);
@@ -955,6 +972,9 @@ Test message`;
     });
 
     afterEach(async () => {
+      for (const r of signalRuntimes.splice(0)) {
+        await r.stop().catch(() => {});
+      }
       await fs.rm(tempDir2, { recursive: true, force: true }).catch(() => {});
     });
 
@@ -964,6 +984,7 @@ Test message`;
         clawDir: clawDir2,
         llmConfig: createMockLLMConfig(),
       });
+      signalRuntimes.push(r);
       await r.initialize();
       r.drainResult = {
         injected: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
@@ -1014,6 +1035,7 @@ Test message`;
   describe('onProviderInfo', () => {
     let piTempDir: string;
     let piClawDir: string;
+    const piRuntimes: ClawRuntime[] = [];
 
     beforeEach(async () => {
       piTempDir = path.join(tmpdir(), `clawforum-pi-test-${randomUUID()}`);
@@ -1022,6 +1044,9 @@ Test message`;
     });
 
     afterEach(async () => {
+      for (const r of piRuntimes.splice(0)) {
+        await r.stop().catch(() => {});
+      }
       await fs.rm(piTempDir, { recursive: true, force: true }).catch(() => {});
     });
 
@@ -1031,6 +1056,7 @@ Test message`;
         clawDir: piClawDir,
         llmConfig: createMockLLMConfig(),
       });
+      piRuntimes.push(runtime);
       const mockLLM = createMockLLM([{
         content: [{ type: 'text', text: 'Hello' }],
         stop_reason: 'end_turn',
@@ -1053,6 +1079,7 @@ Test message`;
         clawDir: piClawDir,
         llmConfig: createMockLLMConfig(),
       });
+      piRuntimes.push(runtime);
 
       // 用自定义 stream mock 产生多个 text_delta
       const multiDeltaLLM = {
@@ -1083,6 +1110,7 @@ Test message`;
         clawDir: piClawDir,
         llmConfig: createMockLLMConfig(),
       });
+      piRuntimes.push(runtime);
       const mockLLM = createMockLLM([{
         content: [{ type: 'text', text: 'Hi' }],
         stop_reason: 'end_turn',
@@ -1106,6 +1134,7 @@ Test message`;
         clawDir: piClawDir,
         llmConfig: createMockLLMConfig(),
       });
+      piRuntimes.push(runtime);
       const mockLLM = createMockLLM([
         { content: [{ type: 'text', text: 'First' }], stop_reason: 'end_turn' },
         { content: [{ type: 'text', text: 'Second' }], stop_reason: 'end_turn' },

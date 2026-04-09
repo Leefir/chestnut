@@ -84,6 +84,15 @@ export const PERMISSION_PRESETS: Record<ToolProfile, ToolPermissions> = {
     network: false,
     system: false,
   },
+  miner: {
+    read: true,
+    write: true,
+    execute: true,
+    spawn: false,
+    send: false,
+    network: false,
+    system: false,
+  },
   dream: {
     read: true,
     write: true,
