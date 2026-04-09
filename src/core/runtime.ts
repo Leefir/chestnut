@@ -635,7 +635,7 @@ export class ClawRuntime {
       if (err instanceof MaxStepsExceededError) {
         const errorMsg = err.message;
         for (const info of infos) {
-          const sender = info.meta.from ?? info.meta.source;
+          const sender = info.meta.source;
           if (sender) {
             await this.outboxWriter.write({
               type: 'response',
@@ -649,7 +649,7 @@ export class ClawRuntime {
         // Non-interrupt error (LLM crash, tool error, etc.) — notify senders
         const errorMsg = err instanceof Error ? err.message : String(err);
         for (const info of infos) {
-          const sender = info.meta.from ?? info.meta.source;
+          const sender = info.meta.source;
           if (sender) {
             await this.outboxWriter.write({
               type: 'response',
