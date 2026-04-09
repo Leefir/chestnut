@@ -323,21 +323,39 @@ export class ClawRuntime {
   }
 
   /**
+   * Format a relative time string from an ISO8601 timestamp.
+   */
+  private formatTimeAgo(timestamp: string): string {
+    const diffMs = Date.now() - new Date(timestamp).getTime();
+    if (!Number.isFinite(diffMs) || diffMs < 0) return '';
+    const s = Math.floor(diffMs / 1_000);
+    if (s < 60) return `${s}s ago`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
+  }
+
+  /**
    * Format the injection text for an inbox message by its type.
    * user_chat: no prefix (user typed in the chat)
    * user_inbox_message: [user inbox message] prefix (user sent a message via CLI)
    * system events: [system message] prefix
    */
-  protected async formatInboxMessage(type: string, from: string, body: string): Promise<string> {
+  protected async formatInboxMessage(type: string, from: string, body: string, timestamp?: string): Promise<string> {
+    const ago = timestamp ? this.formatTimeAgo(timestamp) : '';
+    const t = ago ? ` (${ago})` : '';
+
     switch (type) {
       case 'user_chat':
         return body;
       case 'user_inbox_message':
-        return `[user inbox message]\n${body}`;
+        return `[user inbox message${t}]\n${body}`;
       case 'crash_notification':
-        return `[system message] Claw "${from}" process exited abnormally.\n${body}`;
+        return `[system message${t}] Claw "${from}" process exited abnormally.\n${body}`;
       case 'heartbeat': {
-        const base = '[system message] Heartbeat triggered. Please perform a routine check.';
+        const base = `[system message${t}] Heartbeat triggered. Please perform a routine check.`;
         try {
           const checklist = (await this.systemFs.read('HEARTBEAT.md')).trim();
           return checklist ? `${base}\n\n${checklist}` : base;
@@ -347,7 +365,7 @@ export class ClawRuntime {
       }
       case 'message':
       default:
-        return `[system message] ${body}`;
+        return `[system message${t}] ${body}`;
     }
   }
 
@@ -472,7 +490,7 @@ export class ClawRuntime {
     for (const info of injectedInfos) {
       const from = info.meta.source ?? 'unknown';
       const type = info.meta.type ?? 'message';
-      const formatted = await this.formatInboxMessage(type, from, info.body);
+      const formatted = await this.formatInboxMessage(type, from, info.body, info.meta.timestamp);
       if (type === 'user_chat') {
         userChatParts.push(formatted);
       } else {
