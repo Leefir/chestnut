@@ -6,7 +6,7 @@
 
 // TODO(phase3): zombie process detection - MVP uses `ps` command to detect zombies, TS only uses kill(0), macOS/Linux behavior differs
 
-import { spawn, execSync, spawnSync } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { openSync, mkdirSync, closeSync } from 'fs';
@@ -17,11 +17,6 @@ import {
   SIGTERM_GRACE_MS,
   RESTART_DELAY_MS,
 } from '../../constants.js';
-
-export interface ProcessStatus {
-  pid: number;
-  startedAt: string;
-}
 
 export interface SpawnOptions {
   /** 可执行文件路径（如 'node'） */
@@ -88,15 +83,6 @@ export class ProcessManager {
   }
 
   /**
-   * Write the pid file
-   */
-  private async writePid(clawId: string, pid: number): Promise<void> {
-    await this.ensureStatusDir(clawId);
-    const pidFile = this.getPidFile(clawId);
-    await this.fs.writeAtomic(pidFile, String(pid));
-  }
-
-  /**
    * Delete the pid file
    */
   private async removePid(clawId: string): Promise<void> {
@@ -157,10 +143,9 @@ export class ProcessManager {
   }
 
   /**
-   * Spawn the daemon process
-   * @param clawId process ID
-   * @param clawDir working directory
-   * @param args optional spawn arguments (defaults to starting the claw daemon)
+   * Spawn a detached process
+   * @param clawId - process identifier (used for PID file management)
+   * @param options - spawn configuration (command, args, logFile, env, cwd)
    * @returns process PID
    */
   async spawn(clawId: string, options: SpawnOptions): Promise<number> {
@@ -275,7 +260,7 @@ export class ProcessManager {
       }
 
       // Write the pid file
-      await fs.writeFile(pidFile, String(pid), 'utf-8');
+      await this.fs.writeAtomic(pidFile, String(pid));
 
       // Poll until alive or timeout (handles slow ESM startup on constrained servers).
       // Always checks at least once; retries every 50ms up to PROCESS_SPAWN_CONFIRM_MS total.
@@ -345,10 +330,9 @@ export class ProcessManager {
   }
 
   /**
-   * Restart the daemon process
-   * @param clawId process ID
-   * @param clawDir working directory
-   * @param args optional spawn arguments
+   * Restart a process (stop + spawn)
+   * @param clawId - process identifier
+   * @param options - spawn configuration
    * @returns new process PID
    */
   async restart(clawId: string, options: SpawnOptions): Promise<number> {

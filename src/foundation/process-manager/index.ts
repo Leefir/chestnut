@@ -5,4 +5,4 @@
  * 依赖：FileSystem
  */
 export { ProcessManager } from './manager.js';
-export type { ProcessStatus, SpawnOptions } from './manager.js';
+export type { SpawnOptions } from './manager.js';
