@@ -5,6 +5,7 @@
  */
 
 import * as path from 'path';
+import { randomUUID } from 'crypto';
 import { promises as fs, realpathSync } from 'fs';
 import * as fsSync from 'fs';
 import type {
@@ -303,6 +304,24 @@ export class NodeFileSystem implements IFileSystem {
   // ========================================================================
   // Synchronous Operations
   // ========================================================================
+
+  writeAtomicSync(relativePath: string, content: string): void {
+    const absolute = this.resolveAndCheck(relativePath, 'write');
+    const dir = path.dirname(absolute);
+    fsSync.mkdirSync(dir, { recursive: true });
+    const tmpFile = path.join(dir, `.tmp_${randomUUID()}`);
+
+    try {
+      fsSync.writeFileSync(tmpFile, content, { encoding: 'utf-8', mode: 0o644 });
+      // fsync for durability
+      const fd = fsSync.openSync(tmpFile, 'r+');
+      try { fsSync.fsyncSync(fd); } finally { fsSync.closeSync(fd); }
+      fsSync.renameSync(tmpFile, absolute);
+    } catch (error) {
+      try { fsSync.unlinkSync(tmpFile); } catch { /* ignore */ }
+      throw error;
+    }
+  }
 
   appendSync(relativePath: string, content: string): void {
     const absolute = this.resolveAndCheck(relativePath, 'write');

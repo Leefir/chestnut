@@ -106,10 +106,10 @@ describe('Dialog', () => {
       expect(recovered.messages[0].content).toBe('Archived message');
     });
 
-    it('should append message and save', async () => {
+    it('should save and load messages', async () => {
       const msg: Message = { role: 'user', content: 'New message' };
       
-      await sessionManager.appendMessage(msg);
+      await sessionManager.save([msg]);
       
       const loaded = await sessionManager.load();
       expect(loaded.messages).toHaveLength(1);

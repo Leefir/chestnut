@@ -8,6 +8,7 @@
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import * as fsNative from 'fs';
+import { NodeFileSystem } from '../fs/node-fs.js';
 import type { IFileSystem } from '../fs/types.js';
 import type { InboxMessage } from '../../types/contract.js';
 import { encodeInbox, parseFrontmatter } from '../message-codec/index.js';
@@ -83,12 +84,11 @@ export function writeInboxMessage(opts: InboxMessageOptions): void {
 
   const content = encodeInbox(message, opts.extraFields);
 
-  // Write to disk (atomic: write temp + rename)
-  fsNative.mkdirSync(opts.inboxDir, { recursive: true });
-  const finalPath = path.join(opts.inboxDir, `${ts}_${tag}_${uuid8}.md`);
-  const tmpPath = path.join(opts.inboxDir, `.${ts}_${tag}_${uuid8}.tmp`);
-  fsNative.writeFileSync(tmpPath, content);
-  fsNative.renameSync(tmpPath, finalPath);
+  // Use IFileSystem sync API — creates a temporary instance with absolute paths
+  const tmpFs = new NodeFileSystem({ baseDir: '/', enforcePermissions: false });
+  tmpFs.ensureDirSync(opts.inboxDir);
+  const filename = `${ts}_${tag}_${uuid8}.md`;
+  tmpFs.writeAtomicSync(path.join(opts.inboxDir, filename), content);
 }
 
 /**

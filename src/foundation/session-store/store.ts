@@ -54,8 +54,8 @@ export class SessionManager {
         // Rename corrupted file so subsequent loads don't retry parsing it
         try {
           await this.fs.move(this.currentPath, this.currentPath + '.corrupted');
-        } catch {
-          // Best-effort; if rename fails we just log and continue
+        } catch (renameErr) {
+          console.warn('[session] failed to rename corrupted file:', renameErr instanceof Error ? renameErr.message : String(renameErr));
         }
       }
     }
@@ -141,23 +141,6 @@ export class SessionManager {
     // Move current.json to archive
     await this.fs.move(this.currentPath, archivePath);
     this.createdAt = null;  // Reset so next save() starts a fresh session
-  }
-
-  /**
-   * Get current messages
-   */
-  async getMessages(): Promise<Message[]> {
-    const session = await this.load();
-    return session.messages;
-  }
-
-  /**
-   * Append a message and save
-   */
-  async appendMessage(msg: Message): Promise<void> {
-    const messages = await this.getMessages();
-    messages.push(msg);
-    await this.save(messages);
   }
 
   /**

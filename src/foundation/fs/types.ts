@@ -125,6 +125,14 @@ export interface IFileSystem {
   // ========================================================================
 
   /**
+   * Write file atomically (sync version of writeAtomic).
+   * Uses write-to-temp + fsync + rename pattern.
+   * @param path - Relative path within claw space
+   * @param content - Content to write
+   */
+  writeAtomicSync(path: string, content: string): void;
+
+  /**
    * Append content to file synchronously.
    * For high-frequency writes where async overhead matters (audit log, stream).
    * @param path - Relative path within claw space
