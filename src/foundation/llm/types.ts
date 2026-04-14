@@ -6,8 +6,6 @@
 import type { Message, ToolDefinition, LLMResponse } from '../../types/message.js';
 import type { ApiFormat } from './presets.js';
 
-
-
 /**
  * Single provider configuration
  */

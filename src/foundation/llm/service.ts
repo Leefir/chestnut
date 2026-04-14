@@ -4,7 +4,6 @@
  * Implements ILLMService interface
  * - Retry with exponential backoff
  * - Failover to fallback provider
- * - Monitor integration for logging
  */
 
 
@@ -115,14 +114,10 @@ export class LLMService implements ILLMService {
       : [];
   }
 
-
   /**
    * Make an LLM call with retry and failover
    */
   async call(options: LLMCallOptions): Promise<LLMResponse> {
-    const startTime = Date.now();
-    let retryCount = 0;
-    
     // Helper to check circuit breaker
     const isBreakerOpen = (index: number): boolean => {
       const breaker = this.breakers[index];
@@ -135,7 +130,6 @@ export class LLMService implements ILLMService {
       
       for (let attempt = 0; attempt < this.config.maxAttempts; attempt++) {
         try {
-          const callStart = Date.now();
           const response = await this.primary.call(options);
           
           // Circuit breaker: record success
@@ -147,8 +141,7 @@ export class LLMService implements ILLMService {
           
         } catch (error) {
           lastError = error as Error;
-          retryCount++;
-          
+
           // Don't retry on user abort (would add multi-second delay)
           if (lastError.name === 'AbortError') throw lastError;
           
@@ -183,7 +176,6 @@ export class LLMService implements ILLMService {
       
       const fb = this.fallbacks[i];
       try {
-        const callStart = Date.now();
         const response = await fb.call(options);
         
         // Circuit breaker: record success
@@ -213,7 +205,6 @@ export class LLMService implements ILLMService {
    *         mid-stream errors will fail over without retry
    */
   async* stream(options: LLMCallOptions): AsyncIterableIterator<StreamChunk> {
-    const startTime = Date.now();
     const providers: Array<{ adapter: IProviderAdapter; breakerIndex: number }> = [
       { adapter: this.primary, breakerIndex: 0 },
       ...this.fallbacks.map((fb, i) => ({ adapter: fb, breakerIndex: i + 1 })),
@@ -238,9 +229,7 @@ export class LLMService implements ILLMService {
       let hasYielded = false;
       let lastError: Error | null = null;
       let doneChunk: StreamChunk | undefined;
-      let callStart = Date.now();
       for (let attempt = 0; attempt < this.config.maxAttempts; attempt++) {
-        callStart = Date.now();
         try {
           for await (const chunk of adapter.stream(options)) {
             hasYielded = true;
@@ -337,8 +326,4 @@ export class LLMService implements ILLMService {
   async close(): Promise<void> {
     // No persistent connections to close
   }
-  
-  /**
-   * Log LLM call to monitor (if configured)
-   */
 }
