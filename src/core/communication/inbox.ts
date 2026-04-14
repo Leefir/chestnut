@@ -16,9 +16,8 @@ import type { InboxMessage, Priority } from '../../types/contract.js';
 import { PRIORITY_VALUES } from '../../types/contract.js';
 import { createWatcher } from '../../foundation/file-watcher/watcher.js';
 import type { Watcher } from '../../foundation/file-watcher/types.js';
-import { parseFrontmatter } from '../../utils/frontmatter.js';
 import { INBOX_MAX_QUEUE_SIZE } from '../../constants.js';
-import { validatePriority, validateType } from '../../foundation/transport/validation.js';
+import { decodeInbox } from '../../foundation/message-codec/index.js';
 
 /**
  * Queued message with metadata
@@ -160,18 +159,7 @@ export class InboxWatcher {
     
     try {
       const content = await this.fs.read(filePath);
-      const { meta, body } = parseFrontmatter(content);
-      
-      const message: InboxMessage = {
-        id: meta.id ?? randomUUID(),
-        type: validateType(meta.type),
-        from: meta.source ?? 'unknown',
-        to: meta.to ?? '',
-        content: body,
-        priority: validatePriority(meta.priority),
-        timestamp: meta.timestamp ?? new Date().toISOString(),
-        contract_id: meta.claw_id ?? meta.contract_id,
-      };
+      const message = decodeInbox(content);
       
       const queued: QueuedMessage = {
         message,
