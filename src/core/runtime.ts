@@ -14,7 +14,7 @@ import type { Message } from '../types/message.js';
 import type { InboxMessage, Priority } from '../types/contract.js';
 import type { OutboxWriteOptions } from './communication/outbox.js';
 import type { SessionData } from './dialog/types.js';
-import { parseFrontmatter } from '../utils/frontmatter.js';
+import { parseFrontmatter } from '../foundation/message-codec/index.js';
 import { readInboxFileMeta } from '../utils/inbox-writer.js';
 
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
@@ -410,7 +410,8 @@ export class ClawRuntime {
         const priority = PRIORITY_ORDER[meta.priority] ?? 3;
         fileInfos.push({ name, priority, content, meta, body });
       } catch {
-        // Skip invalid files
+        console.warn(`[inbox] Skip unparseable message: ${name}`);
+        this.auditWriter.write('inbox_skip', name, 'reason=parse_error');
       }
     }
 
@@ -423,6 +424,7 @@ export class ClawRuntime {
     // Move to done immediately after reading (messages are in memory; original files no longer needed)
     await fs.mkdir(doneDir, { recursive: true });
     const doneFileNames = new Map<string, string>();
+    const failedRenames = new Set<string>();
     for (const info of fileInfos) {
       const doneFileName = `${Date.now()}_${info.name}`;   // pre-generate
       doneFileNames.set(info.name, doneFileName);
@@ -432,10 +434,13 @@ export class ClawRuntime {
           path.join(doneDir, doneFileName)
         );
       } catch (err: any) {
-        if (err?.code !== 'ENOENT') {
+        if (err?.code === 'ENOENT') {
+          // 文件可能已被其他进程移走，不需要处理
+        } else {
           console.warn(`[inbox] Failed to move ${info.name} to done:`, err?.message);
+          this.auditWriter.write('inbox_error', info.name, `reason=rename_failed,err=${err?.message}`);
+          failedRenames.add(info.name);
         }
-        // ENOENT = 文件可能已被其他进程移走，正常情况
       }
     }
 
@@ -449,6 +454,9 @@ export class ClawRuntime {
       const to = info.meta.to;
       return !to || to === this.options.clawId;
     });
+
+    // 排除 rename 失败的消息（仍在 pending 中，下次重试；不注入防止重复处理）
+    const injectableInfos = injectedInfos.filter(info => !failedRenames.has(info.name));
 
     // Audit log: record all messages (including skipped ones)
     for (const info of fileInfos) {
@@ -478,7 +486,7 @@ export class ClawRuntime {
     const systemParts: string[] = [];
     const userChatParts: string[] = [];
     const sources: Array<{ text: string; type: string }> = [];
-    for (const info of injectedInfos) {
+    for (const info of injectableInfos) {
       const from = info.meta.source ?? 'unknown';
       const type = info.meta.type ?? 'message';
       const formatted = await this.formatInboxMessage(type, from, info.body, info.meta.timestamp);
@@ -498,12 +506,12 @@ export class ClawRuntime {
       : [];
 
     // Extract metadata for error notification and review_request handling
-    const infos = injectedInfos.map(info => ({
+    const infos = injectableInfos.map(info => ({
       meta: info.meta,
       body: info.body,
     }));
 
-    return { injected, sources, count: injectedInfos.length, infos };
+    return { injected, sources, count: injectableInfos.length, infos };
   }
 
   /**

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import {
   VALID_PRIORITIES,
   VALID_TYPES,
@@ -7,7 +7,7 @@ import {
 } from '../../src/foundation/message-codec/index.js';
 
 afterEach(() => {
-  vi.restoreAllMocks();
+  // no-op: kept in case future tests need cleanup
 });
 
 describe('VALID_PRIORITIES', () => {
@@ -36,21 +36,17 @@ describe('validatePriority', () => {
     expect(validatePriority('low')).toBe('low');
   });
 
-  it('非法字符串降级为 normal 并 warn', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('非法字符串降级为 normal', () => {
     expect(validatePriority('urgent')).toBe('normal');
     expect(validatePriority('CRITICAL')).toBe('normal');
     expect(validatePriority('')).toBe('normal');
-    expect(warn).toHaveBeenCalledTimes(3);
   });
 
-  it('非字符串输入降级为 normal 并 warn', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('非字符串输入降级为 normal', () => {
     expect(validatePriority(undefined)).toBe('normal');
     expect(validatePriority(null)).toBe('normal');
     expect(validatePriority(42)).toBe('normal');
     expect(validatePriority({})).toBe('normal');
-    expect(warn).toHaveBeenCalledTimes(4);
   });
 });
 
@@ -64,28 +60,21 @@ describe('validateType', () => {
     expect(validateType('claw_outbox')).toBe('claw_outbox');
   });
 
-  it('watchdog_ 前缀类型原样透传，不触发 warn', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('watchdog_ 前缀类型原样透传', () => {
     expect(validateType('watchdog_ping')).toBe('watchdog_ping');
     expect(validateType('watchdog_')).toBe('watchdog_');
     expect(validateType('watchdog_complex_name')).toBe('watchdog_complex_name');
-    expect(warn).not.toHaveBeenCalled();
   });
 
-  it('未知字符串降级为 message 并 warn', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('未知字符串降级为 message', () => {
     expect(validateType('unknown_event')).toBe('message');
     expect(validateType('HEARTBEAT')).toBe('message');
-    expect(warn).toHaveBeenCalledTimes(2);
   });
 
-  it('非字符串输入降级为 message，触发 warn', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('非字符串输入降级为 message', () => {
     expect(validateType(undefined)).toBe('message');
     expect(validateType(null)).toBe('message');
     expect(validateType(42)).toBe('message');
     expect(validateType({})).toBe('message');
-    expect(warn).toHaveBeenCalledTimes(4);
-    expect(warn).toHaveBeenNthCalledWith(1, '[inbox] Missing or invalid type: undefined, using \'message\'');
   });
 });

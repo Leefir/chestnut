@@ -1,21 +1,22 @@
 /**
  * Frontmatter 解析工具测试
- * 
+ *
  * 测试内容：
  * - 正常 frontmatter 解析
  * - 引号去除（"value" 和 'value' → value）
  * - 格式错误（缺少闭合 ---）
  * - 空 frontmatter
  * - 消息体提取
+ * - CRLF 支持
  */
 import { describe, it, expect } from 'vitest';
-import { parseFrontmatter } from '../../src/utils/frontmatter.js';
+import { parseFrontmatter } from '../../src/foundation/message-codec/index.js';
 
 describe('parseFrontmatter', () => {
   it('parses normal frontmatter', () => {
     const raw = '---\ntitle: Test\nauthor: John\n---\nBody content here';
     const { meta, body } = parseFrontmatter(raw);
-    
+
     expect(meta.title).toBe('Test');
     expect(meta.author).toBe('John');
     expect(body).toBe('Body content here');
@@ -102,5 +103,12 @@ Body`;
     const { meta, body } = parseFrontmatter(raw);
     expect(Object.keys(meta)).toHaveLength(0);
     expect(body).toBe('Content');
+  });
+
+  it('normalizes CRLF to LF', () => {
+    const raw = '---\r\ntitle: Test\r\n---\r\nBody content';
+    const { meta, body } = parseFrontmatter(raw);
+    expect(meta.title).toBe('Test');
+    expect(body).toBe('Body content');
   });
 });

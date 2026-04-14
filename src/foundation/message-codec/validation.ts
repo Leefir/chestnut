@@ -16,17 +16,12 @@ export function validatePriority(value: unknown): Priority {
   if (typeof value === 'string' && VALID_PRIORITIES.includes(value as Priority)) {
     return value as Priority;
   }
-  console.warn(`[inbox] Invalid priority: ${value}, using 'normal'`);
   return 'normal';
 }
 
 export function validateType(value: unknown): InboxMessage['type'] {
-  if (typeof value !== 'string') {
-    console.warn(`[inbox] Missing or invalid type: ${value}, using 'message'`);
-    return 'message';
-  }
+  if (typeof value !== 'string') return 'message';
   if (VALID_TYPES.includes(value)) return value as InboxMessage['type'];
   if (value.startsWith('watchdog_')) return value;
-  console.warn(`[inbox] Unknown type: ${value}, using 'message'`);
   return 'message';
 }

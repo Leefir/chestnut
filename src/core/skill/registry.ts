@@ -8,7 +8,7 @@
 
 import type { IFileSystem } from '../../foundation/fs/types.js';
 import { ToolError } from '../../types/errors.js';
-import { parseFrontmatter } from '../../utils/frontmatter.js';
+import { parseFrontmatter } from '../../foundation/message-codec/index.js';
 
 export interface SkillMeta {
   name: string;

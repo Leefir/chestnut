@@ -4,7 +4,7 @@
 
 import type { ITool, ToolResult, ExecContext } from '../executor.js';
 import type { FileEntry } from '../../../foundation/fs/types.js';
-import { parseFrontmatter } from '../../../utils/frontmatter.js';
+import { parseFrontmatter } from '../../../foundation/message-codec/index.js';
 
 export const memorySearchTool: ITool = {
   name: 'memory_search',
