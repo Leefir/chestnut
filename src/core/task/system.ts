@@ -789,7 +789,7 @@ export class TaskSystem {
   /**
    * Send tool task result to parent claw's inbox
    * Large outputs are offloaded to tasks/results/{taskId}.txt
-   * Writes directly to inbox/pending/ in .md format (LocalTransport compatible)
+   * Writes directly to inbox/pending/ in .md format (standard inbox format)
    */
   private async sendToolResult(task: ToolTask, result: ToolResult | string, isError: boolean): Promise<void> {
     const fullContent = typeof result === 'string' ? result : result.content;
@@ -883,7 +883,7 @@ export class TaskSystem {
   /**
    * Send task result to parent claw's inbox
    * Large outputs are offloaded to tasks/results/{taskId}.txt
-   * Writes directly to inbox/pending/ in .md format (LocalTransport compatible)
+   * Writes directly to inbox/pending/ in .md format (standard inbox format)
    */
   private async sendResult(task: SubAgentTask, result: string, isError: boolean): Promise<void> {
     // Try to write full result to tasks/results/

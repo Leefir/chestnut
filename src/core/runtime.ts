@@ -2,7 +2,7 @@
  * ClawRuntime - assembles all modules into a runnable Claw instance
  *
  * This is the final assembly layer for Phase 1, integrating the following modules into a unified runtime:
- * - Foundation: NodeFileSystem, LLMService, JsonlLogger, LocalTransport
+ * - Foundation: NodeFileSystem, LLMService, JsonlLogger
  * - Core: Dialog, Tools, ReAct, Communication, Task, Skill, Contract
  */
 
