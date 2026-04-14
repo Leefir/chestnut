@@ -41,7 +41,7 @@ describe('ToolExecutor', () => {
   beforeEach(async () => {
     tempDir = await createTempDir();
     mockFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
-    auditWriter = new AuditWriter(path.join(tempDir, 'audit.tsv'));
+    auditWriter = new AuditWriter(mockFs, 'audit.tsv');
     ctx = new ExecContextImpl({
       clawId: 'test-claw',
       clawDir: tempDir,
@@ -205,7 +205,7 @@ describe('ToolExecutor', () => {
       await fs.mkdir(readonlyDir, { recursive: true });
       await fs.chmod(readonlyDir, 0o555);
       
-      const failingAuditWriter = new AuditWriter(path.join(readonlyDir, 'audit.tsv'));
+      const failingAuditWriter = new AuditWriter(mockFs, 'readonly/audit.tsv');
       const readonlyCtx = new ExecContextImpl({
         clawId: 'test-claw',
         clawDir: tempDir,

@@ -145,10 +145,6 @@ export async function isDirectory(filePath: string): Promise<boolean> {
  * Clean up orphaned temp files (files matching .tmp_* pattern)
  * Should be called on startup for cleanup after crash
  */
-/**
- * Clean up orphaned temp files (files matching .tmp_* pattern)
- * Should be called on startup for cleanup after crash
- */
 export async function cleanupOrphanedTemp(dirPath: string): Promise<string[]> {
   const cleaned: string[] = [];
   

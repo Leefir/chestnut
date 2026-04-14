@@ -18,7 +18,7 @@ export interface FileEntry {
  * FileSystem interface - Abstract file operations
  * 
  * Implementation notes:
- * - All methods are async (Promise-based)
+ * - Most methods are async (Promise-based); synchronous variants available for hot paths
  * - Paths are validated to be within claw space (implementation responsibility)
  * - Atomic writes ensure no partial files on crash
  */
@@ -119,6 +119,38 @@ export interface IFileSystem {
     isFile: boolean;
     isDirectory: boolean;
   }>;
+
+  // ========================================================================
+  // Synchronous Operations
+  // ========================================================================
+
+  /**
+   * Append content to file synchronously.
+   * For high-frequency writes where async overhead matters (audit log, stream).
+   * @param path - Relative path within claw space
+   * @param content - Content to append
+   */
+  appendSync(path: string, content: string): void;
+
+  /**
+   * Get file stats synchronously.
+   * @param path - Relative path within claw space
+   * @throws FileNotFoundError if file doesn't exist
+   */
+  statSync(path: string): {
+    size: number;
+    mtime: Date;
+    ctime: Date;
+    isFile: boolean;
+    isDirectory: boolean;
+  };
+
+  /**
+   * Move/rename a file synchronously.
+   * @param fromPath - Source path (relative within claw space)
+   * @param toPath - Destination path (relative within claw space)
+   */
+  moveSync(fromPath: string, toPath: string): void;
 
   // ========================================================================
   // Path Resolution

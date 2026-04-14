@@ -131,12 +131,6 @@ export class ClawRuntime {
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    // 0. 创建 AuditWriter（后续所有 audit 事件共用此实例）
-    this.auditWriter = new AuditWriter(
-      path.join(this.options.clawDir, 'audit.tsv'),
-      this.options.auditMaxSizeMb ?? null,
-    );
-
     const { clawId, clawDir, llmConfig, monitorDir, maxSteps, toolProfile } = this.options;
 
     // 1. Create directory structure
@@ -145,6 +139,13 @@ export class ClawRuntime {
     // 2. Create two NodeFileSystem instances
     // systemFs: used by system components (dialog/, contract/, etc.), no permission enforcement
     this.systemFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+
+    // 2.1 创建 AuditWriter（后续所有 audit 事件共用此实例）
+    this.auditWriter = new AuditWriter(
+      this.systemFs,
+      'audit.tsv',
+      this.options.auditMaxSizeMb ?? null,
+    );
     // clawFs: used by tools, enforces permission checks
     this.clawFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: true });
 

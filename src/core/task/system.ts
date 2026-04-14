@@ -492,7 +492,7 @@ export class TaskSystem {
     // Per-task stream writer setup
     const taskDir = path.join(this.clawDir, 'tasks', 'results', task.id);
     fsSync.mkdirSync(taskDir, { recursive: true });
-    const taskAuditWriter = new AuditWriter(path.join(taskDir, 'audit.tsv'));
+    const taskAuditWriter = new AuditWriter(this.fs, `tasks/results/${task.id}/audit.tsv`);
     const taskStreamPath = path.join(taskDir, 'stream.jsonl');
     let taskStreamFd: number | null = null;
     try {

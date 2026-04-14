@@ -1,10 +1,12 @@
-import { appendFileSync, statSync, renameSync } from 'fs';
+import { FileNotFoundError } from '../../types/errors.js';
+import type { IFileSystem } from '../fs/types.js';
 
 export class AuditWriter {
   private maxBytes: number | null;
 
   constructor(
-    private path: string,
+    private fs: IFileSystem,
+    private filePath: string,
     maxSizeMb?: number | null,
   ) {
     this.maxBytes = maxSizeMb ? maxSizeMb * 1024 * 1024 : null;
@@ -16,16 +18,24 @@ export class AuditWriter {
     const line = parts.join('\t') + '\n';
     try {
       if (this.maxBytes) this.rotateIfNeeded();
-      appendFileSync(this.path, line);
-    } catch { /* 审计失败不能影响业务 */ }
+      this.fs.appendSync(this.filePath, line);
+    } catch (err) {
+      console.warn('[audit] write failed:', err instanceof Error ? err.message : String(err));
+    }
   }
 
   private rotateIfNeeded(): void {
     try {
-      if (statSync(this.path).size >= this.maxBytes!) {
-        renameSync(this.path, `${this.path}.${Date.now()}.bak`);
+      const stats = this.fs.statSync(this.filePath);
+      if (stats.size >= this.maxBytes!) {
+        this.fs.moveSync(this.filePath, `${this.filePath}.${Date.now()}.bak`);
       }
-    } catch { /* ignore：文件不存在（首次写入）或 stat 失败，均跳过 rotation */ }
+    } catch (err) {
+      // FileNotFoundError（首次写入文件不存在）静默跳过；其他错误 warn
+      if (!(err instanceof FileNotFoundError)) {
+        console.warn('[audit] rotation check failed:', err instanceof Error ? err.message : String(err));
+      }
+    }
   }
 }
 
