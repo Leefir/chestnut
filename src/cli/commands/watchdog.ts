@@ -41,13 +41,13 @@ function getWatchdogPidFile(): string {
 /**
  * Create a ProcessManager dedicated to Motion
  */
-function createMotionPM(auditWriter?: AuditWriter): ProcessManager {
+function createMotionPM(): ProcessManager {
   const baseDir = path.dirname(getMotionDir());
   const nfs = new NodeFileSystem({ baseDir, enforcePermissions: false });
   return new ProcessManager(nfs, baseDir, (id) => {
     if (id === 'motion') return path.join(baseDir, 'motion');
     return path.join(baseDir, 'claws', id);
-  }, auditWriter);
+  });
 }
 
 // Watchdog PID management
@@ -325,7 +325,7 @@ export async function daemonCommand(): Promise<void> {
   let stopped = false;
   
   // Create Motion ProcessManager (reused across loop iterations)
-  const pm = createMotionPM(auditWriter);
+  const pm = createMotionPM();
   
   process.on('SIGTERM', () => {
     log('[watchdog] Received SIGTERM, shutting down...');
@@ -379,6 +379,7 @@ export async function daemonCommand(): Promise<void> {
         const motionDir = getMotionDir();
         const pid = await pm.spawn('motion', motionDir);  // use default daemon-entry.js
         log(`[watchdog] motion restarted (PID=${pid})`);
+        auditWriter.write('process_spawn', 'motion', `pid=${pid}`);
         motionRestartFailures = 0;  // Success, reset counter
       } catch (err) {
         if (err instanceof Error && err.message.includes('already running')) {
@@ -387,6 +388,7 @@ export async function daemonCommand(): Promise<void> {
           motionRestartFailures = 0;
         } else {
           motionRestartFailures++;
+          auditWriter.write('process_spawn_failed', 'motion', `err=${err instanceof Error ? err.message : String(err)}`);
           log(`[watchdog] FAILED to restart motion (failure #${motionRestartFailures}): ${err}`);
         }
       }

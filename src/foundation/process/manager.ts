@@ -13,8 +13,7 @@ import { readFileSync, unlinkSync, openSync, mkdirSync, closeSync, existsSync } 
 import { fileURLToPath } from 'url';
 
 import type { IFileSystem } from '../fs/types.js';
-import { AuditWriter } from '../audit/writer.js';
-import { 
+import {
   PROCESS_SPAWN_CONFIRM_MS,
   SIGTERM_GRACE_MS,
   RESTART_DELAY_MS,
@@ -29,13 +28,11 @@ export class ProcessManager {
   private fs: IFileSystem;
   private baseDir: string;
   private resolveDir: (id: string) => string;
-  private auditWriter?: AuditWriter;
 
-  constructor(fs: IFileSystem, baseDir: string, dirResolver?: (id: string) => string, auditWriter?: AuditWriter) {
+  constructor(fs: IFileSystem, baseDir: string, dirResolver?: (id: string) => string) {
     this.fs = fs;
     this.baseDir = baseDir;
     this.resolveDir = dirResolver ?? ((id: string) => path.join(baseDir, 'claws', id));
-    this.auditWriter = auditWriter;
   }
 
   /**
@@ -180,7 +177,6 @@ export class ProcessManager {
       for (const pid of pids) {
         try {
           process.kill(pid, 'SIGTERM');
-          this.auditWriter?.write('orphan_killed', clawId, `pid=${pid}`);
           sentAny = true;
         } catch (err: any) {
           if (err?.code !== 'ESRCH') {
@@ -298,12 +294,10 @@ export class ProcessManager {
         throw new Error(`Daemon process failed to start. Check logs at: ${path.join(clawDir, 'logs', 'daemon.log')}`);
       }
 
-      this.auditWriter?.write('process_spawn', clawId, `pid=${pid}`);
       return pid;
     } catch (err) {
       // Startup failed — clean up the PID file
       await this.removePid(clawId).catch(() => {});
-      this.auditWriter?.write('process_spawn_failed', clawId, `err=${err instanceof Error ? err.message : String(err)}`);
       throw err;
     } finally {
       // Design doc: ensure logFd is closed in all paths
@@ -344,13 +338,11 @@ export class ProcessManager {
       }
 
       await this.removePid(clawId);
-      this.auditWriter?.write('process_stop', clawId, `pid=${pid}`, `via=${via}`);
       return true;
     } catch (err: any) {
       // Process no longer exists
       if (err.code === 'ESRCH') {
         await this.removePid(clawId);
-        this.auditWriter?.write('process_stop', clawId, `pid=${pid}`, 'via=esrch');
         return true;
       }
       return false;
@@ -369,7 +361,6 @@ export class ProcessManager {
     // Brief wait to ensure resources such as ports are released
     await new Promise(resolve => setTimeout(resolve, RESTART_DELAY_MS));
     const pid = await this.spawn(clawId, clawDir, args);
-    this.auditWriter?.write('process_restart', clawId, `pid=${pid}`);
     return pid;
   }
 
