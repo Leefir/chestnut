@@ -26,7 +26,6 @@ import { ReportResultTool } from '../tools/report-result.js';
 import { AuditWriter } from '../../foundation/audit/writer.js';
 
 
-
 // Contract default value constants
 const CONTRACT_DEFAULTS = {
   schema_version: 1,
@@ -1136,7 +1135,7 @@ export class ContractManager {
     console.log(`[contract] Running acceptance script: ${scriptFile} (cwd: ${this.clawDir})`);
 
     try {
-      await exec(resolved, {
+      await exec(`"${resolved}"`, {
         cwd: this.clawDir,
         timeout: CONTRACT_SCRIPT_TIMEOUT_MS,
       });

@@ -5,7 +5,6 @@
  * Responsible for: argument extraction, context injection, output truncation, ToolResult formatting.
  */
 
-import * as path from 'path';
 import type { ITool, ToolResult, ExecContext } from '../executor.js';
 import {
   EXEC_MAX_STDOUT,
