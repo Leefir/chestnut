@@ -2,8 +2,6 @@
  * StreamWriter - 追加写 stream.jsonl
  */
 import type { IFileSystem } from '../fs/types.js';
-import type { StreamCallbacks } from './types.js';
-import { oneLine } from '../utils/string.js';
 
 interface StreamEvent {
   ts: number;
@@ -96,32 +94,5 @@ export class StreamWriter {
       console.warn('[StreamWriter] pruneArchives failed:',
         err instanceof Error ? err.message : String(err));
     }
-  }
-
-  createCallbacks(): StreamCallbacks {
-    return {
-      onBeforeLLMCall: () => { this.write({ ts: Date.now(), type: 'llm_start' }); },
-      onThinkingDelta: (delta) => { this.write({ ts: Date.now(), type: 'thinking_delta', delta }); },
-      onTextDelta: (delta) => { this.write({ ts: Date.now(), type: 'text_delta', delta }); },
-      onTextEnd: () => { this.write({ ts: Date.now(), type: 'text_end' }); },
-      onToolCall: (name, toolUseId) => { this.write({ ts: Date.now(), type: 'tool_call', name, tool_use_id: toolUseId }); },
-      onToolResult: (name, toolUseId, result, step, maxSteps) => {
-        this.write({
-          ts: Date.now(), type: 'tool_result', name, tool_use_id: toolUseId,
-          success: result.success, summary: oneLine(result.content),
-          step: step + 1, maxSteps,
-        });
-      },
-      onTurnStart: (sources) => {
-        this.write({ ts: Date.now(), type: 'turn_start', sources: sources.length > 0 ? sources : undefined });
-      },
-      onTurnEnd: () => { this.write({ ts: Date.now(), type: 'turn_end' }); },
-      onTurnError: (error) => { this.write({ ts: Date.now(), type: 'turn_error', error }); },
-      onTurnInterrupted: (cause, message) => {
-        this.write({ ts: Date.now(), type: 'turn_interrupted', cause, ...(message ? { message } : {}) });
-      },
-      onProviderInfo: (info) => { this.write({ ts: Date.now(), type: 'provider_info', ...info }); },
-      onProviderFailover: (info) => { this.write({ ts: Date.now(), type: 'provider_failover', ...info }); },
-    };
   }
 }

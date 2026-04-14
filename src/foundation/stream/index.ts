@@ -5,5 +5,5 @@
  * 依赖：FileSystem
  */
 
-export type { StreamSink, StreamCallbacks } from './types.js';
+export type { StreamSink } from './types.js';
 export { StreamWriter } from './writer.js';

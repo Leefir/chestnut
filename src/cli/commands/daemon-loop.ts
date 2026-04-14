@@ -5,8 +5,10 @@
 
 import * as fsNative from 'fs';
 import * as path from 'path';
-import type { ClawRuntime, InboxMessageInfo } from '../../core/runtime.js';
+import type { ClawRuntime, InboxMessageInfo, StreamCallbacks } from '../../core/runtime.js';
 import type { StreamWriter } from '../../foundation/stream/index.js';
+import type { StreamSink } from '../../foundation/stream/types.js';
+import { oneLine } from '../../foundation/utils/string.js';
 
 import type { Heartbeat } from '../../core/heartbeat.js';
 import { scanClawOutboxes } from '../../core/outbox-scanner.js';
@@ -21,6 +23,65 @@ import {
 } from '../../constants.js';
 import { notifyInbox, notifyStream } from '../../utils/notify.js';
 import { IdleTimeoutSignal, PriorityInboxInterrupt, UserInterrupt } from '../../types/signals.js';
+
+/**
+ * 创建 StreamCallbacks 实现，将业务事件转为 StreamEvent 写入 StreamSink。
+ * 这是装配层逻辑：将 ReAct 循环的业务事件名映射为 stream.jsonl 的事件记录。
+ */
+function createStreamCallbacks(sink: StreamSink): StreamCallbacks {
+  return {
+    onBeforeLLMCall: () => {
+      sink.write({ ts: Date.now(), type: 'llm_start' });
+    },
+    onThinkingDelta: (delta: string) => {
+      sink.write({ ts: Date.now(), type: 'thinking_delta', delta });
+    },
+    onTextDelta: (delta: string) => {
+      sink.write({ ts: Date.now(), type: 'text_delta', delta });
+    },
+    onTextEnd: () => {
+      sink.write({ ts: Date.now(), type: 'text_end' });
+    },
+    onToolCall: (name: string, toolUseId: string) => {
+      sink.write({ ts: Date.now(), type: 'tool_call', name, tool_use_id: toolUseId });
+    },
+    onToolResult: (name: string, toolUseId: string, result: { success: boolean; content: string }, step: number, maxSteps: number) => {
+      const summary = oneLine(result.content);
+      sink.write({
+        ts: Date.now(),
+        type: 'tool_result',
+        name,
+        tool_use_id: toolUseId,
+        success: result.success,
+        summary,
+        step: step + 1,
+        maxSteps,
+      });
+    },
+    onTurnStart: (sources: Array<{ text: string; type: string }>) => {
+      sink.write({
+        ts: Date.now(),
+        type: 'turn_start',
+        sources: sources.length > 0 ? sources : undefined,
+      });
+    },
+    onTurnEnd: () => {
+      sink.write({ ts: Date.now(), type: 'turn_end' });
+    },
+    onTurnError: (error: string) => {
+      sink.write({ ts: Date.now(), type: 'turn_error', error });
+    },
+    onTurnInterrupted: (cause: string, message?: string) => {
+      sink.write({ ts: Date.now(), type: 'turn_interrupted', cause, ...(message ? { message } : {}) });
+    },
+    onProviderInfo: (info: { name: string; model: string; isFallback: boolean }) => {
+      sink.write({ ts: Date.now(), type: 'provider_info', ...info });
+    },
+    onProviderFailover: (info: { from: string; timeoutMs: number }) => {
+      sink.write({ ts: Date.now(), type: 'provider_failover', ...info });
+    },
+  };
+}
 
 export interface DaemonLoopOptions {
   runtime: ClawRuntime;
@@ -204,7 +265,7 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
       let interruptPoller: ReturnType<typeof setInterval> | null = null;
 
       // Build wrappedCallbacks outside try so catch block can access it for retryLastTurn
-      const callbacks = streamWriter?.createCallbacks();
+      const callbacks = streamWriter ? createStreamCallbacks(streamWriter) : undefined;
       const wrappedCallbacks = callbacks
         ? { ...callbacks, onInboxMessages: options.onInboxMessages }
         : (options.onInboxMessages ? { onInboxMessages: options.onInboxMessages } : undefined);
