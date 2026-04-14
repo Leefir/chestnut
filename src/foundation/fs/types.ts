@@ -152,6 +152,36 @@ export interface IFileSystem {
    */
   moveSync(fromPath: string, toPath: string): void;
 
+  /**
+   * Check if path exists synchronously.
+   * @param path - Relative path within claw space
+   */
+  existsSync(path: string): boolean;
+
+  /**
+   * Ensure directory exists synchronously (creates recursively if needed).
+   * @param path - Relative path within claw space
+   */
+  ensureDirSync(path: string): void;
+
+  /**
+   * List directory contents synchronously.
+   * @param path - Relative path within claw space
+   * @param options - Listing options
+   */
+  listSync(path: string, options?: {
+    recursive?: boolean;
+    includeDirs?: boolean;
+    pattern?: string;
+  }): FileEntry[];
+
+  /**
+   * Delete a file synchronously.
+   * @param path - Relative path within claw space
+   * @throws FileNotFoundError if file doesn't exist
+   */
+  deleteSync(path: string): void;
+
   // ========================================================================
   // Path Resolution
   // ========================================================================
@@ -179,5 +209,3 @@ export interface FileSystemOptions {
   /** Additional allowed paths outside baseDir (e.g., skills directory) */
   allowedPaths?: string[];
 }
-
-

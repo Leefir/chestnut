@@ -36,7 +36,7 @@ import { execTool } from './tools/builtins/exec.js';
 import { runReact } from './react/loop.js';
 import { IdleTimeoutSignal, PriorityInboxInterrupt, UserInterrupt } from '../types/signals.js';
 import type { ToolResult } from './tools/executor.js';
-import type { StreamCallbacks, StreamSink } from '../foundation/recording/context.js';
+import type { StreamSink } from '../foundation/stream/types.js';
 import { AuditWriter } from '../foundation/audit/writer.js';
 import { InboxWatcher } from './communication/inbox.js';
 import { OutboxWriter } from './communication/outbox.js';
@@ -70,6 +70,26 @@ export interface ClawRuntimeOptions {
 export interface InboxMessageInfo {
   meta: Record<string, string>;
   body: string;
+}
+
+/**
+ * ReAct 循环的流式事件回调
+ * daemon 专用的 onInboxMessages 在下方 DaemonStreamCallbacks 扩展定义
+ */
+export interface StreamCallbacks {
+  onBeforeLLMCall?: () => void;
+  onTextDelta?: (delta: string) => void;
+  onTextEnd?: () => void;
+  onThinkingDelta?: (delta: string) => void;
+  onToolCall?: (toolName: string, toolUseId: string) => void;
+  onToolResult?: (toolName: string, toolUseId: string, result: { success: boolean; content: string }, step: number, maxSteps: number) => void;
+  onTurnStart?: (sources: Array<{ text: string; type: string }>) => void;
+  onTurnEnd?: () => void;
+  onTurnError?: (error: string) => void;
+  onTurnInterrupted?: (cause: string, message?: string) => void;
+  onProviderInfo?: (info: { name: string; model: string; isFallback: boolean }) => void;
+  /** Provider timed out mid-stream, failover starting */
+  onProviderFailover?: (info: { from: string; timeoutMs: number }) => void;
 }
 
 /** daemon 专用回调，在 StreamCallbacks 基础上增加 inbox 通知 */
