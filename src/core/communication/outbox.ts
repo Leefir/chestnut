@@ -8,6 +8,7 @@ import * as path from 'path';
 import { randomUUID } from 'crypto';
 import type { IFileSystem } from '../../foundation/fs/types.js';
 import type { OutboxMessage, Priority } from '../../types/contract.js';
+import { encodeOutbox } from '../../foundation/message-codec/index.js';
 
 /**
  * Outbox writer options
@@ -61,31 +62,11 @@ export class OutboxWriter {
     const filePath = path.join(this.outboxDir, filename);
 
     // Format content as markdown
-    const content = this.formatMessage(message);
+    const content = encodeOutbox(message);
 
     // Write file
     await this.fs.writeAtomic(filePath, content);
 
     return filePath;
-  }
-
-  /**
-   * Format message as markdown
-   */
-  private formatMessage(msg: OutboxMessage): string {
-    const lines = [
-      `# ${msg.type.toUpperCase()}`,
-      '',
-      `**From:** ${msg.from}`,
-      `**To:** ${msg.to}`,
-      `**Time:** ${msg.timestamp}`,
-      msg.contract_id ? `**Contract:** ${msg.contract_id}` : null,
-      '',
-      '---',
-      '',
-      msg.content,
-    ];
-
-    return lines.filter(l => l !== null).join('\n');
   }
 }
