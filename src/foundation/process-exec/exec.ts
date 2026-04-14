@@ -65,13 +65,17 @@ async function runProcess(
       exitCode: 0,
     };
   } catch (error: any) {
+    // Extract exit code: Node.js execFile uses error.code for numeric exit codes,
+    // but error.code can also be a string (e.g. 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER').
+    const numericExitCode = typeof error?.code === 'number' ? error.code : null;
+
     // maxBuffer exceeded
     if (error?.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
       throw new ProcessExecError({
         message: `Command output exceeded ${PROCESS_EXEC_MAX_BUFFER / 1024 / 1024} MB limit`,
         stdout: error.stdout || '',
         stderr: error.stderr || '',
-        exitCode: error.status ?? null,
+        exitCode: numericExitCode,
         maxBufferExceeded: true,
       });
     }
@@ -85,7 +89,7 @@ async function runProcess(
         : (error?.message || String(error)),
       stdout: error?.stdout || '',
       stderr: error?.stderr || '',
-      exitCode: error?.status ?? null,
+      exitCode: numericExitCode,
       killed: isTimeout,
     });
   }
