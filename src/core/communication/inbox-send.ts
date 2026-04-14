@@ -24,7 +24,21 @@ export async function sendInboxMessage(
   clawId: string,
   msg: InboxMessage,
 ): Promise<void> {
-  const pendingDir = path.join(workspaceDir, 'claws', clawId, 'inbox', 'pending');
+  // 校验目标 claw 目录存在（claws/{clawId}/ 本身应由 claw create 命令创建）
+  const clawDir = path.join(workspaceDir, 'claws', clawId);
+  try {
+    const stat = await fs.stat(clawDir);
+    if (!stat.isDirectory()) {
+      throw new Error(`"${clawId}" is not a directory`);
+    }
+  } catch (err: any) {
+    if (err?.code === 'ENOENT' || err?.message?.includes('not a directory')) {
+      throw new Error(`Claw "${clawId}" does not exist, message not delivered`);
+    }
+    throw err;
+  }
+
+  const pendingDir = path.join(clawDir, 'inbox', 'pending');
   await fs.mkdir(pendingDir, { recursive: true });
 
   const timestamp = Date.now();

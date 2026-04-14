@@ -130,8 +130,10 @@ export class InboxWatcher {
           await this.handleNewFile(path.join(this.pendingDir, entry.name));
         }
       }
-    } catch {
-      // Directory might not exist yet
+    } catch (err: any) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        console.error('[InboxWatcher] Failed to load existing messages:', err);
+      }
     }
   }
 

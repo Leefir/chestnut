@@ -21,12 +21,26 @@ export function parseFrontmatter(raw: string): { meta: Record<string, string>; b
   }
 
   const meta: Record<string, string> = {};
-  for (const line of afterOpen.slice(0, closeIdx).split('\n')) {
+  const frontmatterSection = afterOpen.slice(0, closeIdx);
+  let bodyLength: number | undefined;
+
+  for (const line of frontmatterSection.split('\n')) {
     const ci = line.indexOf(':');
     if (ci <= 0) continue;
     const key = line.slice(0, ci).trim();
     const value = line.slice(ci + 1).trim().replace(/^["']|["']$/g, '');
-    meta[key] = value;
+    if (key === '_body_length') {
+      bodyLength = parseInt(value, 10);
+    } else {
+      meta[key] = value;
+    }
   }
-  return { meta, body: afterOpen.slice(closeIdx + 5).trim() };
+
+  // 如果有 _body_length，用精确长度切分 body（不受 body 中 \n---\n 干扰）
+  const bodyStart = afterOpen.slice(closeIdx + 5);
+  if (bodyLength !== undefined && !isNaN(bodyLength)) {
+    return { meta, body: bodyStart.slice(0, bodyLength).trim() };
+  }
+
+  return { meta, body: bodyStart.trim() };
 }
