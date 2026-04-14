@@ -26,7 +26,8 @@ import { writeAtomic } from '../fs/atomic.js';
 import { createWatcher } from '../file-watcher/watcher.js';
 import type { Watcher } from '../file-watcher/types.js';
 import { parseFrontmatter } from '../../utils/frontmatter.js';
-import { validatePriority, validateType } from './validation.js';
+import { validatePriority, validateType } from '../message-codec/index.js';
+import { encodeInbox } from '../message-codec/index.js';
 
 /**
  * Local transport configuration
@@ -36,23 +37,7 @@ export interface LocalTransportOptions {
   workspaceDir: string;
 }
 
-/**
- * Build YAML frontmatter content from InboxMessage
- */
-function buildFrontmatterMessage(msg: InboxMessage): string {
-  return `---
-id: ${msg.id}
-type: ${msg.type}
-from: ${msg.from}
-to: ${msg.to}
-priority: ${msg.priority}
-timestamp: ${msg.timestamp}
-${msg.contract_id ? `contract_id: ${msg.contract_id}` : ''}
----
 
-${msg.content}
-`;
-}
 
 /**
  * Local file system transport implementation
@@ -116,7 +101,7 @@ export class LocalTransport implements ITransport {
     const filename = `${timestamp}_${priority}_${randomUUID().slice(0, 8)}.md`;
     const filePath = path.join(pendingDir, filename);
 
-    await writeAtomic(filePath, buildFrontmatterMessage(msg));
+    await writeAtomic(filePath, encodeInbox(msg));
   }
 
   /**
