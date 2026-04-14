@@ -135,6 +135,7 @@ export class ClawRuntime {
   protected toolExecutor!: ToolExecutorImpl;
   private inboxReader!: InboxReader;
   private watcher: Watcher | null = null;
+  private inboxProcessing = false;
   private outboxWriter!: OutboxWriter;
   private snapshot!: Snapshot;
 
@@ -966,15 +967,21 @@ export class ClawRuntime {
    * Called on startup and whenever the file watcher detects a new file.
    */
   private async processInboxMessages(): Promise<void> {
-    const entries = await this.inboxReader.drainInbox();
-    for (const entry of entries) {
-      try {
-        await this.handleMessage(entry.message);
-        await this.inboxReader.markDone(entry.filePath);
-      } catch (err) {
-        console.error(`[inbox] Process failed for ${entry.filePath}:`, err);
-        await this.inboxReader.markFailed(entry.filePath);
+    if (this.inboxProcessing) return;
+    this.inboxProcessing = true;
+    try {
+      const entries = await this.inboxReader.drainInbox();
+      for (const entry of entries) {
+        try {
+          await this.handleMessage(entry.message);
+          await this.inboxReader.markDone(entry.filePath);
+        } catch (err) {
+          console.error(`[inbox] Process failed for ${entry.filePath}:`, err);
+          await this.inboxReader.markFailed(entry.filePath);
+        }
       }
+    } finally {
+      this.inboxProcessing = false;
     }
   }
 

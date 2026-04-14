@@ -37,7 +37,8 @@ export class InboxReader {
 
   /**
    * Read all pending messages, sorted by priority (desc) then timestamp (asc).
-   * Returns messages with their file paths for subsequent markDone/markFailed calls.
+   * Malformed files are automatically moved to failed/ (side effect).
+   * Returns valid messages with their file paths for subsequent markDone/markFailed calls.
    */
   async drainInbox(): Promise<InboxEntry[]> {
     let entries: { name: string }[] = [];
