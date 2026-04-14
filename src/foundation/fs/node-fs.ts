@@ -1,7 +1,7 @@
 /**
  * NodeFileSystem - IFileSystem implementation using Node.js fs/promises
- * 
- * Combines atomic operations, permission checking, and chokidar watching
+ *
+ * Atomic operations + path guarding + permission domains
  */
 
 import * as path from 'path';

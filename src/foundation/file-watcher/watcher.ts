@@ -1,6 +1,6 @@
 /**
  * File watcher - chokidar wrapper
- * 
+ *
  * Wraps chokidar to provide our Watcher interface
  */
 
@@ -12,25 +12,25 @@ import type { Watcher, WatchEvent, WatchEventType } from './types.js';
  */
 class ChokidarWatcher implements Watcher {
   private active = true;
-  
+
   constructor(
     private readonly watcher: FSWatcher,
     private readonly watchPath: string
   ) {}
-  
+
   async close(): Promise<void> {
     if (!this.active) {
       return;
     }
-    
+
     this.active = false;
     await this.watcher.close();
   }
-  
+
   isActive(): boolean {
     return this.active;
   }
-  
+
   getPath(): string {
     return this.watchPath;
   }
@@ -87,39 +87,39 @@ export function createWatcher(
       pollInterval: 50,
     },
   });
-  
+
   // Map chokidar events to our format
   watcher.on('all', (event, filePath, stats) => {
     const type = mapEventType(event);
     if (!type) {
       return;
     }
-    
+
     const watchEvent: WatchEvent = {
       type,
       path: filePath,
     };
-    
+
     if (stats) {
       watchEvent.stats = {
         size: stats.size,
         mtime: stats.mtime,
       };
     }
-    
+
     callback(watchEvent);
   });
-  
+
   // Ready event
   watcher.on('ready', () => {
     options?.onReady?.();
   });
-  
+
   // Error handling
   watcher.on('error', (error) => {
     console.error('Watcher error:', error);
     options?.onError?.(error instanceof Error ? error : new Error(String(error)));
   });
-  
+
   return new ChokidarWatcher(watcher, watchPath);
 }

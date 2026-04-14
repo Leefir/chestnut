@@ -1,17 +1,13 @@
 /**
- * FileSystem module (F1)
- * Phase 0: Node.js implementation
- * 
- * Exports: IFileSystem interface, NodeFileSystem implementation,
- *          DirectoryQueue, permissions, watcher utilities
+ * FileSystem module (L1)
+ *
+ * clawforum 进程内代码的所有文件 I/O 的唯一入口。
+ * 原子写、路径守护、权限域配置。
  */
 
 // Types and interfaces
 export type {
   FileEntry,
-  WatchEvent,
-  WatchEventType,
-  Watcher,
   IFileSystem,
   FileSystemOptions,
 } from './types.js';
@@ -28,10 +24,7 @@ export type {
   PermissionChecker,
 } from './permissions.js';
 
-// Watcher utilities
-export { createWatcher } from './watcher.js';
-
-// Atomic file operations (for advanced use)
+// Atomic file operations
 export {
   readFile,
   writeAtomic,

@@ -23,8 +23,8 @@ import type {
 import type { HeartbeatEntry, Priority } from '../../types/contract.js';
 import { PRIORITY_VALUES } from '../../types/contract.js';
 import { writeAtomic } from '../fs/atomic.js';
-import { createWatcher } from '../fs/watcher.js';
-import type { Watcher } from '../fs/types.js';
+import { createWatcher } from '../file-watcher/watcher.js';
+import type { Watcher } from '../file-watcher/types.js';
 import { parseFrontmatter } from '../../utils/frontmatter.js';
 import { validatePriority, validateType } from './validation.js';
 

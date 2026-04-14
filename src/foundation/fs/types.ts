@@ -1,11 +1,8 @@
 /**
- * FileSystem types and interfaces (F1)
- * Phase 0: Interface definitions
- * 
- * Design principles:
- * - All paths are relative to claw's workspace (enforced by implementation)
- * - Atomic writes: write-to-temp + rename pattern
- * - Watch support via chokidar for inbox monitoring
+ * FileSystem types and interfaces (L1)
+ *
+ * Type definitions for all file I/O within clawforum.
+ * Atomic writes, path guarding.
  */
 
 export interface FileEntry {
@@ -15,28 +12,6 @@ export interface FileEntry {
   isFile: boolean;
   size: number;
   mtime: Date;
-}
-
-export type WatchEventType = 'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir';
-
-export interface WatchEvent {
-  type: WatchEventType;
-  path: string;
-  stats?: {
-    size: number;
-    mtime: Date;
-  };
-}
-
-export interface Watcher {
-  /** Stop watching and clean up resources */
-  close(): Promise<void>;
-  
-  /** Check if watcher is still active */
-  isActive(): boolean;
-  
-  /** Get the watched path */
-  getPath(): string;
 }
 
 /**
