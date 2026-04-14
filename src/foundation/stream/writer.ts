@@ -31,25 +31,32 @@ export class StreamWriter {
 
   /** daemon 启动时调用：归档旧文件 */
   open(): void {
-    if (this.isOpen) return;  // 防止重复 open
+    if (this.isOpen) return;
 
-    // 归档旧 stream.jsonl
+    let archiveFailed = false;
     if (this.fs.existsSync(STREAM_FILE)) {
       try {
         this.fs.ensureDirSync(ARCHIVE_DIR);
         this.fs.moveSync(STREAM_FILE, `${ARCHIVE_DIR}/stream.${Date.now()}.jsonl`);
       } catch (err) {
+        archiveFailed = true;
         console.error('[StreamWriter] Failed to archive stream.jsonl, events will append to existing file:',
           err instanceof Error ? err.message : String(err));
       }
     }
     this.pruneArchives();
     this.isOpen = true;
+    if (archiveFailed) {
+      this.write({ ts: Date.now(), type: 'session_boundary', reason: 'archive_failed' });
+    }
   }
 
   /** 写一行事件 */
   write(event: StreamEvent): void {
-    if (!this.isOpen) return;
+    if (!this.isOpen) {
+      console.warn('[StreamWriter] write() called before open(), event dropped');
+      return;
+    }
     const line = JSON.stringify(event) + '\n';
     try {
       this.fs.appendSync(STREAM_FILE, line);
@@ -88,7 +95,12 @@ export class StreamWriter {
       }
 
       for (const p of toDelete) {
-        try { this.fs.deleteSync(p); } catch { /* ignore */ }
+        try {
+          this.fs.deleteSync(p);
+        } catch (err) {
+          console.warn('[StreamWriter] failed to delete archive:', p,
+            err instanceof Error ? err.message : String(err));
+        }
       }
     } catch (err) {
       console.warn('[StreamWriter] pruneArchives failed:',
