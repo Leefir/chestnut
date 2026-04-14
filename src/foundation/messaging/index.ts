@@ -8,4 +8,5 @@
 export { OutboxWriter } from './outbox-writer.js';
 export type { OutboxWriteOptions } from './outbox-writer.js';
 
-export { writeInbox } from './inbox-writer.js';
+export { writeInbox, writeInboxMessage, readInboxFileMeta } from './inbox-writer.js';
+export type { InboxMessageOptions } from './inbox-writer.js';
