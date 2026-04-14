@@ -14,6 +14,8 @@ import { ToolRegistry } from '../../src/core/tools/registry.js';
 import { ITool, ToolResult, ExecContext } from '../../src/core/tools/executor.js';
 import type { JSONSchema7 } from '../../src/types/message.js';
 import * as fs from 'fs/promises';
+import * as fsSync from 'fs';
+import * as fsSync from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import { tmpdir } from 'os';
@@ -90,6 +92,12 @@ describe('TaskSystem Tool Tasks', () => {
         ),
         ensureDir: (p: string) => fs.mkdir(path.join(testClawDir, p), { recursive: true }),
         isDirectory: (p: string) => fs.stat(path.join(testClawDir, p)).then(s => s.isDirectory()).catch(() => false),
+        appendSync: (p: string, c: string) => fsSync.appendFileSync(path.join(testClawDir, p), c),
+        statSync: (p: string) => {
+          const s = fsSync.statSync(path.join(testClawDir, p));
+          return { size: s.size, mtime: s.mtime, ctime: s.ctime, isFile: s.isFile(), isDirectory: s.isDirectory() };
+        },
+        moveSync: (from: string, to: string) => fsSync.renameSync(path.join(testClawDir, from), path.join(testClawDir, to)),
       } as any,
       { maxConcurrent: 3, retryBaseDelayMs: 10 }
     );
@@ -307,6 +315,12 @@ describe('TaskSystem Tool Tasks', () => {
         ),
         ensureDir: (p: string) => fs.mkdir(path.join(testClawDir, p), { recursive: true }),
         isDirectory: (p: string) => fs.stat(path.join(testClawDir, p)).then(s => s.isDirectory()).catch(() => false),
+        appendSync: (p: string, c: string) => fsSync.appendFileSync(path.join(testClawDir, p), c),
+        statSync: (p: string) => {
+          const s = fsSync.statSync(path.join(testClawDir, p));
+          return { size: s.size, mtime: s.mtime, ctime: s.ctime, isFile: s.isFile(), isDirectory: s.isDirectory() };
+        },
+        moveSync: (from: string, to: string) => fsSync.renameSync(path.join(testClawDir, from), path.join(testClawDir, to)),
       } as any;
 
       const taskSystem2 = new TaskSystem(testClawDir, failingInboxFs, { maxConcurrent: 3, retryBaseDelayMs: 10 });
@@ -440,6 +454,12 @@ describe('TaskSystem Tool Tasks', () => {
           ),
           ensureDir: (p: string) => fs.mkdir(path.join(testClawDir, p), { recursive: true }),
           isDirectory: (p: string) => fs.stat(path.join(testClawDir, p)).then(s => s.isDirectory()).catch(() => false),
+        appendSync: (p: string, c: string) => fsSync.appendFileSync(path.join(testClawDir, p), c),
+        statSync: (p: string) => {
+          const s = fsSync.statSync(path.join(testClawDir, p));
+          return { size: s.size, mtime: s.mtime, ctime: s.ctime, isFile: s.isFile(), isDirectory: s.isDirectory() };
+        },
+        moveSync: (from: string, to: string) => fsSync.renameSync(path.join(testClawDir, from), path.join(testClawDir, to)),
         } as any,
         { maxConcurrent: 3, retryBaseDelayMs: 10 }
       );
@@ -481,6 +501,12 @@ describe('TaskSystem Tool Tasks', () => {
           ),
           ensureDir: (p: string) => fs.mkdir(path.join(testClawDir, p), { recursive: true }),
           isDirectory: (p: string) => fs.stat(path.join(testClawDir, p)).then(s => s.isDirectory()).catch(() => false),
+        appendSync: (p: string, c: string) => fsSync.appendFileSync(path.join(testClawDir, p), c),
+        statSync: (p: string) => {
+          const s = fsSync.statSync(path.join(testClawDir, p));
+          return { size: s.size, mtime: s.mtime, ctime: s.ctime, isFile: s.isFile(), isDirectory: s.isDirectory() };
+        },
+        moveSync: (from: string, to: string) => fsSync.renameSync(path.join(testClawDir, from), path.join(testClawDir, to)),
         } as any,
         { maxConcurrent: 3, retryBaseDelayMs: 10 }
       );
@@ -526,6 +552,12 @@ describe('TaskSystem Tool Tasks', () => {
           ),
           ensureDir: (p: string) => fs.mkdir(path.join(testClawDir, p), { recursive: true }),
           isDirectory: (p: string) => fs.stat(path.join(testClawDir, p)).then(s => s.isDirectory()).catch(() => false),
+        appendSync: (p: string, c: string) => fsSync.appendFileSync(path.join(testClawDir, p), c),
+        statSync: (p: string) => {
+          const s = fsSync.statSync(path.join(testClawDir, p));
+          return { size: s.size, mtime: s.mtime, ctime: s.ctime, isFile: s.isFile(), isDirectory: s.isDirectory() };
+        },
+        moveSync: (from: string, to: string) => fsSync.renameSync(path.join(testClawDir, from), path.join(testClawDir, to)),
         } as any,
         { maxConcurrent: 3, retryBaseDelayMs: 10 }
       );
@@ -574,6 +606,12 @@ describe('TaskSystem Tool Tasks', () => {
         ),
         ensureDir: (p: string) => fs.mkdir(path.join(testClawDir, p), { recursive: true }),
         isDirectory: (p: string) => fs.stat(path.join(testClawDir, p)).then(s => s.isDirectory()).catch(() => false),
+        appendSync: (p: string, c: string) => fsSync.appendFileSync(path.join(testClawDir, p), c),
+        statSync: (p: string) => {
+          const s = fsSync.statSync(path.join(testClawDir, p));
+          return { size: s.size, mtime: s.mtime, ctime: s.ctime, isFile: s.isFile(), isDirectory: s.isDirectory() };
+        },
+        moveSync: (from: string, to: string) => fsSync.renameSync(path.join(testClawDir, from), path.join(testClawDir, to)),
       } as any, { maxConcurrent: 3, retryBaseDelayMs: 10 });
 
       // First restart: result.txt → .sent, inbox message written
@@ -631,6 +669,12 @@ describe('TaskSystem Tool Tasks', () => {
         ),
         ensureDir: (p: string) => fs.mkdir(path.join(testClawDir, p), { recursive: true }),
         isDirectory: (p: string) => fs.stat(path.join(testClawDir, p)).then(s => s.isDirectory()).catch(() => false),
+        appendSync: (p: string, c: string) => fsSync.appendFileSync(path.join(testClawDir, p), c),
+        statSync: (p: string) => {
+          const s = fsSync.statSync(path.join(testClawDir, p));
+          return { size: s.size, mtime: s.mtime, ctime: s.ctime, isFile: s.isFile(), isDirectory: s.isDirectory() };
+        },
+        moveSync: (from: string, to: string) => fsSync.renameSync(path.join(testClawDir, from), path.join(testClawDir, to)),
       } as any, { maxConcurrent: 3, retryBaseDelayMs: 10 });
       await ts.initialize();
       await ts.shutdown(100).catch(() => {});
@@ -704,6 +748,12 @@ describe('TaskSystem Tool Tasks', () => {
         ),
         ensureDir: (p: string) => fs.mkdir(path.join(testClawDir, p), { recursive: true }),
         isDirectory: (p: string) => fs.stat(path.join(testClawDir, p)).then(s => s.isDirectory()).catch(() => false),
+        appendSync: (p: string, c: string) => fsSync.appendFileSync(path.join(testClawDir, p), c),
+        statSync: (p: string) => {
+          const s = fsSync.statSync(path.join(testClawDir, p));
+          return { size: s.size, mtime: s.mtime, ctime: s.ctime, isFile: s.isFile(), isDirectory: s.isDirectory() };
+        },
+        moveSync: (from: string, to: string) => fsSync.renameSync(path.join(testClawDir, from), path.join(testClawDir, to)),
       } as any;
 
       const taskSystem2 = new TaskSystem(testClawDir, failingFs, { maxConcurrent: 3, retryBaseDelayMs: 10 });
@@ -889,6 +939,12 @@ describe('TaskSystem Tool Tasks', () => {
         ),
         ensureDir: (p: string) => fs.mkdir(path.join(testClawDir, p), { recursive: true }),
         isDirectory: (p: string) => fs.stat(path.join(testClawDir, p)).then(s => s.isDirectory()).catch(() => false),
+        appendSync: (p: string, c: string) => fsSync.appendFileSync(path.join(testClawDir, p), c),
+        statSync: (p: string) => {
+          const s = fsSync.statSync(path.join(testClawDir, p));
+          return { size: s.size, mtime: s.mtime, ctime: s.ctime, isFile: s.isFile(), isDirectory: s.isDirectory() };
+        },
+        moveSync: (from: string, to: string) => fsSync.renameSync(path.join(testClawDir, from), path.join(testClawDir, to)),
       };
 
       const taskSystem2 = new TaskSystem(testClawDir, limitedFs as any, { maxConcurrent: 3, retryBaseDelayMs: 10 });
@@ -1002,6 +1058,12 @@ describe('TaskSystem Tool Tasks', () => {
           ),
           ensureDir: (p: string) => fs.mkdir(path.join(freshDir, p), { recursive: true }),
           isDirectory: (p: string) => fs.stat(path.join(freshDir, p)).then(s => s.isDirectory()).catch(() => false),
+        appendSync: (p: string, c: string) => fsSync.appendFileSync(path.join(freshDir, p), c),
+        statSync: (p: string) => {
+          const s = fsSync.statSync(path.join(freshDir, p));
+          return { size: s.size, mtime: s.mtime, ctime: s.ctime, isFile: s.isFile(), isDirectory: s.isDirectory() };
+        },
+        moveSync: (from: string, to: string) => fsSync.renameSync(path.join(freshDir, from), path.join(freshDir, to)),
         } as any,
         { maxConcurrent: 3, retryBaseDelayMs: 10 },
       );

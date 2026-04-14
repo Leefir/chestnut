@@ -316,7 +316,8 @@ export async function daemonCommand(): Promise<void> {
   // Create auditWriter for watchdog
   const auditMaxSizeMb = getGlobalConfig().audit?.retention?.max_size_mb ?? null;
   const auditWriter = new AuditWriter(
-    path.join(getClawforumDir(), 'audit.tsv'),
+    new NodeFileSystem({ baseDir: getClawforumDir(), enforcePermissions: false }),
+    'audit.tsv',
     auditMaxSizeMb,
   );
   auditWriter.write('watchdog_start');
