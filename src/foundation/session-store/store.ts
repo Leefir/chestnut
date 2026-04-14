@@ -4,7 +4,6 @@
  * Handles:
  * - current.json read/write
  * - Session archiving
- * - Token estimation
  * - Crash recovery from archive
  */
 
@@ -14,14 +13,6 @@ import type { IFileSystem } from '../fs/types.js';
 import type { Message, ToolUseBlock, ToolResultBlock } from '../../types/message.js';
 import type { SessionData } from './types.js';
 import { randomUUID } from 'crypto';
-
-/**
- * Session manager configuration
- */
-export interface SessionManagerOptions {
-  /** Path to dialog directory (relative to fs base) */
-  dialogDir: string;
-}
 
 /**
  * Manages a Claw's conversation session
@@ -57,7 +48,7 @@ export class SessionManager {
     } catch (err) {
       const code = (err as any).code;
       if (code === 'ENOENT' || code === 'FS_NOT_FOUND') {
-        // 冷启动，文件不存在是正常的
+        // Cold start: missing file is expected
       } else {
         console.error('[session] current.json corrupted:', err);
       }
@@ -142,7 +133,7 @@ export class SessionManager {
 
     // Move current.json to archive
     await this.fs.move(this.currentPath, archivePath);
-    this.createdAt = null;  // 重置，下次 save() 生成新会话时间戳
+    this.createdAt = null;  // Reset so next save() starts a fresh session
   }
 
   /**
@@ -161,7 +152,6 @@ export class SessionManager {
     messages.push(msg);
     await this.save(messages);
   }
-
 
   /**
    * Load latest archive for crash recovery
