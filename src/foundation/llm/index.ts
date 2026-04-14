@@ -5,17 +5,6 @@
  * Exports: ILLMService interface, LLMService implementation, AnthropicAdapter
  */
 
-// Re-export from central types
-export type {
-  Message,
-  ToolDefinition,
-  LLMResponse,
-  ContentBlock,
-  TextBlock,
-  ToolUseBlock,
-  ToolResultBlock,
-} from '../../types/message.js';
-
 // Internal types
 export type {
   ProviderConfig,
@@ -26,7 +15,8 @@ export type {
 } from './types.js';
 
 // Import for interface definition
-import type { LLMResponse, LLMCallOptions, StreamChunk } from './types.js';
+import type { LLMResponse } from '../../types/message.js';
+import type { LLMCallOptions, StreamChunk } from './types.js';
 
 // Implementation
 export { LLMService } from './service.js';

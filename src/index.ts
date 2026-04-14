@@ -19,7 +19,7 @@ export { JsonlLogger } from './foundation/monitor/index.js';
 
 export type { ILLMService } from './foundation/llm/index.js';
 export { LLMService } from './foundation/llm/service.js';
-export type { LLMServiceConfig, ProviderConfig, LLMCallOptions, LLMResponse } from './foundation/llm/types.js';
+export type { LLMServiceConfig, ProviderConfig, LLMCallOptions } from './foundation/llm/types.js';
 
 export type { ITransport, InboxMessage, InboxStatus, ClawHealth } from './foundation/transport/index.js';
 export { LocalTransport } from './foundation/transport/local.js';
