@@ -45,7 +45,7 @@ import { SkillRegistry } from './skill/registry.js';
 import { ContractManager } from './contract/manager.js';
 import { CLAW_SUBDIRS } from '../types/paths.js';
 import { oneLine } from '../foundation/utils/string.js';
-import { commit } from '../foundation/snapshot/index.js';
+import { Snapshot } from '../foundation/snapshot/index.js';
 import { MaxStepsExceededError } from '../types/errors.js';
 import { MOTION_CLAW_ID, DEFAULT_LLM_IDLE_TIMEOUT_MS, DEFAULT_MAX_STEPS, DEFAULT_MAX_CONCURRENT_TASKS } from '../constants.js';
 
@@ -134,6 +134,7 @@ export class ClawRuntime {
   protected toolExecutor!: ToolExecutorImpl;
   private inboxWatcher!: InboxWatcher;
   private outboxWriter!: OutboxWriter;
+  private snapshot!: Snapshot;
 
   constructor(options: ClawRuntimeOptions) {
     this.options = {
@@ -195,6 +196,9 @@ export class ClawRuntime {
       }
     });
 
+    // 2.x 初始化 Snapshot
+    this.snapshot = new Snapshot(this.options.clawDir);
+
     // Session repair：检测未完成的 tool_use，注入合成 tool_result
     {
       const session = await this.sessionManager.load().catch(() => null);
@@ -203,7 +207,7 @@ export class ClawRuntime {
         if (toolCount > 0) {
           await this.sessionManager.save(repaired);
           this.auditWriter.write('session_repaired', `tools=${toolCount}`);
-          commit(this.options.clawDir, `session-repair tools=${toolCount}`).catch(() => {});
+          this.snapshot.commit(`session-repair tools=${toolCount}`).catch(() => {});
         }
       }
     }
@@ -624,7 +628,7 @@ export class ClawRuntime {
 
     // turn auto-commit（fire-and-forget）
     this.turnCount++;
-    commit(this.options.clawDir, `turn-${this.turnCount} ${new Date().toISOString()}`)
+    this.snapshot.commit(`turn-${this.turnCount} ${new Date().toISOString()}`)
       .catch(() => {});
   }
 
