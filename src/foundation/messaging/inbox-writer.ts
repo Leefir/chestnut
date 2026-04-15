@@ -56,6 +56,8 @@ export interface InboxMessageOptions {
   filenameTag?: string;
   /** Extra YAML frontmatter fields */
   extraFields?: Record<string, string>;
+  /** Write: before writing, delete pending messages with same filenameTag */
+  dedupByType?: boolean;
 }
 
 /**
@@ -83,6 +85,19 @@ export function writeInboxMessage(fs: IFileSystem, opts: InboxMessageOptions): v
   const content = encodeInbox(message, opts.extraFields);
 
   fs.ensureDirSync(opts.inboxDir);
+
+  // Dedup: remove same-type pending messages before writing
+  if (opts.dedupByType) {
+    try {
+      const existing = fs.listSync(opts.inboxDir, { includeDirs: false });
+      for (const f of existing) {
+        if (f.name.endsWith('.md') && f.name.includes('_' + tag + '_')) {
+          try { fs.deleteSync(path.join(opts.inboxDir, f.name)); } catch { /* not-found: ignore */ }
+        }
+      }
+    } catch { /* list failed: directory may not exist yet, proceed to write */ }
+  }
+
   const filename = `${ts}_${tag}_${uuid8}.md`;
   fs.writeAtomicSync(path.join(opts.inboxDir, filename), content);
 }
