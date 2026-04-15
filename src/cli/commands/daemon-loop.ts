@@ -256,6 +256,7 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
               priority: 'normal',
               body,
               filenameTag: 'claw_outbox',
+              dedupByType: true,
             }, label);
           }
         } else {
