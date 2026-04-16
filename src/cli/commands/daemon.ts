@@ -243,21 +243,26 @@ export async function daemonCommand(name: string): Promise<void> {
       const chunkSize = 4096;
       const offset = Math.max(0, stat.size - chunkSize);
       const fd = fsNative.openSync(auditPath, 'r');
-      const buf = Buffer.alloc(Math.min(chunkSize, stat.size));
-      fsNative.readSync(fd, buf, 0, buf.length, offset);
-      fsNative.closeSync(fd);
-      const chunk = buf.toString('utf-8');
-      const lastLine = chunk.split('\n').filter(Boolean).at(-1) ?? '';
-      const type = lastLine.split('\t')[1];
-      if (
-        type === 'daemon_stop' ||
-        type === 'daemon_unclean_exit' ||
-        type === 'daemon_crash'
-      ) return;
-      const lastTs = lastLine.split('\t')[0] ?? new Date().toISOString();
-      auditWriter.write('daemon_unclean_exit', `last_ts=${lastTs}`);
-    } catch {
-      // 读取失败不影响启动
+      try {
+        const buf = Buffer.alloc(Math.min(chunkSize, stat.size));
+        fsNative.readSync(fd, buf, 0, buf.length, offset);
+        const chunk = buf.toString('utf-8');
+        const lastLine = chunk.split('\n').filter(Boolean).at(-1) ?? '';
+        const type = lastLine.split('\t')[1];
+        if (
+          type === 'daemon_stop' ||
+          type === 'daemon_unclean_exit' ||
+          type === 'daemon_crash'
+        ) return;
+        const lastTs = lastLine.split('\t')[0] ?? new Date().toISOString();
+        auditWriter.write('daemon_unclean_exit', `last_ts=${lastTs}`);
+      } finally {
+        fsNative.closeSync(fd);
+      }
+    } catch (err: any) {
+      if (err?.code !== 'ENOENT') {
+        console.warn('[daemon] detectUncleanExit failed:', err?.code || err?.message || err);
+      }
     }
   }
   detectUncleanExit();
@@ -270,7 +275,9 @@ export async function daemonCommand(name: string): Promise<void> {
   auditWriter.write('daemon_start', `sha256:${promptHash}`);
 
   // daemon-start commit（fire-and-forget，不阻塞启动）
-  snapshot.commit(`daemon-start ${new Date().toISOString()}`).catch(() => {});
+  snapshot.commit(`daemon-start ${new Date().toISOString()}`).catch(err => {
+    console.warn('[daemon] Failed to commit daemon-start snapshot:', err instanceof Error ? err.message : String(err));
+  });
 
   runtime.setContractNotifyCallback((type, data) => {
     streamWriter.write({ ts: Date.now(), type: 'user_notify', subtype: type, ...data });
