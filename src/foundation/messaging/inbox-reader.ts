@@ -47,7 +47,8 @@ export class InboxReader {
     try {
       entries = await this.fs.list(this.pendingDir, { includeDirs: false });
     } catch (err: any) {
-      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+      const code = err?.code;
+      if (code !== 'FS_NOT_FOUND' && code !== 'ENOENT') {
         console.error('[InboxReader] Failed to list pending messages:', err);
       }
       return [];
@@ -102,7 +103,6 @@ export class InboxReader {
       const uuid8 = randomUUID().slice(0, 8);
       const targetPath = path.join(this.failedDir, `${Date.now()}_${uuid8}_${fileName}`);
       await this.fs.move(filePath, targetPath);
-      this.auditWriter?.write('inbox_failed', `file=${fileName}`, 'reason=move_failed');
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[InboxReader] Failed to move ${filePath} to failed:`, msg);
