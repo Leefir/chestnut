@@ -112,6 +112,21 @@ describe('summarizeLastExit', () => {
     expect(out).toContain('crashed');
     expect(out).toContain(longCol);
   });
+
+  it('summarizes daemon_stop without cols (no parens)', () => {
+    writeAudit(['2026-04-16T10:00:00.000Z\tdaemon_stop']);
+    const out = summarizeLastExit(auditPath);
+    expect(out).toContain('stopped normally');
+    expect(out).toContain('2026-04-16T10:00:00.000Z.');
+    expect(out).not.toContain('(');
+  });
+
+  it('summarizes daemon_unclean_exit without cols (no last activity line)', () => {
+    writeAudit(['2026-04-16T10:00:00.000Z\tdaemon_unclean_exit']);
+    const out = summarizeLastExit(auditPath);
+    expect(out).toContain('exited uncleanly');
+    expect(out).not.toContain('Last activity timestamp');
+  });
 });
 
 describe('readLastExitEvent', () => {

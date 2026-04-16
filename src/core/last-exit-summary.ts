@@ -55,7 +55,10 @@ export function readLastExitEvent(auditPath: string): RawEvent | null {
         fs.closeSync(fd);
       }
     }
-  } catch {
+  } catch (err: any) {
+    if (err?.code !== 'ENOENT') {
+      console.warn('[last-exit-summary] Failed to read audit:', err?.code || err?.message || err);
+    }
     return null;
   }
 
