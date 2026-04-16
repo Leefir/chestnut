@@ -79,7 +79,18 @@ export class SessionManager {
 
   /**
    * Repair session if last assistant message has unanswered tool_use blocks.
-   * Returns repaired messages + count of injected synthetic results (0 = no repair needed).
+   *
+   * Injects synthetic `tool_result` blocks for each unanswered `tool_use` so the
+   * LLM can continue the conversation.
+   *
+   * @param messages - Current session messages.
+   * @param opts.interruptionMessage - Optional explanation of the interruption
+   *   (e.g. shutdown reason + timeline discovered by the caller). When omitted or
+   *   empty, the synthetic message explicitly states "Cause unknown (no context
+   *   provided to repair)." — a fail-loud default that reminds callers to pass
+   *   context when available. SessionStore does not guess the interruption cause.
+   * @returns Repaired messages and count of injected synthetic results.
+   *   `toolCount` is 0 when the input messages are returned unchanged.
    */
   static repair(
     messages: Message[],
