@@ -229,6 +229,10 @@ export class LLMService implements ILLMService {
         continue;
       }
 
+      // Track current provider so getProviderInfo() reflects the active adapter
+      // during mid-stream failover — not just the last one that fully completed.
+      this.currentProviderIndex = pi === 0 ? -1 : pi - 1;
+
       // Retry loop (aligns with call())
       let success = false;
       let hasYielded = false;
