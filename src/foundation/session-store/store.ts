@@ -81,7 +81,10 @@ export class SessionManager {
    * Repair session if last assistant message has unanswered tool_use blocks.
    * Returns repaired messages + count of injected synthetic results (0 = no repair needed).
    */
-  static repair(messages: Message[]): { repaired: Message[]; toolCount: number } {
+  static repair(
+    messages: Message[],
+    opts?: { interruptionMessage?: string },
+  ): { repaired: Message[]; toolCount: number } {
     const last = messages[messages.length - 1];
     if (!last || last.role !== 'assistant') return { repaired: messages, toolCount: 0 };
 
@@ -92,10 +95,14 @@ export class SessionManager {
     );
     if (toolUseBlocks.length === 0) return { repaired: messages, toolCount: 0 };
 
+    const detail = opts?.interruptionMessage && opts.interruptionMessage.length > 0
+      ? opts.interruptionMessage
+      : 'Cause unknown (no context provided to repair).';
+
     const syntheticResults: ToolResultBlock[] = toolUseBlocks.map(block => ({
       type: 'tool_result',
       tool_use_id: block.id,
-      content: `Tool call '${block.name}' with input ${JSON.stringify(block.input)} was interrupted: process restarted.`,
+      content: `Tool call '${block.name}' with input ${JSON.stringify(block.input)} was interrupted. ${detail}`,
       is_error: true,
     }));
 
