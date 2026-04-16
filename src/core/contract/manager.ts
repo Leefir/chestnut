@@ -15,7 +15,7 @@ import type { Logger } from '../../foundation/monitor/types.js';
 import type { ILLMService } from '../../foundation/llm/index.js';
 import type { Contract, SubTask, ContractStatus, SubtaskStatus } from '../../types/contract.js';
 import { ToolError, ToolTimeoutError } from '../../types/errors.js';
-import { exec } from '../../foundation/process-exec/index.js';
+import { exec, execFile } from '../../foundation/process-exec/index.js';
 import { ProcessExecError } from '../../foundation/process-exec/index.js';
 import { LOCK_MAX_RETRIES, LOCK_RETRY_DELAY_MS, LOCK_STALE_TIMEOUT_MS, CONTRACT_SCRIPT_TIMEOUT_MS, DEFAULT_LLM_IDLE_TIMEOUT_MS, DEFAULT_MAX_STEPS } from '../../constants.js';
 import { CONTRACT_VERIFIER_SYSTEM_PROMPT } from '../../prompts/subagent.js';
@@ -1135,7 +1135,7 @@ export class ContractManager {
     console.log(`[contract] Running acceptance script: ${scriptFile} (cwd: ${this.clawDir})`);
 
     try {
-      await exec(`"${resolved}"`, {
+      await execFile(resolved, [], {
         cwd: this.clawDir,
         timeout: CONTRACT_SCRIPT_TIMEOUT_MS,
       });
