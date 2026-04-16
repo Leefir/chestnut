@@ -80,6 +80,9 @@ function createStreamCallbacks(sink: StreamSink): StreamCallbacks {
     onProviderFailover: (info: { from: string; timeoutMs: number }) => {
       sink.write({ ts: Date.now(), type: 'provider_failover', ...info });
     },
+    onProviderFailed: (info: { provider: string; model: string; error: string }) => {
+      sink.write({ ts: Date.now(), type: 'provider_failed', ...info });
+    },
   };
 }
 

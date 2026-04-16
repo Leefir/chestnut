@@ -91,6 +91,8 @@ export interface StreamCallbacks {
   onProviderInfo?: (info: { name: string; model: string; isFallback: boolean }) => void;
   /** Provider timed out mid-stream, failover starting */
   onProviderFailover?: (info: { from: string; timeoutMs: number }) => void;
+  /** Provider failed, failover continuing to next provider */
+  onProviderFailed?: (info: { provider: string; model: string; error: string }) => void;
 }
 
 /** daemon 专用回调，在 StreamCallbacks 基础上增加 inbox 通知 */
@@ -640,6 +642,9 @@ export class ClawRuntime {
           resetIdle?.();
           providerInfoEmitted = false;
           callbacks?.onProviderFailover?.({ from: provider, timeoutMs });
+        },
+        onProviderFailed: (provider, model, error) => {
+          callbacks?.onProviderFailed?.({ provider, model, error });
         },
       });
     } finally {

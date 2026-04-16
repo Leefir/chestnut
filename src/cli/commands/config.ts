@@ -11,8 +11,34 @@ import {
   LLMProviderSchema,
 } from '../config.js';
 import { PRESETS } from '../../foundation/llm/presets.js';
+import { createMotionPM } from './motion.js';
 import { z } from 'zod';
 import { CliError } from '../errors.js';
+
+/**
+ * If motion daemon is running, ask user whether to restart it so config changes take effect.
+ * Killing the daemon is enough — watchdog will respawn it automatically.
+ */
+async function promptRestartDaemon(rl?: readline.Interface): Promise<void> {
+  const pm = createMotionPM();
+  if (!pm.isAlive('motion')) return;
+
+  const needClose = !rl;
+  if (!rl) rl = createRL();
+  try {
+    const answer = await question(rl, '\nMotion daemon is running. Restart to apply changes? [y/N]', 'N');
+    if (answer.toLowerCase() === 'y') {
+      const stopped = await pm.stop('motion');
+      if (stopped) {
+        console.log('✓ Daemon stopped. Watchdog will restart it automatically.');
+      } else {
+        console.log('Failed to stop daemon. You can restart manually: clawforum stop && clawforum motion chat');
+      }
+    }
+  } finally {
+    if (needClose) rl.close();
+  }
+}
 
 // Preset choices for interactive selection
 const PRESET_CHOICES = Object.entries(PRESETS).map(([id, preset], index) => ({
@@ -179,7 +205,8 @@ async function providerAdd(): Promise<void> {
     }
     
     saveGlobalConfig(config);
-    
+    await promptRestartDaemon(rl);
+
   } finally {
     rl.close();
   }
@@ -231,6 +258,7 @@ async function providerRemove(label: string): Promise<void> {
   config.llm.fallbacks!.splice(found.index, 1);
   saveGlobalConfig(config);
   console.log(`✓ Removed "${label}" from fallbacks`);
+  await promptRestartDaemon();
 }
 
 // provider set-primary command
@@ -268,9 +296,10 @@ async function providerSetPrimary(label: string): Promise<void> {
   
   // Set target as primary
   config.llm.primary = target;
-  
+
   saveGlobalConfig(config);
   console.log(`✓ "${label}" is now primary`);
+  await promptRestartDaemon();
 }
 
 // provider move command
@@ -299,6 +328,7 @@ async function providerMove(label: string, position: string): Promise<void> {
   
   saveGlobalConfig(config);
   console.log(`✓ "${label}" moved to fallback #${newPos + 1}`);
+  await promptRestartDaemon();
 }
 
 // Build the config command

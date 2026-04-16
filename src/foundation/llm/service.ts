@@ -225,6 +225,7 @@ export class LLMService implements ILLMService {
       if (breaker?.isOpen()) {
         console.warn(`[llm] provider "${adapter.name}" skipped: circuit breaker open`);
         failures.push({ provider: adapter.name, error: new Error('Circuit breaker open') });
+        yield { type: 'provider_failed' as const, provider: adapter.name, model: adapter.model, error: 'Circuit breaker open' };
         continue;
       }
 
@@ -282,6 +283,7 @@ export class LLMService implements ILLMService {
         const err = lastError ?? new Error('Unknown stream error');
         console.warn(`[llm] provider "${adapter.name}" failed: ${err.message}`);
         failures.push({ provider: adapter.name, error: err });
+        yield { type: 'provider_failed' as const, provider: adapter.name, model: adapter.model, error: err.message };
         // Continue to next provider
       }
     }

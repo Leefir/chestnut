@@ -83,7 +83,7 @@ export interface LLMServiceConfig {
  * Streaming response chunk
  */
 export interface StreamChunk {
-  type: 'text_delta' | 'thinking_delta' | 'thinking_signature' | 'tool_use_start' | 'tool_use_delta' | 'done' | 'reset';
+  type: 'text_delta' | 'thinking_delta' | 'thinking_signature' | 'tool_use_start' | 'tool_use_delta' | 'done' | 'reset' | 'provider_failed';
   
   /** Text delta (for text_delta type) */
   delta?: string;
@@ -112,6 +112,12 @@ export interface StreamChunk {
 
   /** Timeout duration in ms (only in type='reset' chunk) */
   timeoutMs?: number;
+
+  /** Error message (only in type='provider_failed' chunk) */
+  error?: string;
+
+  /** Model name (only in type='provider_failed' chunk) */
+  model?: string;
 }
 
 /**

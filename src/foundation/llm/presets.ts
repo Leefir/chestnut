@@ -54,6 +54,15 @@ export const PRESETS: Record<string, ProviderPreset> = {
     defaultModel: 'kimi-k2.5',
     envVar: 'MOONSHOT_API_KEY',
   },
+  'kimi': {
+    id: 'kimi',
+    displayName: 'Kimi (Coding)',
+    apiFormat: 'anthropic',
+    authMethod: 'api_key',
+    defaultBaseUrl: 'https://api.kimi.com/coding',
+    defaultModel: 'kimi-k2.5',
+    envVar: 'KIMI_API_KEY',
+  },
   'minimax': {
     id: 'minimax',
     displayName: 'MiniMax',

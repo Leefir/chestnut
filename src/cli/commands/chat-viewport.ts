@@ -395,6 +395,16 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
         break;
       }
 
+      case 'provider_failed': {
+        const providerName = event.provider as string;
+        const providerModel = event.model as string;
+        const errorMsg = event.error as string;
+        // 截断过长的错误消息
+        const shortErr = errorMsg.length > 80 ? errorMsg.slice(0, 77) + '...' : errorMsg;
+        appendOutput('\x1b[2m', `\x1b[38;5;203m✗\x1b[0m \x1b[2m${providerModel} · ${providerName} failed: ${shortErr}\x1b[0m`);
+        break;
+      }
+
       case 'user_notify': {
         stopSpinner();   // 防止 spinner 在通知输出时继续转
         streamingSuffix = '';   // 清除游标/spinner 残留

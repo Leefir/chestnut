@@ -90,6 +90,9 @@ export interface ReactOptions {
   /** Callback when mid-stream failover occurs (provider timed out, switching) */
   onReset?: (provider: string, timeoutMs: number) => void;
 
+  /** Callback when a provider fails and failover continues to next provider */
+  onProviderFailed?: (provider: string, model: string, error: string) => void;
+
   /** Callback after each LLM call for observability (audit, metrics) */
   onLLMResult?: (info: {
     model: string;
@@ -164,7 +167,7 @@ export async function runReact(options: ReactOptions): Promise<ReactResult> {
         tools: options.tools,
         maxTokens: REACT_DEFAULT_MAX_TOKENS,
         signal: ctx.signal,
-      }, options.onTextDelta, options.onThinkingDelta, options.onTextEnd, options.onReset);
+      }, options.onTextDelta, options.onThinkingDelta, options.onTextEnd, options.onReset, options.onProviderFailed);
     } catch (err) {
       options.onLLMResult?.({
         model: llm.getProviderInfo?.().model ?? 'unknown',
@@ -499,6 +502,7 @@ async function collectStreamResponse(
   onThinkingDelta?: (delta: string) => void,
   onTextEnd?: () => void,
   onReset?: (provider: string, timeoutMs: number) => void,
+  onProviderFailed?: (provider: string, model: string, error: string) => void,
 ): Promise<LLMResponse> {
   const contentBlocks: ContentBlock[] = [];
   let currentText = '';
@@ -588,6 +592,10 @@ async function collectStreamResponse(
           stopReason = 'end_turn';
           usage = undefined;
           onReset?.(chunk.provider ?? 'unknown', chunk.timeoutMs ?? 0);
+          break;
+
+        case 'provider_failed':
+          onProviderFailed?.(chunk.provider ?? 'unknown', chunk.model ?? 'unknown', chunk.error ?? 'unknown error');
           break;
 
         case 'done':
