@@ -14,7 +14,6 @@ import type { Message } from '../types/message.js';
 import type { InboxMessage, Priority } from '../types/contract.js';
 import type { OutboxWriteOptions } from './communication/index.js';
 import type { SessionData } from '../foundation/session-store/index.js';
-import { parseFrontmatter } from '../foundation/message-codec/index.js';
 import { readInboxFileMeta } from '../foundation/messaging/index.js';
 
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';

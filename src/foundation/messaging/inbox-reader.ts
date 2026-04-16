@@ -91,6 +91,7 @@ export class InboxReader {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[InboxReader] Failed to move ${filePath} to done:`, msg);
+      this.auditWriter?.write('inbox_move_error', `file=${path.basename(filePath)}`, `op=done`, `reason=${msg}`);
     }
   }
 
@@ -105,6 +106,7 @@ export class InboxReader {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[InboxReader] Failed to move ${filePath} to failed:`, msg);
+      this.auditWriter?.write('inbox_move_error', `file=${path.basename(filePath)}`, `op=failed`, `reason=${msg}`);
     }
   }
 }
