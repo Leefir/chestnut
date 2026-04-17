@@ -48,7 +48,9 @@ export class Snapshot {
       await Snapshot.git(this.dir, ['add', '.']);
       await Snapshot.git(this.dir, ['commit', '--allow-empty', '-m', 'init']);
     } catch (err) {
-      console.error('[snapshot] init failed, cleaning up .git:', err instanceof Error ? err.message : String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[snapshot] init failed, cleaning up .git:', msg);
+      this.audit?.write('snapshot_init_failed', `reason=${msg.slice(0, 200)}`);
       try { await this.fs.removeDir('.git'); } catch { /* ignore */ }
     }
   }

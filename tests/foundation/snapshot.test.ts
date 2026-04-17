@@ -90,6 +90,33 @@ describe.skipIf(!gitAvailable)('Snapshot', () => {
     );
   });
 
+  it('init writes snapshot_init_failed audit event on failure', async () => {
+    const { exec: processExec } = await import('../../src/foundation/process-exec/index.js');
+    const execSpy = vi.spyOn(await import('../../src/foundation/process-exec/index.js'), 'exec');
+    let initCalled = false;
+    execSpy.mockImplementation(async (cmd: string, opts: any) => {
+      if (cmd.includes('git') && cmd.includes('init') && !initCalled) {
+        initCalled = true;
+        return processExec(cmd, opts);
+      }
+      if (cmd.includes('config')) {
+        throw new Error('mock config failure');
+      }
+      return processExec(cmd, opts);
+    });
+
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const audit = { write: vi.fn() };
+    const snapshot = new Snapshot(tmpDir, audit);
+    await snapshot.init();
+
+    expect(audit.write).toHaveBeenCalledWith(
+      'snapshot_init_failed',
+      expect.stringContaining('reason='),
+    );
+  });
+
   // ========================================================================
   // commit()
   // ========================================================================
