@@ -24,8 +24,6 @@ export async function runContractObserver(options: ContractObserverOptions): Pro
     lastCheckTs = JSON.parse(raw).lastCheckTs ?? 0;
   } catch { /* 首次运行 */ }
 
-  const now = Date.now();
-
   // 扫描 claws/ 目录
   const clawsDir = path.join(clawforumDir, 'claws');
   let clawIds: string[];
@@ -40,7 +38,7 @@ export async function runContractObserver(options: ContractObserverOptions): Pro
   for (const clawId of clawIds) {
     try {
       const { stdout } = await execFile(
-        'node', [process.argv[1], 'claw', 'contract-events', clawId, '--since', String(lastCheckTs)],
+        'node', [process.argv[1], 'contract', 'events', clawId, '--since', String(lastCheckTs)],
         { cwd: clawforumDir, timeout: 10000 }
       );
       const trimmed = stdout.trim();
@@ -65,6 +63,7 @@ export async function runContractObserver(options: ContractObserverOptions): Pro
   }
 
   // 更新时间戳
+  const now = Date.now();
   fsNative.mkdirSync(path.dirname(stateFile), { recursive: true });
   fsNative.writeFileSync(stateFile, JSON.stringify({ lastCheckTs: now }));
 }
