@@ -58,6 +58,23 @@ const createMockFs = () => ({
   isDirectory: vi.fn().mockResolvedValue(false),
 });
 
+/**
+ * Poll until condition is true or timeout.
+ * Throws if condition is not met within timeoutMs.
+ */
+async function waitFor(
+  condition: () => boolean | Promise<boolean>,
+  timeoutMs = 5000,
+  intervalMs = 10,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await condition()) return;
+    await new Promise(r => setTimeout(r, intervalMs));
+  }
+  throw new Error(`waitFor timed out after ${timeoutMs}ms`);
+}
+
 describe('TaskSystem Tool Tasks', () => {
   let taskSystem: TaskSystem;
   let mockFs: ReturnType<typeof createMockFs>;
@@ -154,8 +171,7 @@ describe('TaskSystem Tool Tasks', () => {
       
       const taskId = await taskSystem.scheduleTool('testTool', slowCallback, 'parent-claw');
       
-      // Wait a bit for dispatch to happen (move from pending to running)
-      await new Promise(r => setTimeout(r, 50));
+      await waitFor(() => taskSystem.listRunning().includes(taskId));
       
       // Task should be in running directory after dispatch
       const taskFile = await fs.readFile(
@@ -178,8 +194,10 @@ describe('TaskSystem Tool Tasks', () => {
       
       const taskId = await taskSystem.scheduleTool('testTool', executeCallback, 'parent-claw');
       
-      // Wait for async execution
-      await new Promise(r => setTimeout(r, 50));
+      await waitFor(async () => {
+        const files = await fs.readdir(path.join(testClawDir, 'inbox', 'pending')).catch(() => []);
+        return files.length > 0;
+      });
       
       expect(executeCallback).toHaveBeenCalled();
       
@@ -215,8 +233,14 @@ describe('TaskSystem Tool Tasks', () => {
       
       const taskId = await taskSystem.scheduleTool('testTool', executeCallback, 'parent-claw');
       
-      // Wait for async execution
-      await new Promise(r => setTimeout(r, 50));
+      await waitFor(async () => {
+        try {
+          await fs.readFile(path.join(testClawDir, 'tasks', 'results', taskId, 'result.txt'), 'utf-8');
+          return true;
+        } catch {
+          return false;
+        }
+      });
       
       // Full result should be in results directory
       const resultFile = await fs.readFile(
@@ -248,8 +272,10 @@ describe('TaskSystem Tool Tasks', () => {
       
       const taskId = await taskSystem.scheduleTool('testTool', executeCallback, 'parent-claw');
       
-      // Wait for async execution
-      await new Promise(r => setTimeout(r, 50));
+      await waitFor(async () => {
+        const files = await fs.readdir(path.join(testClawDir, 'inbox', 'pending')).catch(() => []);
+        return files.length > 0;
+      });
       
       // Check inbox/pending/ for the error result message
       const inboxFiles = await fs.readdir(path.join(testClawDir, 'inbox', 'pending'));
@@ -278,8 +304,14 @@ describe('TaskSystem Tool Tasks', () => {
       
       const taskId = await taskSystem.scheduleTool('testTool', executeCallback, 'parent-claw');
       
-      // Wait for async execution
-      await new Promise(r => setTimeout(r, 50));
+      await waitFor(async () => {
+        try {
+          await fs.readFile(path.join(testClawDir, 'tasks', 'done', `${taskId}.json`), 'utf-8');
+          return true;
+        } catch {
+          return false;
+        }
+      });
       
       // Task should be in done directory
       const doneFile = await fs.readFile(
@@ -332,7 +364,10 @@ describe('TaskSystem Tool Tasks', () => {
         'parent-claw',
       );
 
-      await new Promise(r => setTimeout(r, 300));
+      await waitFor(async () => {
+        const files = await fs.readdir(path.join(testClawDir, 'inbox', 'pending')).catch(() => []);
+        return files.filter((f: string) => f.endsWith('.md')).length > 0;
+      });
       await taskSystem2.shutdown(500).catch(() => {});
 
       // fallback 消息应该存在
@@ -357,8 +392,7 @@ describe('TaskSystem Tool Tasks', () => {
         taskIds.push(id);
       }
       
-      // Wait for all to be dispatched
-      await new Promise(r => setTimeout(r, 50));
+      await waitFor(() => taskSystem.listRunning().length === 3);
       
       // All 3 should be running
       expect(taskSystem.listRunning().length).toBe(3);
@@ -372,8 +406,7 @@ describe('TaskSystem Tool Tasks', () => {
       expect(taskSystem.listPending()).toContain(fourthId);
       expect(taskSystem.listRunning()).not.toContain(fourthId);
       
-      // Wait for slow tasks to complete (need more than 500ms)
-      await new Promise(r => setTimeout(r, 600));
+      await waitFor(() => !taskSystem.listRunning().includes(fourthId) && !taskSystem.listPending().includes(fourthId));
       
       // Now fourth should be dispatched and completed
       expect(taskSystem.listRunning()).not.toContain(fourthId); // Should be done now
@@ -406,13 +439,9 @@ describe('TaskSystem Tool Tasks', () => {
         taskIds.push(id);
       }
       
-      // Wait for initial dispatch (first 3)
-      await new Promise(r => setTimeout(r, 20));
-      expect(taskSystem.listRunning().length).toBeLessThanOrEqual(3);
-      expect(taskSystem.listPending().length).toBeGreaterThanOrEqual(2);
+      await waitFor(() => taskSystem.listRunning().length <= 3 && taskSystem.listPending().length >= 2);
       
-      // Wait for all to complete
-      await new Promise(r => setTimeout(r, 50));
+      await waitFor(() => executionOrder.length === 5);
       
       // All 5 tasks should have been executed
       expect(executionOrder.length).toBe(5);
@@ -696,7 +725,10 @@ describe('TaskSystem Tool Tasks', () => {
       const executeCallback = vi.fn().mockResolvedValue({ success: true, content: longContent });
 
       const taskId = await taskSystem.scheduleTool('testTool', executeCallback, 'parent-claw');
-      await new Promise(r => setTimeout(r, 50));
+      await waitFor(async () => {
+        const files = await fs.readdir(path.join(testClawDir, 'inbox', 'pending')).catch(() => []);
+        return files.length > 0;
+      });
 
       // Check inbox/pending/ for the result message
       const inboxFiles = await fs.readdir(path.join(testClawDir, 'inbox', 'pending'));
@@ -722,7 +754,10 @@ describe('TaskSystem Tool Tasks', () => {
       const executeCallback = vi.fn().mockResolvedValue({ success: true, content: 'direct result' });
 
       await taskSystem.scheduleTool('testTool', executeCallback, 'parent-claw');
-      await new Promise(r => setTimeout(r, 50));
+      await waitFor(async () => {
+        const files = await fs.readdir(path.join(testClawDir, 'inbox', 'pending')).catch(() => []);
+        return files.length > 0;
+      });
 
       // Inbox file must be .md (not .json or other)
       const inboxFiles = await fs.readdir(path.join(testClawDir, 'inbox', 'pending'));
@@ -761,7 +796,10 @@ describe('TaskSystem Tool Tasks', () => {
 
       const executeCallback = vi.fn().mockResolvedValue({ success: true, content: 'fallback content' });
       await taskSystem2.scheduleTool('testTool', executeCallback, 'parent-claw');
-      await new Promise(r => setTimeout(r, 50));
+      await waitFor(async () => {
+        const files = await fs.readdir(path.join(testClawDir, 'inbox', 'pending')).catch(() => []);
+        return files.length > 0;
+      });
 
       // Check inbox/pending/ for the result message
       const inboxFiles = await fs.readdir(path.join(testClawDir, 'inbox', 'pending'));
@@ -788,7 +826,7 @@ describe('TaskSystem Tool Tasks', () => {
     it('should not attempt double moveTaskToDone after cancel', async () => {
       const slowCallback = () => new Promise<ToolResult>(r => setTimeout(() => r({ success: true, content: 'slow' }), 1000));
       const taskId = await taskSystem.scheduleTool('slowTool', slowCallback, 'parent-claw');
-      await new Promise(r => setTimeout(r, 50)); // Wait for dispatch
+      await waitFor(() => taskSystem.listRunning().includes(taskId));
 
       await taskSystem.cancel(taskId);
 
@@ -833,8 +871,7 @@ describe('TaskSystem Tool Tasks', () => {
         maxRetries: 2,
       });
 
-      // Wait for execution + backoff (500ms) + retry
-      await new Promise(r => setTimeout(r, 800));
+      await waitFor(() => flakyCallback.mock.calls.length >= 2);
 
       expect(flakyCallback).toHaveBeenCalledTimes(2);
 
@@ -862,8 +899,10 @@ describe('TaskSystem Tool Tasks', () => {
         maxRetries: 2,
       });
 
-      // Wait for 3 attempts + backoffs (500ms + 1000ms) + margin
-      await new Promise(r => setTimeout(r, 100));
+      await waitFor(async () => {
+        const files = await fs.readdir(path.join(testClawDir, 'inbox', 'pending')).catch(() => []);
+        return files.length > 0;
+      });
 
       // Should have been called 3 times (1 initial + 2 retries)
       expect(alwaysFailCallback).toHaveBeenCalledTimes(3);
@@ -899,7 +938,7 @@ describe('TaskSystem Tool Tasks', () => {
         isIdempotent: false,
       });
 
-      await new Promise(r => setTimeout(r, 200));
+      await waitFor(() => failCallback.mock.calls.length >= 1);
 
       // Called exactly once, no retry
       expect(failCallback).toHaveBeenCalledTimes(1);
@@ -954,7 +993,9 @@ describe('TaskSystem Tool Tasks', () => {
       const failCallback = vi.fn().mockRejectedValue(new Error('Tool error'));
       const taskId = await taskSystem2.scheduleTool('tool', failCallback, 'parent', { isIdempotent: false });
 
-      await new Promise(r => setTimeout(r, 200));
+      await waitFor(async () => {
+        return await fs.access(path.join(testClawDir, 'tasks', 'failed', `${taskId}.json`)).then(() => true).catch(() => false);
+      });
 
       // Task should end up in failed (tool execution failed, retries exhausted)
       const failedExists = await fs.access(
@@ -1008,7 +1049,7 @@ describe('TaskSystem Tool Tasks', () => {
         'parent-claw',
       );
 
-      await new Promise(r => setTimeout(r, 50));
+      await waitFor(() => logSpy.mock.calls.some(c => c[0] === 'error'));
 
       expect(logSpy).toHaveBeenCalledWith('error', expect.objectContaining({
         taskId,
@@ -1100,7 +1141,7 @@ describe('TaskSystem Tool Tasks', () => {
       });
 
       await taskSystem.scheduleTool('slowTool', slowCb, 'test-claw');
-      await new Promise(r => setTimeout(r, 50)); // let dispatch start the task
+      await waitFor(() => taskSystem.listRunning().length > 0);
 
       // shutdown(50) — task won't finish, Promise.race timeout fires
       // The hanging promise is intentionally never resolved to avoid post-shutdown monitor errors
