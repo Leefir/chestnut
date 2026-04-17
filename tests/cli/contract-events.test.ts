@@ -1,0 +1,144 @@
+/**
+ * contractEventsCommand tests
+ *
+ * Verifies contract event detection:
+ * - completed contracts in archive (since timestamp)
+ * - escalated subtasks in active (retry_count >= 3)
+ * - no output when no events
+ */
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import * as fs from 'fs';
+import * as fsAsync from 'fs/promises';
+import * as path from 'path';
+import * as os from 'os';
+
+vi.mock('../../src/cli/config.js', () => ({
+  getClawDir: (name: string) => (globalThis as any).__TEST_CLAW_DIR__,
+}));
+
+import { contractEventsCommand } from '../../src/cli/commands/contract.js';
+
+describe('contractEventsCommand', () => {
+  let clawDir: string;
+  let logSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(async () => {
+    clawDir = await fsAsync.mkdtemp(path.join(os.tmpdir(), 'contract-events-test-'));
+    (globalThis as any).__TEST_CLAW_DIR__ = clawDir;
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(async () => {
+    logSpy.mockRestore();
+    delete (globalThis as any).__TEST_CLAW_DIR__;
+    await fsAsync.rm(clawDir, { recursive: true, force: true }).catch(() => {});
+  });
+
+  it('should output nothing when no archive or active directories exist', async () => {
+    await contractEventsCommand('test-claw', 0);
+    expect(logSpy).not.toHaveBeenCalled();
+  });
+
+  it('should detect completed contract in archive since timestamp', async () => {
+    const contractId = 'contract-001';
+    const archiveDir = path.join(clawDir, 'contract', 'archive', contractId);
+    fs.mkdirSync(archiveDir, { recursive: true });
+
+    const completedAt = new Date('2026-04-17T10:00:00Z');
+    fs.writeFileSync(path.join(archiveDir, 'progress.json'), JSON.stringify({
+      contract_id: contractId,
+      status: 'completed',
+      subtasks: {
+        't1': { status: 'done', completed_at: completedAt.toISOString() },
+      },
+    }));
+
+    // sinceTs before completion → should detect
+    await contractEventsCommand('test-claw', completedAt.getTime() - 1000);
+
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[contract_completed]'),
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining(contractId),
+    );
+  });
+
+  it('should not detect completed contract when completed before sinceTs', async () => {
+    const contractId = 'contract-002';
+    const archiveDir = path.join(clawDir, 'contract', 'archive', contractId);
+    fs.mkdirSync(archiveDir, { recursive: true });
+
+    const completedAt = new Date('2026-04-17T10:00:00Z');
+    fs.writeFileSync(path.join(archiveDir, 'progress.json'), JSON.stringify({
+      contract_id: contractId,
+      status: 'completed',
+      subtasks: {
+        't1': { status: 'done', completed_at: completedAt.toISOString() },
+      },
+    }));
+
+    // sinceTs after completion → should not detect
+    await contractEventsCommand('test-claw', completedAt.getTime() + 1000);
+    expect(logSpy).not.toHaveBeenCalled();
+  });
+
+  it('should detect escalated subtask in active contract', async () => {
+    const contractId = 'contract-003';
+    const activeDir = path.join(clawDir, 'contract', 'active', contractId);
+    fs.mkdirSync(activeDir, { recursive: true });
+
+    fs.writeFileSync(path.join(activeDir, 'progress.json'), JSON.stringify({
+      contract_id: contractId,
+      status: 'active',
+      subtasks: {
+        't1': { status: 'todo', retry_count: 3 },
+        't2': { status: 'done', retry_count: 0 },
+      },
+    }));
+
+    await contractEventsCommand('test-claw', 0);
+
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[contract_escalation]'),
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('subtask=t1'),
+    );
+  });
+
+  it('should not report escalation when retry_count below threshold', async () => {
+    const contractId = 'contract-004';
+    const activeDir = path.join(clawDir, 'contract', 'active', contractId);
+    fs.mkdirSync(activeDir, { recursive: true });
+
+    fs.writeFileSync(path.join(activeDir, 'progress.json'), JSON.stringify({
+      contract_id: contractId,
+      status: 'active',
+      subtasks: {
+        't1': { status: 'todo', retry_count: 2 },
+      },
+    }));
+
+    await contractEventsCommand('test-claw', 0);
+    expect(logSpy).not.toHaveBeenCalled();
+  });
+
+  it('should not report escalation for completed subtasks even with high retry_count', async () => {
+    const contractId = 'contract-005';
+    const activeDir = path.join(clawDir, 'contract', 'active', contractId);
+    fs.mkdirSync(activeDir, { recursive: true });
+
+    fs.writeFileSync(path.join(activeDir, 'progress.json'), JSON.stringify({
+      contract_id: contractId,
+      status: 'active',
+      subtasks: {
+        't1': { status: 'done', retry_count: 5 },
+      },
+    }));
+
+    await contractEventsCommand('test-claw', 0);
+    expect(logSpy).not.toHaveBeenCalled();
+  });
+});

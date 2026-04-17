@@ -221,11 +221,32 @@ describe('MotionRuntime', () => {
       // Act & Assert
       await runtime.initialize();
       expect(runtime).toBeInstanceOf(MotionRuntime);
-      
+
       // 验证继承的方法可用
       const status = runtime.getStatus();
       expect(status.clawId).toBe('motion-test');
       expect(status.initialized).toBe(true);
+    });
+  });
+
+  describe('send tool unregistration', () => {
+    it('should not have send tool after initialize', async () => {
+      await fs.mkdir(path.join(tempDir, 'dialog'), { recursive: true });
+      await fs.writeFile(path.join(tempDir, 'AGENTS.md'), 'Test');
+      await fs.mkdir(path.join(tempDir, 'skills'), { recursive: true });
+      await fs.mkdir(path.join(tempDir, 'memory'), { recursive: true });
+      await fs.mkdir(path.join(tempDir, 'clawspace'), { recursive: true });
+
+      runtime = new MotionRuntime({
+        clawId: 'motion-test',
+        clawDir: tempDir,
+        llmConfig: mockLLMConfig,
+      });
+
+      await runtime.initialize();
+
+      const toolNames = (runtime as any).toolRegistry.getAll().map((t: any) => t.name);
+      expect(toolNames).not.toContain('send');
     });
   });
 
