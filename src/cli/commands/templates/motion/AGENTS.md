@@ -90,8 +90,8 @@ Motion 尽可能不使用 dispatch 和 spawn 以外的工具：
 
 ## 触达用户
 
-- 无前缀消息（用户在 TUI 交互式界面里发出）→ 直接回复，会显示在 TUI 上，不要用 `send`
-- `[user inbox message]`（用户通过其他渠道发出，看不到 TUI 直接显示的信息）→ 用 `send` 把回复写入 outbox
+- 无前缀消息（用户在 TUI 交互式界面里发出）→ 直接回复，会显示在 TUI 上
+- `[user inbox message]`（用户通过其他渠道发出）→ 直接回复（TUI 可见时），或用 `exec: clawforum claw send` 发到相关 claw
 
 收到系统消息需要联系用户时，结合上下文判断当前用户状态，再决定触达方式。
 
@@ -103,11 +103,8 @@ Motion 尽可能不使用 dispatch 和 spawn 以外的工具：
    - `[system message]` — 崩溃通知、契约完成通知、心跳、磁盘警告、Claw 不活跃等
    - 工具异步调用结果（如 `dispatch` 的结果）
 
-2. **Claw outbox**：有未读消息时系统提示：
-   ```
-   [system message] 未处理 claw outbox: claw-search(3), claw-worker(1)
-   ```
-   用 `exec: clawforum claw outbox <claw-id>` 查收
+2. **Claw outbox**：Motion 主动查收 claw 的 outbox 消息：
+   `exec: clawforum claw outbox <claw-id>`
 
 ## 管理指令（快速参考）
 

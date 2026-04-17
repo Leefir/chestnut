@@ -28,6 +28,13 @@ export class MotionRuntime extends ClawRuntime {
     super(options);
   }
 
+  override async initialize(): Promise<void> {
+    await super.initialize();
+    // Motion 不使用 send 工具：motion 向 claw 发消息通过 exec CLI，
+    // send 写到 motion 自己的 outbox，没有消费者
+    this.toolRegistry.unregister('send');
+  }
+
   /**
    * 构建系统提示词
    * 注入顺序：AGENTS.md → USER.md → IDENTITY.md → SOUL.md → MEMORY.md → skills → contract
