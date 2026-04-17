@@ -73,6 +73,9 @@ export class Snapshot {
       } else {
         console.warn('[snapshot] commit failed:', msg);
       }
+      if (this.consecutiveFailures === 3) {
+        this.audit?.write('snapshot_degraded', `consecutive=${this.consecutiveFailures}`, `reason=${msg.slice(0, 200)}`);
+      }
     }
   }
 }
