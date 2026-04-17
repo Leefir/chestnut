@@ -12,6 +12,7 @@ import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 // Mock child_process
 vi.mock('child_process', () => ({
   spawn: vi.fn(),
+  spawnSync: vi.fn().mockReturnValue({ stdout: '', stderr: '', status: 0 }),
 }));
 
 import { spawn } from 'child_process';
@@ -38,13 +39,19 @@ describe('ProcessManager - spawn defaults', () => {
   beforeEach(() => {
     tempDir = createTempDir();
     nodeFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
-    
+
     // Setup mock process
     mockProc = {
       pid: 12345,
       unref: vi.fn(),
     };
     vi.mocked(spawn).mockReturnValue(mockProc as any);
+
+    // Mock isAlive to skip 3s spawn confirm wait
+    vi.spyOn(ProcessManager.prototype, 'isAlive')
+      .mockReturnValueOnce(false)   // fast-path check: not running
+      .mockReturnValueOnce(false)   // lockfile check
+      .mockReturnValue(true);       // spawn confirm: alive
   });
 
   afterEach(() => {
@@ -62,16 +69,12 @@ describe('ProcessManager - spawn defaults', () => {
       // Pre-create logs dir to avoid ENOENT
       fs.mkdirSync(path.join(clawDir, 'logs'), { recursive: true });
 
-      try {
-        await pm.spawn('test-claw', {
-          command: 'node',
-          args: customArgs,
-          logFile,
-          env: { ...process.env },
-        });
-      } catch {
-        // Expected to fail due to isAlive check
-      }
+      await pm.spawn('test-claw', {
+        command: 'node',
+        args: customArgs,
+        logFile,
+        env: { ...process.env },
+      });
 
       const spawnCall = vi.mocked(spawn).mock.calls[0];
       const args = spawnCall[1] as string[];
@@ -89,16 +92,12 @@ describe('ProcessManager - spawn defaults', () => {
       // Pre-create logs dir
       fs.mkdirSync(path.join(motionDir, 'logs'), { recursive: true });
 
-      try {
-        await pm.spawn('motion', {
-          command: 'node',
-          args: customArgs,
-          logFile,
-          env: { ...process.env },
-        });
-      } catch {
-        // Expected to fail due to isAlive check
-      }
+      await pm.spawn('motion', {
+        command: 'node',
+        args: customArgs,
+        logFile,
+        env: { ...process.env },
+      });
 
       const spawnCall = vi.mocked(spawn).mock.calls[0];
       const args = spawnCall[1] as string[];
@@ -116,16 +115,12 @@ describe('ProcessManager - spawn defaults', () => {
       // Pre-create logs dir
       fs.mkdirSync(path.join(clawDir, 'logs'), { recursive: true });
 
-      try {
-        await pm.spawn('custom-claw', {
-          command: 'node',
-          args: customArgs,
-          logFile,
-          env: { ...process.env },
-        });
-      } catch {
-        // Expected to fail
-      }
+      await pm.spawn('custom-claw', {
+        command: 'node',
+        args: customArgs,
+        logFile,
+        env: { ...process.env },
+      });
 
       const spawnCall = vi.mocked(spawn).mock.calls[0];
       const args = spawnCall[1] as string[];
@@ -145,16 +140,12 @@ describe('ProcessManager - spawn defaults', () => {
 
       const customEnv = { ...process.env, CUSTOM_VAR: 'custom-value' };
 
-      try {
-        await pm.spawn('env-claw', {
-          command: 'node',
-          args: ['/path/to/daemon-entry.js', 'env-claw'],
-          logFile,
-          env: customEnv,
-        });
-      } catch {
-        // Expected to fail
-      }
+      await pm.spawn('env-claw', {
+        command: 'node',
+        args: ['/path/to/daemon-entry.js', 'env-claw'],
+        logFile,
+        env: customEnv,
+      });
 
       const spawnCall = vi.mocked(spawn).mock.calls[0];
       const options = spawnCall[2] as any;
@@ -173,15 +164,11 @@ describe('ProcessManager - spawn defaults', () => {
       // Set a test env var
       process.env.TEST_INHERITANCE = 'test-value';
 
-      try {
-        await pm.spawn('inherit-claw', {
-          command: 'node',
-          args: ['/path/to/daemon-entry.js', 'inherit-claw'],
-          logFile,
-        });
-      } catch {
-        // Expected to fail
-      }
+      await pm.spawn('inherit-claw', {
+        command: 'node',
+        args: ['/path/to/daemon-entry.js', 'inherit-claw'],
+        logFile,
+      });
 
       const spawnCall = vi.mocked(spawn).mock.calls[0];
       const options = spawnCall[2] as any;
