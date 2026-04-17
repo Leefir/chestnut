@@ -668,6 +668,75 @@ describe('LLM Service', () => {
       // 不应收到 provider_failed（因为 hasYielded 时走 reset 路径，不走 provider_failed）
       expect(chunks.some(c => c.type === 'provider_failed')).toBe(false);
     });
+
+    it('should failover when primary stream yields 0 chunks', async () => {
+      const primaryAdapter = {
+        name: 'primary',
+        model: 'test-model',
+        async* stream() {
+          // immediately return, yield nothing
+          return;
+        },
+        async call() { throw new Error('not used'); },
+        healthCheck: async () => true,
+        getProviderInfo: () => ({ name: 'primary', model: 'test-model' }),
+      };
+
+      const fallbackAdapter = {
+        name: 'fallback',
+        model: 'fallback-model',
+        async* stream() {
+          yield { type: 'text_delta', delta: 'Fallback' };
+          yield { type: 'done', stopReason: 'end_turn' };
+        },
+        async call() { throw new Error('not used'); },
+        healthCheck: async () => true,
+        getProviderInfo: () => ({ name: 'fallback', model: 'fallback-model' }),
+      };
+
+      const service = new LLMServiceImpl({
+        primary: primaryAdapter as any,
+        fallbacks: [fallbackAdapter as any],
+        maxAttempts: 1,
+        retryDelayMs: 10,
+      });
+
+      const chunks: StreamChunk[] = [];
+      for await (const chunk of service.stream({ messages: [{ role: 'user', content: 'hi' }] })) {
+        chunks.push(chunk);
+      }
+
+      // 应收到 primary 的 provider_failed
+      expect(chunks.some(c => c.type === 'provider_failed' && c.provider === 'primary')).toBe(true);
+
+      // 应收到 fallback 的内容
+      expect(chunks.some(c => c.type === 'text_delta' && c.delta === 'Fallback')).toBe(true);
+      expect(chunks.some(c => c.type === 'done')).toBe(true);
+    });
+
+    it('should throw LLMAllProvidersFailedError when all providers yield 0 chunks', async () => {
+      const emptyAdapter = {
+        name: 'primary',
+        model: 'test-model',
+        async* stream() { return; },
+        async call() { throw new Error('not used'); },
+        healthCheck: async () => true,
+        getProviderInfo: () => ({ name: 'primary', model: 'test-model' }),
+      };
+
+      const service = new LLMServiceImpl({
+        primary: emptyAdapter as any,
+        fallbacks: [],
+        maxAttempts: 1,
+        retryDelayMs: 10,
+      });
+
+      await expect(async () => {
+        for await (const _ of service.stream({ messages: [{ role: 'user', content: 'hi' }] })) {
+          // drain
+        }
+      }).rejects.toThrow(LLMAllProvidersFailedError);
+    });
   });
 });
 

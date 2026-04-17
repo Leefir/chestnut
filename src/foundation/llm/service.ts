@@ -279,15 +279,22 @@ export class LLMServiceImpl implements LLMService {
         }
       }
 
-      if (success) {
+      if (success && hasYielded) {
         // Circuit breaker: record success
         breaker?.onSuccess();
         // Update current provider index (-1 = primary, 0..N = fallbacks)
         this.currentProviderIndex = pi === 0 ? -1 : pi - 1;
-        if (!hasYielded) {
-          console.warn(`[llm] provider "${adapter.name}" stream completed but yielded 0 chunks`);
-        }
         return; // Success, exit generator
+      }
+
+      if (success && !hasYielded) {
+        // Stream completed normally but produced nothing — treat as failure
+        breaker?.onFailure();
+        const err = new Error('Stream completed with 0 chunks');
+        console.warn(`[llm] provider "${adapter.name}" failed: ${err.message}`);
+        failures.push({ provider: adapter.name, error: err });
+        yield { type: 'provider_failed' as const, provider: adapter.name, model: adapter.model, error: err.message };
+        // Continue to next provider
       } else if (!midStreamReset) {
         // Circuit breaker: record failure
         breaker?.onFailure();
