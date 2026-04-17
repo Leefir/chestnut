@@ -6,7 +6,7 @@
  * 2. fire() - 向 motion/inbox/pending/ 写入 .md 消息
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { tmpdir } from 'os';
@@ -53,24 +53,26 @@ describe('Heartbeat', () => {
       expect(heartbeat.isDue()).toBe(false);
     });
 
-    it('should return true after interval elapsed', async () => {
+    it('should return true after interval elapsed', () => {
+      vi.useFakeTimers();
       heartbeat = new Heartbeat(tempDir, { interval: 1 }); // 1秒间隔
       heartbeat.fire();
       expect(heartbeat.isDue()).toBe(false);
 
-      // 等待超过 1 秒
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      vi.advanceTimersByTime(1100);
       expect(heartbeat.isDue()).toBe(true);
+      vi.useRealTimers();
     });
 
-    it('should respect custom interval', async () => {
+    it('should respect custom interval', () => {
+      vi.useFakeTimers();
       heartbeat = new Heartbeat(tempDir, { interval: 5 }); // 5秒间隔
       heartbeat.fire();
       expect(heartbeat.isDue()).toBe(false);
 
-      // 等待 1 秒（小于间隔）
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      vi.advanceTimersByTime(1000);
       expect(heartbeat.isDue()).toBe(false);
+      vi.useRealTimers();
     });
   });
 
@@ -91,20 +93,20 @@ describe('Heartbeat', () => {
       expect(content).toContain('心跳触发，请巡查。');
     });
 
-    it('should update lastRun after fire', async () => {
+    it('should update lastRun after fire', () => {
+      vi.useFakeTimers();
       heartbeat = new Heartbeat(tempDir, { interval: 1 });
       expect(heartbeat.isDue()).toBe(false);  // 首次不 due
 
-      // 等待后首次触发
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      vi.advanceTimersByTime(1100);
       expect(heartbeat.isDue()).toBe(true);
 
       heartbeat.fire();
       expect(heartbeat.isDue()).toBe(false);  // fire 后重置
 
-      // 再次等待后触发
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      vi.advanceTimersByTime(1100);
       expect(heartbeat.isDue()).toBe(true);
+      vi.useRealTimers();
     });
 
     it('should generate unique filenames for multiple fires', async () => {
