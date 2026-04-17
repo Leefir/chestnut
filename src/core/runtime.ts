@@ -206,9 +206,9 @@ export class ClawRuntime {
       const loadResult = await this.sessionManager.load().catch(() => null);
       if (loadResult) {
         const { session, source } = loadResult;
-        this.auditWriter.write('session_loaded', `source=${source}`);
         const auditAbsPath = this.systemFs.resolve('audit.tsv');
         const interruptionMessage = summarizeLastExit(auditAbsPath);
+        this.auditWriter.write('session_loaded', `source=${source}`);
         const { repaired, toolCount } = SessionManager.repair(
           session.messages,
           interruptionMessage ? { interruptionMessage } : undefined,

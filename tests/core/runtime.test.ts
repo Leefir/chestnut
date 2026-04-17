@@ -1290,4 +1290,40 @@ Test message`;
       expect(onProviderInfo).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('session_loaded audit timing', () => {
+    it('session_loaded should not pollute summarizeLastExit tail-read on restart', async () => {
+      const clawDir = await fs.mkdtemp(path.join(tmpdir(), 'clawforum-runtime-audit-'));
+      const clawSubDir = path.join(clawDir, 'claws', 'audit-claw');
+      await fs.mkdir(clawSubDir, { recursive: true });
+
+      // 构造一个带有 daemon_stop 的 audit.tsv（模拟正常退出的上一次运行）
+      const auditPath = path.join(clawSubDir, 'audit.tsv');
+      await fs.writeFile(auditPath, `2026-04-17T00:00:00.000Z\tdaemon_stop\treason=sigterm\n`);
+
+      // 不创建 dialog/current.json，使 sessionManager.load() 返回 empty session，
+      // 避免 archive 恢复产生额外的 session_recovered 事件干扰断言
+
+      const runtime = trackRuntime(new ClawRuntime({
+        clawId: 'audit-claw',
+        clawDir: clawSubDir,
+        llmConfig: createMockLLMConfig(),
+      }));
+      await runtime.initialize();
+
+      // 读取 initialize 后 audit.tsv 的内容
+      const auditContent = await fs.readFile(auditPath, 'utf-8');
+      const lines = auditContent.trim().split('\n');
+
+      // 验证 audit.tsv 中恰好只有两行：daemon_stop 和 session_loaded
+      expect(lines).toHaveLength(2);
+
+      // 验证 session_loaded 确实被写入了（只是时序靠后，在最后一行）
+      expect(lines[1]).toContain('session_loaded');
+
+      // 验证 daemon_stop 仍在 session_loaded 之前——如果 session_loaded 在 summarizeLastExit 之前写入，
+      // 当初 summarizeLastExit 读到的就会是 session_loaded 而非 daemon_stop
+      expect(lines[0]).toContain('daemon_stop');
+    });
+  });
 });
