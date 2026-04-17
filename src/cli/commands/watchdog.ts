@@ -65,6 +65,17 @@ function removeWatchdogPid(): void {
   }
 }
 
+export function shutdownWatchdog(
+  auditWriter: AuditWriter,
+  signal: string,
+): void {
+  log(`[watchdog] Received ${signal}, shutting down...`);
+  saveWatchdogState();
+  removeWatchdogPid();
+  auditWriter.write('watchdog_stop');
+  process.exit(0);
+}
+
 export function getWatchdogPid(): number | null {
   try {
     const content = fs.readFileSync(getWatchdogPidFile(), 'utf-8');
@@ -332,19 +343,13 @@ export async function daemonCommand(): Promise<void> {
   const pm = createMotionPM();
   
   process.on('SIGTERM', () => {
-    log('[watchdog] Received SIGTERM, shutting down...');
     stopped = true;
-    removeWatchdogPid();
-    auditWriter.write('watchdog_stop');
-    process.exit(0);
+    shutdownWatchdog(auditWriter, 'SIGTERM');
   });
-  
+
   process.on('SIGINT', () => {
-    log('[watchdog] Received SIGINT, shutting down...');
     stopped = true;
-    removeWatchdogPid();
-    auditWriter.write('watchdog_stop');
-    process.exit(0);
+    shutdownWatchdog(auditWriter, 'SIGINT');
   });
   
   // Motion restart failure tracking for backoff

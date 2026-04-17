@@ -34,7 +34,7 @@ vi.mock('../../src/cli/commands/watchdog-utils.js', async (importOriginal) => {
   };
 });
 
-import { maybeCronClawInactivity } from '../../src/cli/commands/watchdog.js';
+import { maybeCronClawInactivity, shutdownWatchdog } from '../../src/cli/commands/watchdog.js';
 import { getMotionDir, loadGlobalConfig } from '../../src/cli/config.js';
 import { clawHasContract } from '../../src/cli/commands/watchdog-utils.js';
 
@@ -94,5 +94,53 @@ describe('maybeCronClawInactivity — fix 4: per-claw error isolation', () => {
 
     expect(() => maybeCronClawInactivity(mockPm)).not.toThrow();
     expect(clawHasContract).toHaveBeenCalledTimes(2);
+  });
+});
+
+import { AuditWriter } from '../../src/foundation/audit/writer.js';
+import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
+
+describe('shutdownWatchdog — fix 005: save state on signal', () => {
+  let tmpDir: string;
+  let auditWriter: AuditWriter;
+
+  beforeEach(() => {
+    tmpDir = path.join(os.tmpdir(), `wd-fix5-${randomUUID()}`);
+    const clawforumDir = path.join(tmpDir, '.clawforum');
+    fs.mkdirSync(path.join(clawforumDir, 'motion'), { recursive: true });
+    vi.mocked(getMotionDir).mockReturnValue(path.join(clawforumDir, 'motion'));
+    vi.mocked(loadGlobalConfig).mockReturnValue({ watchdog: { claw_inactivity_timeout_ms: 300_000 } } as any);
+
+    auditWriter = new AuditWriter(
+      new NodeFileSystem({ baseDir: clawforumDir, enforcePermissions: false }),
+      'audit.tsv',
+      null,
+    );
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('calls saveWatchdogState before removeWatchdogPid and process.exit', () => {
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => { throw new Error('exit'); });
+
+    const stateFile = path.join(tmpDir, '.clawforum', 'watchdog-state.json');
+    expect(fs.existsSync(stateFile)).toBe(false);
+
+    expect(() => shutdownWatchdog(auditWriter, 'SIGTERM')).toThrow('exit');
+
+    // saveWatchdogState 应该将状态写入文件
+    expect(fs.existsSync(stateFile)).toBe(true);
+    const savedState = JSON.parse(fs.readFileSync(stateFile, 'utf-8'));
+    expect(savedState).toHaveProperty('lastInactivityNotified');
+    expect(savedState).toHaveProperty('inactivityNotifyCount');
+
+    // 断言 audit.tsv 中有 watchdog_stop 记录
+    const auditLines = fs.readFileSync(path.join(tmpDir, '.clawforum', 'audit.tsv'), 'utf-8');
+    expect(auditLines).toContain('watchdog_stop');
+
+    exitSpy.mockRestore();
   });
 });
