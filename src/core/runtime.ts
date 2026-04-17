@@ -157,11 +157,9 @@ export class ClawRuntime {
 
     // 2. Create two NodeFileSystem instances
     // systemFs: used by system components (dialog/, contract/, etc.), no permission enforcement
-    if (this.auditWriter) {
-      // 外部已注入 auditWriter，复用其 fs 作为 systemFs
-      this.systemFs = this.auditWriter.getFs() as NodeFileSystem;
-    } else {
-      this.systemFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+    this.systemFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+
+    if (!this.auditWriter) {
       // 2.1 创建 AuditWriter（后续所有 audit 事件共用此实例）
       this.auditWriter = new AuditWriter(
         this.systemFs,
@@ -169,6 +167,7 @@ export class ClawRuntime {
         this.options.auditMaxSizeMb ?? null,
       );
     }
+    // 若外部已注入 auditWriter，则直接使用，systemFs 与之独立但指向同一目录
     // clawFs: used by tools, enforces permission checks
     this.clawFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: true });
 
