@@ -8,7 +8,7 @@ export class AskMotionTool implements Tool {
   readonly description = `向 Motion 分身提问，获取 Motion 对用户意图、背景、偏好的判断。
 分身继承 Motion 完整上下文（系统提示 + 当前对话历史），多轮问答自动累积。
 适用场景：用户意图模糊、不确定目标 claw、需确认优先级或约束等。`;
-  readonly readonly = true;
+  readonly readonly = false;
   readonly idempotent = false;
 
   readonly schema = {
