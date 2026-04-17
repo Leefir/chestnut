@@ -4,10 +4,10 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SubAgent } from '../../src/core/subagent/agent.js';
-import type { IFileSystem } from '../../src/foundation/fs/types.js';
+import type { FileSystem } from '../../src/foundation/fs/types.js';
 import type { Logger } from '../../src/foundation/monitor/types.js';
-import type { ILLMService } from '../../src/foundation/llm/index.js';
-import type { ToolRegistry } from '../../src/core/tools/registry.js';
+import type { LLMService } from '../../src/foundation/llm/index.js';
+import type { ToolRegistryImpl } from '../../src/core/tools/registry.js';
 
 // Mock the entire react loop module so runReact is fully controllable
 vi.mock('../../src/core/react/loop.js', () => ({
@@ -33,9 +33,9 @@ vi.mock('../../src/core/tools/executor.js', () => ({
 import { runReact } from '../../src/core/react/loop.js';
 
 function makeSubAgent(
-  overrides: { fs?: Partial<IFileSystem>; monitor?: Partial<Logger> } = {},
+  overrides: { fs?: Partial<FileSystem>; monitor?: Partial<Logger> } = {},
 ) {
-  const mockFs: IFileSystem = {
+  const mockFs: FileSystem = {
     read: vi.fn().mockResolvedValue(''),
     write: vi.fn().mockResolvedValue(undefined),
     writeAtomic: vi.fn().mockResolvedValue(undefined),
@@ -49,7 +49,7 @@ function makeSubAgent(
     copy: vi.fn().mockResolvedValue(undefined),
     stat: vi.fn().mockResolvedValue({ size: 0, mtime: new Date() }),
     ...overrides.fs,
-  } as unknown as IFileSystem;
+  } as unknown as FileSystem;
 
   const mockMonitor: Logger = {
     log: vi.fn(),
@@ -63,7 +63,7 @@ function makeSubAgent(
   const mockRegistry = {
     getAll: vi.fn().mockReturnValue([]),
     formatForLLM: vi.fn().mockReturnValue([]),
-  } as unknown as ToolRegistry;
+  } as unknown as ToolRegistryImpl;
 
   const mockLLM = {
     call: vi.fn(),
@@ -71,7 +71,7 @@ function makeSubAgent(
     close: vi.fn(),
     healthCheck: vi.fn(),
     getProviderInfo: vi.fn().mockReturnValue({ name: 'mock', model: 'test', isFallback: false }),
-  } as unknown as ILLMService;
+  } as unknown as LLMService;
 
   return {
     agent: new SubAgent({

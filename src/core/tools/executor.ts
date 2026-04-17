@@ -9,9 +9,9 @@
 
 import type { JSONSchema7 } from '../../types/message.js';
 import type { ToolProfile } from '../../types/config.js';
-import type { IFileSystem } from '../../foundation/fs/types.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 import type { Logger } from '../../foundation/monitor/types.js';
-import type { ILLMService } from '../../foundation/llm/index.js';
+import type { LLMService } from '../../foundation/llm/index.js';
 import type { TaskSystem } from '../task/system.js';
 import type { OutboxWriter } from '../communication/index.js';
 import type { Message } from '../../types/message.js';
@@ -28,7 +28,7 @@ import {
 } from '../../types/errors.js';
 import { ExecContextImpl } from './context.js';
 import { DEFAULT_MAX_STEPS } from '../../constants.js';
-// Note: ToolRegistry type imported via IToolRegistry interface
+// Note: ToolRegistry type imported via ToolRegistry interface
 
 function escapeForLog(s: string): string {
   return s.replace(/\n/g, '\\n').slice(0, 120);
@@ -61,8 +61,8 @@ export interface ExecContext {
   contractId?: string;
   /** Caller type for spawn recursion prevention */
   callerType: CallerType;
-  fs: IFileSystem;
-  llm?: ILLMService;
+  fs: FileSystem;
+  llm?: LLMService;
   monitor?: Logger;
   profile: ToolProfile;
   stepNumber: number;
@@ -89,7 +89,7 @@ export interface ExecContext {
 /**
  * Tool interface - All tools implement this
  */
-export interface ITool {
+export interface Tool {
   name: string;
   description: string;
   schema: JSONSchema7;
@@ -102,14 +102,14 @@ export interface ITool {
 /**
  * Tool registry interface
  */
-export interface IToolRegistry {
-  register(tool: ITool): void;
+export interface ToolRegistry {
+  register(tool: Tool): void;
   unregister(name: string): void;
-  get(name: string): ITool | undefined;
+  get(name: string): Tool | undefined;
   has(name: string): boolean;
-  getAll(): ITool[];
-  getForProfile(profile: ToolProfile): ITool[];
-  formatForLLM(tools: ITool[]): Array<{
+  getAll(): Tool[];
+  getForProfile(profile: ToolProfile): Tool[];
+  formatForLLM(tools: Tool[]): Array<{
     name: string;
     description: string;
     input_schema: JSONSchema7;
@@ -149,7 +149,7 @@ export interface IToolExecutor {
  */
 export class ToolExecutorImpl implements IToolExecutor {
   constructor(
-    private registry: IToolRegistry,
+    private registry: ToolRegistry,
     private defaultTimeoutMs = 60000
   ) {}
 
@@ -324,11 +324,11 @@ export class ToolExecutorImpl implements IToolExecutor {
 // ============================================================================
 
 export interface ToolExecutorOptions {
-  registry: IToolRegistry;
+  registry: ToolRegistry;
   clawDir: string;
-  fs: IFileSystem;
+  fs: FileSystem;
   monitor?: Logger;
-  llm?: ILLMService;
+  llm?: LLMService;
   taskSystem?: TaskSystem;
   profile?: ToolProfile;
   outboxWriter?: OutboxWriter;
@@ -343,9 +343,9 @@ export interface ToolExecutorOptions {
  */
 export class ToolExecutor extends ToolExecutorImpl {
   private clawDir: string;
-  private fs: IFileSystem;
+  private fs: FileSystem;
   private monitor?: Logger;
-  private llm?: ILLMService;
+  private llm?: LLMService;
   private taskSystem?: TaskSystem;
   private profile: ToolProfile;
   private outboxWriter?: OutboxWriter;

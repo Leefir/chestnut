@@ -10,9 +10,9 @@ import * as yaml from 'js-yaml';
 import { randomUUID } from 'crypto';
 import * as path from 'path';
 import * as fsNative from 'fs';
-import type { IFileSystem } from '../../foundation/fs/types.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 import type { Logger } from '../../foundation/monitor/types.js';
-import type { ILLMService } from '../../foundation/llm/index.js';
+import type { LLMService } from '../../foundation/llm/index.js';
 import type { Contract, SubTask, ContractStatus, SubtaskStatus } from '../../types/contract.js';
 import { ToolError, ToolTimeoutError } from '../../types/errors.js';
 import { exec, execFile } from '../../foundation/process-exec/index.js';
@@ -21,7 +21,7 @@ import { LOCK_MAX_RETRIES, LOCK_RETRY_DELAY_MS, LOCK_STALE_TIMEOUT_MS, CONTRACT_
 import { CONTRACT_VERIFIER_SYSTEM_PROMPT } from '../../prompts/subagent.js';
 import { writeInboxMessage } from '../../utils/inbox-writer.js';
 import { SubAgent } from '../subagent/agent.js';
-import { ToolRegistry } from '../tools/registry.js';
+import { ToolRegistryImpl } from '../tools/registry.js';
 import { ReportResultTool } from '../tools/report-result.js';
 import { AuditWriter } from '../../foundation/audit/writer.js';
 
@@ -79,12 +79,12 @@ export interface AcceptanceResult {
 }
 
 export class ContractManager {
-  private fs: IFileSystem;
+  private fs: FileSystem;
   private clawDir: string;
   private readonly clawId: string;
   private monitor?: Logger;
-  private llm?: ILLMService;
-  private verifierRegistry?: ToolRegistry;
+  private llm?: LLMService;
+  private verifierRegistry?: ToolRegistryImpl;
   private activeDir = 'contract/active';
   private pausedDir = 'contract/paused';
   private archiveDir = 'contract/archive';
@@ -95,10 +95,10 @@ export class ContractManager {
   constructor(
     clawDir: string,
     clawId: string,
-    fs: IFileSystem,
+    fs: FileSystem,
     monitor?: Logger,
-    llm?: ILLMService,
-    verifierRegistry?: ToolRegistry,
+    llm?: LLMService,
+    verifierRegistry?: ToolRegistryImpl,
     motionInboxDir?: string,
     auditWriter?: AuditWriter,
   ) {
@@ -1191,8 +1191,8 @@ export class ContractManager {
 
       // Build verifier registry: existing tools + report_result tool
       const reportTool = new ReportResultTool();
-      const registry = new ToolRegistry();
-      for (const t of (this.verifierRegistry ?? new ToolRegistry()).getAll()) {
+      const registry = new ToolRegistryImpl();
+      for (const t of (this.verifierRegistry ?? new ToolRegistryImpl()).getAll()) {
         registry.register(t);
       }
       registry.register(reportTool);

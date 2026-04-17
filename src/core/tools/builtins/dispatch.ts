@@ -1,14 +1,14 @@
-import type { ITool, ToolResult, ExecContext } from '../executor.js';
+import type { Tool, ToolResult, ExecContext } from '../executor.js';
 import type { TaskSystem } from '../../task/system.js';
 import type { Message, ToolDefinition } from '../../../types/message.js';
 import { SkillRegistry } from '../../skill/registry.js';
-import { ToolRegistry } from '../registry.js';
+import { ToolRegistryImpl } from '../registry.js';
 import { DEFAULT_LLM_IDLE_TIMEOUT_MS, DEFAULT_MAX_STEPS } from '../../../constants.js';
 import { buildDescribingUserMessage, buildMinerSystemPrompt, buildMiningUserMessage } from '../../../prompts/index.js';
 import { AskMotionTool } from './ask-motion.js';
 import { isDispatchCaller } from '../caller-type.js';
 
-export class DispatchTool implements ITool {
+export class DispatchTool implements Tool {
   readonly name = 'dispatch';
   readonly description = `派发任务，创建契约。支持两种模式：
 

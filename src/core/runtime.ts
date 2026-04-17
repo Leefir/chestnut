@@ -9,6 +9,7 @@
 import * as path from 'path';
 import { promises as fs } from 'fs';
 import type { LLMServiceConfig } from '../foundation/llm/types.js';
+import type { LLMService } from '../foundation/llm/index.js';
 import type { ToolProfile } from '../types/config.js';
 import type { Message } from '../types/message.js';
 import type { InboxMessage, Priority } from '../types/contract.js';
@@ -17,13 +18,13 @@ import type { SessionData } from '../foundation/session-store/index.js';
 import { readInboxFileMeta } from '../foundation/messaging/index.js';
 
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
-import { LLMService } from '../foundation/llm/service.js';
+import { LLMServiceImpl } from '../foundation/llm/service.js';
 import { JsonlLogger } from '../foundation/monitor/monitor.js';
 
 
 import { SessionManager } from '../foundation/session-store/index.js';
 import { ContextInjector } from './dialog/injector.js';
-import { ToolRegistry } from './tools/registry.js';
+import { ToolRegistryImpl } from './tools/registry.js';
 import { ToolExecutorImpl } from './tools/executor.js';
 import { ExecContextImpl } from './tools/context.js';
 import { registerBuiltinTools } from './tools/builtins/index.js';
@@ -121,7 +122,7 @@ export class ClawRuntime {
    * Note: subclasses should treat this as read-only and must not modify injector state
    */
   protected contextInjector!: ContextInjector;
-  protected toolRegistry!: ToolRegistry;
+  protected toolRegistry!: ToolRegistryImpl;
   private taskSystem!: TaskSystem;
   private skillRegistry!: SkillRegistry;
   private contractManager!: ContractManager;
@@ -181,7 +182,7 @@ export class ClawRuntime {
     this.monitor = new JsonlLogger({ logsDir });
 
     // 4. Create LLMService
-    this.llm = new LLMService(llmConfig);
+    this.llm = new LLMServiceImpl(llmConfig);
 
     // 5. Compute workspaceDir for ContractManager motion inbox path
     const workspaceDir = clawId === MOTION_CLAW_ID
@@ -220,8 +221,8 @@ export class ClawRuntime {
       }
     }
 
-    // 7. Create ToolRegistry and register built-in tools
-    this.toolRegistry = new ToolRegistry();
+    // 7. Create ToolRegistryImpl and register built-in tools
+    this.toolRegistry = new ToolRegistryImpl();
     registerBuiltinTools(this.toolRegistry);
     // dispatch 需要构造参数，单独注册
     this.toolRegistry.register(new DispatchTool(
@@ -245,7 +246,7 @@ export class ClawRuntime {
     await this.skillRegistry.loadAll();
 
     // 10. Create ContractManager (with LLM and verifier registry for acceptance)
-    const verifierRegistry = new ToolRegistry();
+    const verifierRegistry = new ToolRegistryImpl();
     for (const tool of this.toolRegistry.getForProfile('verifier')) {
       verifierRegistry.register(tool);
     }

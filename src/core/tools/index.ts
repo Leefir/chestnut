@@ -4,7 +4,7 @@
  */
 
 // Registry
-export { ToolRegistry } from './registry.js';
+export { ToolRegistryImpl } from './registry.js';
 
 // Executor (interfaces + implementation)
 export {
@@ -22,8 +22,8 @@ export { TOOL_PROFILES } from './profiles.js';
 export type {
   ToolResult,
   ExecContext,
-  ITool,
-  IToolRegistry,
+  Tool,
+  ToolRegistry,
   IToolExecutor,
   ExecuteOptions,
 } from './executor.js';

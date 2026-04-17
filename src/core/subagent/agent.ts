@@ -6,10 +6,10 @@
 
 import { runReact } from '../react/loop.js';
 import { ToolExecutor } from '../tools/executor.js';
-import { ToolRegistry } from '../tools/registry.js';
-import type { IFileSystem } from '../../foundation/fs/types.js';
+import { ToolRegistryImpl } from '../tools/registry.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 import type { Logger } from '../../foundation/monitor/types.js';
-import type { ILLMService } from '../../foundation/llm/index.js';
+import type { LLMService } from '../../foundation/llm/index.js';
 import type { ToolDefinition } from '../../types/message.js';
 import { ToolTimeoutError } from '../../types/errors.js';
 import { SUBAGENT_TIMEOUT_MS, DEFAULT_MAX_STEPS } from '../../constants.js';
@@ -29,9 +29,9 @@ export interface SubAgentOptions {
   agentId: string;
   prompt: string;
   clawDir: string;
-  llm: ILLMService;
-  registry: ToolRegistry;
-  fs: IFileSystem;
+  llm: LLMService;
+  registry: ToolRegistryImpl;
+  fs: FileSystem;
   monitor?: Logger;
   maxSteps?: number;
   timeoutMs?: number;
@@ -56,9 +56,9 @@ export class SubAgent {
   private agentId: string;
   private prompt: string;
   private clawDir: string;
-  private llm: ILLMService;
-  private registry: ToolRegistry;
-  private fs: IFileSystem;
+  private llm: LLMService;
+  private registry: ToolRegistryImpl;
+  private fs: FileSystem;
   private monitor?: Logger;
   private maxSteps: number;
   private timeoutMs: number;
@@ -363,7 +363,7 @@ export class SubAgent {
    */
   private async appendToLog(text: string): Promise<void> {
     try {
-      // 使用 IFileSystem.append 实现原子追加，避免竞态
+      // 使用 FileSystem.append 实现原子追加，避免竞态
       await this.fs.append(this.logPath, text);
     } catch (e) {
       // Log failures are non-fatal

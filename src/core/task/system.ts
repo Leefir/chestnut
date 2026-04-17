@@ -8,17 +8,17 @@
 import { randomUUID } from 'crypto';
 import * as path from 'path';
 import * as fsSync from 'fs';
-import type { IFileSystem } from '../../foundation/fs/types.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 
 import { JsonlLogger } from '../../foundation/monitor/index.js';
 import { SubAgent } from '../subagent/agent.js';
 import { DEFAULT_LLM_IDLE_TIMEOUT_MS, DEFAULT_MAX_CONCURRENT_TASKS } from '../../constants.js';
-import { ToolRegistry } from '../tools/registry.js';
+import { ToolRegistryImpl } from '../tools/registry.js';
 import { registerBuiltinTools } from '../tools/builtins/index.js';
-import type { ILLMService } from '../../foundation/llm/index.js';
+import type { LLMService } from '../../foundation/llm/index.js';
 import type { CallerType } from '../tools/caller-type.js';
 import { callerTypeToProfile } from '../tools/caller-type.js';
-import type { ToolResult, ITool } from '../tools/executor.js';
+import type { ToolResult, Tool } from '../tools/executor.js';
 import type { Message, ToolDefinition } from '../../types/message.js';
 import type { OutboxWriter } from '../communication/index.js';
 import type { ContractManager } from '../contract/manager.js';
@@ -41,7 +41,7 @@ export interface SubAgentTask {
   messages?: Message[];                    // 若提供，SubAgent 直接用；否则从 prompt 构建
   originClawId?: string;                   // 创建链路源头，传给子 SubAgent
   toolsForLLM?: ToolDefinition[];          // 若提供，直接用；否则从 registry 计算
-  extraTools?: ITool[];                    // per-task 额外工具，不污染全局 registry
+  extraTools?: Tool[];                    // per-task 额外工具，不污染全局 registry
 }
 
 export interface ToolTask {
@@ -66,8 +66,8 @@ export class TaskSystem {
   private runningTasks: Map<string, TaskState> = new Map();
   private maxConcurrent: number;
   private monitor: JsonlLogger;
-  private registry: ToolRegistry;
-  private llm?: ILLMService;
+  private registry: ToolRegistryImpl;
+  private llm?: LLMService;
   private skillRegistry?: SkillRegistry;
   private contractManager?: ContractManager;
   private outboxWriter?: OutboxWriter;
@@ -102,7 +102,7 @@ export class TaskSystem {
 
   constructor(
     private clawDir: string,
-    private fs: IFileSystem,
+    private fs: FileSystem,
     options: { maxConcurrent?: number; auditWriter?: AuditWriter; retryBaseDelayMs?: number; parentStreamSink?: StreamSink } = {}
   ) {
     this.maxConcurrent = options.maxConcurrent ?? DEFAULT_MAX_CONCURRENT_TASKS;
@@ -111,7 +111,7 @@ export class TaskSystem {
     this.retryBaseDelayMs = options.retryBaseDelayMs ?? 500;
     this.monitor = new JsonlLogger({ logsDir: path.join(clawDir, 'logs') });
     // Create tool registry for subagents
-    this.registry = new ToolRegistry();
+    this.registry = new ToolRegistryImpl();
     registerBuiltinTools(this.registry);
   }
 
@@ -295,7 +295,7 @@ export class TaskSystem {
     }
   }
 
-  setLLMService(llm: ILLMService): void {
+  setLLMService(llm: LLMService): void {
     this.llm = llm;
   }
 
@@ -563,7 +563,7 @@ export class TaskSystem {
       // Build per-task registry filtered by caller profile + extraTools
       const subagentProfile = callerTypeToProfile(task.callerType ?? 'subagent');
       const effectiveRegistry = (() => {
-        const r = new ToolRegistry();
+        const r = new ToolRegistryImpl();
         for (const t of this.registry.getForProfile(subagentProfile)) r.register(t);
         for (const t of task.extraTools ?? []) r.register(t);
         return r;

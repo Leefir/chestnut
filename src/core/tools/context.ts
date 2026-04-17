@@ -8,9 +8,9 @@
  * - Execution tracking (stepNumber, elapsed time)
  */
 
-import type { IFileSystem } from '../../foundation/fs/types.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 import type { Logger } from '../../foundation/monitor/types.js';
-import type { ILLMService } from '../../foundation/llm/index.js';
+import type { LLMService } from '../../foundation/llm/index.js';
 import type { ToolProfile } from '../../types/config.js';
 import type { ExecContext } from './executor.js';
 import { MOTION_CLAW_ID, DEFAULT_MAX_STEPS } from '../../constants.js';
@@ -39,13 +39,13 @@ export interface ExecContextImplOptions {
   callerType?: CallerType;
   
   /** File system instance */
-  fs: IFileSystem;
+  fs: FileSystem;
   
   /** Optional monitor for logging */
   monitor?: Logger;
   
   /** Optional LLM service */
-  llm?: ILLMService;
+  llm?: LLMService;
   
   /** Maximum allowed steps (ReAct loop limit) */
   maxSteps?: number;
@@ -84,9 +84,9 @@ export class ExecContextImpl implements ExecContext {
   clawDir: string;
   profile: ToolProfile;
   callerType: CallerType;
-  fs: IFileSystem;
+  fs: FileSystem;
   monitor?: Logger;
-  llm?: ILLMService;
+  llm?: LLMService;
   stepNumber: number;
   maxSteps: number;
   signal?: AbortSignal;

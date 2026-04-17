@@ -2,18 +2,18 @@
  * Tools module tests
  * 
  * Tests:
- * - ToolRegistry: register, get, profile filtering
+ * - ToolRegistryImpl: register, get, profile filtering
  * - ToolExecutor: execute with permissions, timeout, errors
  * - ExecContext: permissions, elapsed time
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ToolRegistry } from '../../src/core/tools/registry.js';
+import { ToolRegistryImpl } from '../../src/core/tools/registry.js';
 import { ToolExecutorImpl } from '../../src/core/tools/executor.js';
 import { ExecContextImpl } from '../../src/core/tools/context.js';
 import { TOOL_PROFILES } from '../../src/core/tools/profiles.js';
-import type { ITool, ToolResult } from '../../src/core/tools/executor.js';
-import type { IFileSystem } from '../../src/foundation/fs/types.js';
+import type { Tool, ToolResult } from '../../src/core/tools/executor.js';
+import type { FileSystem } from '../../src/foundation/fs/types.js';
 import {
   ToolNotFoundError,
   ToolTimeoutError,
@@ -46,15 +46,15 @@ describe('Tools', () => {
     });
   });
 
-  describe('ToolRegistry', () => {
-    let registry: ToolRegistry;
+  describe('ToolRegistryImpl', () => {
+    let registry: ToolRegistryImpl;
 
     beforeEach(() => {
-      registry = new ToolRegistry();
+      registry = new ToolRegistryImpl();
     });
 
     it('should register and retrieve tool', () => {
-      const mockTool: ITool = {
+      const mockTool: Tool = {
         name: 'test-tool',
         description: 'A test tool',
         schema: { type: 'object' },
@@ -71,7 +71,7 @@ describe('Tools', () => {
     });
 
     it('should overwrite tool with same name', () => {
-      const tool1: ITool = {
+      const tool1: Tool = {
         name: 'same',
         description: 'First',
         schema: { type: 'object' },
@@ -80,7 +80,7 @@ describe('Tools', () => {
         execute: async () => ({ success: true, content: 'v1' }),
       };
 
-      const tool2: ITool = {
+      const tool2: Tool = {
         name: 'same',
         description: 'Second',
         schema: { type: 'object' },
@@ -97,7 +97,7 @@ describe('Tools', () => {
     });
 
     it('should check tool existence with has()', () => {
-      const mockTool: ITool = {
+      const mockTool: Tool = {
         name: 'exists',
         description: 'Test',
         schema: { type: 'object' },
@@ -113,7 +113,7 @@ describe('Tools', () => {
     });
 
     it('should unregister tool', () => {
-      const mockTool: ITool = {
+      const mockTool: Tool = {
         name: 'to-remove',
         description: 'Test',
         schema: { type: 'object' },
@@ -211,7 +211,7 @@ describe('Tools', () => {
   });
 
   describe('ExecContext', () => {
-    const mockFs = {} as IFileSystem;
+    const mockFs = {} as FileSystem;
 
     it('should track elapsed time', async () => {
       const ctx = new ExecContextImpl({
@@ -231,14 +231,14 @@ describe('Tools', () => {
   });
 
   describe('ToolExecutor', () => {
-    let registry: ToolRegistry;
+    let registry: ToolRegistryImpl;
     let executor: ToolExecutorImpl;
-    let mockFs: IFileSystem;
+    let mockFs: FileSystem;
 
     beforeEach(() => {
-      registry = new ToolRegistry();
+      registry = new ToolRegistryImpl();
       executor = new ToolExecutorImpl(registry);
-      mockFs = {} as IFileSystem;
+      mockFs = {} as FileSystem;
     });
 
     it('should throw ToolNotFoundError for unknown tool', async () => {

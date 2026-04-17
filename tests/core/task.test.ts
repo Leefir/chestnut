@@ -11,10 +11,10 @@ import { randomUUID } from 'crypto';
 import { TaskSystem } from '../../src/core/task/system.js';
 import { SubAgent } from '../../src/core/subagent/agent.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
-import { ToolRegistry } from '../../src/core/tools/registry.js';
+import { ToolRegistryImpl } from '../../src/core/tools/registry.js';
 import { registerBuiltinTools } from '../../src/core/tools/builtins/index.js';
 import type { LLMResponse } from '../../src/types/message.js';
-import type { ILLMService } from '../../src/foundation/llm/index.js';
+import type { LLMService } from '../../src/foundation/llm/index.js';
 import type { StreamChunk } from '../../src/foundation/llm/types.js';
 
 /**
@@ -53,7 +53,7 @@ async function cleanupTempDir(tempDir: string): Promise<void> {
   }
 }
 
-function createMockLLM(responses: LLMResponse[]): ILLMService {
+function createMockLLM(responses: LLMResponse[]): LLMService {
   let index = 0;
   const callMock = vi.fn(async () => {
     const response = responses[index++] || responses[responses.length - 1];
@@ -75,13 +75,13 @@ function createMockLLM(responses: LLMResponse[]): ILLMService {
     close: vi.fn(),
     healthCheck: vi.fn().mockResolvedValue(true),
     getProviderInfo: vi.fn().mockReturnValue({ name: 'mock', model: 'test', isFallback: false }),
-  } as unknown as ILLMService;
+  } as unknown as LLMService;
 }
 
 /**
  * Create a mock LLM that never resolves - useful for keeping tasks in running state
  */
-function createHangingMockLLM(): ILLMService {
+function createHangingMockLLM(): LLMService {
   async function* hangingStream(signal?: AbortSignal): AsyncIterableIterator<StreamChunk> {
     await new Promise<void>((_, reject) => {
       if (signal?.aborted) return reject(new Error('Aborted'));
@@ -99,13 +99,13 @@ function createHangingMockLLM(): ILLMService {
     close: vi.fn(),
     healthCheck: vi.fn().mockResolvedValue(true),
     getProviderInfo: vi.fn().mockReturnValue({ name: 'mock', model: 'test', isFallback: false }),
-  } as unknown as ILLMService;
+  } as unknown as LLMService;
 }
 
 /**
  * Create a mock LLM that aborts when signal is triggered - for timeout testing
  */
-function createAbortableHangingMockLLM(): ILLMService {
+function createAbortableHangingMockLLM(): LLMService {
   async function* hangingStream(signal?: AbortSignal): AsyncIterableIterator<StreamChunk> {
     // Wait indefinitely but check for abort
     await new Promise<void>((resolve, reject) => {
@@ -125,14 +125,14 @@ function createAbortableHangingMockLLM(): ILLMService {
     close: vi.fn(),
     healthCheck: vi.fn().mockResolvedValue(true),
     getProviderInfo: vi.fn().mockReturnValue({ name: 'mock', model: 'test', isFallback: false }),
-  } as unknown as ILLMService;
+  } as unknown as LLMService;
 }
 
 describe('Task System + SubAgent', () => {
   let tempDir: string;
   let mockFs: NodeFileSystem;
   let taskSystem: TaskSystem;
-  let registry: ToolRegistry;
+  let registry: ToolRegistryImpl;
 
   beforeEach(async () => {
     tempDir = await createTempDir();
@@ -142,7 +142,7 @@ describe('Task System + SubAgent', () => {
     taskSystem = new TaskSystem(tempDir, mockFs);
     await taskSystem.initialize();
 
-    registry = new ToolRegistry();
+    registry = new ToolRegistryImpl();
     registerBuiltinTools(registry);
   });
 
@@ -261,7 +261,7 @@ describe('Task System + SubAgent', () => {
         close: vi.fn(),
         healthCheck: vi.fn().mockResolvedValue(true),
         getProviderInfo: vi.fn().mockReturnValue({ name: 'mock', model: 'test', isFallback: false }),
-      } as unknown as ILLMService);
+      } as unknown as LLMService);
       
       const taskId = await taskSystem.scheduleSubAgent({
         kind: 'subagent',
@@ -567,7 +567,7 @@ describe('Task System + SubAgent', () => {
           return new Promise(() => {}); // never resolves
         }),
         stream: vi.fn(),
-      } as unknown as ILLMService;
+      } as unknown as LLMService;
 
       const agent = new SubAgent({
         agentId: 'test-idle',
