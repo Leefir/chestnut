@@ -29,7 +29,7 @@ import {
   chatCommand as motionChatCommand,
   stopCommand as motionStopCommand,
 } from './commands/motion.js';
-import { contractCreateCommand, contractCreateFromDirCommand, contractLogCommand } from './commands/contract.js';
+import { contractCreateCommand, contractCreateFromDirCommand, contractLogCommand, contractEventsCommand } from './commands/contract.js';
 import { skillInstallUserCommand, skillInstallClawCommand } from './commands/skill.js';
 import {
   startCommand as watchdogStartCommand,
@@ -377,6 +377,18 @@ contractCmd
   .action(async (opts: { claw: string; contract?: string }) => {
     try {
       await contractLogCommand(opts.claw, opts.contract);
+    } catch (error) {
+      process.exitCode = handleCliError(error);
+    }
+  });
+
+contractCmd
+  .command('events <claw>')
+  .description('Show contract events since a timestamp')
+  .requiredOption('--since <timestamp>', 'Unix timestamp in milliseconds')
+  .action(async (claw: string, opts: { since: string }) => {
+    try {
+      await contractEventsCommand(claw, parseInt(opts.since, 10));
     } catch (error) {
       process.exitCode = handleCliError(error);
     }

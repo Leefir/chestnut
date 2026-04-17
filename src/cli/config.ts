@@ -82,6 +82,10 @@ export const ClawGlobalConfigSchema = z.object({
         schedule: z.string().default('daily:04:00'),
         max_compression_tokens: z.number().min(500).max(20000).default(4000),
       }).optional(),
+      contract_observer: z.object({
+        enabled: z.boolean().default(true),
+        schedule: z.string().default('interval:1m'),
+      }).optional(),
     }).optional(),
   }).optional(),
   viewport: z.object({

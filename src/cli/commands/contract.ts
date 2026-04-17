@@ -12,6 +12,7 @@ import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import { getClawDir, getMotionDir } from '../config.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
 import { notifySystem, notifyStream } from '../../utils/notify.js';
+import { exec } from '../../foundation/process-exec/index.js';
 
 
 function parseAndValidateContractYaml(yamlContent: string): ContractYaml {
@@ -120,6 +121,60 @@ export async function contractCreateFromDirCommand(clawId: string, dirPath: stri
 /**
  * Show contract execution log for a claw
  */
+export async function contractEventsCommand(clawId: string, sinceTs: number): Promise<void> {
+  const clawDir = getClawDir(clawId);
+  const clawFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+  const manager = new ContractManager(clawDir, clawId, clawFs);
+
+  const events: string[] = [];
+
+  // 1. 检查 archive 中新完成的契约
+  const archiveDir = path.join(clawDir, 'contract', 'archive');
+  try {
+    const dirs = fsNative.readdirSync(archiveDir, { withFileTypes: true })
+      .filter(e => e.isDirectory());
+    for (const d of dirs) {
+      const progressPath = path.join(archiveDir, d.name, 'progress.json');
+      try {
+        const raw = fsNative.readFileSync(progressPath, 'utf-8');
+        const progress = JSON.parse(raw) as ProgressData;
+        // 检查是否有在 sinceTs 之后完成的子任务
+        const completedAfter = Object.values(progress.subtasks)
+          .some(s => s.completed_at && new Date(s.completed_at).getTime() > sinceTs);
+        if (completedAfter && progress.status === 'completed') {
+          events.push(`[contract_completed] claw=${clawId} contract=${d.name}`);
+        }
+      } catch { /* 跳过 */ }
+    }
+  } catch { /* archive 不存在 */ }
+
+  // 2. 检查 active 中的升级事件（retry_count 达到阈值）
+  const activeDir = path.join(clawDir, 'contract', 'active');
+  try {
+    const dirs = fsNative.readdirSync(activeDir, { withFileTypes: true })
+      .filter(e => e.isDirectory());
+    for (const d of dirs) {
+      const progressPath = path.join(activeDir, d.name, 'progress.json');
+      try {
+        const raw = fsNative.readFileSync(progressPath, 'utf-8');
+        const progress = JSON.parse(raw) as ProgressData;
+        // 检查高 retry_count 的子任务（升级信号）
+        for (const [stId, st] of Object.entries(progress.subtasks)) {
+          const maxRetries = 3; // 与 ContractManager 默认值一致
+          if ((st.retry_count ?? 0) >= maxRetries && st.status === 'todo') {
+            events.push(`[contract_escalation] claw=${clawId} contract=${d.name} subtask=${stId} retry_count=${st.retry_count}`);
+          }
+        }
+      } catch { /* 跳过 */ }
+    }
+  } catch { /* active 不存在 */ }
+
+  // 输出事件（空则无输出）
+  if (events.length > 0) {
+    console.log(events.join('\n'));
+  }
+}
+
 export async function contractLogCommand(clawId: string, contractId?: string): Promise<void> {
   const clawDir = getClawDir(clawId);
   const clawFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });

@@ -30,6 +30,7 @@ import { runDiskMonitor } from '../../core/cron/jobs/disk-monitor.js';
 import { runLlmStats } from '../../core/cron/jobs/llm-stats.js';
 import { runDeepDream } from '../../core/cron/jobs/deep-dream.js';
 import { runRandomDream } from '../../core/cron/jobs/random-dream.js';
+import { runContractObserver } from '../../core/cron/jobs/contract-observer.js';
 import { CliError } from '../errors.js';
 import { Snapshot } from '../../foundation/snapshot/index.js';
 
@@ -233,6 +234,15 @@ export async function daemonCommand(name: string): Promise<void> {
             fs: cronFs,
           });
         },
+      },
+      {
+        name: 'contract-observer',
+        enabled: true,
+        schedule: parseSchedule(globalConfig.cron?.jobs?.contract_observer?.schedule ?? 'interval:1m'),
+        handler: () => runContractObserver({
+          clawforumDir: path.join(dir, '..'),
+          motionInboxDir: path.join(dir, 'inbox', 'pending'),
+        }),
       },
     ]);
     cronRunner.start(tickMs);
