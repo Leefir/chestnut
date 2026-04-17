@@ -95,9 +95,12 @@ export async function daemonCommand(name: string): Promise<void> {
   // 审计日志配置
   const auditMaxSizeMb = globalConfig.audit?.retention?.max_size_mb ?? null;
 
-  // 提前创建 systemFs + AuditWriter，供 Snapshot 和 Runtime 共享
-  const systemFs = new NodeFileSystem({ baseDir: dir, enforcePermissions: false });
-  const sharedAuditWriter = new AuditWriter(systemFs, 'audit.tsv', auditMaxSizeMb);
+  // 提前创建 AuditWriter，供 Snapshot 和 Runtime 共享
+  const sharedAuditWriter = new AuditWriter(
+    new NodeFileSystem({ baseDir: dir, enforcePermissions: false }),
+    'audit.tsv',
+    auditMaxSizeMb,
+  );
 
   // Runtime
   const runtime = isMotion
