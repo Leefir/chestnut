@@ -619,10 +619,11 @@ describe('ContractManager', () => {
     });
   });
 
-  describe('moveToArchive and notify consistency', () => {
-    it('should NOT notify Motion when moveToArchive fails', async () => {
+  describe('moveToArchive and audit consistency', () => {
+    it('should NOT write audit when moveToArchive fails', async () => {
       const mockMonitor = { log: vi.fn() };
-      const testManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockMonitor as any);
+      const mockAudit = { write: vi.fn() };
+      const testManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockMonitor as any, undefined, undefined, mockAudit as any);
 
       // Create contract with no-op acceptance (no script_file/prompt_file = no acceptance)
       const contractId = await testManager.create({
@@ -637,7 +638,6 @@ describe('ContractManager', () => {
 
       // Spy on moveToArchive to make it fail
       const moveSpy = vi.spyOn(testManager as any, 'moveToArchive').mockRejectedValue(new Error('disk full'));
-      const notifySpy = vi.spyOn(testManager as any, 'notifyMotionCompletion');
 
       // Complete the subtask (no acceptance = allCompleted = true)
       await testManager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'done' });
@@ -646,19 +646,24 @@ describe('ContractManager', () => {
       await new Promise(r => setTimeout(r, 50));
 
       expect(moveSpy).toHaveBeenCalledWith(contractId);
-      expect(notifySpy).not.toHaveBeenCalled();
+      // updateContractStatus already writes contract_completed; the additional
+      // title-bearing audit in _completeSubtaskSync should not run on failure
+      const titleAuditCalls = mockAudit.write.mock.calls.filter(
+        (c: any[]) => c[0] === 'contract_completed' && c.some((arg: any) => String(arg).includes('title='))
+      );
+      expect(titleAuditCalls).toHaveLength(0);
       expect(mockMonitor.log).toHaveBeenCalledWith('error', expect.objectContaining({
         context: 'ContractManager._completeSubtaskSync',
         contractId,
       }));
 
       moveSpy.mockRestore();
-      notifySpy.mockRestore();
     });
 
-    it('should notify Motion when moveToArchive succeeds', async () => {
+    it('should write audit when moveToArchive succeeds', async () => {
       const mockMonitor = { log: vi.fn() };
-      const testManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockMonitor as any);
+      const mockAudit = { write: vi.fn() };
+      const testManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockMonitor as any, undefined, undefined, mockAudit as any);
 
       const contractId = await testManager.create({
         schema_version: 1,
@@ -670,19 +675,17 @@ describe('ContractManager', () => {
         auth_level: 'auto',
       });
 
-      // Spy but let them work normally
+      // Spy but let it work normally
       const moveSpy = vi.spyOn(testManager as any, 'moveToArchive').mockResolvedValue(undefined);
-      const notifySpy = vi.spyOn(testManager as any, 'notifyMotionCompletion').mockResolvedValue(undefined);
 
       await testManager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'done' });
 
       await new Promise(r => setTimeout(r, 50));
 
       expect(moveSpy).toHaveBeenCalledWith(contractId);
-      expect(notifySpy).toHaveBeenCalledWith(contractId, 'Test');
+      expect(mockAudit.write).toHaveBeenCalledWith('contract_completed', contractId, 'title=Test', expect.stringContaining('claw='));
 
       moveSpy.mockRestore();
-      notifySpy.mockRestore();
     });
   });
 
@@ -739,75 +742,6 @@ describe('ContractManager', () => {
       // Verify the verifier uses the default max steps (unified with other subagents)
       const { DEFAULT_MAX_STEPS } = await import('../../src/constants.js');
       expect(DEFAULT_MAX_STEPS).toBe(100);
-    });
-  });
-
-  // ─── fix 6: double-catch on background acceptance error ───────────────────
-  // ─── _notifyMotionStream ──────────────────────────────────────────────────
-
-  describe('_notifyMotionStream', () => {
-    let motionTmpDir: string;
-    let notifyManager: ContractManager;
-
-    beforeEach(async () => {
-      motionTmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'notify-motion-test-'));
-      const motionInboxDir = path.join(motionTmpDir, 'inbox', 'pending');
-      await fs.mkdir(motionInboxDir, { recursive: true });
-
-      const nodeFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
-      // 6th constructor arg is motionInboxDir
-      notifyManager = new ContractManager(clawDir, 'test-claw', nodeFs, undefined, undefined, undefined, motionInboxDir);
-    });
-
-    afterEach(async () => {
-      await fs.rm(motionTmpDir, { recursive: true, force: true }).catch(() => {});
-    });
-
-    it('writes a user_notify JSON line to motion stream.jsonl', async () => {
-      (notifyManager as any)._notifyMotionStream('subtask_completed', {
-        contractId: 'contract-1',
-        subtaskId: 'subtask-1',
-        clawId: 'claw-test',
-        completedCount: 2,
-        subtaskTotal: 4,
-      });
-
-      // appendFile is async best-effort — poll until the file appears (up to 2s)
-      const streamPath = path.join(motionTmpDir, 'stream.jsonl');
-      const deadline = Date.now() + 2000;
-      while (Date.now() < deadline) {
-        try { await fs.access(streamPath); break; } catch { /* not yet */ }
-        await new Promise(r => setTimeout(r, 20));
-      }
-      const content = await fs.readFile(streamPath, 'utf-8');
-      const event = JSON.parse(content.trim());
-
-      expect(event.type).toBe('user_notify');
-      expect(event.subtype).toBe('subtask_completed');
-      expect(event.clawId).toBe('claw-test');
-      expect(event.completedCount).toBe(2);
-      expect(event.subtaskTotal).toBe(4);
-      expect(typeof event.ts).toBe('number');
-    });
-
-    it('warns on errors (e.g. EPERM)', async () => {
-      const mkdirSpy = vi.spyOn(fsNative.promises, 'mkdir')
-        .mockResolvedValueOnce(undefined);
-      const appendSpy = vi.spyOn(fsNative.promises, 'appendFile')
-        .mockRejectedValueOnce(Object.assign(new Error('permission denied'), { code: 'EPERM' }));
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-      (notifyManager as any)._notifyMotionStream('subtask_completed', { contractId: 'c1' });
-
-      await new Promise(r => setTimeout(r, 20));
-
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('EPERM'),
-      );
-
-      mkdirSpy.mockRestore();
-      appendSpy.mockRestore();
-      warnSpy.mockRestore();
     });
   });
 

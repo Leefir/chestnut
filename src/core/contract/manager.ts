@@ -88,7 +88,6 @@ export class ContractManager {
   private activeDir = 'contract/active';
   private pausedDir = 'contract/paused';
   private archiveDir = 'contract/archive';
-  private motionInboxDir: string;
   private auditWriter?: AuditWriter;
   onNotify?: (type: string, data: Record<string, unknown>) => void;
 
@@ -99,7 +98,6 @@ export class ContractManager {
     monitor?: Logger,
     llm?: LLMService,
     verifierRegistry?: ToolRegistryImpl,
-    motionInboxDir?: string,
     auditWriter?: AuditWriter,
   ) {
     this.auditWriter = auditWriter;
@@ -109,8 +107,6 @@ export class ContractManager {
     this.monitor = monitor;
     this.llm = llm;
     this.verifierRegistry = verifierRegistry;
-    this.motionInboxDir = motionInboxDir ?? path.resolve(clawDir, '..', '..', 'motion', 'inbox', 'pending');
-    this.auditWriter = auditWriter;
   }
 
   setOnNotify(cb: (type: string, data: Record<string, unknown>) => void): void {
@@ -563,8 +559,6 @@ export class ContractManager {
       }
       const subtaskTotal = contractYaml.subtasks.length;
       const completedCount = Object.values(progress.subtasks).filter(s => s.status === 'completed').length;
-      this._notifyMotionStream('subtask_completed', { contractId, subtaskId, clawId: this.clawId, completedCount, subtaskTotal });
-
       // Audit: subtask_completed
       this.auditWriter?.write(
         'subtask_completed',
@@ -589,12 +583,17 @@ export class ContractManager {
       });
     });
 
-    // Archive and notify Motion outside the lock (best-effort)
+    // Archive and log completion outside the lock (best-effort)
     if (allCompleted) {
       const title = contractYaml.title;
       try {
         await this.moveToArchive(contractId);
-        this.notifyMotionCompletion(contractId, title);
+        this.auditWriter?.write(
+          'contract_completed',
+          contractId,
+          `title=${title}`,
+          `claw=${this.clawId}`,
+        );
       } catch (err) {
         console.error('[contract] moveToArchive failed, skipping completion notification:', err);
         this.monitor?.log('error', {
@@ -687,10 +686,8 @@ export class ContractManager {
         } catch (err) {
           console.warn('[contract] onNotify error:', err instanceof Error ? err.message : String(err));
         }
-          const subtaskTotal = contractYaml.subtasks.length;
+        const subtaskTotal = contractYaml.subtasks.length;
         const completedCount = Object.values(progress.subtasks).filter(s => s.status === 'completed').length;
-        this._notifyMotionStream('subtask_completed', { contractId, subtaskId, clawId: this.clawId, completedCount, subtaskTotal });
-
         // Audit: subtask_completed
         this.auditWriter?.write(
           'subtask_completed',
@@ -714,11 +711,16 @@ export class ContractManager {
         // Write inbox notification to claw
         this._writeAcceptanceInbox(contractId, subtaskId, 'passed', allCompleted);
         
-        // Notify Motion if all completed
+        // Audit log if all completed
         if (allCompleted) {
           try {
             await this.moveToArchive(contractId);
-            this.notifyMotionCompletion(contractId, contractYaml.title);
+            this.auditWriter?.write(
+              'contract_completed',
+              contractId,
+              `title=${contractYaml.title}`,
+              `claw=${this.clawId}`,
+            );
           } catch (err) {
             console.error('[contract] moveToArchive failed, skipping completion notification:', err);
             this.monitor?.log('error', {
@@ -742,7 +744,6 @@ export class ContractManager {
         } catch (err) {
           console.warn('[contract] onNotify error:', err instanceof Error ? err.message : String(err));
         }
-          this._notifyMotionStream('acceptance_failed', { contractId, subtaskId, feedback: result.feedback, clawId: this.clawId });
 
         // Audit: acceptance_failed
         this.auditWriter?.write(
@@ -776,7 +777,12 @@ export class ContractManager {
         
         // Escalate if too many retries
         if (subtask.retry_count >= maxRetries) {
-          this.notifyMotionEscalation(contractId, subtaskId, result.feedback, subtask.retry_count);
+          this.auditWriter?.write(
+            'contract_escalation',
+            `${contractId}/${subtaskId}`,
+            `retry_count=${subtask.retry_count}`,
+            `claw=${this.clawId}`,
+          );
         }
       }
     });
@@ -908,65 +914,6 @@ export class ContractManager {
       '',
       `已失败 ${retryCount}/${maxRetries} 次。`,
     ].join('\n');
-  }
-
-  /**
-   * Notify Motion of subtask escalation (too many retries)
-   */
-  private notifyMotionEscalation(
-    contractId: string,
-    subtaskId: string,
-    lastFeedback: string,
-    retryCount: number,
-  ): void {
-    try {
-      const motionInbox = this.motionInboxDir;
-
-      writeInboxMessage(this.fs, {
-        inboxDir: motionInbox,
-        type: 'contract_escalation',
-        source: this.clawId,
-        priority: 'high',
-        extraFields: {
-          contract_id: contractId,
-          subtask_id: subtaskId,
-          retry_count: String(retryCount),
-        },
-        body: `Subtask "${subtaskId}" has failed ${retryCount} times.\n\nLast feedback:\n${lastFeedback}`,
-      });
-    } catch (e) {
-      this.monitor?.log('error', {
-        context: 'ContractManager.notifyMotionEscalation',
-        contractId,
-        subtaskId,
-        error: e instanceof Error ? e.message : String(e),
-      });
-    }
-  }
-
-  /**
-   * Notify Motion of LLM acceptance timeout
-   */
-  private notifyMotionAcceptanceTimeout(contractId: string, subtaskId: string): void {
-    try {
-      const motionInbox = this.motionInboxDir;
-
-      writeInboxMessage(this.fs, {
-        inboxDir: motionInbox,
-        type: 'acceptance_timeout',
-        source: this.clawId,
-        priority: 'high',
-        extraFields: { contract_id: contractId, subtask_id: subtaskId },
-        body: `LLM acceptance verifier timed out for subtask "${subtaskId}".`,
-      });
-    } catch (e) {
-      this.monitor?.log('error', {
-        context: 'ContractManager.notifyMotionAcceptanceTimeout',
-        contractId,
-        subtaskId,
-        error: e instanceof Error ? e.message : String(e),
-      });
-    }
   }
 
   /**
@@ -1207,7 +1154,13 @@ export class ContractManager {
         fs: this.fs as any,
         maxSteps: DEFAULT_MAX_STEPS,
         idleTimeoutMs: DEFAULT_LLM_IDLE_TIMEOUT_MS,
-        onIdleTimeout: () => this.notifyMotionAcceptanceTimeout(contractId, subtaskId),
+        onIdleTimeout: () => {
+          this.auditWriter?.write(
+            'acceptance_timeout',
+            `${contractId}/${subtaskId}`,
+            `claw=${this.clawId}`,
+          );
+        },
         systemPrompt: CONTRACT_VERIFIER_SYSTEM_PROMPT,
       });
 
@@ -1246,55 +1199,4 @@ export class ContractManager {
     }
   }
 
-  /**
-   * Notify Motion of contract completion (best-effort with retry)
-   */
-  private notifyMotionCompletion(contractId: string, contractTitle: string): void {
-    
-    const opts = {
-      inboxDir: this.motionInboxDir,
-      type: 'review_request' as const,
-      source: this.clawId,
-      priority: 'low' as const,
-      extraFields: { claw_id: this.clawId, contract_id: contractId },
-      body: `[system] Contract "${contractTitle}" (${contractId}) completed by ${this.clawId}.`,
-    };
-
-    try {
-      writeInboxMessage(this.fs, opts);
-    } catch (e) {
-      // 瞬时失败：500ms 后重试一次
-      setTimeout(() => {
-        try {
-          writeInboxMessage(this.fs, opts);
-          this.monitor?.log('system', {
-            context: 'ContractManager.notifyMotionCompletion',
-            contractId,
-            note: 'retry succeeded',
-          });
-        } catch (e2) {
-          this.monitor?.log('error', {
-            context: 'ContractManager.notifyMotionCompletion',
-            contractId,
-            error: e2 instanceof Error ? e2.message : String(e2),
-            note: 'retry also failed, review_request not delivered',
-          });
-        }
-      }, 500);
-    }
-  }
-
-  /**
-   * Directly write user_notify to Motion stream.jsonl (cross-server best-effort)
-   */
-  private _notifyMotionStream(subtype: string, data: Record<string, unknown>): void {
-    const motionDir = path.resolve(this.motionInboxDir, '..', '..');
-    const streamPath = path.join(motionDir, 'stream.jsonl');
-    const line = JSON.stringify({ ts: Date.now(), type: 'user_notify', subtype, ...data }) + '\n';
-    fsNative.promises.mkdir(motionDir, { recursive: true })
-      .then(() => fsNative.promises.appendFile(streamPath, line))
-      .catch((e: any) => {
-        console.warn(`[contract] _notifyMotionStream failed (${e?.code}): ${e?.message}`);
-      });
-  }
 }

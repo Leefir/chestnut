@@ -198,7 +198,8 @@ describe('ContractManager Acceptance Flow', () => {
     } as unknown as LLMService;
 
     mockRegistry = new ToolRegistryImpl();
-    manager = new ContractManager(clawDir, 'test-claw', nodeFs, mockMonitor, mockLLM, mockRegistry);
+    const auditWriter = { write: vi.fn() };
+    manager = new ContractManager(clawDir, 'test-claw', nodeFs, mockMonitor, mockLLM, mockRegistry, auditWriter as any);
   });
 
   afterEach(async () => {
@@ -634,10 +635,6 @@ describe('ContractManager Acceptance Flow', () => {
         'Check if {{evidence}} is valid. {{artifacts}}'
       );
 
-      // 提前建好 motion inbox 目录
-      const motionInboxDir = path.resolve(tempDir, '..', '..', 'motion', 'inbox', 'pending');
-      await fs.mkdir(motionInboxDir, { recursive: true });
-
       // SubAgent.run() 在执行中途触发 idle timeout 回调，然后返回空文字
       mockSubAgentRun.mockImplementation(async () => {
         capturedOnIdleTimeout?.();
@@ -647,16 +644,16 @@ describe('ContractManager Acceptance Flow', () => {
       await manager.completeSubtask({ contractId, subtaskId: 'task-1', evidence: 'done' });
       await flushAsync(100);
 
-      // Motion inbox 应收到 acceptance_timeout 消息
-      const motionInbox = await readMotionInbox(tempDir);
-      const timeouts = motionInbox.filter(m => m.content.includes('acceptance_timeout'));
-      expect(timeouts).toHaveLength(1);
-      expect(timeouts[0].content).toContain('task-1');
+      // auditWriter 应收到 acceptance_timeout 日志
+      const auditWriter = (manager as any).auditWriter;
+      const timeoutCalls = auditWriter.write.mock.calls.filter((c: any[]) => c[0] === 'acceptance_timeout');
+      expect(timeoutCalls).toHaveLength(1);
+      expect(timeoutCalls[0][1]).toContain('task-1');
     });
   });
 
   describe('Escalation', () => {
-    it('should escalate to motion when retry_count reaches max_retries', async () => {
+    it('should write escalation audit when retry_count reaches max_retries', async () => {
       const contractId = 'test-contract-7';
       // Setup contract with max_retries=2
       await setupContract(tempDir, contractId, {
@@ -667,10 +664,6 @@ describe('ContractManager Acceptance Flow', () => {
         acceptance: [{ subtask_id: 'task-1', type: 'script', script_file: 'acceptance/task-1.sh' }],
         escalation: { max_retries: 2 },
       }, { 'task-1': 'todo' });
-
-      // motion inbox is at ../../motion/inbox/pending relative to clawDir (tempDir)
-      const motionInboxDir = path.resolve(tempDir, '..', '..', 'motion', 'inbox', 'pending');
-      await fs.mkdir(motionInboxDir, { recursive: true });
 
       const acceptanceDir = path.join(tempDir, 'contract', 'active', contractId, 'acceptance');
       await fs.mkdir(acceptanceDir, { recursive: true });
@@ -687,7 +680,7 @@ describe('ContractManager Acceptance Flow', () => {
       execFileMockBehavior = 'fail';
       execFileMockStderr = 'test failure';
 
-      // This failure should push retry_count to 2, triggering escalation
+      // This failure should push retry_count to 2, triggering escalation audit
       await manager.completeSubtask({
         contractId,
         subtaskId: 'task-1',
@@ -698,55 +691,10 @@ describe('ContractManager Acceptance Flow', () => {
       const progress = JSON.parse(await fs.readFile(progressPath, 'utf-8'));
       expect(progress.subtasks['task-1'].retry_count).toBe(2);
 
-      const motionInbox = await readMotionInbox(tempDir);
-      const escalations = motionInbox.filter(m => m.content.includes('contract_escalation'));
-      expect(escalations.length).toBeGreaterThan(0);
-      expect(escalations[0].content).toContain('task-1');
-    });
-  });
-
-  describe('Motion notification failures', () => {
-    it('should log error to monitor when notifyMotionCompletion cannot write to motion inbox', async () => {
-      vi.useFakeTimers();
-
-      // 删除 motion 目录（如果存在），然后用同名文件阻塞
-      const motionDir = path.resolve(clawDir, '..', '..', 'motion');
-      try {
-        await fs.rm(motionDir, { recursive: true, force: true });
-      } catch { /* ignore */ }
-      await fs.mkdir(path.dirname(motionDir), { recursive: true });
-      // 写一个同名文件阻塞目录创建
-      await fs.writeFile(motionDir, 'block');
-
-      const monitorLogSpy = vi.spyOn(mockMonitor, 'log');
-
-      const contractId = 'test-notify-fail';
-      // 无 acceptance 的契约（同步完成路径触发 notifyMotionCompletion）
-      await setupContract(tempDir, contractId, {
-        schema_version: 1,
-        title: 'Test',
-        goal: 'Test',
-        subtasks: [{ id: 'task-1', description: 'Task 1' }],
-        acceptance: [],
-      });
-
-      await manager.completeSubtask({
-        contractId,
-        subtaskId: 'task-1',
-        evidence: 'done',
-      });
-
-      // 推进超过 500ms，让重试定时器触发
-      await vi.advanceTimersByTimeAsync(600);
-
-      expect(monitorLogSpy).toHaveBeenCalledWith('error', expect.objectContaining({
-        context: 'ContractManager.notifyMotionCompletion',
-      }));
-
-      vi.useRealTimers();
-
-      // 清理
-      await fs.unlink(motionDir).catch(() => {});
+      const auditWriter = (manager as any).auditWriter;
+      const escalationCalls = auditWriter.write.mock.calls.filter((c: any[]) => c[0] === 'contract_escalation');
+      expect(escalationCalls.length).toBeGreaterThan(0);
+      expect(escalationCalls[0][1]).toContain('task-1');
     });
   });
 
