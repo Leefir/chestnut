@@ -235,4 +235,25 @@ describe('StepExecutor', () => {
     // 4. 第一个工具未真实调用（被 __parseError 早返回）
     expect(exec.execute).not.toHaveBeenCalledWith(expect.objectContaining({ toolName: 'foo' }));
   });
+
+  it('context_window_exceeded：append 已产出的 assistant 消息（信息不丢失）', async () => {
+    const llm = makeMockLLM([{
+      content: [{ type: 'text', text: 'partial thought before limit' }],
+      stop_reason: 'model_context_window_exceeded',
+    }]);
+    const messages: Message[] = [];
+    const result = await executeStep({
+      messages, systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
+    });
+    expect(result.kind).toBe('context_window_exceeded');
+    // 关键断言：流式产出的 text 被持久化到 messages
+    expect(messages).toHaveLength(1);
+    expect(messages[0].role).toBe('assistant');
+    const content = messages[0].content;
+    expect(Array.isArray(content)).toBe(true);
+    const texts = (content as Array<{ type: string; text?: string }>).filter(b => b.type === 'text');
+    expect(texts.length).toBeGreaterThan(0);
+    expect(texts[0].text).toBe('partial thought before limit');
+  });
 });

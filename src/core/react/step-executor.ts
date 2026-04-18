@@ -185,6 +185,10 @@ export async function executeStep(input: StepInput): Promise<StepResult> {
 
   // ── context window exceeded ──
   if (response.stop_reason === 'model_context_window_exceeded' || response.stop_reason === 'context_length_exceeded') {
+    // 保留已流式产出的 thinking/text（不能丢失运行中产生的信息）
+    if (response.content.length > 0) {
+      appendAssistantMessage(messages, response.content);
+    }
     return { kind: 'context_window_exceeded' };
   }
 
