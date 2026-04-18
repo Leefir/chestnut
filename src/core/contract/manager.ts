@@ -65,6 +65,7 @@ export interface ProgressData {
     artifacts?: string[];
     retry_count?: number;           // 默认 0，每次验收失败 +1
     last_failed_feedback?: string;
+    escalated_at?: string;
   }>;
   started_at?: string;
   checkpoint?: string | null;
@@ -777,6 +778,8 @@ export class ContractManager {
         
         // Escalate if too many retries
         if (subtask.retry_count >= maxRetries) {
+          subtask.escalated_at = new Date().toISOString();
+          await this.saveProgress(contractId, progress);
           this.auditWriter?.write(
             'contract_escalation',
             `${contractId}/${subtaskId}`,

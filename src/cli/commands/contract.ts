@@ -152,10 +152,9 @@ export async function contractEventsCommand(clawId: string, sinceTs: number): Pr
       try {
         const raw = fsNative.readFileSync(progressPath, 'utf-8');
         const progress = JSON.parse(raw) as ProgressData;
-        // 检查高 retry_count 的子任务（升级信号）
+        // 检查升级事件（edge-triggered：只看 escalated_at 时间戳）
         for (const [stId, st] of Object.entries(progress.subtasks)) {
-          const maxRetries = 3; // 与 ContractManager 默认值一致
-          if ((st.retry_count ?? 0) >= maxRetries && st.status === 'todo') {
+          if (st.escalated_at && new Date(st.escalated_at).getTime() > sinceTs) {
             events.push(`[contract_escalation] claw=${clawId} contract=${d.name} subtask=${stId} retry_count=${st.retry_count}`);
           }
         }
