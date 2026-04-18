@@ -2,6 +2,9 @@ import { FileNotFoundError } from '../../types/errors.js';
 import type { FileSystem } from '../fs/types.js';
 import type { Audit } from './index.js';
 
+/** audit.tsv 相对路径 */
+export const AUDIT_FILE = 'audit.tsv';
+
 export class AuditWriter implements Audit {
   private maxBytes: number | null;
 

@@ -12,7 +12,7 @@ interface StreamRetentionOptions {
 }
 
 /** stream.jsonl 相对路径 */
-const STREAM_FILE = 'stream.jsonl';
+export const STREAM_FILE = 'stream.jsonl';
 /** 归档目录相对路径 */
 const ARCHIVE_DIR = 'logs/stream';
 

@@ -6,6 +6,6 @@
  */
 
 export type { StreamEvent, StreamLog } from './types.js';
-export { StreamWriter } from './writer.js';
+export { StreamWriter, STREAM_FILE } from './writer.js';
 export type { StreamReader } from './reader.js';
 export { createStreamReader } from './reader.js';

@@ -8,6 +8,9 @@
  * Claw directory structure - shared between createCommand and runtime.ensureDirectories
  * Modifying this requires updating all consumers.
  */
+/** tasks/results 目录相对路径 */
+export const TASKS_RESULTS_DIR = 'tasks/results';
+
 export const CLAW_SUBDIRS = [
   'dialog',
   'dialog/archive',
@@ -20,7 +23,7 @@ export const CLAW_SUBDIRS = [
   'tasks/pending',
   'tasks/running',
   'tasks/done',
-  'tasks/results',
+  TASKS_RESULTS_DIR,
   'memory',
   'contract',
   'skills',
