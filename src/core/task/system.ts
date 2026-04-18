@@ -175,8 +175,8 @@ export class TaskSystem {
               const resultPath  = `tasks/results/${task.id}/result.txt`;
               const sentMarker  = `tasks/results/${task.id}/result.txt.sent`;
               // 先检查 .sent 标记（表示上次恢复已成功投递，只需清理）
-              const alreadySent = await this.fs.read(sentMarker).then(() => true).catch(() => false);
-              const resultExists = !alreadySent && await this.fs.read(resultPath).then(() => true).catch(() => false);
+              const alreadySent = await this.fs.exists(sentMarker);
+              const resultExists = !alreadySent && await this.fs.exists(resultPath);
 
               if (alreadySent) {
                 // 上次恢复已投递，仅清理 running/ 残留

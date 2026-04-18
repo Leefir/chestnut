@@ -25,8 +25,9 @@ async function createTempDir(): Promise<string> {
 async function cleanupTempDir(tempDir: string): Promise<void> {
   try {
     await fs.rm(tempDir, { recursive: true, force: true });
-  } catch {
-    // Ignore cleanup errors
+  } catch (err: any) {
+    if (err?.code === 'ENOENT') return;
+    console.warn(`[test cleanup] Failed to remove ${tempDir}: ${err?.message ?? err}`);
   }
 }
 
@@ -237,6 +238,49 @@ describe('ToolExecutor', () => {
 
       // Restore permissions for cleanup
       await fs.chmod(readonlyDir, 0o755).catch(() => {});
+    });
+
+    it('should propagate ctx.signal abort to tool when no options.signal given', async () => {
+      // Regression test: Step 2 initially lost ctx.signal in mergedSignal,
+      // breaking upstream abort propagation from subagent.
+      const abortController = new AbortController();
+
+      registry.register({
+        name: 'abortable',
+        description: 'Tool that waits for abort signal',
+        schema: { type: 'object', properties: {}, required: [] },
+
+        readonly: true,
+        async execute(_args, toolCtx) {
+          await new Promise<void>((_, reject) => {
+            toolCtx.signal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+          });
+          return { success: true, content: 'never' };
+        },
+      });
+
+      const signalCtx = new ExecContextImpl({
+        clawId: 'test-claw',
+        clawDir: tempDir,
+        profile: 'full',
+        fs: mockFs,
+        auditWriter,
+        signal: abortController.signal,
+      });
+
+      const execPromise = executor.execute({
+        toolName: 'abortable',
+        args: {},
+        ctx: signalCtx,
+        timeoutMs: 10_000, // long enough that abort wins
+      });
+
+      // Abort after a short delay
+      setTimeout(() => abortController.abort(), 50);
+
+      const result = await execPromise;
+      expect(result.success).toBe(false);
+      expect(result.content).toContain('aborted');
     });
   });
 });

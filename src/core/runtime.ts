@@ -303,6 +303,7 @@ export class ClawRuntime {
    */
   async stop(): Promise<void> {
     await this.taskSystem.shutdown(30_000);
+    await this.monitor.close();
     await this.llm.close();
   }
 

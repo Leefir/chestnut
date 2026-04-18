@@ -284,7 +284,12 @@ describe('Tools', () => {
 
       expect(result.success).toBe(true);
       expect(result.content).toBe('executed');
-      expect(mockExecute).toHaveBeenCalledWith({ key: 'value' }, ctx);
+      const call = mockExecute.mock.calls[0];
+      expect(call[0]).toEqual({ key: 'value' });
+      expect(call[1].clawId).toBe('test');
+      expect(call[1].clawDir).toBe('/test');
+      expect(call[1].profile).toBe('full');
+      expect(call[1].signal).toBeInstanceOf(AbortSignal);
     });
 
     it('should throw ToolTimeoutError on timeout', async () => {
