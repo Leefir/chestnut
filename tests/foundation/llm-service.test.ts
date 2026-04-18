@@ -494,3 +494,56 @@ describe('LLMServiceImpl - circuit breaker', () => {
       .rejects.toBeInstanceOf(LLMAllProvidersFailedError);
   });
 });
+
+
+describe('LLMServiceImpl - external abort signal', () => {
+  it('throws AbortError without trying next provider when signal is already aborted', async () => {
+    const primary = createMockProvider('primary');
+    const fallback = createMockProvider('fallback');
+
+    const service = new LLMServiceImpl({
+      primary: { name: 'primary', apiKey: 'test', model: 'test' },
+      fallbacks: [{ name: 'fallback', apiKey: 'test', model: 'test' }],
+      maxAttempts: 1,
+      retryDelayMs: 0,
+    });
+    (service as any).primary = primary;
+    (service as any).fallbacks = [fallback];
+
+    const ac = new AbortController();
+    ac.abort();
+
+    await expect(async () => {
+      for await (const _ of service.stream({ messages: [], signal: ac.signal })) {}
+    }).rejects.toThrow(/aborted/i);
+  });
+
+  it('throws AbortError from mid-stream without yielding reset/provider_failed', async () => {
+    const primary = createMockProvider('primary', async function* () {
+      yield { type: 'text_delta', delta: 'hi' } as StreamChunk;
+      const err = new Error('Execution aborted');
+      err.name = 'AbortError';
+      throw err;
+    });
+    const fallbackStream = vi.fn(async function* () {
+      yield { type: 'done' } as StreamChunk;
+    });
+    const fallback = createMockProvider('fallback', fallbackStream);
+
+    const service = new LLMServiceImpl({
+      primary: { name: 'primary', apiKey: 'test', model: 'test' },
+      fallbacks: [{ name: 'fallback', apiKey: 'test', model: 'test' }],
+      maxAttempts: 1,
+      retryDelayMs: 0,
+    });
+    (service as any).primary = primary;
+    (service as any).fallbacks = [fallback];
+
+    const iter = service.stream({ messages: [] });
+    const first = await iter.next();
+    expect(first.value).toEqual({ type: 'text_delta', delta: 'hi' });
+
+    await expect(iter.next()).rejects.toThrow(/aborted/i);
+    expect(fallbackStream).not.toHaveBeenCalled();
+  });
+});

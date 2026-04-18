@@ -26,6 +26,7 @@ import { AnthropicAdapter } from './anthropic.js';
 import { CustomAnthropicAdapter } from './custom-anthropic.js';
 import { OpenAIAdapter } from './openai.js';
 import { GeminiAdapter } from './gemini.js';
+import { makeExternalAbortError } from './abort-helper.js';
 
 /**
  * Provider factory - creates appropriate adapter for config
@@ -132,6 +133,7 @@ export class LLMServiceImpl implements LLMService {
     let lastError: Error | undefined;
     if (!isBreakerOpen(0)) {
       for (let attempt = 0; attempt < this.config.maxAttempts; attempt++) {
+        if (options.signal?.aborted) throw makeExternalAbortError();
         try {
           const response = await this.primary.call(options);
           
@@ -175,6 +177,7 @@ export class LLMServiceImpl implements LLMService {
     }
     
     for (let i = 0; i < this.fallbacks.length; i++) {
+      if (options.signal?.aborted) throw makeExternalAbortError();
       // Skip if breaker is open
       if (isBreakerOpen(i + 1)) {
         failures.push({ provider: this.fallbacks[i].name, error: new Error('Circuit breaker open') });
@@ -220,6 +223,7 @@ export class LLMServiceImpl implements LLMService {
     const failures: Array<{ provider: string; error: Error }> = [];
 
     for (let pi = 0; pi < providers.length; pi++) {
+      if (options.signal?.aborted) throw makeExternalAbortError();
       const { adapter, breakerIndex } = providers[pi];
 
       if (!adapter.stream) continue;
