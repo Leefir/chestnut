@@ -244,4 +244,49 @@ describe('UnixDomainSocketTransport', () => {
     await t.close();
     await expect(connectClient(path)).rejects.toThrow();
   });
+
+  it('close during pending listen rejects listen', async () => {
+    const path = makeSocketPath();
+    const t = new UnixDomainSocketTransport();
+    const p = t.listen({ socketPath: path });
+    await t.close();
+    await expect(p).rejects.toThrow(/closed during listen/);
+  });
+
+  it('throws on double listen', async () => {
+    transport = new UnixDomainSocketTransport();
+    await transport.listen({ socketPath: makeSocketPath() });
+    await expect(transport.listen({ socketPath: makeSocketPath() })).rejects.toThrow(
+      /already listening/,
+    );
+  });
+
+  it('isolates exceptions thrown in onMessage callbacks', async () => {
+    const path = makeSocketPath();
+    transport = new UnixDomainSocketTransport();
+    const got: string[] = [];
+    transport.onMessage(() => {
+      throw new Error('cb1 boom');
+    });
+    transport.onMessage((_c, d) => got.push(d));
+    await transport.listen({ socketPath: path });
+    const c = await connectClient(path);
+    clients.push(c);
+    c.write('a\nb\n');
+    await new Promise((r) => setTimeout(r, 50));
+    expect(got).toEqual(['a', 'b']);
+  });
+
+  it('delivers empty messages from consecutive delimiters', async () => {
+    const path = makeSocketPath();
+    transport = new UnixDomainSocketTransport();
+    const msgs: string[] = [];
+    transport.onMessage((_c, d) => msgs.push(d));
+    await transport.listen({ socketPath: path });
+    const c = await connectClient(path);
+    clients.push(c);
+    c.write('a\n\nb\n');
+    await new Promise((r) => setTimeout(r, 50));
+    expect(msgs).toEqual(['a', '', 'b']);
+  });
 });

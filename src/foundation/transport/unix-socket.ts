@@ -21,6 +21,8 @@ export class UnixDomainSocketTransport implements Transport {
 
   async listen(options?: TransportOptions): Promise<void> {
     if (!options?.socketPath) throw new Error('socketPath required');
+    if (this.closed) throw new Error('transport already closed');
+    if (this.server || this.socketPath) throw new Error('transport already listening');
     this.socketPath = options.socketPath;
     await this.tryListen(true);
   }
@@ -41,6 +43,10 @@ export class UnixDomainSocketTransport implements Transport {
       server.once('error', onError);
       server.listen(this.socketPath!, () => {
         server.off('error', onError);
+        if (this.closed) {
+          server.close(() => reject(new Error('transport closed during listen')));
+          return;
+        }
         server.on('error', (err) => {
           console.error('[transport] server error:', err);
         });
@@ -60,7 +66,9 @@ export class UnixDomainSocketTransport implements Transport {
       probe.once('error', (err: NodeJS.ErrnoException) => {
         if (err.code === 'ECONNREFUSED' || err.code === 'ENOENT') {
           fs.unlink(this.socketPath!)
-            .catch(() => undefined)
+            .catch((err) => {
+              console.error(`[transport] failed to unlink stale socket ${this.socketPath}:`, err);
+            })
             .then(() => resolve());
         } else {
           reject(err);
@@ -81,9 +89,7 @@ export class UnixDomainSocketTransport implements Transport {
       while (nl >= 0) {
         const line = entry.buf.slice(0, nl);
         entry.buf = entry.buf.slice(nl + 1);
-        if (line) {
-          for (const cb of this.messageCbs) cb(meta, line);
-        }
+        this.safeFire(this.messageCbs, 'onMessage', meta, line);
         nl = entry.buf.indexOf('\n');
       }
     });
@@ -92,9 +98,9 @@ export class UnixDomainSocketTransport implements Transport {
     });
     sock.on('close', () => {
       this.connections.delete(id);
-      for (const cb of this.disconnectCbs) cb(meta);
+      this.safeFire(this.disconnectCbs, 'onDisconnect', meta);
     });
-    for (const cb of this.connectCbs) cb(meta);
+    this.safeFire(this.connectCbs, 'onConnect', meta);
   }
 
   send(connectionId: string, data: string): void {
@@ -128,6 +134,20 @@ export class UnixDomainSocketTransport implements Transport {
 
   onMessage(cb: (conn: Connection, data: string) => void): void {
     this.messageCbs.push(cb);
+  }
+
+  private safeFire<T extends unknown[]>(
+    cbs: ((...args: T) => void)[],
+    label: string,
+    ...args: T
+  ): void {
+    for (const cb of cbs) {
+      try {
+        cb(...args);
+      } catch (err) {
+        console.error(`[transport] ${label} callback error:`, err);
+      }
+    }
   }
 
   async close(): Promise<void> {
