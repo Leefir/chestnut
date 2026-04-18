@@ -216,6 +216,7 @@ describe('ContractManager Acceptance Flow', () => {
 
   afterEach(async () => {
     vi.useRealTimers();
+    await mockMonitor.close();
     // 清理 rootDir（clawDir 的祖父目录）
     await cleanupTempDir(path.resolve(clawDir, '..', '..'));
   });
