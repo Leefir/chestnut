@@ -19,4 +19,12 @@ export interface Audit {
   write(type: string, ...cols: (string | number)[]): void;
 }
 
+import { AuditWriter } from './writer.js';
 export { AuditWriter } from './writer.js';
+
+import * as path from 'path';
+import type { FileSystem } from '../fs/types.js';
+
+export function createSystemAudit(fs: FileSystem, baseDir: string): Audit {
+  return new AuditWriter(fs, path.join(baseDir, 'audit.tsv'));
+}

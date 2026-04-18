@@ -27,8 +27,8 @@ export class SessionManager {
   constructor(
     private readonly fs: FileSystem,
     dialogDir: string,
-    private readonly clawId: string = randomUUID(),
     private readonly audit: Audit,
+    private readonly clawId: string = randomUUID(),
   ) {
     this.currentPath = path.join(dialogDir, 'current.json');
     this.archiveDir = path.join(dialogDir, 'archive');

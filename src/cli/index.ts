@@ -217,7 +217,8 @@ clawCmd
       // 前台入口：后台启动
       const { loadGlobalConfig, clawExists, getClawDir, getGlobalConfigPath } = await import('./config.js');
       const { NodeFileSystem } = await import('../foundation/fs/node-fs.js');
-      const { ProcessManager, createSystemAudit } = await import('../foundation/process-manager/index.js');
+      const { ProcessManager } = await import('../foundation/process-manager/index.js');
+      const { createSystemAudit } = await import('../foundation/audit/index.js');
       loadGlobalConfig();
       if (!clawExists(name)) {
         throw new CliError(`Claw "${name}" does not exist`);
@@ -305,7 +306,8 @@ motionCmd
       // 前台入口
       const { loadGlobalConfig, getMotionDir } = await import('./config.js');
       const { NodeFileSystem } = await import('../foundation/fs/node-fs.js');
-      const { ProcessManager, createSystemAudit } = await import('../foundation/process-manager/index.js');
+      const { ProcessManager } = await import('../foundation/process-manager/index.js');
+      const { createSystemAudit } = await import('../foundation/audit/index.js');
       loadGlobalConfig();
       const motionDir = getMotionDir();
       const baseDir = path.dirname(motionDir);

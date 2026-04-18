@@ -7,7 +7,8 @@ import * as path from 'path';
 import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { loadGlobalConfig, getMotionDir } from '../config.js';
-import { ProcessManager, createSystemAudit } from '../../foundation/process-manager/index.js';
+import { ProcessManager } from '../../foundation/process-manager/index.js';
+import { createSystemAudit } from '../../foundation/audit/index.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import { getWatchdogPid, isWatchdogAlive, getWatchdogEntryPath } from './watchdog.js';
 

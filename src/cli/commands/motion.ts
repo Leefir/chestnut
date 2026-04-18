@@ -14,7 +14,8 @@ import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { loadGlobalConfig, getMotionDir, getGlobalConfigPath } from '../config.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
-import { ProcessManager, createSystemAudit } from '../../foundation/process-manager/index.js';
+import { ProcessManager } from '../../foundation/process-manager/index.js';
+import { AuditWriter, createSystemAudit } from '../../foundation/audit/index.js';
 import { PROCESS_SPAWN_CONFIRM_MS } from '../../constants.js';
 
 import { runChatViewport } from './chat-viewport.js';
@@ -175,7 +176,6 @@ export async function initCommand(silent = false): Promise<void> {
 
   // Init git for motion directory
   const motionFs = new NodeFileSystem({ baseDir: motionDir, enforcePermissions: false });
-  const { AuditWriter } = await import('../../foundation/audit/index.js');
   const motionAudit = new AuditWriter(motionFs, 'audit.tsv');
   await new Snapshot(motionDir, motionFs, motionAudit).init();
 

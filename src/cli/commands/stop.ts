@@ -9,7 +9,8 @@ import { loadGlobalConfig, getGlobalConfigPath } from '../config.js';
 import { stopCommand as watchdogStop } from './watchdog.js';
 import { stopCommand as motionStop } from './motion.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
-import { ProcessManager, createSystemAudit } from '../../foundation/process-manager/index.js';
+import { ProcessManager } from '../../foundation/process-manager/index.js';
+import { createSystemAudit } from '../../foundation/audit/index.js';
 import { fileURLToPath } from 'url';
 
 export async function stopAllCommand(): Promise<void> {

@@ -55,7 +55,8 @@ function getLastActiveMs(clawDir: string): number | undefined {
   } catch { return undefined; }
 }
 
-import { ProcessManager, createSystemAudit } from '../../foundation/process-manager/index.js';
+import { ProcessManager } from '../../foundation/process-manager/index.js';
+import { createSystemAudit } from '../../foundation/audit/index.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import { writeInbox } from '../../foundation/messaging/index.js';
 import { randomUUID } from 'crypto';
