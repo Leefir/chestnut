@@ -7,14 +7,16 @@
 import * as path from 'path';
 import type { FileSystem } from '../foundation/fs/types.js';
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
-import { writeInboxMessage } from '../utils/inbox-writer.js';
+import { InboxWriter } from '../foundation/messaging/index.js';
 import type { Logger } from '../foundation/monitor/types.js';
+import type { Audit } from '../foundation/audit/index.js';
 
 interface HeartbeatOptions {
   /** 心跳间隔（秒），默认 300（5分钟） */
   interval?: number;
   monitor?: Logger;
   fs?: FileSystem;
+  audit?: Audit;
 }
 
 /**
@@ -26,6 +28,7 @@ export class Heartbeat {
   private lastRun: number;
   private monitor?: Logger;
   private fs?: FileSystem;
+  private audit?: Audit;
 
   constructor(baseDir: string, options: HeartbeatOptions = {}) {
     this.baseDir = baseDir;
@@ -33,6 +36,7 @@ export class Heartbeat {
     this.lastRun = Date.now();  // 启动后等满一个 interval 再首次触发
     this.monitor = options.monitor;
     this.fs = options.fs;
+    this.audit = options.audit;
   }
 
   /**
@@ -59,8 +63,7 @@ export class Heartbeat {
         return;
       }
 
-      writeInboxMessage(fs, {
-        inboxDir,
+      new InboxWriter(fs, inboxDir, this.audit).writeSync({
         type: 'heartbeat',
         source: 'system',
         priority: 'low',

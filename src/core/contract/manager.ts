@@ -17,7 +17,7 @@ import { exec, execFile } from '../../foundation/process-exec/index.js';
 import { ProcessExecError } from '../../foundation/process-exec/index.js';
 import { LOCK_MAX_RETRIES, LOCK_RETRY_DELAY_MS, LOCK_STALE_TIMEOUT_MS, CONTRACT_SCRIPT_TIMEOUT_MS, DEFAULT_LLM_IDLE_TIMEOUT_MS, DEFAULT_MAX_STEPS } from '../../constants.js';
 import { CONTRACT_VERIFIER_SYSTEM_PROMPT } from '../../prompts/subagent.js';
-import { writeInboxMessage } from '../../utils/inbox-writer.js';
+import { InboxWriter } from '../../foundation/messaging/index.js';
 import { SubAgent } from '../subagent/agent.js';
 import { ToolRegistryImpl } from '../tools/registry.js';
 import { ReportResultTool } from '../tools/report-result.js';
@@ -838,8 +838,11 @@ export class ContractManager {
       body = feedback || 'No feedback provided';
     }
 
-    writeInboxMessage(this.fs, {
-      inboxDir: path.join(this.clawDir, 'inbox', 'pending'),
+    new InboxWriter(
+      this.fs,
+      path.join(this.clawDir, 'inbox', 'pending'),
+      this.auditWriter,
+    ).writeSync({
       type: verdict === 'passed' ? 'acceptance_result' : 'acceptance_rejection',
       source: 'contract_system',
       to: this.clawId,
@@ -857,8 +860,11 @@ export class ContractManager {
     const errorMsg = error instanceof Error ? error.message : String(error);
 
     try {
-      writeInboxMessage(this.fs, {
-        inboxDir: path.join(this.clawDir, 'inbox', 'pending'),
+      new InboxWriter(
+        this.fs,
+        path.join(this.clawDir, 'inbox', 'pending'),
+        this.auditWriter,
+      ).writeSync({
         type: 'acceptance_error',
         source: 'contract_system',
         to: this.clawId,

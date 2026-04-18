@@ -22,7 +22,7 @@ import {
 } from './motion.js';
 import { ContractManager } from '../../core/contract/manager.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
-import { writeInboxMessage } from '../../utils/inbox-writer.js';
+import { InboxWriter } from '../../foundation/messaging/index.js';
 import { PROCESS_SPAWN_CONFIRM_MS, MOTION_CLAW_ID } from '../../constants.js';
 import { CliError } from '../errors.js';
 import { startCommand as watchdogStartCommand, isWatchdogAlive } from './watchdog.js';
@@ -398,8 +398,7 @@ async function _start(): Promise<void> {
       acceptance: [],
     });
 
-    writeInboxMessage(notifyFs, {
-      inboxDir,
+    new InboxWriter(notifyFs, inboxDir).writeSync({
       type: 'message',
       source: 'system',
       priority: 'high',
@@ -426,16 +425,14 @@ async function _start(): Promise<void> {
         subtasks: buildOnboardingSubtasks('auto'),
         acceptance: [],
       });
-      writeInboxMessage(notifyFs, {
-        inboxDir,
+      new InboxWriter(notifyFs, inboxDir).writeSync({
         type: 'message', source: 'system', priority: 'high',
         body: `New contract created (${contractId}): Onboarding. Please begin execution.`,
         idPrefix: 'start', filenameTag: 'start',
       });
     } else {
       const pendingList = onboarding.pending.join(', ');
-      writeInboxMessage(notifyFs, {
-        inboxDir,
+      new InboxWriter(notifyFs, inboxDir).writeSync({
         type: 'message', source: 'system', priority: 'high',
         body: `Resuming Onboarding contract (${onboarding.contractId}). Pending subtasks: ${pendingList}. Please continue.`,
         idPrefix: 'start', filenameTag: 'start',

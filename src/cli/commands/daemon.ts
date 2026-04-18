@@ -209,6 +209,7 @@ export async function daemonCommand(name: string): Promise<void> {
       heartbeat = new Heartbeat(path.join(dir, '..'), {
         interval: heartbeatIntervalMs / 1000,  // 转换为秒
         fs: heartbeatFs,
+        audit: sharedAuditWriter,
       });
     }
   }

@@ -10,102 +10,131 @@ import { randomUUID } from 'crypto';
 import type { FileSystem } from '../fs/types.js';
 import type { InboxMessage } from '../../types/contract.js';
 import { encodeInbox, parseFrontmatter } from '../message-codec/index.js';
+import type { Audit } from '../audit/index.js';
 import { ok, err as errResult, type Result } from '../common/result.js';
 import type { InboxMetaError } from './errors.js';
 
-/**
- * Write a message to an inbox/pending/ directory.
- *
- * @param fs - FileSystem instance
- * @param inboxDir - Absolute path to inbox/pending/
- * @param msg - Message to write
- * @param extraFields - Optional extra YAML frontmatter fields
- */
+export interface InboxMessageOptionsBase {
+  type: string;
+  source: string;
+  priority: 'critical' | 'high' | 'normal' | 'low';
+  body: string;
+  to?: string;
+  idPrefix?: string;
+  filenameTag?: string;
+  extraFields?: Record<string, string>;
+}
+
+export class InboxWriter {
+  constructor(
+    private readonly fs: FileSystem,
+    private readonly inboxDir: string,
+    private readonly audit?: Audit,
+  ) {}
+
+  /** async 写，atomic */
+  async write(msg: InboxMessage, extraFields?: Record<string, string>): Promise<void> {
+    await this.fs.ensureDir(this.inboxDir);
+    const timestamp = Date.now();
+    const priority = msg.priority ?? 'normal';
+    const filename = `${timestamp}_${priority}_${randomUUID().slice(0, 8)}.md`;
+    const filePath = path.join(this.inboxDir, filename);
+    try {
+      await this.fs.writeAtomic(filePath, encodeInbox(msg, extraFields));
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : String(e);
+      this.audit?.write('inbox_write_failed', `file=${filename}`, `to=${msg.to ?? 'broadcast'}`, `reason=${reason}`);
+      throw e;
+    }
+    this.audit?.write('inbox_written', `file=${filename}`, `to=${msg.to ?? 'broadcast'}`);
+  }
+
+  /** sync 写，供 task/system 同步路径使用 */
+  writeSync(opts: InboxMessageOptionsBase): void {
+    const now = new Date();
+    const ts = now.toISOString().replace(/[-:]/g, '').slice(0, 15);
+    const uuid8 = randomUUID().slice(0, 8);
+    const idPrefix = opts.idPrefix ?? opts.type;
+    const tag = opts.filenameTag ?? opts.type;
+
+    const message: InboxMessage = {
+      id: `${idPrefix}-${now.getTime()}`,
+      type: opts.type,
+      from: opts.source,
+      to: opts.to ?? '',
+      content: opts.body,
+      priority: opts.priority,
+      timestamp: now.toISOString(),
+    };
+
+    const content = encodeInbox(message, opts.extraFields);
+    this.fs.ensureDirSync(this.inboxDir);
+    const filename = `${ts}_${tag}_${uuid8}.md`;
+    try {
+      this.fs.writeAtomicSync(path.join(this.inboxDir, filename), content);
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : String(e);
+      this.audit?.write('inbox_write_failed', `file=${filename}`, `to=${opts.to ?? 'broadcast'}`, `reason=${reason}`);
+      throw e;
+    }
+    this.audit?.write('inbox_written', `file=${filename}`, `to=${opts.to ?? 'broadcast'}`);
+  }
+
+  /** 读 frontmatter meta；Step 3 Result 形态 */
+  readMeta(filePath: string): Result<Record<string, string>, InboxMetaError> {
+    let content: string;
+    try {
+      content = this.fs.readSync(filePath);
+    } catch (e: any) {
+      if (e?.code === 'FS_NOT_FOUND' || e?.code === 'ENOENT') {
+        return errResult({ kind: 'not_found', cause: e });
+      }
+      return errResult({ kind: 'read_failed', cause: e });
+    }
+    try {
+      return ok(parseFrontmatter(content).meta);
+    } catch (e) {
+      return errResult({ kind: 'parse_failed', cause: e });
+    }
+  }
+}
+
+// === Thin wrappers (backward compatible) ===
+
+export interface InboxMessageOptions extends InboxMessageOptionsBase {
+  inboxDir: string;
+}
+
+/** @deprecated Phase 150 Step 5 过渡：改用 InboxWriter.write */
 export async function writeInbox(
   fs: FileSystem,
   inboxDir: string,
   msg: InboxMessage,
   extraFields?: Record<string, string>,
 ): Promise<void> {
-  await fs.ensureDir(inboxDir);
-
-  const timestamp = Date.now();
-  const priority = msg.priority ?? 'normal';
-  const filename = `${timestamp}_${priority}_${randomUUID().slice(0, 8)}.md`;
-  const filePath = path.join(inboxDir, filename);
-
-  await fs.writeAtomic(filePath, encodeInbox(msg, extraFields));
+  return new InboxWriter(fs, inboxDir).write(msg, extraFields);
 }
 
-// === Sync variants moved from utils/inbox-writer.ts ===
-
-export interface InboxMessageOptions {
-  /** inbox/pending directory path */
-  inboxDir: string;
-  /** Message type */
-  type: string;
-  /** Message source (mapped to InboxMessage.from) */
-  source: string;
-  /** Priority level */
-  priority: 'critical' | 'high' | 'normal' | 'low';
-  /** Message body content */
-  body: string;
-  /** Target agent id; omit for broadcast */
-  to?: string;
-  /** ID prefix (default: type) */
-  idPrefix?: string;
-  /** Filename tag (default: type) */
-  filenameTag?: string;
-  /** Extra YAML frontmatter fields */
-  extraFields?: Record<string, string>;
-}
-
-/**
- * Write an inbox message with standardized YAML frontmatter format.
- * Creates the inbox directory if it doesn't exist.
- */
+/** @deprecated Phase 150 Step 5 过渡：改用 InboxWriter.writeSync */
 export function writeInboxMessage(fs: FileSystem, opts: InboxMessageOptions): void {
-  const now = new Date();
-  const ts = now.toISOString().replace(/[-:]/g, '').slice(0, 15);
-  const uuid8 = randomUUID().slice(0, 8);
-  const idPrefix = opts.idPrefix ?? opts.type;
-  const tag = opts.filenameTag ?? opts.type;
-
-  // Construct InboxMessage for encoding
-  const message: InboxMessage = {
-    id: `${idPrefix}-${now.getTime()}`,
-    type: opts.type,
-    from: opts.source,
-    to: opts.to ?? '',
-    content: opts.body,
-    priority: opts.priority,
-    timestamp: now.toISOString(),
-  };
-
-  const content = encodeInbox(message, opts.extraFields);
-
-  fs.ensureDirSync(opts.inboxDir);
-
-  const filename = `${ts}_${tag}_${uuid8}.md`;
-  fs.writeAtomicSync(path.join(opts.inboxDir, filename), content);
+  const { inboxDir, ...rest } = opts;
+  return new InboxWriter(fs, inboxDir).writeSync(rest);
 }
 
-/**
- * Read frontmatter metadata from an inbox file.
- * Returns Result with detailed error on failure.
- */
+/** @deprecated Phase 150 Step 5 过渡：改用 InboxWriter.readMeta */
 export function readInboxFileMeta(
   fs: FileSystem,
   filePath: string,
 ): Result<Record<string, string>, InboxMetaError> {
+  // readMeta 不依赖 inboxDir / audit（纯读），thin wrapper 直接 inline 逻辑
   let content: string;
   try {
     content = fs.readSync(filePath);
-  } catch (err: any) {
-    if (err?.code === 'FS_NOT_FOUND' || err?.code === 'ENOENT') {
-      return errResult({ kind: 'not_found', cause: err });
+  } catch (e: any) {
+    if (e?.code === 'FS_NOT_FOUND' || e?.code === 'ENOENT') {
+      return errResult({ kind: 'not_found', cause: e });
     }
-    return errResult({ kind: 'read_failed', cause: err });
+    return errResult({ kind: 'read_failed', cause: e });
   }
   try {
     return ok(parseFrontmatter(content).meta);
