@@ -179,7 +179,7 @@ export async function initCommand(silent = false): Promise<void> {
 
   // Init git for motion directory
   const motionFs = new NodeFileSystem({ baseDir: motionDir, enforcePermissions: false });
-  const motionAudit = new AuditWriter(motionFs, 'audit.tsv');
+  const motionAudit = new AuditWriter(motionFs, AUDIT_FILE);
   await new Snapshot(motionDir, motionFs, motionAudit, [STREAM_FILE, AUDIT_FILE, `${TASKS_RESULTS_DIR}/`]).init();
 
   // Output results
