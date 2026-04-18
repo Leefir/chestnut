@@ -20,9 +20,9 @@ export class Snapshot {
   private fs: FileSystem;
   private consecutiveFailures = 0;
   private readonly audit: Audit;
-  private readonly ignorePatterns: string[];
+  private readonly ignorePatterns: readonly string[];
 
-  constructor(dir: string, fs: FileSystem, audit: Audit, ignorePatterns: string[]) {
+  constructor(dir: string, fs: FileSystem, audit: Audit, ignorePatterns: readonly string[]) {
     this.dir = dir;
     this.fs = fs;
     this.audit = audit;

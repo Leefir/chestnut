@@ -21,9 +21,8 @@ import { PROCESS_SPAWN_CONFIRM_MS } from '../../constants.js';
 import { runChatViewport } from './chat-viewport.js';
 import { CliError } from '../errors.js';
 import { Snapshot } from '../../foundation/snapshot/index.js';
-import { STREAM_FILE } from '../../foundation/stream/index.js';
 import { AUDIT_FILE } from '../../foundation/audit/index.js';
-import { TASKS_RESULTS_DIR } from '../../types/paths.js';
+import { SNAPSHOT_IGNORE_PATTERNS } from '../../foundation/snapshot/index.js';
 
 /**
  * Create a ProcessManager dedicated to Motion
@@ -180,7 +179,7 @@ export async function initCommand(silent = false): Promise<void> {
   // Init git for motion directory
   const motionFs = new NodeFileSystem({ baseDir: motionDir, enforcePermissions: false });
   const motionAudit = new AuditWriter(motionFs, AUDIT_FILE);
-  await new Snapshot(motionDir, motionFs, motionAudit, [STREAM_FILE, AUDIT_FILE, `${TASKS_RESULTS_DIR}/`]).init();
+  await new Snapshot(motionDir, motionFs, motionAudit, SNAPSHOT_IGNORE_PATTERNS).init();
 
   // Output results
   console.log('\n✓ Motion initialized successfully');
