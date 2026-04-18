@@ -9,21 +9,7 @@ import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
 import { ContractManager } from '../../src/core/contract/manager.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
-
-async function createTempDir(): Promise<string> {
-  const tempDir = path.join(tmpdir(), `clawforum-contract-test-${randomUUID()}`);
-  await fs.mkdir(tempDir, { recursive: true });
-  return tempDir;
-}
-
-async function cleanupTempDir(tempDir: string): Promise<void> {
-  try {
-    await fs.rm(tempDir, { recursive: true, force: true });
-  } catch (err: any) {
-    if (err?.code === 'ENOENT') return;
-    console.warn(`[test cleanup] Failed to remove ${tempDir}: ${err?.message ?? err}`);
-  }
-}
+import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 
 async function createContract(
   tempDir: string,

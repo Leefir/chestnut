@@ -12,32 +12,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
 import { promises as fs } from 'fs';
-import { tmpdir } from 'os';
-import { randomUUID } from 'crypto';
+import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 
 import { JsonlLogger } from '../../src/foundation/monitor/monitor.js';
 import { appendJsonl, readJsonl } from '../../src/foundation/monitor/jsonl.js';
-
-/**
- * Create a temporary directory for tests
- */
-async function createTempDir(): Promise<string> {
-  const tempDir = path.join(tmpdir(), `clawforum-monitor-test-${randomUUID()}`);
-  await fs.mkdir(tempDir, { recursive: true });
-  return tempDir;
-}
-
-/**
- * Clean up temporary directory
- */
-async function cleanupTempDir(tempDir: string): Promise<void> {
-  try {
-    await fs.rm(tempDir, { recursive: true, force: true });
-  } catch (err: any) {
-    if (err?.code === 'ENOENT') return;
-    console.warn(`[test cleanup] Failed to remove ${tempDir}: ${err?.message ?? err}`);
-  }
-}
 
 describe('Monitor', () => {
   describe('jsonl.ts', () => {

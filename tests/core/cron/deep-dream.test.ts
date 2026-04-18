@@ -19,6 +19,7 @@ import { randomUUID } from 'crypto';
 import { runDeepDream } from '../../../src/core/cron/jobs/deep-dream.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
 import type { LLMServiceConfig } from '../../../src/foundation/llm/types.js';
+import { createTempDir, cleanupTempDir } from '../../utils/temp.js';
 
 // ─── LLMService mock ──────────────────────────────────────────
 
@@ -40,21 +41,6 @@ function makeTextResponse(text: string) {
 
 function makeSessionJson(messages: Array<{ role: string; content: string }>) {
   return JSON.stringify({ messages });
-}
-
-async function createTempDir(): Promise<string> {
-  const d = path.join(tmpdir(), `deep-dream-test-${randomUUID()}`);
-  await fs.mkdir(d, { recursive: true });
-  return d;
-}
-
-async function cleanupTempDir(d: string) {
-  try {
-    await fs.rm(d, { recursive: true, force: true });
-  } catch (err: any) {
-    if (err?.code === 'ENOENT') return;
-    console.warn(`[test cleanup] Failed to remove ${d}: ${err?.message ?? err}`);
-  }
 }
 
 // LLMService 是 mock，config 字段无实际意义

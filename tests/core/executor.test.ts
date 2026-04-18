@@ -15,21 +15,7 @@ import { ToolRegistryImpl } from '../../src/core/tools/registry.js';
 import { ExecContextImpl } from '../../src/core/tools/context.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import { AuditWriter } from '../../src/foundation/audit/writer.js';
-
-async function createTempDir(): Promise<string> {
-  const tempDir = path.join(tmpdir(), `clawforum-executor-test-${randomUUID()}`);
-  await fs.mkdir(tempDir, { recursive: true });
-  return tempDir;
-}
-
-async function cleanupTempDir(tempDir: string): Promise<void> {
-  try {
-    await fs.rm(tempDir, { recursive: true, force: true });
-  } catch (err: any) {
-    if (err?.code === 'ENOENT') return;
-    console.warn(`[test cleanup] Failed to remove ${tempDir}: ${err?.message ?? err}`);
-  }
-}
+import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 
 describe('ToolExecutor', () => {
   let tempDir: string;

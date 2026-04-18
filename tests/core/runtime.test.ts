@@ -15,6 +15,7 @@ import { MaxStepsExceededError } from '../../src/types/errors.js';
 import type { Message } from '../../src/types/message.js';
 import { IdleTimeoutSignal, PriorityInboxInterrupt, UserInterrupt } from '../../src/types/signals.js';
 import type { InboxMessage } from '../../src/types/contract.js';
+import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 
 /**
  * Convert LLMResponse to stream chunks for mock
@@ -36,21 +37,6 @@ async function* responseToStreamChunks(response: LLMResponse): AsyncIterableIter
     }
   }
   yield { type: 'done' };
-}
-
-async function createTempDir(): Promise<string> {
-  const tempDir = path.join(tmpdir(), `clawforum-runtime-test-${randomUUID()}`);
-  await fs.mkdir(tempDir, { recursive: true });
-  return tempDir;
-}
-
-async function cleanupTempDir(tempDir: string): Promise<void> {
-  try {
-    await fs.rm(tempDir, { recursive: true, force: true });
-  } catch (err: any) {
-    if (err?.code === 'ENOENT') return;
-    console.warn(`[test cleanup] Failed to remove ${tempDir}: ${err?.message ?? err}`);
-  }
 }
 
 function createMockLLMConfig(): LLMServiceConfig {

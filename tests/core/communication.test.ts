@@ -12,21 +12,7 @@ import { InboxReader } from '../../src/foundation/messaging/index.js';
 import { OutboxWriter } from '../../src/core/communication/index.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import type { InboxMessage } from '../../src/types/contract.js';
-
-async function createTempDir(): Promise<string> {
-  const tempDir = path.join(tmpdir(), `clawforum-comm-test-${randomUUID()}`);
-  await fs.mkdir(tempDir, { recursive: true });
-  return tempDir;
-}
-
-async function cleanupTempDir(tempDir: string): Promise<void> {
-  try {
-    await fs.rm(tempDir, { recursive: true, force: true });
-  } catch (err: any) {
-    if (err?.code === 'ENOENT') return;
-    console.warn(`[test cleanup] Failed to remove ${tempDir}: ${err?.message ?? err}`);
-  }
-}
+import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 
 /**
  * Build YAML frontmatter message for testing (MVP aligned)

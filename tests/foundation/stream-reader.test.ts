@@ -1,28 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { randomUUID } from 'node:crypto';
 import { promises as nativeFs } from 'node:fs';
+import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import { StreamWriter, createStreamReader, type StreamReader, type StreamEvent } from '../../src/foundation/stream/index.js';
 
 const TIMEOUT_MS = 10000;
-
-async function createTempDir(): Promise<string> {
-  const dir = join(tmpdir(), `clawforum-test-${randomUUID()}`);
-  await nativeFs.mkdir(dir, { recursive: true });
-  return dir;
-}
-
-async function cleanupTempDir(dir: string): Promise<void> {
-  try {
-    await nativeFs.rm(dir, { recursive: true, force: true });
-  } catch (err: any) {
-    if (err?.code === 'ENOENT') return;
-    console.warn(`[test cleanup] Failed to remove ${dir}: ${err?.message ?? err}`);
-  }
-}
 
 function waitFor(condition: () => boolean | Promise<boolean>, timeoutMs = TIMEOUT_MS): Promise<void> {
   return new Promise((resolve, reject) => {

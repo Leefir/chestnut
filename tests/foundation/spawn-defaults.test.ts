@@ -4,8 +4,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { tmpdir } from 'os';
-import { randomUUID } from 'crypto';
+import { createTempDir, cleanupTempDirSync } from '../utils/temp.js';
 import { ProcessManager } from '../../src/foundation/process-manager/index.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 
@@ -17,28 +16,13 @@ vi.mock('child_process', () => ({
 
 import { spawn } from 'child_process';
 
-function createTempDir(): string {
-  const tempDir = path.join(tmpdir(), `spawn-test-${randomUUID()}`);
-  fs.mkdirSync(tempDir, { recursive: true });
-  return tempDir;
-}
-
-function cleanupTempDir(tempDir: string): void {
-  try {
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  } catch (err: any) {
-    if (err?.code === 'ENOENT') return;
-    console.warn(`[test cleanup] Failed to remove ${tempDir}: ${err?.message ?? err}`);
-  }
-}
-
 describe('ProcessManager - spawn defaults', () => {
   let tempDir: string;
   let nodeFs: NodeFileSystem;
   let mockProc: any;
 
-  beforeEach(() => {
-    tempDir = createTempDir();
+  beforeEach(async () => {
+    tempDir = await createTempDir();
     nodeFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
 
     // Setup mock process
@@ -57,7 +41,7 @@ describe('ProcessManager - spawn defaults', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
-    cleanupTempDir(tempDir);
+    cleanupTempDirSync(tempDir);
   });
 
   describe('spawn with SpawnOptions', () => {

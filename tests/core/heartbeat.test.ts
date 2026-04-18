@@ -9,37 +9,21 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { tmpdir } from 'os';
-import { randomUUID } from 'crypto';
 import { Heartbeat } from '../../src/core/heartbeat.js';
-
-async function createTempDir(): Promise<string> {
-  const tempDir = path.join(tmpdir(), `clawforum-hb-test-${randomUUID()}`);
-  fs.mkdirSync(tempDir, { recursive: true });
-  return tempDir;
-}
-
-async function cleanupTempDir(tempDir: string): Promise<void> {
-  try {
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  } catch (err: any) {
-    if (err?.code === 'ENOENT') return;
-    console.warn(`[test cleanup] Failed to remove ${tempDir}: ${err?.message ?? err}`);
-  }
-}
+import { createTempDir, cleanupTempDirSync } from '../utils/temp.js';
 
 describe('Heartbeat', () => {
   let tempDir: string;
   let heartbeat: Heartbeat;
 
   beforeEach(async () => {
-    tempDir = await createTempDir();
+    tempDir = await createTempDir('clawforum-hb-test-');
     // 创建 motion/inbox/pending 目录结构
     fs.mkdirSync(path.join(tempDir, 'motion', 'inbox', 'pending'), { recursive: true });
   });
 
-  afterEach(async () => {
-    await cleanupTempDir(tempDir);
+  afterEach(() => {
+    cleanupTempDirSync(tempDir);
   });
 
   describe('isDue', () => {

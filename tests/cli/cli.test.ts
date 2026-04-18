@@ -5,8 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { tmpdir } from 'os';
-import { randomUUID } from 'crypto';
+import { createTempDir, cleanupTempDirSync } from '../utils/temp.js';
 import {
   toProviderConfig,
   loadGlobalConfig,
@@ -17,21 +16,6 @@ import {
   getClawDir,
 } from '../../src/cli/config.js';
 import { listCommand } from '../../src/cli/commands/claw.js';
-
-async function createTempDir(): Promise<string> {
-  const tempDir = path.join(tmpdir(), `clawforum-cli-test-${randomUUID()}`);
-  fs.mkdirSync(tempDir, { recursive: true });
-  return tempDir;
-}
-
-async function cleanupTempDir(tempDir: string): Promise<void> {
-  try {
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  } catch (err: any) {
-    if (err?.code === 'ENOENT') return;
-    console.warn(`[test cleanup] Failed to remove ${tempDir}: ${err?.message ?? err}`);
-  }
-}
 
 describe('CLI Config', () => {
   let originalRoot: string | undefined;
@@ -46,7 +30,7 @@ describe('CLI Config', () => {
   afterEach(async () => {
     if (originalRoot === undefined) delete process.env.CLAWFORUM_ROOT;
     else process.env.CLAWFORUM_ROOT = originalRoot;
-    await cleanupTempDir(tempDir);
+    cleanupTempDirSync(tempDir);
   });
 
   describe('toProviderConfig', () => {

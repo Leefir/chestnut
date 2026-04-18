@@ -10,8 +10,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
 import { promises as fs, promises as nativeFs } from 'fs';
-import { tmpdir } from 'os';
-import { randomUUID } from 'crypto';
+import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 
 import {
   NodeFileSystem,
@@ -24,27 +23,6 @@ import {
   WriteOperationForbiddenError,
   FileNotFoundError,
 } from '../../src/types/errors.js';
-
-/**
- * Create a temporary directory for tests
- */
-async function createTempDir(): Promise<string> {
-  const tempDir = path.join(tmpdir(), `clawforum-test-${randomUUID()}`);
-  await fs.mkdir(tempDir, { recursive: true });
-  return tempDir;
-}
-
-/**
- * Clean up temporary directory
- */
-async function cleanupTempDir(tempDir: string): Promise<void> {
-  try {
-    await fs.rm(tempDir, { recursive: true, force: true });
-  } catch (err: any) {
-    if (err?.code === 'ENOENT') return;
-    console.warn(`[test cleanup] Failed to remove ${tempDir}: ${err?.message ?? err}`);
-  }
-}
 
 describe('FileSystem', () => {
   describe('writeAtomic', () => {

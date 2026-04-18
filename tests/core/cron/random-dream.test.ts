@@ -18,6 +18,7 @@ import { randomUUID } from 'crypto';
 import { runRandomDream, type RandomDreamOptions } from '../../../src/core/cron/jobs/random-dream.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
 import type { TaskSystem } from '../../../src/core/task/system.js';
+import { createTempDir, cleanupTempDir } from '../../utils/temp.js';
 
 // ─── scheduleSubAgentWithTracking mock ───────────────────────
 
@@ -30,21 +31,6 @@ vi.mock('../../../src/core/tools/builtins/spawn.js', () => ({
 }));
 
 // ─── 工具函数 ─────────────────────────────────────────────────
-
-async function createTempDir(): Promise<string> {
-  const d = path.join(tmpdir(), `random-dream-test-${randomUUID()}`);
-  await fs.mkdir(d, { recursive: true });
-  return d;
-}
-
-async function cleanupTempDir(d: string) {
-  try {
-    await fs.rm(d, { recursive: true, force: true });
-  } catch (err: any) {
-    if (err?.code === 'ENOENT') return;
-    console.warn(`[test cleanup] Failed to remove ${d}: ${err?.message ?? err}`);
-  }
-}
 
 function makeOpts(clawforumDir: string, motionDir: string): RandomDreamOptions {
   return {

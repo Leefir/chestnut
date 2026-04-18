@@ -65,21 +65,7 @@ import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import { JsonlLogger } from '../../src/foundation/monitor/index.js';
 import type { LLMService } from '../../src/foundation/llm/index.js';
 import { ToolRegistryImpl } from '../../src/core/tools/registry.js';
-
-async function createTempDir(): Promise<string> {
-  const tempDir = path.join(tmpdir(), `clawforum-contract-test-${randomUUID()}`);
-  await fs.mkdir(tempDir, { recursive: true });
-  return tempDir;
-}
-
-async function cleanupTempDir(tempDir: string): Promise<void> {
-  try {
-    await fs.rm(tempDir, { recursive: true, force: true });
-  } catch (err: any) {
-    if (err?.code === 'ENOENT') return;
-    console.warn(`[test cleanup] Failed to remove ${tempDir}: ${err?.message ?? err}`);
-  }
-}
+import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 
 /**
  * Setup contract files for testing
