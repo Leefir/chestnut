@@ -125,7 +125,7 @@ export type ClawConfig = z.infer<typeof ClawConfigSchema>;
 export type ToolProfile = 'full' | 'readonly' | 'subagent' | 'dream';
 
 // Workspace root - 优先从环境变量获取（供 exec 子进程继承）
-function getWorkspaceRoot(): string {
+export function getWorkspaceRoot(): string {
   return process.env.CLAWFORUM_ROOT ?? process.cwd();
 }
 

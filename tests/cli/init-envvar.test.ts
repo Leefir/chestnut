@@ -32,18 +32,19 @@ const { loadGlobalConfig } = await import('../../src/cli/config.js');
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
-let originalCwd: string;
+let originalRoot: string | undefined;
 let tempDir: string;
 
 function setupTempDir() {
-  originalCwd = process.cwd();
+  originalRoot = process.env.CLAWFORUM_ROOT;
   tempDir = path.join(tmpdir(), `clawforum-init-test-${randomUUID()}`);
   fs.mkdirSync(tempDir, { recursive: true });
-  process.chdir(tempDir);
+  process.env.CLAWFORUM_ROOT = tempDir;
 }
 
 function teardownTempDir() {
-  process.chdir(originalCwd);
+  if (originalRoot === undefined) delete process.env.CLAWFORUM_ROOT;
+  else process.env.CLAWFORUM_ROOT = originalRoot;
   fs.rmSync(tempDir, { recursive: true, force: true });
 }
 

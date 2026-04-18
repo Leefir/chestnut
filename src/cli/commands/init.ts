@@ -5,7 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
-import { saveGlobalConfig, isInitialized, FORMAT_MAP } from '../config.js';
+import { saveGlobalConfig, isInitialized, FORMAT_MAP, getWorkspaceRoot } from '../config.js';
 import { CliError } from '../errors.js';
 import { PRESETS } from '../../foundation/llm/presets.js';
 import { DEFAULT_MAX_STEPS } from '../../constants.js';
@@ -309,7 +309,7 @@ export async function initCommand(silent = false): Promise<void> {
     saveGlobalConfig(config);
 
     // Create logs directory
-    const logsDir = path.join(process.cwd(), '.clawforum', 'logs');
+    const logsDir = path.join(getWorkspaceRoot(), '.clawforum', 'logs');
     fs.mkdirSync(logsDir, { recursive: true });
 
     console.log('\n✓ Initialized successfully!');

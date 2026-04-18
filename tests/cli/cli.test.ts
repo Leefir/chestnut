@@ -33,17 +33,18 @@ async function cleanupTempDir(tempDir: string): Promise<void> {
 }
 
 describe('CLI Config', () => {
-  let originalCwd: string;
+  let originalRoot: string | undefined;
   let tempDir: string;
 
   beforeEach(async () => {
-    originalCwd = process.cwd();
+    originalRoot = process.env.CLAWFORUM_ROOT;
     tempDir = await createTempDir();
-    process.chdir(tempDir);
+    process.env.CLAWFORUM_ROOT = tempDir;
   });
 
   afterEach(async () => {
-    process.chdir(originalCwd);
+    if (originalRoot === undefined) delete process.env.CLAWFORUM_ROOT;
+    else process.env.CLAWFORUM_ROOT = originalRoot;
     await cleanupTempDir(tempDir);
   });
 
