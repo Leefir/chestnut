@@ -106,12 +106,7 @@ export function createGateway(input: GatewayInput): Gateway {
           return;
         }
         lastInterruptTs = now;
-        try {
-          interrupt('user');
-        } catch (err) {
-          // interrupt 回调抛错原样抛（契约：调用方负责处理）
-          throw err;
-        }
+        interrupt('user');
         return;
       }
       case 'ask_user_reply': {
@@ -148,7 +143,6 @@ export function createGateway(input: GatewayInput): Gateway {
           handleClientMessage(c, data);
         } catch (err) {
           console.error('[Gateway] handleClientMessage error:', err);
-          throw err;
         }
       });
 

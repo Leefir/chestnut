@@ -11,7 +11,7 @@ import type { Tool } from '../tools/index.js';
 export function createAskUserTool(gateway: Gateway): Tool {
   return {
     name: 'ask_user',
-    description: '向用户提问并等待回复；若无实时连接立即失败。',
+    description: '向用户提问并阻塞等待回复。超时（默认 30 分钟）或被中断时返回失败；无实时连接时立即失败。',
     schema: {
       type: 'object',
       properties: {

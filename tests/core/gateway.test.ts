@@ -250,6 +250,49 @@ describe('Gateway', () => {
     expect(connDroppedIdx).toBeLessThan(transportCloseIdx);
   });
 
+  it('onDisconnect removes connection from active set', async () => {
+    gateway = createGateway(createOnlineInput());
+    await gateway.start();
+
+    const conn: Connection = { id: 'c1', connectedAt: Date.now() };
+    transport._connect(conn);
+    expect(gateway.getActiveConnections()).toHaveLength(1);
+
+    transport._disconnect(conn);
+    expect(gateway.getActiveConnections()).toHaveLength(0);
+  });
+
+  it('interrupt callback throw is logged, does not drop connection or block future messages', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    interruptFn.mockImplementationOnce(() => {
+      throw new Error('interrupt boom');
+    });
+
+    gateway = createGateway(createOnlineInput());
+    await gateway.start();
+
+    const conn: Connection = { id: 'c1', connectedAt: Date.now() };
+    transport._connect(conn);
+
+    // first interrupt: callback throws, but Gateway swallows and logs
+    transport._message(conn, JSON.stringify({ type: 'interrupt', reason: 'user' }));
+    expect(interruptFn).toHaveBeenCalledTimes(1);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[Gateway] handleClientMessage error:'),
+      expect.anything(),
+    );
+    // connection still alive
+    expect(gateway.getActiveConnections().some((c) => c.id === 'c1')).toBe(true);
+
+    // second interrupt after debounce: callback called again, connection still alive
+    vi.advanceTimersByTime(600);
+    transport._message(conn, JSON.stringify({ type: 'interrupt', reason: 'user' }));
+    expect(interruptFn).toHaveBeenCalledTimes(2);
+    expect(gateway.getActiveConnections().some((c) => c.id === 'c1')).toBe(true);
+
+    consoleSpy.mockRestore();
+  });
+
   it('start twice throws', async () => {
     gateway = createGateway(createOnlineInput());
     await gateway.start();

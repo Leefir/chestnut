@@ -10,7 +10,7 @@
  * 4. Gateway → Transport 连接视图派生（Map 跟随 onConnect/onDisconnect）
  */
 
-import type { Connection } from '../../foundation/transport/index.js';
+import type { Connection, Transport } from '../../foundation/transport/index.js';
 import type { StreamEvent, StreamReader } from '../../foundation/stream/index.js';
 import type { ToolResult, ExecContext } from '../tools/index.js';
 
@@ -32,8 +32,6 @@ export interface GatewayInput {
   /** askUser 超时（Step 3 使用） */
   askUserTimeoutMs?: number;
 }
-
-import type { Transport } from '../../foundation/transport/index.js';
 
 /**
  * Gateway interface — 外部客户端 ↔ 内部系统 的实时交互门面。

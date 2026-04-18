@@ -69,11 +69,26 @@ Transport 无 `disconnect(connId)` 方法，Gateway 以"内部 Map 删除 + broa
 ## 生命周期
 
 `stop()` 拆除顺序：
-1. `streamReader.stop()` — 停止新事件推送
-2. 遍历内部 connections，逐一 drop
-3. `transport.close()` — 关闭所有 socket
+1. 取消所有 pending askUser（reason:'abort'）
+2. `streamReader.stop()` — 停止新事件推送
+3. 遍历内部 connections，逐一 drop
+4. `transport.close()` — 关闭所有 socket
 
 ## 状态
 
 - `connections: Map<string, Connection>` — 派生自 transport.onConnect/onDisconnect，不持久化
 - `lastInterruptTs: number` — 纯内存 debounce 窗口，重启归零可接受
+- `pending: Map<string, AskUserEntry>` — 派生自 askUser 调用流，不持久化
+
+## 失败语义表
+
+| 场景 | 行为 |
+|---|---|
+| interrupt 回调抛错 | `console.error` 记录（带 `[Gateway]` 前缀），不影响其他消息/连接；Daemon 通过日志观察回调 bug |
+| malformed JSON | drop 连接 + broadcast `connection_dropped` |
+| 未知 message type | drop 连接 + broadcast `connection_dropped` |
+| ask_user_reply 无 pending | 静默忽略，不 drop 连接 |
+| ask_user_reply 重复/过期 | 静默忽略，不 drop 连接（first-wins） |
+| askUser timeout | resolve `failureResult`，broadcast `ask_user_cancelled{reason:'timeout'}` |
+| askUser abort | resolve `failureResult`，broadcast `ask_user_cancelled{reason:'abort'}` |
+| offline askUser | 立即返回 `failureResult('未启用实时交互通道，跳过 ask_user')` |

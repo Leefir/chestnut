@@ -70,6 +70,15 @@ function getBroadcastPayloads(transport: ReturnType<typeof createStubTransport>)
   return transport.broadcast.mock.calls.map((c) => JSON.parse(c[0] as string));
 }
 
+function extractAskId(transport: ReturnType<typeof createStubTransport>): string {
+  const payloads = getBroadcastPayloads(transport);
+  const pendingPayload = payloads.find((p: { type: string }) => p.type === 'ask_user_pending') as
+    | { type: 'ask_user_pending'; id: string }
+    | undefined;
+  if (!pendingPayload) throw new Error('No ask_user_pending broadcast found');
+  return pendingPayload.id;
+}
+
 describe('Gateway askUser', () => {
   let transport: ReturnType<typeof createStubTransport>;
   let streamStub: ReturnType<typeof createStubStreamReaderFactory>;
@@ -139,11 +148,12 @@ describe('Gateway askUser', () => {
     transport._connect(conn);
 
     const promise = gateway.askUser('hello?', mockCtx());
-    transport._message(conn, JSON.stringify({ type: 'ask_user_reply', id: 'ask_0_0', answer: 'yes' }));
+    const askId = extractAskId(transport);
+    transport._message(conn, JSON.stringify({ type: 'ask_user_reply', id: askId, answer: 'yes' }));
     await promise;
 
     // second reply with same id
-    transport._message(conn, JSON.stringify({ type: 'ask_user_reply', id: 'ask_0_0', answer: 'no' }));
+    transport._message(conn, JSON.stringify({ type: 'ask_user_reply', id: askId, answer: 'no' }));
 
     expect(gateway.getActiveConnections().some((c) => c.id === 'c1')).toBe(true);
     const droppedCalls = getBroadcastPayloads(transport).filter(
@@ -255,10 +265,39 @@ describe('Gateway askUser', () => {
     const broadcastCountBefore = getBroadcastPayloads(transport).length;
 
     // reply after timeout should be silently ignored
-    transport._message(conn, JSON.stringify({ type: 'ask_user_reply', id: 'ask_0_0', answer: 'late' }));
+    const askId = extractAskId(transport);
+    transport._message(conn, JSON.stringify({ type: 'ask_user_reply', id: askId, answer: 'late' }));
 
     const broadcastCountAfter = getBroadcastPayloads(transport).length;
     expect(broadcastCountAfter).toBe(broadcastCountBefore);
+  });
+
+  it('first-wins across multiple clients: c1 wins, c2 reply is dropped', async () => {
+    gateway = createGateway(createInput());
+    await gateway.start();
+
+    const c1: Connection = { id: 'c1', connectedAt: Date.now() };
+    const c2: Connection = { id: 'c2', connectedAt: Date.now() };
+    transport._connect(c1);
+    transport._connect(c2);
+
+    const promise = gateway.askUser('hello?', mockCtx());
+    const askId = extractAskId(transport);
+
+    transport._message(c1, JSON.stringify({ type: 'ask_user_reply', id: askId, answer: 'A1' }));
+    const result = await promise;
+    expect(result.success).toBe(true);
+    expect(result.content).toBe('A1');
+
+    // c2 reply on same id must be dropped
+    transport._message(c2, JSON.stringify({ type: 'ask_user_reply', id: askId, answer: 'A2' }));
+    expect(gateway.getActiveConnections().some((c) => c.id === 'c2')).toBe(true);
+
+    const resolvedPayloads = getBroadcastPayloads(transport).filter(
+      (p: { type: string }) => p.type === 'ask_user_resolved',
+    );
+    expect(resolvedPayloads).toHaveLength(1);
+    expect((resolvedPayloads[0] as { by: string }).by).toBe('c1');
   });
 });
 
