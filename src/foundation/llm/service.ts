@@ -44,8 +44,14 @@ function createProvider(config: ProviderConfig): ProviderAdapter {
 }
 
 /**
- * Delay helper for retry backoff; abort-aware so external signal
- * can short-circuit the wait immediately.
+ * Sleep for `ms` milliseconds; abortable via `signal`.
+ *
+ * - `signal.aborted === true` at call time → rejects immediately with AbortError
+ * - `signal` fires during wait → clearTimeout + rejects with AbortError
+ * - Timer elapses normally → removes listener + resolves
+ *
+ * Used by call()/stream() retry backoff to respect external abort promptly
+ * (without this, abort during backoff would wait up to 30s before responding).
  */
 function delay(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {

@@ -131,3 +131,21 @@ describe('makeExternalAbortError', () => {
     expect(err.message).toBe('Execution aborted');
   });
 });
+
+
+  it('handle signal is already aborted when external signal was pre-aborted', () => {
+    const external = new AbortController();
+    external.abort();
+    const [handle, cleanup] = withCombinedAbortSignal(external.signal, 10_000);
+    expect(handle.signal.aborted).toBe(true);
+    cleanup();
+  });
+
+  it('does not leak listener on pre-aborted external signal', () => {
+    const external = new AbortController();
+    external.abort();
+    const addSpy = vi.spyOn(external.signal, 'addEventListener');
+    const [, cleanup] = withCombinedAbortSignal(external.signal, 10_000);
+    expect(addSpy).not.toHaveBeenCalled();
+    cleanup();
+  });

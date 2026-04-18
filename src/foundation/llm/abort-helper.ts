@@ -12,7 +12,8 @@ export interface CombinedAbortHandle {
   /**
    * Switch from "initial timeout" phase to "streaming maxDuration" phase.
    * Clears the old internal timer and starts a new one for maxDurationMs.
-   * External signal listener is unaffected.
+   * External signal listener is unaffected. May be called multiple times;
+   * each call replaces the active timer (idempotent swap).
    */
   enterStreamPhase(maxDurationMs: number): void;
 }
@@ -31,11 +32,18 @@ export function withCombinedAbortSignal(
   timeoutMs: number,
 ): [CombinedAbortHandle, () => void] {
   const controller = new AbortController();
+
+  // 防御：外部 signal 若已处于 aborted 状态，立即同步 abort 内部 controller
+  // （addEventListener 只监听未来事件，否则本 handle 会错过已发生的 abort）
+  if (externalSignal?.aborted) {
+    controller.abort();
+  }
+
   let activeTimeoutId: ReturnType<typeof setTimeout> | undefined =
     setTimeout(() => controller.abort(), timeoutMs);
 
   let onAbort: (() => void) | undefined;
-  if (externalSignal) {
+  if (externalSignal && !externalSignal.aborted) {
     onAbort = () => controller.abort();
     externalSignal.addEventListener('abort', onAbort);
   }
