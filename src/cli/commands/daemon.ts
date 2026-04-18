@@ -469,6 +469,7 @@ export async function daemonCommand(name: string): Promise<void> {
     streamWriter,
     heartbeat: heartbeat ?? undefined,  // 传入心跳实例
     onInboxMessages,   // 新增
+    audit: sharedAuditWriter,
   });
 
   // shutdown

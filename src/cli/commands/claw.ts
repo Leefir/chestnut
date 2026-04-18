@@ -111,12 +111,14 @@ export async function chatCommand(name: string): Promise<void> {
   const baseDir = path.dirname(globalConfigPath);
 
   const globalConfig = loadGlobalConfig();
+  const nodeFs = new NodeFileSystem({ baseDir, enforcePermissions: false });
+  const systemAudit = createSystemAudit(nodeFs, baseDir);
   await runChatViewport({
     agentDir: clawDir,
     label: name,
+    baseDir,
+    audit: systemAudit,
     ensureDaemon: async () => {
-      const nodeFs = new NodeFileSystem({ baseDir, enforcePermissions: false });
-      const systemAudit = createSystemAudit(nodeFs, baseDir);
       const pm = new ProcessManager(nodeFs, baseDir, systemAudit);
       if (!pm.isAlive(name)) {
         console.log(`Starting Claw "${name}" daemon...`);

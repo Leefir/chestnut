@@ -14,6 +14,9 @@ import stringWidth from 'string-width';
 import { sliceFromStart, fitLine, wrapLine } from '../utils/string.js';
 import { OUTPUT_LINES_CAP } from '../../constants.js';
 import type { CallerType } from '../../core/tools/caller-type.js';
+import { createWatcher } from '../../foundation/file-watcher/index.js';
+import type { Watcher } from '../../foundation/file-watcher/types.js';
+import type { Audit } from '../../foundation/audit/index.js';
 
 export interface ChatViewportOptions {
   agentDir: string;   // motion dir 或 claw dir
@@ -23,6 +26,8 @@ export interface ChatViewportOptions {
   showSystemMessages?: boolean;   // system message，默认 false
   showContractEvents?: boolean;   // contract 子任务完成信息，默认 true
   trimOutputNewlines?: boolean;   // LLM 输出首尾换行清理，默认 true
+  baseDir: string;    // .clawforum 根目录，用于 fs 相对路径解析
+  audit: Audit;       // audit sink for createWatcher
 }
 
 function writeUserChat(agentDir: string, message: string): void {
@@ -52,6 +57,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
     await options.ensureDaemon();
   }
 
+  const fs = new NodeFileSystem({ baseDir: options.baseDir, enforcePermissions: false });
   const showRecapStream = options.showRecapStream ?? false;
   const showSystemMessages = options.showSystemMessages ?? false;
   const showContractEvents = options.showContractEvents ?? true;
@@ -450,10 +456,9 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
         };
         taskWatchMap.set(taskId, tw);
         try {
-          tw.watcher = fsNative.watch(streamPath, { persistent: false }, () => pollTaskStream(taskId));
-          tw.watcher.on('error', () => {
-            tw.watcher?.close();
-            tw.watcher = null;
+          tw.watcher = createWatcher(fs, path.relative(options.baseDir, streamPath), () => pollTaskStream(taskId), options.audit, {
+            stability: 'immediate',
+            onError: () => { void tw.watcher?.close(); tw.watcher = null; },
           });
         } catch { /* fallback to poll */ }
         break;
@@ -500,7 +505,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
     };
   }
   const clawTrackMap = new Map<string, ClawTrack>();
-  const clawWatchers = new Map<string, ReturnType<typeof fsNative.watch>>();
+  const clawWatchers = new Map<string, Watcher>();
   let lastClawRefreshTs = 0;
 
   // Task stream watching (for dispatch/spawn subagent progress)
@@ -509,7 +514,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
     silent: boolean;
     fileSize: number;
     leftover: string;
-    watcher: ReturnType<typeof fsNative.watch> | null;
+    watcher: Watcher | null;
   }
   const taskWatchMap = new Map<string, TaskWatch>();
 
@@ -600,10 +605,12 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
       if (stat.size < track.fileSize) {
         // 旧 watcher 追踪归档 inode，需要替换（Bug 2 修复）
         const stale = clawWatchers.get(clawId);
-        if (stale) { stale.close(); clawWatchers.delete(clawId); }
+        if (stale) { void stale.close(); clawWatchers.delete(clawId); }
         try {
-          const w = fsNative.watch(streamFile, { persistent: false }, () => refreshClawStatus(clawId));
-          w.on('error', () => { w.close(); clawWatchers.delete(clawId); });
+          const w = createWatcher(fs, path.relative(options.baseDir, streamFile), () => refreshClawStatus(clawId), options.audit, {
+            stability: 'immediate',
+            onError: () => { void w.close(); clawWatchers.delete(clawId); },
+          });
           clawWatchers.set(clawId, w);
         } catch { /* polling fallback */ }
         // reset state
@@ -729,10 +736,9 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
       }
       if (!clawWatchers.has(clawId)) {
         try {
-          const w = fsNative.watch(streamFile, { persistent: false }, () => refreshClawStatus(clawId));
-          w.on('error', () => {
-            w.close();
-            clawWatchers.delete(clawId);
+          const w = createWatcher(fs, path.relative(options.baseDir, streamFile), () => refreshClawStatus(clawId), options.audit, {
+            stability: 'immediate',
+            onError: () => { void w.close(); clawWatchers.delete(clawId); },
           });
           clawWatchers.set(clawId, w);
         } catch { /* fallback to polling */ }
@@ -830,7 +836,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
   };
 
   // fs.watch + fallback 轮询
-  let watcher: ReturnType<typeof fsNative.watch> | null = null;
+  let watcher: Watcher | null = null;
   const pollInterval = setInterval(() => {
     pollStream();
     if (isMotion) {
@@ -852,9 +858,11 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
   }, 200);  // fallback 200ms
 
   try {
-    watcher = fsNative.watch(streamPath, () => pollStream());
+    watcher = createWatcher(fs, path.relative(options.baseDir, streamPath), () => pollStream(), options.audit, {
+      stability: 'immediate',
+    });
   } catch (err) {
-    console.warn('[chat] fs.watch failed, falling back to polling:', err instanceof Error ? err.message : String(err));
+    console.warn('[chat] createWatcher failed, falling back to polling:', err instanceof Error ? err.message : String(err));
   }
 
   // Daemon 存活检测（每 3 秒一次）
@@ -929,8 +937,10 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
         t.referenceMs = Date.now();
         clawTrackMap.set(clawId, t);
         try {
-          const w = fsNative.watch(path.join(clawDir, 'stream.jsonl'), { persistent: false }, () => refreshClawStatus(clawId));
-          w.on('error', () => { w.close(); clawWatchers.delete(clawId); });
+          const w = createWatcher(fs, path.relative(options.baseDir, path.join(clawDir, 'stream.jsonl')), () => refreshClawStatus(clawId), options.audit, {
+            stability: 'immediate',
+            onError: () => { void w.close(); clawWatchers.delete(clawId); },
+          });
           clawWatchers.set(clawId, w);
         } catch { /* polling fallback */ }
         updateClawPanel();
@@ -1186,8 +1196,10 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
             clawTrackMap.set(clawId, t);
             // 开 watcher
             try {
-              const w = fsNative.watch(path.join(clawDir, 'stream.jsonl'), { persistent: false }, () => refreshClawStatus(clawId));
-              w.on('error', () => { w.close(); clawWatchers.delete(clawId); });
+              const w = createWatcher(fs, path.relative(options.baseDir, path.join(clawDir, 'stream.jsonl')), () => refreshClawStatus(clawId), options.audit, {
+                stability: 'immediate',
+                onError: () => { void w.close(); clawWatchers.delete(clawId); },
+              });
               clawWatchers.set(clawId, w);
             } catch { /* polling fallback */ }
           }
