@@ -42,7 +42,7 @@ describe('Dialog', () => {
       tempDir = await createTempDir();
       nodeFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
       await nodeFs.ensureDir('dialog');
-      sessionManager = new SessionManager(nodeFs, 'dialog');
+      sessionManager = new SessionManager(nodeFs, 'dialog', 'test-claw', { write: () => {} });
     });
 
     afterEach(async () => {
