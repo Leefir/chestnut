@@ -83,6 +83,39 @@ export function acquireDaemonLock(statusDir: string, name: string): void {
   }
 }
 
+// 检测上次是否非正常退出（SIGKILL / OOM 等无法写 daemon_crash 的情况）
+function detectUncleanExit(auditDir: string, auditWriter: AuditWriter): void {
+  const auditPath = path.join(auditDir, 'audit.tsv');
+  if (!fsNative.existsSync(auditPath)) return;
+  try {
+    const stat = fsNative.statSync(auditPath);
+    if (stat.size === 0) return;
+    const chunkSize = 4096;
+    const offset = Math.max(0, stat.size - chunkSize);
+    const fd = fsNative.openSync(auditPath, 'r');
+    try {
+      const buf = Buffer.alloc(Math.min(chunkSize, stat.size));
+      fsNative.readSync(fd, buf, 0, buf.length, offset);
+      const chunk = buf.toString('utf-8');
+      const lastLine = chunk.split('\n').filter(Boolean).at(-1) ?? '';
+      const type = lastLine.split('\t')[1];
+      if (
+        type === 'daemon_stop' ||
+        type === 'daemon_unclean_exit' ||
+        type === 'daemon_crash'
+      ) return;
+      const lastTs = lastLine.split('\t')[0] ?? new Date().toISOString();
+      auditWriter.write('daemon_unclean_exit', `last_ts=${lastTs}`);
+    } finally {
+      fsNative.closeSync(fd);
+    }
+  } catch (err: any) {
+    if (err?.code !== 'ENOENT') {
+      console.warn('[daemon] detectUncleanExit failed:', err?.code || err?.message || err);
+    }
+  }
+}
+
 /**
  * 守护进程主函数（支持 claw 和 motion）
  */
@@ -266,47 +299,12 @@ export async function daemonCommand(name: string): Promise<void> {
   }
 
   // daemon_start: 计算 AGENTS.md 的 sha256 前 6 位作为 system prompt 版本标识
-  const auditWriter = sharedAuditWriter;
-
-  // 检测上次是否非正常退出（SIGKILL / OOM 等无法写 daemon_crash 的情况）
-  function detectUncleanExit(auditDir: string, auditWriter: AuditWriter): void {
-    const auditPath = path.join(auditDir, 'audit.tsv');
-    if (!fsNative.existsSync(auditPath)) return;
-    try {
-      const stat = fsNative.statSync(auditPath);
-      if (stat.size === 0) return;
-      const chunkSize = 4096;
-      const offset = Math.max(0, stat.size - chunkSize);
-      const fd = fsNative.openSync(auditPath, 'r');
-      try {
-        const buf = Buffer.alloc(Math.min(chunkSize, stat.size));
-        fsNative.readSync(fd, buf, 0, buf.length, offset);
-        const chunk = buf.toString('utf-8');
-        const lastLine = chunk.split('\n').filter(Boolean).at(-1) ?? '';
-        const type = lastLine.split('\t')[1];
-        if (
-          type === 'daemon_stop' ||
-          type === 'daemon_unclean_exit' ||
-          type === 'daemon_crash'
-        ) return;
-        const lastTs = lastLine.split('\t')[0] ?? new Date().toISOString();
-        auditWriter.write('daemon_unclean_exit', `last_ts=${lastTs}`);
-      } finally {
-        fsNative.closeSync(fd);
-      }
-    } catch (err: any) {
-      if (err?.code !== 'ENOENT') {
-        console.warn('[daemon] detectUncleanExit failed:', err?.code || err?.message || err);
-      }
-    }
-  }
-
   let promptHash = 'n/a';
   try {
     const agentsContent = fsNative.readFileSync(path.join(dir, 'AGENTS.md'), 'utf-8');
     promptHash = createHash('sha256').update(agentsContent).digest('hex').slice(0, 6);
   } catch { /* AGENTS.md 不存在时跳过 */ }
-  auditWriter.write('daemon_start', `sha256:${promptHash}`);
+  sharedAuditWriter.write('daemon_start', `sha256:${promptHash}`);
 
   // daemon-start commit（fire-and-forget，不阻塞启动）
   void snapshot.commit(`daemon-start ${new Date().toISOString()}`);
@@ -450,7 +448,7 @@ export async function daemonCommand(name: string): Promise<void> {
     const msg = reason instanceof Error
       ? `${reason.message}\n${reason.stack ?? ''}`
       : String(reason);
-    auditWriter.write('daemon_crash', `err=${msg}`);
+    sharedAuditWriter.write('daemon_crash', `err=${msg}`);
   };
 
   process.on('uncaughtException', (err) => {
@@ -483,7 +481,7 @@ export async function daemonCommand(name: string): Promise<void> {
       console.error('[daemon] runtime.stop() failed:', e instanceof Error ? e.message : String(e));
     }
     streamWriter.close();
-    auditWriter.write('daemon_stop', `reason=${signal.toLowerCase()}`);
+    sharedAuditWriter.write('daemon_stop', `reason=${signal.toLowerCase()}`);
     // 清理 PID 文件和 lockfile（只有文件仍属于本进程才删除，防止误删新 daemon 的文件）
     try {
       const storedPid = fsNative.readFileSync(pidFile, 'utf-8').trim();
