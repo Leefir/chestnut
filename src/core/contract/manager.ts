@@ -165,22 +165,22 @@ export class ContractManager {
           if (!isAlive) {
             // 持有者已死，清理 stale lock 后立即重试（不计入重试次数）
             lastReason = `holder PID ${pid} is dead (stale lock)`;
-            await fsNative.promises.unlink(absoluteLockPath).catch(() => {});
-            continue;
+            if (await this.unlinkStaleLock(absoluteLockPath, `stale_pid_${pid}`)) continue;
+            lastReason = `unlink failed on stale lock (PID ${pid})`;
           }
           // 持有者存活但持锁超时：强制清理（防止 bug 导致永久死锁）
           if (Date.now() - time > LOCK_STALE_TIMEOUT_MS) {
             lastReason = `holder PID ${pid} exceeded timeout (${LOCK_STALE_TIMEOUT_MS}ms)`;
             console.warn(`[contract] Lock held too long (> ${LOCK_STALE_TIMEOUT_MS}ms) by PID ${pid}, force clearing`);
-            await fsNative.promises.unlink(absoluteLockPath).catch(() => {});
-            continue;
+            if (await this.unlinkStaleLock(absoluteLockPath, `timeout_pid_${pid}`)) continue;
+            lastReason = `unlink failed on timeout lock (PID ${pid})`;
           }
           lastReason = `held by PID ${pid} (${Math.round((Date.now() - time) / 1000)}s)`;
         } catch {
           // 读取或解析失败：lock 文件损坏，清理后重试
           lastReason = 'lock file corrupt or unreadable';
-          await fsNative.promises.unlink(absoluteLockPath).catch(() => {});
-          continue;
+          if (await this.unlinkStaleLock(absoluteLockPath, 'corrupt_lock_file')) continue;
+          lastReason = 'unlink failed on corrupt lock file';
         }
 
         // 持有者还活着，等待后重试
@@ -190,6 +190,28 @@ export class ContractManager {
       }
     }
     throw new ToolError(`Failed to acquire lock after ${LOCK_MAX_RETRIES} retries: ${lockPath} (${lastReason})`);
+  }
+
+  /**
+   * 清理 stale lock 文件；区分 ENOENT（预期/已被其他路径清理）与真故障（权限/IO）。
+   * @returns true 表示 lock 文件已不存在或成功删除；false 表示删除失败需外层重试
+   */
+  private async unlinkStaleLock(absoluteLockPath: string, reason: string): Promise<boolean> {
+    try {
+      await fsNative.promises.unlink(absoluteLockPath);
+      return true;
+    } catch (err: any) {
+      if (err?.code === 'ENOENT') return true; // 已被其他路径清理，等同成功
+      // 真故障（权限/IO）：记 audit + console.warn，让循环外层最终失败有信号
+      this.auditWriter?.write(
+        'contract_lock_cleanup_failed',
+        reason,
+        err?.code ?? 'unknown',
+        err?.message ?? String(err),
+      );
+      console.warn(`[contract] Failed to unlink stale lock (${reason}): ${err?.message ?? err}`);
+      return false;
+    }
   }
 
   /**
