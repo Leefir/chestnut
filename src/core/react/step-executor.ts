@@ -199,7 +199,7 @@ export async function executeStep(input: StepInput): Promise<StepResult> {
 // Internal helpers (moved from loop.ts, kept identical)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function throwAbortError(signal: AbortSignal): never {
+export function throwAbortError(signal: AbortSignal): never {
   const r = signal.reason as { type?: string; ms?: number } | undefined;
   if (r?.type === 'idle_timeout') throw new IdleTimeoutSignal(r.ms ?? 0);
   if (r?.type === 'step_yield')   throw new PriorityInboxInterrupt();
