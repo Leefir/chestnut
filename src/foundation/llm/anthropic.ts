@@ -84,7 +84,7 @@ export class AnthropicAdapter extends BaseAnthropicAdapter {
   /**
    * Map SDK errors to our error types
    */
-  private mapSDKError(error: unknown, timeoutMs: number, signal?: AbortSignal): Error {
+  private mapSDKError(error: unknown, timeoutMs: number): Error {
     // Use name check for mock compatibility in tests
     const errName = (error as Error)?.constructor?.name;
     if (errName === 'APIUserAbortError') {
@@ -128,7 +128,7 @@ export class AnthropicAdapter extends BaseAnthropicAdapter {
       );
       return this.parseResponse(response);
     } catch (error) {
-      throw this.mapSDKError(error, options.timeoutMs ?? this.config.timeoutMs, options.signal);
+      throw this.mapSDKError(error, options.timeoutMs ?? this.config.timeoutMs);
     }
   }
 
@@ -149,7 +149,7 @@ export class AnthropicAdapter extends BaseAnthropicAdapter {
       );
       yield* this.parseSDKStream(sdkStream);
     } catch (error) {
-      throw this.mapSDKError(error, STREAM_MAX_DURATION_MS, options.signal);
+      throw this.mapSDKError(error, STREAM_MAX_DURATION_MS);
     }
   }
 
