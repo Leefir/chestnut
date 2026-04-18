@@ -126,6 +126,7 @@ export interface ExecuteOptions {
   timeoutMs?: number;
   async?: boolean;   // 新增：true 时走异步路径
   toolUseId?: string;   // 新增：LLM 生成的 tool_use block id
+  signal?: AbortSignal; // 外部取消信号，与 executor 内部 timeout 合并后传给 tool
 }
 
 /**
@@ -205,15 +206,28 @@ export class ToolExecutorImpl implements IToolExecutor {
     }
 
     // 5. Execute with timeout using Promise.race (sync path)
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(() => {
-        reject(new ToolTimeoutError(toolName, timeoutMs));
-      }, timeoutMs);
-    });
+    // Timeout + signal merging: executor 的 timeout abort 与 options.signal 合并，
+    // 传给 tool ctx.signal，让支持 signal 的工具在超时时主动退出。
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs);
 
-    const executionPromise = tool.execute(args, ctx);
-    executionPromise.catch(() => {});  // 防止超时后 reject 成为 unhandled rejection
+    const mergedSignal = options.signal
+      ? AbortSignal.any([options.signal, timeoutController.signal])
+      : timeoutController.signal;
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutController.signal.addEventListener(
+        'abort',
+        () => reject(new ToolTimeoutError(toolName, timeoutMs)),
+        { once: true },
+      );
+    });
+    timeoutPromise.catch(() => {});  // race 胜出后的孤立 rejection fallback
+
+    // 用 mergedSignal 覆盖 ctx.signal
+    const ctxWithSignal = { ...ctx, signal: mergedSignal };
+    const executionPromise = tool.execute(args, ctxWithSignal);
+    executionPromise.catch(() => {});  // 对不响应 signal 的 tool 保底
 
     let result: ToolResult | undefined;
     try {

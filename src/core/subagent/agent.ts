@@ -195,8 +195,11 @@ export class SubAgent {
       const tools = this.toolsForLLM
         ?? this.registry.formatForLLM(this.registry.getAll());
 
-      // Run ReAct loop，用 Promise.race 强制超时
-      // （不能只靠 signal 传播：collectStreamResponse 内部阻塞时检查不到 signal）
+      // Run ReAct loop，用 Promise.race 强制超时退出
+      // Tool 层超时通过 timeoutController.signal 传到 ctx.signal 并触发 AbortError，
+      // 但 LLM stream (collectStreamResponse) 目前不响应 signal——race 胜出后 LLM
+      // 请求可能继续占用 token/socket 直到自然结束。修复需 LLM provider 级 abort
+      // 支持，属独立议题，不在 phase147 范围。
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutController.signal.addEventListener('abort', () => {
           reject(new ToolTimeoutError('subagent_run', this.timeoutMs));
