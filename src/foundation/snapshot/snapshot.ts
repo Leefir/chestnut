@@ -5,15 +5,33 @@
  * - init: Idempotent git init with .gitignore
  * - commit: Auto-commit working tree changes
  *
- * All git operations are best-effort; failures are logged but don't block business logic.
+ * Git failures are classified:
+ * - Expected failures → Result.err (degraded, audit, don't block business logic)
+ * - Unexpected failures → throw (bubble up for alerting)
  */
 
+import * as path from 'path';
 import { exec } from '../process-exec/index.js';
 import type { FileSystem } from '../fs/types.js';
 import type { Audit } from '../audit/index.js';
 import { AUDIT_EVENTS } from '../audit/events.js';
+import { ok, err as errResult, type Result } from '../common/result.js';
+import { classifyGitError, type ExpectedGitFailure } from './git-errors.js';
 
 const DEFAULT_IGNORES = ['logs/', '*.tmp'];
+
+function toGitExecError(e: unknown): { code?: string; exitCode?: number; signal?: string; stderr?: string; message: string } {
+  if (e instanceof Error) {
+    return {
+      code: (e as any).code,
+      exitCode: (e as any).exitCode,
+      signal: (e as any).signal,
+      stderr: (e as any).stderr,
+      message: e.message,
+    };
+  }
+  return { message: String(e) };
+}
 
 export class Snapshot {
   private dir: string;
@@ -40,8 +58,14 @@ export class Snapshot {
     return result.stdout.trim();
   }
 
-  async init(): Promise<void> {
-    if (await this.fs.exists('.git')) return;
+  /**
+   * 幂等 git init。
+   * - 预期失败 → Result.err + 清理 .git
+   * - 不可预期失败（磁盘满 / 权限）→ throw（冒泡给启动流程）
+   */
+  async init(): Promise<Result<void, ExpectedGitFailure>> {
+    const gitDir = path.join(this.dir, '.git');
+    if (await this.fs.exists(gitDir)) return ok(undefined);
     try {
       await this.fs.writeAtomic('.gitignore', this.buildGitignore());
       await Snapshot.git(this.dir, ['init']);
@@ -49,44 +73,78 @@ export class Snapshot {
       await Snapshot.git(this.dir, ['config', 'user.email', 'clawforum@local']);
       await Snapshot.git(this.dir, ['add', '.']);
       await Snapshot.git(this.dir, ['commit', '--allow-empty', '-m', 'init']);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.audit.write(AUDIT_EVENTS.SNAPSHOT_INIT_FAILED, `reason=${msg.slice(0, 200)}`);
-      try {
-        await this.fs.removeDir('.git');
-      } catch (cleanupErr) {
-        const reason = cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr);
-        this.audit.write(AUDIT_EVENTS.SNAPSHOT_INIT_CLEANUP_FAILED, `dir=${this.dir}`, `reason=${reason}`);
+      return ok(undefined);
+    } catch (rawErr) {
+      const classified = classifyGitError(toGitExecError(rawErr));
+      if (classified.ok) {
+        await this.tryCleanupGit(classified.value);
+        this.audit.write(
+          AUDIT_EVENTS.SNAPSHOT_INIT_FAILED,
+          `dir=${this.dir}`,
+          `kind=${classified.value.kind}`,
+        );
+        return errResult(classified.value);
       }
+      throw rawErr;
     }
   }
 
-  async commit(message: string): Promise<void> {
+  private async tryCleanupGit(failure: ExpectedGitFailure): Promise<void> {
+    const gitDir = path.join(this.dir, '.git');
+    try {
+      await this.fs.removeDir(gitDir);
+    } catch (cleanupErr) {
+      const reason = cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr);
+      this.audit.write(
+        AUDIT_EVENTS.SNAPSHOT_INIT_CLEANUP_FAILED,
+        `dir=${this.dir}`,
+        `reason=${reason}`,
+      );
+      throw cleanupErr;
+    }
+  }
+
+  /**
+   * 若无变更跳过；否则 add . && commit。
+   * - 预期失败 → Result.err（降级；连续 3 次触发 snapshot_degraded）
+   * - 不可预期失败 → throw
+   */
+  async commit(message: string): Promise<Result<void, ExpectedGitFailure>> {
     try {
       const status = await Snapshot.git(this.dir, ['status', '--porcelain']);
       if (!status) {
         this.consecutiveFailures = 0;
-        return;
+        return ok(undefined);
       }
       await Snapshot.git(this.dir, ['add', '.']);
       await Snapshot.git(this.dir, ['commit', '-m', message]);
       this.consecutiveFailures = 0;
-      this.audit.write(AUDIT_EVENTS.SNAPSHOT_COMMITTED, `message=${message.slice(0, 200)}`);
-    } catch (err) {
-      this.consecutiveFailures++;
-      const reason = err instanceof Error ? err.message : String(err);
       this.audit.write(
-        AUDIT_EVENTS.SNAPSHOT_COMMIT_FAILED,
-        `consecutive=${this.consecutiveFailures}`,
-        `reason=${reason.slice(0, 200)}`,
+        AUDIT_EVENTS.SNAPSHOT_COMMITTED,
+        `dir=${this.dir}`,
+        `message=${message.slice(0, 200)}`,
       );
-      if (this.consecutiveFailures === 3) {
+      return ok(undefined);
+    } catch (rawErr) {
+      const classified = classifyGitError(toGitExecError(rawErr));
+      if (classified.ok) {
+        this.consecutiveFailures++;
         this.audit.write(
-          AUDIT_EVENTS.SNAPSHOT_DEGRADED,
+          AUDIT_EVENTS.SNAPSHOT_COMMIT_FAILED,
+          `dir=${this.dir}`,
+          `kind=${classified.value.kind}`,
           `consecutive=${this.consecutiveFailures}`,
-          `reason=${reason.slice(0, 200)}`,
         );
+        if (this.consecutiveFailures === 3) {
+          this.audit.write(
+            AUDIT_EVENTS.SNAPSHOT_DEGRADED,
+            `dir=${this.dir}`,
+            `consecutive=${this.consecutiveFailures}`,
+          );
+        }
+        return errResult(classified.value);
       }
+      throw rawErr;
     }
   }
 }

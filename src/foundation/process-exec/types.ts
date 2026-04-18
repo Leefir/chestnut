@@ -33,6 +33,8 @@ export class ProcessExecError extends Error {
   readonly stdout: string;
   readonly stderr: string;
   readonly exitCode: number | null;
+  readonly code?: string;
+  readonly signal?: string;
   readonly killed: boolean;
   readonly maxBufferExceeded: boolean;
 
@@ -41,6 +43,8 @@ export class ProcessExecError extends Error {
     stdout?: string;
     stderr?: string;
     exitCode?: number | null;
+    code?: string;
+    signal?: string;
     killed?: boolean;
     maxBufferExceeded?: boolean;
   }) {
@@ -49,6 +53,8 @@ export class ProcessExecError extends Error {
     this.stdout = options.stdout ?? '';
     this.stderr = options.stderr ?? '';
     this.exitCode = options.exitCode ?? null;
+    this.code = options.code;
+    this.signal = options.signal;
     this.killed = options.killed ?? false;
     this.maxBufferExceeded = options.maxBufferExceeded ?? false;
   }

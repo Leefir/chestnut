@@ -82,6 +82,7 @@ async function runProcess(
 
     // General error (non-zero exit code, timeout, etc.)
     const isTimeout = error?.killed === true;
+    const stringCode = typeof error?.code === 'string' ? error.code : undefined;
 
     throw new ProcessExecError({
       message: isTimeout
@@ -90,6 +91,8 @@ async function runProcess(
       stdout: error?.stdout || '',
       stderr: error?.stderr || '',
       exitCode: numericExitCode,
+      code: stringCode,
+      signal: error?.signal,
       killed: isTimeout,
     });
   }

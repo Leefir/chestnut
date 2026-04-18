@@ -219,7 +219,10 @@ export class ClawRuntime {
         if (toolCount > 0) {
           await this.sessionManager.save(repaired);
           this.auditWriter.write('session_repaired', `tools=${toolCount}`);
-          void this.snapshot.commit(`session-repair tools=${toolCount}`);
+          this.snapshot.commit(`session-repair tools=${toolCount}`).catch((err: unknown) => {
+            // 不可预期失败：audit 已在 snapshot 内写；此处仅暴露给诊断
+            this.auditWriter.write('snapshot_commit_failed', `context=session-repair`, `reason=${err instanceof Error ? err.message : String(err)}`);
+          });
         }
       }
     }
@@ -560,9 +563,12 @@ export class ClawRuntime {
     }
     await this.sessionManager.save(messages);
 
-    // turn auto-commit（fire-and-forget）
+    // turn auto-commit
     this.turnCount++;
-    void this.snapshot.commit(`turn-${this.turnCount} ${new Date().toISOString()}`);
+    this.snapshot.commit(`turn-${this.turnCount} ${new Date().toISOString()}`).catch((err: unknown) => {
+      // 不可预期失败：audit 已在 snapshot 内写；此处仅暴露给诊断
+      this.auditWriter.write('snapshot_commit_failed', `context=turn-${this.turnCount}`, `reason=${err instanceof Error ? err.message : String(err)}`);
+    });
   }
 
   /**

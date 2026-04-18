@@ -75,8 +75,7 @@ export class InboxReader {
         this.audit.write(
           AUDIT_EVENTS.INBOX_FAILED,
           `file=${entry.name}`,
-          `reason=parse_error`,
-          `detail=${reason}`,
+          `reason=${reason}`,
         );
         try {
           await this.markFailed(filePath);

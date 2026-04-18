@@ -184,10 +184,16 @@ export async function daemonCommand(name: string): Promise<void> {
 
   // git init（claw 首次启动时无 .git，motion init 已处理 motion 的情况）
   const snapshot = new Snapshot(dir, new NodeFileSystem({ baseDir: dir, enforcePermissions: false }), sharedAuditWriter, [STREAM_FILE, AUDIT_FILE, `${TASKS_RESULTS_DIR}/`]);
-  await snapshot.init();
+  const initResult = await snapshot.init();
+  if (!initResult.ok) {
+    // 预期失败：audit 已写；启动继续（snapshot 是旁路）
+  }
 
   // recovery-snapshot：将上次中断遗留的 working tree 变更固化（在 session repair 之前）
-  await snapshot.commit('recovery-snapshot');
+  const recoveryResult = await snapshot.commit('recovery-snapshot');
+  if (!recoveryResult.ok) {
+    // 预期失败：audit 已写；启动继续
+  }
 
   detectUncleanExit(dir, sharedAuditWriter);
 
@@ -309,8 +315,11 @@ export async function daemonCommand(name: string): Promise<void> {
   } catch { /* AGENTS.md 不存在时跳过 */ }
   sharedAuditWriter.write('daemon_start', `sha256:${promptHash}`);
 
-  // daemon-start commit（fire-and-forget，不阻塞启动）
-  void snapshot.commit(`daemon-start ${new Date().toISOString()}`);
+  // daemon-start commit（不阻塞启动）
+  snapshot.commit(`daemon-start ${new Date().toISOString()}`).catch((err: unknown) => {
+    // 不可预期失败：audit 已在 snapshot 内写
+    sharedAuditWriter.write('snapshot_commit_failed', `context=daemon-start`, `reason=${err instanceof Error ? err.message : String(err)}`);
+  });
 
   runtime.setContractNotifyCallback((type, data) => {
     streamWriter.write({ ts: Date.now(), type: 'user_notify', subtype: type, ...data });
