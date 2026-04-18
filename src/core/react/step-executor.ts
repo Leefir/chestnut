@@ -230,6 +230,15 @@ async function collectStreamResponse(
   let stopReason = 'end_turn';
   let usage: { input_tokens: number; output_tokens: number } | undefined;
 
+  function parseToolInput(raw: string, toolName: string): Record<string, unknown> {
+    try {
+      return JSON.parse(raw || '{}');
+    } catch (err) {
+      console.error(`[loop] Failed to parse tool input for "${toolName}": ${err instanceof Error ? err.message : String(err)}`);
+      return { __parseError: true, __raw: raw ?? '' };
+    }
+  }
+
   try {
     for await (const chunk of llm.stream(callOptions)) {
       // 每个 chunk 后检查 signal，确保及时响应 abort
@@ -282,7 +291,7 @@ async function collectStreamResponse(
               type: 'tool_use',
               id: currentToolUse.id,
               name: currentToolUse.name,
-              input: JSON.parse(currentToolUse.input || '{}'),
+              input: parseToolInput(currentToolUse.input, currentToolUse.name),
             });
           }
           currentToolUse = {
@@ -349,18 +358,11 @@ async function collectStreamResponse(
     callbacks?.onTextEnd?.();
   }
   if (currentToolUse) {
-    let parsedInput: Record<string, unknown>;
-    try {
-      parsedInput = JSON.parse(currentToolUse.input || '{}');
-    } catch (err) {
-      console.error(`[loop] Failed to parse tool input for "${currentToolUse.name}": ${err instanceof Error ? err.message : String(err)}`);
-      parsedInput = { __parseError: true, __raw: currentToolUse.input ?? '' };
-    }
     contentBlocks.push({
       type: 'tool_use',
       id: currentToolUse.id,
       name: currentToolUse.name,
-      input: parsedInput,
+      input: parseToolInput(currentToolUse.input, currentToolUse.name),
     } as ContentBlock);
     currentToolUse = null;
   }

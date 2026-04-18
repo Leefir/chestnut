@@ -67,6 +67,26 @@ function makeCtx(): ExecContext {
   } as unknown as ExecContext;
 }
 
+/** Yield two tool_use blocks; first has malformed JSON, second is valid */
+function makeMidStreamMalformedLLM(): LLMService {
+  async function* stream(): AsyncIterableIterator<StreamChunk> {
+    // First tool_use: malformed JSON
+    yield { type: 'tool_use_start', toolUse: { id: 'tu1', name: 'foo', partialInput: '' } };
+    yield { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{not json' } };
+    // Second tool_use: triggers mid-stream flush of first
+    yield { type: 'tool_use_start', toolUse: { id: 'tu2', name: 'bar', partialInput: '' } };
+    yield { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{"b":2}' } };
+    yield { type: 'done', stopReason: 'tool_use' };
+  }
+  return {
+    call: vi.fn(),
+    stream: vi.fn(() => stream()),
+    healthCheck: vi.fn(async () => true),
+    getProviderInfo: vi.fn(() => ({ name: 'mock', model: 'mock-model', isFallback: false })),
+    close: vi.fn(),
+  } as unknown as LLMService;
+}
+
 /** Yield tool_use_start + tool_use_delta with malformed JSON input */
 function makeMalformedToolInputLLM(toolUseId: string, toolName: string, rawInput: string): LLMService {
   async function* stream(): AsyncIterableIterator<StreamChunk> {
@@ -190,5 +210,29 @@ describe('StepExecutor', () => {
     }
     // executeParallel 不应被调用（parseError 调用被 executeSingleTool 截获）
     expect(exec.executeParallel).not.toHaveBeenCalled();
+  });
+
+  it('mid-stream tool_use parse 失败：第一个 tool_use JSON 非法，stream 不崩', async () => {
+    const llm = makeMidStreamMalformedLLM();
+    const exec = makeExecutor({ bar: { success: true, content: 'ok2' } });
+    // 两个都 readonly=false，走 sequential 分支（隔离 Step 1 改动）
+    const registry = makeRegistry({ foo: { readonly: false }, bar: { readonly: false } });
+    const messages: Message[] = [];
+    const result = await executeStep({
+      messages, systemPrompt: '', llm, tools: [],
+      executor: exec, registry, ctx: makeCtx(),
+    });
+    // 1. 不抛 SyntaxError
+    expect(result.kind).toBe('continue');
+    if (result.kind === 'continue') {
+      // 2. 第一个 tool_use 被归因为 parseError
+      expect(result.meta.parseErrorCount).toBe(1);
+      expect(result.meta.toolCallCount).toBe(2);
+      expect(result.meta.allParseErrors).toBe(false);  // 只有一个失败
+    }
+    // 3. 第二个工具被真实调用
+    expect(exec.execute).toHaveBeenCalledWith(expect.objectContaining({ toolName: 'bar' }));
+    // 4. 第一个工具未真实调用（被 __parseError 早返回）
+    expect(exec.execute).not.toHaveBeenCalledWith(expect.objectContaining({ toolName: 'foo' }));
   });
 });
