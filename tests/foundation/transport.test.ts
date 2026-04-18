@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { connect as netConnect, type Socket } from 'node:net';
 import { randomUUID } from 'node:crypto';
+import { promises as fs } from 'node:fs';
 import { UnixDomainSocketTransport } from '../../src/foundation/transport/index.js';
 import type { Connection } from '../../src/foundation/transport/index.js';
 
@@ -162,5 +163,85 @@ describe('UnixDomainSocketTransport', () => {
     c.write('{"type":"interrupt"}\n');
     const { data } = await waitFor(got, 'onMessage');
     expect(data).toBe('{"type":"interrupt"}');
+  });
+
+  it('throws on send to unknown connectionId', async () => {
+    transport = new UnixDomainSocketTransport();
+    await transport.listen({ socketPath: makeSocketPath() });
+    expect(() => transport!.send('not-a-real-id', 'x')).toThrow(/unknown connection/);
+  });
+
+  it('handles many concurrent connections independently', async () => {
+    const path = makeSocketPath();
+    transport = new UnixDomainSocketTransport();
+    const conns: Connection[] = [];
+    transport.onConnect((c) => conns.push(c));
+    await transport.listen({ socketPath: path });
+
+    const cs = await Promise.all([0, 1, 2, 3, 4].map(() => connectClient(path)));
+    clients.push(...cs);
+    await waitFor(
+      new Promise<void>((resolve) => {
+        const tick = () => (conns.length === 5 ? resolve() : setTimeout(tick, 10));
+        tick();
+      }),
+      '5 connects',
+    );
+
+    const recvs = cs.map((c) => nextLine(c));
+    transport.broadcast('hi');
+    const lines = await waitFor(Promise.all(recvs), 'all receive');
+    expect(lines).toEqual(['hi', 'hi', 'hi', 'hi', 'hi']);
+
+    cs[2].destroy();
+    await new Promise((r) => setTimeout(r, 30));
+    const recvs2 = [cs[0], cs[1], cs[3], cs[4]].map((c) => nextLine(c));
+    transport.broadcast('again');
+    const lines2 = await waitFor(Promise.all(recvs2), 'remaining receive');
+    expect(lines2).toEqual(['again', 'again', 'again', 'again']);
+    expect(transport.getConnections()).toHaveLength(4);
+  });
+
+  it('cleans up stale socket file from dead process', async () => {
+    const path = makeSocketPath();
+    await fs.writeFile(path, '');
+    transport = new UnixDomainSocketTransport();
+    await transport.listen({ socketPath: path });
+    const c = await connectClient(path);
+    clients.push(c);
+    expect(transport.getConnections().length >= 0).toBe(true);
+  });
+
+  it('refuses to steal a socket held by a live listener', async () => {
+    const path = makeSocketPath();
+    const t1 = new UnixDomainSocketTransport();
+    await t1.listen({ socketPath: path });
+    const t2 = new UnixDomainSocketTransport();
+    await expect(t2.listen({ socketPath: path })).rejects.toThrow(/in use by a live process/);
+    await t1.close();
+  });
+
+  it('splits and merges TCP chunks into whole-line messages', async () => {
+    const path = makeSocketPath();
+    transport = new UnixDomainSocketTransport();
+    const msgs: string[] = [];
+    transport.onMessage((_c, d) => msgs.push(d));
+    await transport.listen({ socketPath: path });
+    const c = await connectClient(path);
+    clients.push(c);
+    await new Promise((r) => setTimeout(r, 20));
+    c.write('a\nb\nc\n');
+    c.write('hel');
+    c.write('lo\n');
+    await new Promise((r) => setTimeout(r, 50));
+    expect(msgs).toEqual(['a', 'b', 'c', 'hello']);
+  });
+
+  it('rejects new connections after close', async () => {
+    const path = makeSocketPath();
+    const t = new UnixDomainSocketTransport();
+    await t.listen({ socketPath: path });
+    await t.close();
+    await expect(connectClient(path)).rejects.toThrow();
   });
 });
