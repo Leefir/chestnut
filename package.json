@@ -23,7 +23,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "lint:phase155c": "bash scripts/check-phase155c-regressions.sh"
   },
   "keywords": [
     "ai",

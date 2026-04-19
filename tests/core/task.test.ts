@@ -18,6 +18,7 @@ import type { LLMService } from '../../src/foundation/llm/index.js';
 import type { StreamChunk } from '../../src/foundation/llm/types.js';
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 import { makeAudit } from '../helpers/audit.js';
+import { createTestTaskSystem } from '../helpers/task-system.js';
 
 /**
  * Convert LLMResponse to stream chunks for mock
@@ -140,7 +141,7 @@ describe('Task System + SubAgent', () => {
     mockFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
     await mockFs.ensureDir('tasks');
     
-    taskSystem = new TaskSystem(tempDir, mockFs, { auditWriter: makeAudit().audit });
+    taskSystem = createTestTaskSystem(tempDir, mockFs, makeAudit().audit);
     await taskSystem.initialize();
 
     registry = new ToolRegistryImpl();
@@ -154,8 +155,10 @@ describe('Task System + SubAgent', () => {
 
   describe('TaskSystem', () => {
     it('should schedule subagent and return taskId', async () => {
-      // Use hanging LLM so task stays in running state for verification
-      taskSystem.setLLMService(createHangingMockLLM());
+      // Recreate with hanging LLM so task stays in running state for verification
+      await taskSystem.shutdown(100);
+      taskSystem = createTestTaskSystem(tempDir, mockFs, makeAudit().audit, createHangingMockLLM());
+      await taskSystem.initialize();
       
       const taskId = await taskSystem.scheduleSubAgent({
         kind: 'subagent',
@@ -178,11 +181,13 @@ describe('Task System + SubAgent', () => {
     });
 
     it('should move task to done when completed', async () => {
-      // Set mock LLM that returns quickly
-      taskSystem.setLLMService(createMockLLM([{
+      // Recreate with mock LLM that returns quickly
+      await taskSystem.shutdown(100);
+      taskSystem = createTestTaskSystem(tempDir, mockFs, makeAudit().audit, createMockLLM([{
         content: [{ type: 'text', text: 'Task result' }],
         stop_reason: 'end_turn',
       }]));
+      await taskSystem.initialize();
 
       const taskId = await taskSystem.scheduleSubAgent({
         kind: 'subagent',
@@ -207,10 +212,12 @@ describe('Task System + SubAgent', () => {
     });
 
     it('should deliver subagent result to inbox/pending/*.md (bypass transport)', async () => {
-      taskSystem.setLLMService(createMockLLM([{
+      await taskSystem.shutdown(100);
+      taskSystem = createTestTaskSystem(tempDir, mockFs, makeAudit().audit, createMockLLM([{
         content: [{ type: 'text', text: 'Subagent output' }],
         stop_reason: 'end_turn',
       }]));
+      await taskSystem.initialize();
 
       const taskId = await taskSystem.scheduleSubAgent({
         kind: 'subagent',
@@ -255,7 +262,8 @@ describe('Task System + SubAgent', () => {
         yield { type: 'done' };
       }
       
-      taskSystem.setLLMService({
+      await taskSystem.shutdown(100);
+      taskSystem = createTestTaskSystem(tempDir, mockFs, makeAudit().audit, {
         call: vi.fn().mockResolvedValue({
           content: [{ type: 'text', text: 'Completed' }],
           stop_reason: 'end_turn',
@@ -265,6 +273,7 @@ describe('Task System + SubAgent', () => {
         healthCheck: vi.fn().mockResolvedValue(true),
         getProviderInfo: vi.fn().mockReturnValue({ name: 'mock', model: 'test', isFallback: false }),
       } as unknown as LLMService);
+      await taskSystem.initialize();
       
       const taskId = await taskSystem.scheduleSubAgent({
         kind: 'subagent',
@@ -291,10 +300,12 @@ describe('Task System + SubAgent', () => {
     });
 
     it('should write subagent_completed event to monitor log', async () => {
-      taskSystem.setLLMService(createMockLLM([{
+      await taskSystem.shutdown(100);
+      taskSystem = createTestTaskSystem(tempDir, mockFs, makeAudit().audit, createMockLLM([{
         content: [{ type: 'text', text: 'task done' }],
         stop_reason: 'end_turn',
       }]));
+      await taskSystem.initialize();
 
       const taskId = await taskSystem.scheduleSubAgent({
         kind: 'subagent',
@@ -320,7 +331,9 @@ describe('Task System + SubAgent', () => {
     });
 
     it('should write error event to monitor log when subagent times out', async () => {
-      taskSystem.setLLMService(createAbortableHangingMockLLM());
+      await taskSystem.shutdown(100);
+      taskSystem = createTestTaskSystem(tempDir, mockFs, makeAudit().audit, createAbortableHangingMockLLM());
+      await taskSystem.initialize();
 
       const taskId = await taskSystem.scheduleSubAgent({
         kind: 'subagent',
@@ -364,12 +377,11 @@ describe('Task System + SubAgent', () => {
         return originalWriteAtomic(filePath, content);
       };
 
-      const failSystem = new TaskSystem(tempDir, patchedFs, { auditWriter: makeAudit().audit });
-      await failSystem.initialize();
-      failSystem.setLLMService(createMockLLM([{
+      const failSystem = createTestTaskSystem(tempDir, patchedFs, makeAudit().audit, createMockLLM([{
         content: [{ type: 'text', text: 'done' }],
         stop_reason: 'end_turn',
       }]));
+      await failSystem.initialize();
 
       const taskId = await failSystem.scheduleSubAgent({
         kind: 'subagent',
@@ -408,12 +420,11 @@ describe('Task System + SubAgent', () => {
         return originalMove(from, to);
       };
 
-      const failSystem = new TaskSystem(tempDir, patchedFs, { auditWriter: makeAudit().audit });
-      await failSystem.initialize();
-      failSystem.setLLMService(createMockLLM([{
+      const failSystem = createTestTaskSystem(tempDir, patchedFs, makeAudit().audit, createMockLLM([{
         content: [{ type: 'text', text: 'done' }],
         stop_reason: 'end_turn',
       }]));
+      await failSystem.initialize();
 
       const taskId = await failSystem.scheduleSubAgent({
         kind: 'subagent',

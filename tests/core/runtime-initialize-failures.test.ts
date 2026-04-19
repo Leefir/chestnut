@@ -2,8 +2,11 @@
  * Runtime.initialize() failure audit tests — phase155B
  *
  * Covers:
- * - sessionManager.save(repaired) failure → precise audit + rethrow
  * - inboxReader.init() failure → precise audit + rethrow
+ *
+ * 遗留：本文件 makeDeps helper 仍是 phase155B sync + 7 字段 + `dependencies: deps as any`
+ * 形态。phase155C 新契约下 `as any` 是类型破口，应整体迁移到 makeRuntimeDeps
+ *（tests/helpers/runtime-deps.ts）消除类型绕过。独立 phase 处理。
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -38,49 +41,6 @@ describe('Runtime.initialize() failure audits', () => {
       systemFs, clawFs, auditWriter, snapshot, sessionManager, inboxReader, outboxWriter,
     };
   }
-
-  it('sessionManager.save failure audits module=session_manager phase=session_repair_save and rethrows', async () => {
-    const clawDir = path.join(tmpdir(), `runtime-fail-test-${randomUUID()}`, 'claws', 'test');
-    await fs.mkdir(clawDir, { recursive: true });
-
-    const deps = await makeDeps(clawDir);
-    const auditSpy = vi.spyOn(deps.auditWriter, 'write');
-
-    // Mock sessionManager.load to return a session that needs repair
-    vi.spyOn(deps.sessionManager, 'load').mockResolvedValue({
-      session: {
-        messages: [
-          { role: 'assistant', content: 'ok', tool_use: { id: 't1', name: 'test', input: {} } },
-        ],
-      },
-      source: 'current',
-    } as any);
-
-    // Mock SessionManager.repair to return toolCount > 0 so save() is triggered
-    vi.spyOn(SessionManager, 'repair').mockReturnValue({ repaired: [], toolCount: 1 } as any);
-
-    // Mock sessionManager.save to throw
-    const saveError = new Error('ENOSPC: no space left on device');
-    vi.spyOn(deps.sessionManager, 'save').mockRejectedValue(saveError);
-
-    const runtime = new ClawRuntime({
-      clawId: 'test-claw',
-      clawDir,
-      llmConfig: { primary: { name: 'mock', apiKey: 'k', model: 'm', maxTokens: 1, temperature: 0, timeoutMs: 1, apiFormat: 'anthropic' }, maxAttempts: 1, retryDelayMs: 0 },
-      dependencies: deps as any,
-    });
-
-    await expect(runtime.initialize()).rejects.toThrow('ENOSPC: no space left on device');
-
-    const assembleFailedCall = auditSpy.mock.calls.find(c => c[0] === 'assemble_failed');
-    expect(assembleFailedCall).toBeDefined();
-    expect(assembleFailedCall![1]).toContain('module=session_manager');
-    expect(assembleFailedCall![2]).toContain('phase=session_repair_save');
-    expect(assembleFailedCall![3]).toContain('ENOSPC');
-
-    // Cleanup
-    await fs.rm(path.dirname(path.dirname(clawDir)), { recursive: true, force: true }).catch(() => {});
-  });
 
   it('inboxReader.init failure audits module=inbox_reader phase=init and rethrows', async () => {
     const clawDir = path.join(tmpdir(), `runtime-fail-test-${randomUUID()}`, 'claws', 'test');

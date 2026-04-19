@@ -26,6 +26,19 @@ import type { SkillRegistry } from '../skill/registry.js';
 import { AuditWriter } from '../../foundation/audit/writer.js';
 import type { StreamLog } from '../../foundation/stream/types.js';
 import { STREAM_FILE } from '../../foundation/stream/types.js';
+
+export interface TaskSystemOptions {
+  maxConcurrent?: number;
+  auditWriter: AuditWriter;
+  retryBaseDelayMs?: number;
+  parentStreamLog?: StreamLog;
+
+  // phase155C 新增（4 个原 setter 合入 ctor）
+  llm: LLMService;
+  skillRegistry: SkillRegistry;
+  contractManager: ContractManager;
+  outboxWriter: OutboxWriter;
+}
 import { writeInbox } from '../../foundation/messaging/index.js';
 import type { InboxMessage } from '../../types/contract.js';
 
@@ -70,10 +83,10 @@ export class TaskSystem {
   private maxConcurrent: number;
   private monitor: JsonlLogger;
   private registry: ToolRegistryImpl;
-  private llm?: LLMService;
-  private skillRegistry?: SkillRegistry;
-  private contractManager?: ContractManager;
-  private outboxWriter?: OutboxWriter;
+  private readonly llm: LLMService;
+  private readonly skillRegistry: SkillRegistry;
+  private readonly contractManager: ContractManager;
+  private readonly outboxWriter: OutboxWriter;
   private auditWriter: AuditWriter;
   private parentStreamLog?: StreamLog;
 
@@ -106,12 +119,16 @@ export class TaskSystem {
   constructor(
     private clawDir: string,
     private fs: FileSystem,
-    options: { maxConcurrent?: number; auditWriter: AuditWriter; retryBaseDelayMs?: number; parentStreamLog?: StreamLog }
+    options: TaskSystemOptions,
   ) {
     this.maxConcurrent = options.maxConcurrent ?? DEFAULT_MAX_CONCURRENT_TASKS;
     this.auditWriter = options.auditWriter;
     this.parentStreamLog = options.parentStreamLog;
     this.retryBaseDelayMs = options.retryBaseDelayMs ?? 500;
+    this.llm = options.llm;
+    this.skillRegistry = options.skillRegistry;
+    this.contractManager = options.contractManager;
+    this.outboxWriter = options.outboxWriter;
     this.monitor = new JsonlLogger({ logsDir: path.join(clawDir, 'logs') });
     // Create tool registry for subagents
     this.registry = new ToolRegistryImpl();
@@ -298,24 +315,8 @@ export class TaskSystem {
     }
   }
 
-  setLLMService(llm: LLMService): void {
-    this.llm = llm;
-  }
-
   setParentStreamLog(sink: StreamLog): void {
     this.parentStreamLog = sink;
-  }
-
-  setSkillRegistry(registry: SkillRegistry): void {
-    this.skillRegistry = registry;
-  }
-
-  setContractManager(manager: ContractManager): void {
-    this.contractManager = manager;
-  }
-
-  setOutboxWriter(writer: OutboxWriter): void {
-    this.outboxWriter = writer;
   }
 
   private static readonly PENDING_QUEUE_MAX = 1000;
@@ -551,9 +552,7 @@ export class TaskSystem {
     };
 
     try {
-      if (!this.llm) {
-        throw new Error('LLM service not set. Call setLLMService() before scheduling tasks.');
-      }
+      // LLM is guaranteed by constructor (readonly non-null field)
 
       // Filter tools based on task.tools whitelist
       const allowedTools = task.tools.length > 0

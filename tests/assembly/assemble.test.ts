@@ -33,9 +33,18 @@ const mockCronRunner = {
   stop: vi.fn(),
 };
 const mockHeartbeat = {};
-const mockSessionManager = {};
-const mockInboxReader = { init: vi.fn() };
-const mockOutboxWriter = {};
+
+// ============================================================================
+// Construction order tracking (phase155C)
+// ============================================================================
+const callOrder: string[] = [];
+
+function trackCtor(name: string, factory: () => any) {
+  return vi.fn((...args: any[]) => {
+    callOrder.push(name);
+    return factory(...args);
+  });
+}
 
 // ============================================================================
 // Module mocks
@@ -59,7 +68,7 @@ vi.mock('../../src/foundation/stream/index.js', () => ({
 }));
 
 vi.mock('../../src/foundation/fs/node-fs.js', () => ({
-  NodeFileSystem: vi.fn(),
+  NodeFileSystem: vi.fn(() => ({ cleanupTempFiles: vi.fn().mockResolvedValue([]) })),
 }));
 
 vi.mock('../../src/cli/commands/process-manager-factory.js', () => ({
@@ -78,21 +87,6 @@ vi.mock('../../src/core/motion/runtime.js', () => ({
 
 vi.mock('../../src/core/heartbeat.js', () => ({
   Heartbeat: vi.fn(() => mockHeartbeat),
-}));
-
-vi.mock('../../src/foundation/session-store/index.js', () => ({
-  SessionManager: vi.fn(() => mockSessionManager),
-  createSessionManager: vi.fn(() => mockSessionManager),
-}));
-
-vi.mock('../../src/foundation/messaging/index.js', () => ({
-  InboxReader: vi.fn(() => mockInboxReader),
-  OutboxWriter: vi.fn(() => mockOutboxWriter),
-  createInboxReader: vi.fn(() => mockInboxReader),
-  createOutboxWriter: vi.fn(() => mockOutboxWriter),
-  readInboxFileMeta: vi.fn(),
-  InboxListFailed: class InboxListFailed extends Error {},
-  InboxMoveFailed: class InboxMoveFailed extends Error {},
 }));
 
 vi.mock('../../src/core/cron/runner.js', () => ({
@@ -118,6 +112,59 @@ vi.mock('../../src/core/cron/jobs/random-dream.js', () => ({
 
 vi.mock('../../src/core/cron/jobs/contract-observer.js', () => ({
   runContractObserver: vi.fn(),
+}));
+
+vi.mock('../../src/foundation/llm/service.js', () => ({
+  LLMServiceImpl: trackCtor('LLMServiceImpl', () => ({ close: vi.fn(), healthCheck: vi.fn(), getProviderInfo: vi.fn() })),
+}));
+
+vi.mock('../../src/foundation/monitor/monitor.js', () => ({
+  JsonlLogger: trackCtor('JsonlLogger', () => ({ log: vi.fn(), close: vi.fn() })),
+}));
+
+vi.mock('../../src/core/tools/registry.js', () => ({
+  ToolRegistryImpl: trackCtor('ToolRegistryImpl', () => ({ register: vi.fn(), getForProfile: vi.fn(() => []), getAll: vi.fn(() => []), formatForLLM: vi.fn(), unregister: vi.fn() })),
+}));
+
+vi.mock('../../src/core/tools/executor.js', () => ({
+  ToolExecutorImpl: trackCtor('ToolExecutorImpl', () => ({ execute: vi.fn() })),
+}));
+
+vi.mock('../../src/core/skill/registry.js', () => ({
+  SkillRegistry: trackCtor('SkillRegistry', () => ({ loadAll: vi.fn().mockResolvedValue(undefined), getSkills: vi.fn(() => []) })),
+}));
+
+vi.mock('../../src/core/contract/manager.js', () => ({
+  ContractManager: trackCtor('ContractManager', () => ({ setOnNotify: vi.fn(), loadPaused: vi.fn(), resume: vi.fn() })),
+}));
+
+vi.mock('../../src/core/task/system.js', () => ({
+  TaskSystem: trackCtor('TaskSystem', () => ({ initialize: vi.fn().mockResolvedValue(undefined), startDispatch: vi.fn(), shutdown: vi.fn() })),
+}));
+
+vi.mock('../../src/core/dialog/injector.js', () => ({
+  ContextInjector: trackCtor('ContextInjector', () => ({ buildSystemPrompt: vi.fn(), buildParts: vi.fn() })),
+}));
+
+vi.mock('../../src/core/tools/context.js', () => ({
+  ExecContextImpl: trackCtor('ExecContextImpl', () => ({ signal: undefined, dialogMessages: [] })),
+}));
+
+vi.mock('../../src/core/tools/builtins/index.js', () => ({
+  registerBuiltinTools: vi.fn(),
+}));
+
+vi.mock('../../src/foundation/messaging/index.js', () => ({
+  InboxReader: vi.fn(() => ({ init: vi.fn().mockResolvedValue(undefined), drainInbox: vi.fn(() => []), markDone: vi.fn(), markFailed: vi.fn() })),
+  OutboxWriter: vi.fn(() => ({ write: vi.fn().mockResolvedValue(undefined) })),
+  createInboxReader: vi.fn(() => ({ init: vi.fn().mockResolvedValue(undefined), drainInbox: vi.fn(() => []), markDone: vi.fn(), markFailed: vi.fn() })),
+  createOutboxWriter: vi.fn(() => ({ write: vi.fn().mockResolvedValue(undefined) })),
+  readInboxFileMeta: vi.fn(),
+}));
+
+vi.mock('../../src/foundation/session-store/index.js', () => ({
+  SessionManager: vi.fn(() => ({ load: vi.fn(), save: vi.fn(), archive: vi.fn() })),
+  createSessionManager: vi.fn(() => ({ load: vi.fn(), save: vi.fn(), archive: vi.fn() })),
 }));
 
 vi.mock('../../src/cli/config.js', () => ({
@@ -158,6 +205,7 @@ describe('assemble', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    callOrder.length = 0;
     mockAuditWrite.mockClear();
     mockSnapshot.init.mockResolvedValue({ ok: true });
     mockSnapshot.commit.mockResolvedValue({ ok: true });
@@ -576,83 +624,172 @@ describe('assemble', () => {
   });
 
   // --------------------------------------------------------------------------
-  // phase155B: L2 dependencies passed to Runtime + Snapshot single instance
+  // Assembly construction order (phase155C)
   // --------------------------------------------------------------------------
-  it('L2 dependencies are passed to Runtime constructor', async () => {
-    await assemble(baseConfig);
+  describe('Assembly construction order (phase155C)', () => {
+    it('constructs L3-L5 modules in dependency-safe order', async () => {
+      await assemble(baseConfig);
 
-    const { MotionRuntime } = await import('../../src/core/motion/runtime.js');
-    const ctorCall = (MotionRuntime as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
-    const deps = ctorCall[0].dependencies;
+      const required = [
+        'JsonlLogger', 'LLMServiceImpl', 'ToolRegistryImpl',
+        'SkillRegistry', 'ContractManager',
+        'TaskSystem', 'ContextInjector', 'ExecContextImpl', 'ToolExecutorImpl',
+      ];
+      for (const name of required) {
+        expect(callOrder, `missing ${name}`).toContain(name);
+      }
 
-    expect(deps).toBeDefined();
-    expect(deps.systemFs).toBeDefined();
-    expect(deps.clawFs).toBeDefined();
-    expect(deps.auditWriter).toBeDefined();
-    expect(deps.snapshot).toBe(mockSnapshot);
-    expect(deps.sessionManager).toBe(mockSessionManager);
-    expect(deps.inboxReader).toBe(mockInboxReader);
-    expect(deps.outboxWriter).toBe(mockOutboxWriter);
-  });
-
-  it('Snapshot is single instance across Instances and Runtime deps', async () => {
-    const result = await assemble(baseConfig);
-
-    const { MotionRuntime } = await import('../../src/core/motion/runtime.js');
-    const ctorCall = (MotionRuntime as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
-    const depsSnapshot = ctorCall[0].dependencies.snapshot;
-
-    expect(result.snapshot).toBe(depsSnapshot);
-  });
-
-  it('L2 construct failure audits assemble_failed (session_manager)', async () => {
-    const { createSessionManager } = await import('../../src/foundation/session-store/index.js');
-    (createSessionManager as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
-      throw new Error('session_mgr fail');
+      const idx = (name: string) => callOrder.indexOf(name);
+      expect(idx('LLMServiceImpl')).toBeLessThan(idx('TaskSystem'));
+      expect(idx('SkillRegistry')).toBeLessThan(idx('TaskSystem'));
+      expect(idx('ContractManager')).toBeLessThan(idx('TaskSystem'));
+      expect(idx('ToolRegistryImpl')).toBeLessThan(idx('ToolExecutorImpl'));
+      expect(idx('ContractManager')).toBeLessThan(idx('ContextInjector'));
+      expect(idx('SkillRegistry')).toBeLessThan(idx('ContextInjector'));
     });
 
-    await expect(assemble(baseConfig)).rejects.toThrow(
-      'Assembly: SessionManager construct failed: session_mgr fail'
-    );
-    expect(mockAuditWrite).toHaveBeenCalledWith(
-      'assemble_failed',
-      'module=session_manager',
-      'phase=construct',
-      'reason=session_mgr fail'
-    );
+    it('construction order is deterministic across runs', async () => {
+      const orders: string[][] = [];
+      for (let i = 0; i < 3; i++) {
+        callOrder.length = 0;
+        await assemble(baseConfig);
+        orders.push([...callOrder]);
+      }
+      expect(orders[1]).toEqual(orders[0]);
+      expect(orders[2]).toEqual(orders[0]);
+    });
   });
 
-  it('L2 construct failure audits assemble_failed (inbox_reader)', async () => {
-    const { createInboxReader } = await import('../../src/foundation/messaging/index.js');
-    (createInboxReader as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
-      throw new Error('inbox fail');
+  describe('Assembly audit contract (phase155C)', () => {
+    async function expectAssembleFailure(
+      modulePath: string,
+      className: string,
+      methodName: 'ctor' | string = 'ctor',
+      extraImpl: Record<string, unknown> = {},
+    ): Promise<{ events: string[]; thrown: Error; auditTs: number[]; throwTs: number }> {
+      const events: string[] = [];
+      const auditTs: number[] = [];
+      const prevImpl = mockAuditWrite.getMockImplementation();
+      mockAuditWrite.mockImplementation((type: string, ...args: string[]) => {
+        events.push([type, ...args].join('\t'));
+        auditTs.push(Date.now());
+      });
+
+      const mod = await import(modulePath);
+      const MockClass = mod[className] as ReturnType<typeof vi.fn>;
+
+      if (methodName === 'ctor') {
+        MockClass.mockImplementationOnce(() => {
+          throw new Error(`injected ${className}`);
+        });
+      } else {
+        MockClass.mockImplementationOnce(() => ({
+          ...extraImpl,
+          [methodName]: () => { throw new Error(`injected ${className}.${methodName}`); },
+        }));
+      }
+
+      let thrown: Error | undefined;
+      let throwTs = 0;
+      try {
+        await assemble(baseConfig);
+      } catch (e) {
+        thrown = e as Error;
+        throwTs = Date.now();
+      } finally {
+        mockAuditWrite.mockImplementation(prevImpl || (() => {}));
+      }
+
+      expect(thrown).toBeDefined();
+      return { events, thrown: thrown!, auditTs, throwTs };
+    }
+
+    it('monitor construct failure → audit module=monitor phase=construct + throw', async () => {
+      const { events, thrown } = await expectAssembleFailure(
+        '../../src/foundation/monitor/monitor.js', 'JsonlLogger', 'ctor',
+      );
+      expect(events.some(e => /^assemble_failed\tmodule=monitor\tphase=construct\treason=injected/.test(e))).toBe(true);
+      expect(thrown.message).toMatch(/JsonlLogger construct failed/);
     });
 
-    await expect(assemble(baseConfig)).rejects.toThrow(
-      'Assembly: InboxReader construct failed: inbox fail'
-    );
-    expect(mockAuditWrite).toHaveBeenCalledWith(
-      'assemble_failed',
-      'module=inbox_reader',
-      'phase=construct',
-      'reason=inbox fail'
-    );
-  });
-
-  it('L2 construct failure audits assemble_failed (outbox_writer)', async () => {
-    const { createOutboxWriter } = await import('../../src/foundation/messaging/index.js');
-    (createOutboxWriter as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
-      throw new Error('outbox fail');
+    it('llm construct failure → audit module=llm phase=construct + throw', async () => {
+      const { events, thrown } = await expectAssembleFailure(
+        '../../src/foundation/llm/service.js', 'LLMServiceImpl', 'ctor',
+      );
+      expect(events.some(e => /^assemble_failed\tmodule=llm\tphase=construct\treason=injected/.test(e))).toBe(true);
+      expect(thrown.message).toMatch(/LLMService construct failed/);
     });
 
-    await expect(assemble(baseConfig)).rejects.toThrow(
-      'Assembly: OutboxWriter construct failed: outbox fail'
-    );
-    expect(mockAuditWrite).toHaveBeenCalledWith(
-      'assemble_failed',
-      'module=outbox_writer',
-      'phase=construct',
-      'reason=outbox fail'
-    );
+    it('tool_registry construct failure → audit module=tool_registry phase=construct + throw', async () => {
+      const { events, thrown } = await expectAssembleFailure(
+        '../../src/core/tools/registry.js', 'ToolRegistryImpl', 'ctor',
+      );
+      expect(events.some(e => /^assemble_failed\tmodule=tool_registry\tphase=construct\treason=injected/.test(e))).toBe(true);
+      expect(thrown.message).toMatch(/ToolRegistry construct failed/);
+    });
+
+    it('skill_registry construct failure → audit module=skill_registry phase=construct + throw', async () => {
+      const { events, thrown } = await expectAssembleFailure(
+        '../../src/core/skill/registry.js', 'SkillRegistry', 'ctor',
+      );
+      expect(events.some(e => /^assemble_failed\tmodule=skill_registry\tphase=construct\treason=injected/.test(e))).toBe(true);
+      expect(thrown.message).toMatch(/SkillRegistry construct failed/);
+    });
+
+    it('skill_registry loadAll failure → audit module=skill_registry phase=init + throw', async () => {
+      const { events, thrown } = await expectAssembleFailure(
+        '../../src/core/skill/registry.js', 'SkillRegistry', 'loadAll', { getSkills: vi.fn(() => []) },
+      );
+      expect(events.some(e => /^assemble_failed\tmodule=skill_registry\tphase=init\treason=injected/.test(e))).toBe(true);
+      expect(thrown.message).toMatch(/SkillRegistry\.loadAll failed/);
+    });
+
+    it('contract_manager construct failure → audit module=contract_manager phase=construct + throw', async () => {
+      const { events, thrown } = await expectAssembleFailure(
+        '../../src/core/contract/manager.js', 'ContractManager', 'ctor',
+      );
+      expect(events.some(e => /^assemble_failed\tmodule=contract_manager\tphase=construct\treason=injected/.test(e))).toBe(true);
+      expect(thrown.message).toMatch(/ContractManager construct failed/);
+    });
+
+    it('task_system construct failure → audit module=task_system phase=construct + throw', async () => {
+      const { events, thrown } = await expectAssembleFailure(
+        '../../src/core/task/system.js', 'TaskSystem', 'ctor',
+      );
+      expect(events.some(e => /^assemble_failed\tmodule=task_system\tphase=construct\treason=injected/.test(e))).toBe(true);
+      expect(thrown.message).toMatch(/TaskSystem construct failed/);
+    });
+
+    it('context_injector construct failure → audit module=context_injector phase=construct + throw', async () => {
+      const { events, thrown } = await expectAssembleFailure(
+        '../../src/core/dialog/injector.js', 'ContextInjector', 'ctor',
+      );
+      expect(events.some(e => /^assemble_failed\tmodule=context_injector\tphase=construct\treason=injected/.test(e))).toBe(true);
+      expect(thrown.message).toMatch(/ContextInjector construct failed/);
+    });
+
+    it('exec_context construct failure → audit module=exec_context phase=construct + throw', async () => {
+      const { events, thrown } = await expectAssembleFailure(
+        '../../src/core/tools/context.js', 'ExecContextImpl', 'ctor',
+      );
+      expect(events.some(e => /^assemble_failed\tmodule=exec_context\tphase=construct\treason=injected/.test(e))).toBe(true);
+      expect(thrown.message).toMatch(/ExecContextImpl construct failed/);
+    });
+
+    it('tool_executor construct failure → audit module=tool_executor phase=construct + throw', async () => {
+      const { events, thrown } = await expectAssembleFailure(
+        '../../src/core/tools/executor.js', 'ToolExecutorImpl', 'ctor',
+      );
+      expect(events.some(e => /^assemble_failed\tmodule=tool_executor\tphase=construct\treason=injected/.test(e))).toBe(true);
+      expect(thrown.message).toMatch(/ToolExecutorImpl construct failed/);
+    });
+
+    it('audit write happens BEFORE throw (时机契约)', async () => {
+      const { auditTs, throwTs } = await expectAssembleFailure(
+        '../../src/core/task/system.js', 'TaskSystem', 'ctor',
+      );
+      expect(auditTs.length).toBeGreaterThan(0);
+      expect(auditTs[auditTs.length - 1]).toBeLessThanOrEqual(throwTs);
+    });
   });
 });

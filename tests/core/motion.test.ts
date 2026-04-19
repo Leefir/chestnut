@@ -13,7 +13,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { MotionRuntime } from '../../src/core/motion/runtime.js';
 import type { LLMServiceConfig } from '../../src/foundation/llm/types.js';
-import { makeRuntimeDeps, cleanupTestDirs } from './helpers/make-runtime-deps.js';
+import { makeRuntimeDeps } from '../helpers/runtime-deps.js';
 
 // 测试用的 LLM 配置
 const mockLLMConfig: LLMServiceConfig = {
@@ -43,6 +43,11 @@ async function cleanupDir(clawDir: string): Promise<void> {
   await fs.rm(base, { recursive: true, force: true });
 }
 
+async function createMotionRuntime(options: { clawId: string; clawDir: string; llmConfig: LLMServiceConfig }) {
+  const deps = await makeRuntimeDeps({ clawDir: options.clawDir, clawId: options.clawId, llmConfig: options.llmConfig });
+  return new MotionRuntime({ ...options, dependencies: deps });
+}
+
 describe('MotionRuntime', () => {
   let tempDir: string;
   let runtime: MotionRuntime;
@@ -56,7 +61,6 @@ describe('MotionRuntime', () => {
       await runtime.stop().catch(() => {});
     }
     await cleanupDir(tempDir);
-    cleanupTestDirs();
   });
 
   describe('buildSystemPrompt()', () => {
@@ -69,11 +73,10 @@ describe('MotionRuntime', () => {
       await fs.mkdir(path.join(tempDir, 'memory'), { recursive: true });
       await fs.mkdir(path.join(tempDir, 'clawspace'), { recursive: true });
 
-      runtime = new MotionRuntime({
+      runtime = await createMotionRuntime({
         clawId: 'motion-test',
         clawDir: tempDir,
         llmConfig: mockLLMConfig,
-        dependencies: makeRuntimeDeps({}, { baseDir: tempDir }),
       });
 
       // Act
@@ -96,11 +99,10 @@ describe('MotionRuntime', () => {
       await fs.mkdir(path.join(tempDir, 'memory'), { recursive: true });
       await fs.mkdir(path.join(tempDir, 'clawspace'), { recursive: true });
 
-      runtime = new MotionRuntime({
+      runtime = await createMotionRuntime({
         clawId: 'motion-test',
         clawDir: tempDir,
         llmConfig: mockLLMConfig,
-        dependencies: makeRuntimeDeps({}, { baseDir: tempDir }),
       });
 
       // Act
@@ -125,11 +127,10 @@ describe('MotionRuntime', () => {
       await fs.mkdir(path.join(tempDir, 'memory'), { recursive: true });
       await fs.mkdir(path.join(tempDir, 'clawspace'), { recursive: true });
 
-      runtime = new MotionRuntime({
+      runtime = await createMotionRuntime({
         clawId: 'motion-test',
         clawDir: tempDir,
         llmConfig: mockLLMConfig,
-        dependencies: makeRuntimeDeps({}, { baseDir: tempDir }),
       });
 
       // Act & Assert: 不应抛出错误
@@ -148,11 +149,10 @@ describe('MotionRuntime', () => {
       await fs.mkdir(path.join(tempDir, 'memory'), { recursive: true });
       await fs.mkdir(path.join(tempDir, 'clawspace'), { recursive: true });
 
-      runtime = new MotionRuntime({
+      runtime = await createMotionRuntime({
         clawId: 'motion-test',
         clawDir: tempDir,
         llmConfig: mockLLMConfig,
-        dependencies: makeRuntimeDeps({}, { baseDir: tempDir }),
       });
 
       // Act & Assert
@@ -171,11 +171,10 @@ describe('MotionRuntime', () => {
       await fs.mkdir(path.join(tempDir, 'memory'), { recursive: true });
       await fs.mkdir(path.join(tempDir, 'clawspace'), { recursive: true });
 
-      runtime = new MotionRuntime({
+      runtime = await createMotionRuntime({
         clawId: 'motion-test',
         clawDir: tempDir,
         llmConfig: mockLLMConfig,
-        dependencies: makeRuntimeDeps({}, { baseDir: tempDir }),
       });
 
       // Act & Assert
@@ -194,11 +193,10 @@ describe('MotionRuntime', () => {
       await fs.mkdir(path.join(tempDir, 'memory'), { recursive: true });
       await fs.mkdir(path.join(tempDir, 'clawspace'), { recursive: true });
 
-      runtime = new MotionRuntime({
+      runtime = await createMotionRuntime({
         clawId: 'motion-test',
         clawDir: tempDir,
         llmConfig: mockLLMConfig,
-        dependencies: makeRuntimeDeps({}, { baseDir: tempDir }),
       });
 
       // Act
@@ -220,11 +218,10 @@ describe('MotionRuntime', () => {
       await fs.mkdir(path.join(tempDir, 'memory'), { recursive: true });
       await fs.mkdir(path.join(tempDir, 'clawspace'), { recursive: true });
 
-      runtime = new MotionRuntime({
+      runtime = await createMotionRuntime({
         clawId: 'motion-test',
         clawDir: tempDir,
         llmConfig: mockLLMConfig,
-        dependencies: makeRuntimeDeps({}, { baseDir: tempDir }),
       });
 
       // Act & Assert
@@ -246,11 +243,10 @@ describe('MotionRuntime', () => {
       await fs.mkdir(path.join(tempDir, 'memory'), { recursive: true });
       await fs.mkdir(path.join(tempDir, 'clawspace'), { recursive: true });
 
-      runtime = new MotionRuntime({
+      runtime = await createMotionRuntime({
         clawId: 'motion-test',
         clawDir: tempDir,
         llmConfig: mockLLMConfig,
-        dependencies: makeRuntimeDeps({}, { baseDir: tempDir }),
       });
 
       await runtime.initialize();

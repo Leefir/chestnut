@@ -4,18 +4,29 @@ import * as fsNative from 'fs';
 import { AuditWriter } from '../foundation/audit/writer.js';
 import { SNAPSHOT_IGNORE_PATTERNS, createSnapshot } from '../foundation/snapshot/index.js';
 import type { Snapshot } from '../foundation/snapshot/index.js';
-import { createSessionManager } from '../foundation/session-store/index.js';
-import { createInboxReader, createOutboxWriter } from '../foundation/messaging/index.js';
-import type { SessionManager } from '../foundation/session-store/index.js';
-import type { InboxReader } from '../foundation/messaging/index.js';
-import type { OutboxWriter } from '../core/communication/index.js';
 import { createStreamWriter } from '../foundation/stream/index.js';
 import type { StreamWriter } from '../foundation/stream/writer.js';
 import type { ProcessManager } from '../foundation/process-manager/manager.js';
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import { createAgentProcessManager } from '../cli/commands/process-manager-factory.js';
-import { ClawRuntime, type ClawRuntimeOptions } from '../core/runtime.js';
+import { ClawRuntime, type ClawRuntimeOptions, type RuntimeDependencies } from '../core/runtime.js';
 import { MotionRuntime } from '../core/motion/runtime.js';
+import { LLMServiceImpl } from '../foundation/llm/service.js';
+import { JsonlLogger } from '../foundation/monitor/monitor.js';
+import { ToolRegistryImpl } from '../core/tools/registry.js';
+import { ToolExecutorImpl } from '../core/tools/executor.js';
+import { SkillRegistry } from '../core/skill/registry.js';
+import { ContractManager } from '../core/contract/manager.js';
+import { TaskSystem } from '../core/task/system.js';
+import { ContextInjector } from '../core/dialog/injector.js';
+import { ExecContextImpl } from '../core/tools/context.js';
+import { registerBuiltinTools } from '../core/tools/builtins/index.js';
+import { createInboxReader, createOutboxWriter } from '../foundation/messaging/index.js';
+import { createSessionManager } from '../foundation/session-store/index.js';
+import type { InboxReader } from '../foundation/messaging/index.js';
+import type { OutboxWriter } from '../core/communication/index.js';
+import type { SessionManager } from '../foundation/session-store/index.js';
+
 import { Heartbeat } from '../core/heartbeat.js';
 import { CronRunner, parseSchedule } from '../core/cron/runner.js';
 import { runDiskMonitor } from '../core/cron/jobs/disk-monitor.js';
@@ -67,10 +78,10 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   const isMotion = identity === 'motion';
   const auditMaxSizeMb = globalConfig.audit?.retention?.max_size_mb ?? null;
 
-  // phase155B: 预制 L1 fs 句柄
-  // systemFs: used by system components (no permission enforcement)
+  // phase155A + B + C 联合约定：system 组件无权限校验；工具层强制权限校验
+  // systemFs: used by AuditWriter / Snapshot / SessionManager / Skill/Contract/Outbox/Inbox/Task/Context/Stream
   const systemFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
-  // clawFs: used by tools (with permission enforcement)
+  // clawFs: used by tools via ExecContextImpl.fs
   const clawFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: true });
   const parentFs = new NodeFileSystem({ baseDir: path.join(clawDir, '..'), enforcePermissions: false });
 
@@ -98,9 +109,180 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     throw new LockConflictError(clawId, errMsg(e));
   }
 
-  // --- 3. L2 assembly (phase155B: Snapshot + SessionManager + InboxReader + OutboxWriter) ---
+  // --- 3. Runtime (daemon.ts L111-137) ---
+  let llmConfig: ReturnType<typeof buildLLMConfig>;
+  try {
+    llmConfig = isMotion
+      ? buildLLMConfig(globalConfig)
+      : buildLLMConfig(globalConfig, clawConfig!);
+  } catch (e) {
+    auditWriter.write('assemble_failed', `module=llm_config`, `phase=construct`, `reason=${errMsg(e)}`);
+    throw new Error(`Assembly: buildLLMConfig failed: ${errMsg(e)}`, { cause: e });
+  }
 
-  // 3a. Snapshot construct + init + recovery
+  // --- L3-L5: 派生配置统一求值（motion vs claw 分叉） ---
+  const maxSteps = isMotion
+    ? (globalConfig.motion?.max_steps ?? DEFAULT_MAX_STEPS)
+    : clawConfig!.max_steps;
+  const maxConcurrent = isMotion
+    ? (globalConfig.motion?.max_concurrent_tasks ?? DEFAULT_MAX_CONCURRENT_TASKS)
+    : (clawConfig!.max_concurrent_tasks ?? DEFAULT_MAX_CONCURRENT_TASKS);
+  const toolProfile = isMotion ? 'full' : clawConfig!.tool_profile;
+  const subagentMaxSteps = isMotion
+    ? globalConfig.motion?.subagent_max_steps
+    : clawConfig!.subagent_max_steps;
+  const toolTimeoutMs = globalConfig.tool_timeout_ms;
+  const idleTimeoutMs = globalConfig.motion?.llm_idle_timeout_ms;
+
+  // --- L3-L5: monitor ---
+  const logsDir = path.join(clawDir, 'logs');
+  let monitor: JsonlLogger;
+  try {
+    monitor = new JsonlLogger({ logsDir });
+  } catch (e) {
+    auditWriter.write('assemble_failed', `module=monitor`, `phase=construct`, `reason=${errMsg(e)}`);
+    throw new Error(`Assembly: JsonlLogger construct failed: ${errMsg(e)}`, { cause: e });
+  }
+
+  // --- L3-L5: llm ---
+  let llm: LLMServiceImpl;
+  try {
+    llm = new LLMServiceImpl(llmConfig);
+  } catch (e) {
+    auditWriter.write('assemble_failed', `module=llm`, `phase=construct`, `reason=${errMsg(e)}`);
+    throw new Error(`Assembly: LLMService construct failed: ${errMsg(e)}`, { cause: e });
+  }
+
+  // --- L3-L5: toolRegistry（空；DispatchTool 留给 Runtime） ---
+  let toolRegistry: ToolRegistryImpl;
+  try {
+    toolRegistry = new ToolRegistryImpl();
+    registerBuiltinTools(toolRegistry);
+  } catch (e) {
+    auditWriter.write('assemble_failed', `module=tool_registry`, `phase=construct`, `reason=${errMsg(e)}`);
+    throw new Error(`Assembly: ToolRegistry construct failed: ${errMsg(e)}`, { cause: e });
+  }
+
+  // --- L3-L5: skillRegistry + loadAll ---
+  let skillRegistry: SkillRegistry;
+  try {
+    skillRegistry = new SkillRegistry(systemFs, 'skills');
+  } catch (e) {
+    auditWriter.write('assemble_failed', `module=skill_registry`, `phase=construct`, `reason=${errMsg(e)}`);
+    throw new Error(`Assembly: SkillRegistry construct failed: ${errMsg(e)}`, { cause: e });
+  }
+  try {
+    await skillRegistry.loadAll();
+  } catch (e) {
+    auditWriter.write('assemble_failed', `module=skill_registry`, `phase=init`, `reason=${errMsg(e)}`);
+    throw new Error(`Assembly: SkillRegistry.loadAll failed: ${errMsg(e)}`, { cause: e });
+  }
+
+  // --- L3-L5: verifierRegistry + contractManager ---
+  let contractManager: ContractManager;
+  try {
+    const verifierRegistry = new ToolRegistryImpl();
+    for (const tool of toolRegistry.getForProfile('verifier')) {
+      verifierRegistry.register(tool);
+    }
+    contractManager = new ContractManager(
+      clawDir, clawId, systemFs, monitor, llm, verifierRegistry, auditWriter,
+    );
+  } catch (e) {
+    auditWriter.write('assemble_failed', `module=contract_manager`, `phase=construct`, `reason=${errMsg(e)}`);
+    throw new Error(`Assembly: ContractManager construct failed: ${errMsg(e)}`, { cause: e });
+  }
+
+  // --- L2: outboxWriter ---
+  let outboxWriter: OutboxWriter;
+  try {
+    outboxWriter = createOutboxWriter(clawId, clawDir, systemFs, auditWriter);
+  } catch (e) {
+    auditWriter.write('assemble_failed', `module=outbox_writer`, `phase=construct`, `reason=${errMsg(e)}`);
+    throw new Error(`Assembly: OutboxWriter construct failed: ${errMsg(e)}`, { cause: e });
+  }
+
+  // --- L3-L5: taskSystem（仅构造，不调 initialize / startDispatch；业务动作归 Runtime） ---
+  let taskSystem: TaskSystem;
+  try {
+    taskSystem = new TaskSystem(clawDir, systemFs, {
+      maxConcurrent,
+      auditWriter,
+      llm,
+      skillRegistry,
+      contractManager,
+      outboxWriter,
+    });
+  } catch (e) {
+    auditWriter.write('assemble_failed', `module=task_system`, `phase=construct`, `reason=${errMsg(e)}`);
+    throw new Error(`Assembly: TaskSystem construct failed: ${errMsg(e)}`, { cause: e });
+  }
+  // NOTE: taskSystem.initialize() / startDispatch() 属 TaskSystem 业务语义，由 Runtime.initialize() 调用
+  //       参见 接口冻结.md §4 "业务动作归属" + 原则 #2
+
+  // --- L3-L5: contextInjector ---
+  let contextInjector: ContextInjector;
+  try {
+    contextInjector = new ContextInjector({ fs: systemFs, skillRegistry, contractManager });
+  } catch (e) {
+    auditWriter.write('assemble_failed', `module=context_injector`, `phase=construct`, `reason=${errMsg(e)}`);
+    throw new Error(`Assembly: ContextInjector construct failed: ${errMsg(e)}`, { cause: e });
+  }
+
+  // --- L3-L5: execContext ---
+  let execContext: ExecContextImpl;
+  try {
+    execContext = new ExecContextImpl({
+      clawId,
+      clawDir,
+      profile: toolProfile,
+      callerType: 'claw',
+      fs: clawFs,
+      monitor,
+      llm,
+      maxSteps,
+      taskSystem,
+      skillRegistry,
+      contractManager,
+      subagentMaxSteps,
+      outboxWriter,
+      auditWriter,
+    });
+  } catch (e) {
+    auditWriter.write('assemble_failed', `module=exec_context`, `phase=construct`, `reason=${errMsg(e)}`);
+    throw new Error(`Assembly: ExecContextImpl construct failed: ${errMsg(e)}`, { cause: e });
+  }
+
+  // --- L3-L5: toolExecutor ---
+  let toolExecutor: ToolExecutorImpl;
+  try {
+    toolExecutor = new ToolExecutorImpl(toolRegistry, toolTimeoutMs);
+  } catch (e) {
+    auditWriter.write('assemble_failed', `module=tool_executor`, `phase=construct`, `reason=${errMsg(e)}`);
+    throw new Error(`Assembly: ToolExecutorImpl construct failed: ${errMsg(e)}`, { cause: e });
+  }
+
+  // NOTE: 此段 L2 装配位于 L3-L5 之后，是 phase155C squash-merge 时为避免大规模代码移动保留的形态。
+  // 语义正确（变量作用域覆盖全函数，依赖链仍 DAG），但与 phase155B 原拓扑"L2 先于 L3-L5"不一致。
+  // 如要对齐拓扑走独立 phase 处理，见 coding plan/phase155/phase155C/fixup/合并计划.md §C5
+  // --- L2: sessionManager + inboxReader + outboxWriter ---
+  let sessionManager: SessionManager;
+  try {
+    sessionManager = createSessionManager(systemFs, 'dialog', auditWriter, clawId);
+  } catch (e) {
+    auditWriter.write('assemble_failed', `module=session_manager`, `phase=construct`, `reason=${errMsg(e)}`);
+    throw new Error(`Assembly: SessionManager construct failed: ${errMsg(e)}`, { cause: e });
+  }
+
+  let inboxReader: InboxReader;
+  try {
+    inboxReader = createInboxReader(systemFs, auditWriter, 'inbox');
+  } catch (e) {
+    auditWriter.write('assemble_failed', `module=inbox_reader`, `phase=construct`, `reason=${errMsg(e)}`);
+    throw new Error(`Assembly: InboxReader construct failed: ${errMsg(e)}`, { cause: e });
+  }
+
+  // --- Snapshot（phase155B 已搬，但需保证在 Runtime 之前） ---
   let snapshot: Snapshot;
   try {
     snapshot = createSnapshot(clawDir, systemFs, auditWriter, SNAPSHOT_IGNORE_PATTERNS);
@@ -120,44 +302,31 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     auditWriter.write('assemble_failed', `module=snapshot`, `phase=recovery-commit`, `reason=${recoveryResult.error.kind}`);
   }
 
-  // 3b. SessionManager
-  let sessionManager: SessionManager;
-  try {
-    sessionManager = createSessionManager(systemFs, 'dialog', auditWriter, clawId);
-  } catch (e) {
-    auditWriter.write('assemble_failed', `module=session_manager`, `phase=construct`, `reason=${errMsg(e)}`);
-    throw new Error(`Assembly: SessionManager construct failed: ${errMsg(e)}`, { cause: e });
-  }
+  const dependencies: RuntimeDependencies = {
+    systemFs,
+    clawFs,
+    auditWriter,
+    snapshot,
+    sessionManager,
+    inboxReader,
+    outboxWriter,
+    monitor,
+    llm,
+    toolRegistry,
+    toolExecutor,
+    skillRegistry,
+    contractManager,
+    taskSystem,
+    contextInjector,
+    execContext,
+  };
 
-  // 3c. InboxReader
-  let inboxReader: InboxReader;
-  try {
-    inboxReader = createInboxReader(systemFs, auditWriter, 'inbox');
-  } catch (e) {
-    auditWriter.write('assemble_failed', `module=inbox_reader`, `phase=construct`, `reason=${errMsg(e)}`);
-    throw new Error(`Assembly: InboxReader construct failed: ${errMsg(e)}`, { cause: e });
-  }
+  // 孤儿临时文件清理（从 Runtime.initialize 搬来；Assembly 负责一次性的启动清理）
+  systemFs.cleanupTempFiles().catch((err: unknown) => {
+    auditWriter.write('cleanup_temp_files_failed', `reason=${err instanceof Error ? err.message : String(err)}`);
+  });
 
-  // 3d. OutboxWriter
-  let outboxWriter: OutboxWriter;
-  try {
-    outboxWriter = createOutboxWriter(clawId, clawDir, systemFs, auditWriter);
-  } catch (e) {
-    auditWriter.write('assemble_failed', `module=outbox_writer`, `phase=construct`, `reason=${errMsg(e)}`);
-    throw new Error(`Assembly: OutboxWriter construct failed: ${errMsg(e)}`, { cause: e });
-  }
-
-  // --- 4. Runtime (daemon.ts L111-137) ---
-  let llmConfig: ReturnType<typeof buildLLMConfig>;
-  try {
-    llmConfig = isMotion
-      ? buildLLMConfig(globalConfig)
-      : buildLLMConfig(globalConfig, clawConfig!);
-  } catch (e) {
-    auditWriter.write('assemble_failed', `module=llm_config`, `phase=construct`, `reason=${errMsg(e)}`);
-    throw new Error(`Assembly: buildLLMConfig failed: ${errMsg(e)}`, { cause: e });
-  }
-
+  // --- Runtime 构造（deps 注入） ---
   let runtime: MotionRuntime | ClawRuntime;
   try {
     runtime = isMotion
@@ -165,41 +334,25 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
           clawId: 'motion',
           clawDir,
           llmConfig,
-          maxSteps: globalConfig.motion?.max_steps ?? DEFAULT_MAX_STEPS,
-          toolProfile: 'full',
-          toolTimeoutMs: globalConfig.tool_timeout_ms,
-          subagentMaxSteps: globalConfig.motion?.subagent_max_steps,
-          maxConcurrentTasks: globalConfig.motion?.max_concurrent_tasks ?? DEFAULT_MAX_CONCURRENT_TASKS,
-          idleTimeoutMs: globalConfig.motion?.llm_idle_timeout_ms,
-          dependencies: {
-            systemFs,
-            clawFs,
-            auditWriter,
-            snapshot,
-            sessionManager,
-            inboxReader,
-            outboxWriter,
-          },
+          maxSteps,
+          toolProfile,
+          toolTimeoutMs,
+          subagentMaxSteps,
+          maxConcurrentTasks: maxConcurrent,
+          idleTimeoutMs,
+          dependencies,
         })
       : new ClawRuntime({
           clawId,
           clawDir,
           llmConfig,
-          maxSteps: clawConfig!.max_steps,
-          toolProfile: clawConfig!.tool_profile,
-          toolTimeoutMs: globalConfig.tool_timeout_ms,
-          subagentMaxSteps: clawConfig!.subagent_max_steps,
-          maxConcurrentTasks: clawConfig!.max_concurrent_tasks,
-          idleTimeoutMs: globalConfig.motion?.llm_idle_timeout_ms,
-          dependencies: {
-            systemFs,
-            clawFs,
-            auditWriter,
-            snapshot,
-            sessionManager,
-            inboxReader,
-            outboxWriter,
-          },
+          maxSteps,
+          toolProfile,
+          toolTimeoutMs,
+          subagentMaxSteps,
+          maxConcurrentTasks: maxConcurrent,
+          idleTimeoutMs,
+          dependencies,
         } as ClawRuntimeOptions);
   } catch (e) {
     auditWriter.write('assemble_failed', `module=runtime`, `phase=construct`, `reason=${errMsg(e)}`);

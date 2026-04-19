@@ -10,6 +10,7 @@ import * as path from 'path';
 import { promises as fs } from 'fs';
 import type { LLMServiceConfig } from '../foundation/llm/types.js';
 import type { LLMService } from '../foundation/llm/index.js';
+import type { FileSystem } from '../foundation/fs/types.js';
 import type { ToolProfile } from '../types/config.js';
 import type { Message } from '../types/message.js';
 import type { InboxMessage, Priority } from '../types/contract.js';
@@ -17,7 +18,7 @@ import type { OutboxWriteOptions } from './communication/index.js';
 import type { SessionData } from '../foundation/session-store/index.js';
 import { readInboxFileMeta, InboxListFailed, InboxMoveFailed } from '../foundation/messaging/index.js';
 
-import type { NodeFileSystem } from '../foundation/fs/node-fs.js';
+
 import { LLMServiceImpl } from '../foundation/llm/service.js';
 import { JsonlLogger } from '../foundation/monitor/monitor.js';
 
@@ -38,51 +39,45 @@ import { summarizeLastExit } from './last-exit-summary.js';
 import { IdleTimeoutSignal, PriorityInboxInterrupt, UserInterrupt } from '../types/signals.js';
 import type { ToolResult } from './tools/executor.js';
 import { AuditWriter } from '../foundation/audit/writer.js';
-import type { InboxReader } from '../foundation/messaging/index.js';
-import type { OutboxWriter } from './communication/index.js';
+import { InboxReader } from '../foundation/messaging/index.js';
+import { OutboxWriter } from './communication/index.js';
 import { TaskSystem } from './task/system.js';
 import { SkillRegistry } from './skill/registry.js';
 import { ContractManager } from './contract/manager.js';
 import { CLAW_SUBDIRS } from '../types/paths.js';
 import { oneLine } from '../foundation/utils/string.js';
-import type { Snapshot } from '../foundation/snapshot/index.js';
+import { Snapshot } from '../foundation/snapshot/index.js';
+import { SNAPSHOT_IGNORE_PATTERNS } from '../foundation/snapshot/index.js';
 import { MaxStepsExceededError } from '../types/errors.js';
 import { MOTION_CLAW_ID, DEFAULT_LLM_IDLE_TIMEOUT_MS, DEFAULT_MAX_STEPS, DEFAULT_MAX_CONCURRENT_TASKS } from '../constants.js';
-import type { FileSystem } from '../foundation/fs/types.js';
 
 /**
- * Runtime L1-L2 dependencies injected by Assembly
- *
- * L1-L2: phase155B 必传
- * L3-L5: phase155C 装配后必传；当前 optional 以避免 Assembly 传占位值
+ * ClawRuntime constructor options
  */
 export interface RuntimeDependencies {
-  // === L1（phase155B 填充） ===
+  // === L1 ===
   readonly systemFs: FileSystem;
   readonly clawFs: FileSystem;
 
-  // === L2（phase155B 填充） ===
+  // === L2 ===
   readonly auditWriter: AuditWriter;
   readonly snapshot: Snapshot;
   readonly sessionManager: SessionManager;
   readonly inboxReader: InboxReader;
   readonly outboxWriter: OutboxWriter;
 
-  // === L3-L5（phase155B 期间 optional；phase155C PR 单点删 ?） ===
-  readonly monitor?: JsonlLogger;
-  readonly llm?: LLMService;
-  readonly toolRegistry?: ToolRegistryImpl;
-  readonly toolExecutor?: ToolExecutorImpl;
-  readonly skillRegistry?: SkillRegistry;
-  readonly contractManager?: ContractManager;
-  readonly taskSystem?: TaskSystem;
-  readonly contextInjector?: ContextInjector;
-  readonly execContext?: ExecContextImpl;
+  // === L3-L5 ===
+  readonly monitor: JsonlLogger;
+  readonly llm: LLMService;
+  readonly toolRegistry: ToolRegistryImpl;
+  readonly toolExecutor: ToolExecutorImpl;
+  readonly skillRegistry: SkillRegistry;
+  readonly contractManager: ContractManager;
+  readonly taskSystem: TaskSystem;
+  readonly contextInjector: ContextInjector;
+  readonly execContext: ExecContextImpl;
 }
 
-/**
- * ClawRuntime constructor options
- */
 export interface ClawRuntimeOptions {
   clawId: string;
   clawDir: string;
@@ -94,7 +89,8 @@ export interface ClawRuntimeOptions {
   subagentMaxSteps?: number;
   maxConcurrentTasks?: number;
   idleTimeoutMs?: number;  // 覆盖 DEFAULT_LLM_IDLE_TIMEOUT_MS（0 = 禁用）
-  dependencies: RuntimeDependencies;
+
+  dependencies: RuntimeDependencies;  // 必传（phase155B 起，字段随 phase155C 扩展）
 }
 
 /**
@@ -139,11 +135,10 @@ export class ClawRuntime {
    * @protected allows subclasses such as MotionRuntime to read system files (SOUL.md, etc.)
    * Note: subclasses should not write directly; preserve runtime encapsulation
    */
-  protected systemFs!: NodeFileSystem;  // used by system components (no permission check)
-  private clawFs!: NodeFileSystem;    // used by tools (with permission check)
+  protected systemFs!: FileSystem;  // used by system components (no permission check)
+  private clawFs!: FileSystem;    // used by tools (with permission check)
   private monitor!: JsonlLogger;
   protected llm!: LLMService;
-
 
   // Core
   protected sessionManager!: SessionManager;
@@ -170,9 +165,8 @@ export class ClawRuntime {
       maxConcurrentTasks: DEFAULT_MAX_CONCURRENT_TASKS,
       ...options,
     };
-    if (options.dependencies?.auditWriter) {
-      this.auditWriter = options.dependencies.auditWriter;
-    }
+    // auditWriter now comes from dependencies (phase155B+)
+    this.auditWriter = options.dependencies.auditWriter;
   }
 
   /**
@@ -181,146 +175,20 @@ export class ClawRuntime {
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    const { clawId, clawDir, llmConfig, monitorDir, maxSteps, toolProfile } = this.options;
+    const { clawDir } = this.options;
     const deps = this.options.dependencies;
-    if (!deps) throw new Error('Runtime: dependencies is required');
 
-    // 1. Create directory structure
+    // 1. 目录结构（业务初始化，Assembly 不管）
     await this.ensureDirectories(clawDir);
 
-    // 2. L1-L2 from dependencies
-    this.systemFs = deps.systemFs as NodeFileSystem;
-    this.clawFs = deps.clawFs as NodeFileSystem;
+    // 2. 消费 deps（16 字段赋值）
+    this.systemFs = deps.systemFs;
+    this.clawFs = deps.clawFs;
     this.auditWriter = deps.auditWriter;
-
-    // 2.5 Clean up orphaned temp files at startup (best-effort)
-    this.systemFs.cleanupTempFiles().catch(err => {
-      console.warn('[runtime] Failed to cleanup temp files:', err);
-    });
-
-    // 3. Create JsonlLogger
-    const logsDir = monitorDir || path.join(clawDir, 'logs');
-    this.monitor = new JsonlLogger({ logsDir });
-
-    // 4. Create LLMService
-    this.llm = new LLMServiceImpl(llmConfig);
-
-    // 5. Compute workspaceDir for ContractManager motion inbox path
-    const workspaceDir = clawId === MOTION_CLAW_ID
-      ? path.resolve(clawDir, '..')
-      : path.resolve(clawDir, '..', '..');
-
-    this.sessionManager = deps.sessionManager;
-    // Archive previous session on startup (best-effort; first start has no current.json)
-    await this.sessionManager.archive().catch((err: any) => {
-      if (err?.code !== 'ENOENT' && err?.code !== 'FS_NOT_FOUND') {
-        console.warn('[runtime] Failed to archive session on startup:', err?.message);
-      }
-    });
-
+    this.monitor = deps.monitor;
+    this.llm = deps.llm;
     this.snapshot = deps.snapshot;
-
-    // Session repair：检测未完成的 tool_use，注入合成 tool_result
-    {
-      const loadResult = await this.sessionManager.load().catch(() => null);
-      if (loadResult) {
-        const { session, source } = loadResult;
-        const auditAbsPath = this.systemFs.resolve('audit.tsv');
-        const interruptionMessage = summarizeLastExit(auditAbsPath);
-        this.auditWriter.write('session_loaded', `source=${source}`);
-        const { repaired, toolCount } = SessionManager.repair(
-          session.messages,
-          interruptionMessage ? { interruptionMessage } : undefined,
-        );
-        if (toolCount > 0) {
-          try {
-            await this.sessionManager.save(repaired);
-          } catch (e) {
-            this.auditWriter.write('assemble_failed', `module=session_manager`, `phase=session_repair_save`, `reason=${e instanceof Error ? e.message : String(e)}`);
-            throw e;
-          }
-          this.auditWriter.write('session_repaired', `tools=${toolCount}`);
-          const result = await this.snapshot.commit(`session-repair tools=${toolCount}`).catch((err: unknown): null => {
-            // 不可预期失败：audit 已在 snapshot 内写；此处仅暴露给诊断
-            this.auditWriter.write('snapshot_commit_failed', `context=session-repair`, `reason=${err instanceof Error ? err.message : String(err)}`);
-            return null;
-          });
-          if (result && !result.ok && result.error.kind === 'uncategorized') {
-            this.auditWriter.write('snapshot_commit_uncategorized', `context=session-repair`, `exitCode=${result.error.exitCode}`);
-          }
-        }
-      }
-    }
-
-    // 7. Create ToolRegistryImpl and register built-in tools
-    this.toolRegistry = new ToolRegistryImpl();
-    registerBuiltinTools(this.toolRegistry);
-    // dispatch 需要构造参数，单独注册
-    this.toolRegistry.register(new DispatchTool(
-      () => this.buildSystemPrompt(),           // 每个 Claw 用自己的 system prompt
-      () => this.toolRegistry.formatForLLM(this.toolRegistry.getAll()),  // Motion 完整工具列表
-      (profile) => this.toolRegistry.formatForLLM(this.toolRegistry.getForProfile(profile as import('../types/config.js').ToolProfile)),  // 按 profile 获取工具列表
-    ));
-
-    // 8. Create TaskSystem
-    this.taskSystem = new TaskSystem(clawDir, this.systemFs, {
-      maxConcurrent: this.options.maxConcurrentTasks,
-      auditWriter: this.auditWriter,
-    });
-    await this.taskSystem.initialize();
-    this.taskSystem.setLLMService(this.llm);
-    // Restored tasks can only be dispatched after the LLM service is set
-    this.taskSystem.startDispatch();
-
-    // 9. Create SkillRegistry (lazy-loads skills)
-    this.skillRegistry = new SkillRegistry(this.systemFs, 'skills');
-    await this.skillRegistry.loadAll();
-
-    // 10. Create ContractManager (with LLM and verifier registry for acceptance)
-    const verifierRegistry = new ToolRegistryImpl();
-    for (const tool of this.toolRegistry.getForProfile('verifier')) {
-      verifierRegistry.register(tool);
-    }
-    this.contractManager = new ContractManager(
-      clawDir, clawId, this.systemFs, this.monitor, this.llm, verifierRegistry,
-      this.auditWriter,
-    );
-
-    // 11. Create ContextInjector (inject skillRegistry and contractManager)
-    this.contextInjector = new ContextInjector({
-      fs: this.systemFs,
-      skillRegistry: this.skillRegistry,
-      contractManager: this.contractManager,
-    });
-
-    this.outboxWriter = deps.outboxWriter;
-
-    // Inject late-created dependencies into TaskSystem (created before SkillRegistry/ContractManager/OutboxWriter)
-    this.taskSystem.setSkillRegistry(this.skillRegistry);
-    this.taskSystem.setContractManager(this.contractManager);
-    this.taskSystem.setOutboxWriter(this.outboxWriter);
-
-    // 13. Create ExecContextImpl (inject all dependencies; tools use clawFs)
-    this.execContext = new ExecContextImpl({
-      clawId,
-      clawDir,
-      profile: toolProfile!,
-      callerType: 'claw',
-      fs: this.clawFs,
-      monitor: this.monitor,
-      llm: this.llm,
-      maxSteps,
-      taskSystem: this.taskSystem,
-      skillRegistry: this.skillRegistry,
-      contractManager: this.contractManager,
-      subagentMaxSteps: this.options.subagentMaxSteps,
-      outboxWriter: this.outboxWriter,
-      auditWriter: this.auditWriter,
-    });
-
-    // 14. Create ToolExecutorImpl
-    this.toolExecutor = new ToolExecutorImpl(this.toolRegistry, this.options.toolTimeoutMs);
-
+    this.sessionManager = deps.sessionManager;
     this.inboxReader = deps.inboxReader;
     try {
       await this.inboxReader.init();
@@ -328,8 +196,76 @@ export class ClawRuntime {
       this.auditWriter.write('assemble_failed', `module=inbox_reader`, `phase=init`, `reason=${e instanceof Error ? e.message : String(e)}`);
       throw e;
     }
+    this.outboxWriter = deps.outboxWriter;
+    this.toolRegistry = deps.toolRegistry;
+    this.toolExecutor = deps.toolExecutor;
+    this.skillRegistry = deps.skillRegistry;
+    this.contractManager = deps.contractManager;
+    this.taskSystem = deps.taskSystem;
+    this.contextInjector = deps.contextInjector;
+    this.execContext = deps.execContext;
+
+    // 3. 归档上一次 session（first-run ENOENT 允许）
+    await this.sessionManager.archive().catch((err: any) => {
+      if (err?.code !== 'ENOENT' && err?.code !== 'FS_NOT_FOUND') {
+        console.warn('[runtime] Failed to archive session on startup:', err?.message);
+      }
+    });
+
+    // 5. Session repair（业务链路）
+    await this.repairSessionIfNeeded();
+
+    // 6. TaskSystem 业务动作（原则 #2 归属消费者；Assembly 只构造不调）
+    try {
+      await this.taskSystem.initialize();
+    } catch (e) {
+      this.auditWriter.write('task_system_init_failed', `reason=${e instanceof Error ? e.message : String(e)}`);
+      throw new Error(`Runtime: TaskSystem.initialize failed: ${e instanceof Error ? e.message : String(e)}`, { cause: e });
+    }
+    try {
+      this.taskSystem.startDispatch();
+    } catch (e) {
+      this.auditWriter.write('task_system_start_dispatch_failed', `reason=${e instanceof Error ? e.message : String(e)}`);
+      throw new Error(`Runtime: TaskSystem.startDispatch failed: ${e instanceof Error ? e.message : String(e)}`, { cause: e });
+    }
+
+    // 7. DispatchTool 注册（候选 γ：结构性循环依赖妥协）
+    // NOTE: DispatchTool 闭包依赖 this.buildSystemPrompt / this.toolRegistry.formatForLLM
+    //       因 Assembly 构造期 Runtime 尚未 new，此 register 必须留在 Runtime 内
+    //       登记为 B 类偏差：design/modules/l6_assembly.md §7
+    this.toolRegistry.register(new DispatchTool(
+      () => this.buildSystemPrompt(),
+      () => this.toolRegistry.formatForLLM(this.toolRegistry.getAll()),
+      (profile) => this.toolRegistry.formatForLLM(
+        this.toolRegistry.getForProfile(profile as import('../types/config.js').ToolProfile),
+      ),
+    ));
 
     this.initialized = true;
+  }
+
+  private async repairSessionIfNeeded(): Promise<void> {
+    const loadResult = await this.sessionManager.load().catch(() => null);
+    if (!loadResult) return;
+    const { session, source } = loadResult;
+    const auditAbsPath = this.systemFs.resolve('audit.tsv');
+    const interruptionMessage = summarizeLastExit(auditAbsPath);
+    this.auditWriter.write('session_loaded', `source=${source}`);
+    const { repaired, toolCount } = SessionManager.repair(
+      session.messages,
+      interruptionMessage ? { interruptionMessage } : undefined,
+    );
+    if (toolCount > 0) {
+      await this.sessionManager.save(repaired);
+      this.auditWriter.write('session_repaired', `tools=${toolCount}`);
+      const result = await this.snapshot.commit(`session-repair tools=${toolCount}`).catch((err: unknown): null => {
+        this.auditWriter.write('snapshot_commit_failed', `context=session-repair`, `reason=${err instanceof Error ? err.message : String(err)}`);
+        return null;
+      });
+      if (result && !result.ok && result.error.kind === 'uncategorized') {
+        this.auditWriter.write('snapshot_commit_uncategorized', `context=session-repair`, `exitCode=${result.error.exitCode}`);
+      }
+    }
   }
 
   /**
