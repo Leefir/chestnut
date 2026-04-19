@@ -116,21 +116,21 @@ describe.skipIf(!gitAvailable)('Snapshot', () => {
   // ========================================================================
 
   it('init writes .gitignore with only DEFAULT_IGNORES when ignorePatterns is empty', async () => {
-    await new Snapshot(tmpDir, new NodeFileSystem({ baseDir: tmpDir, enforcePermissions: false }), makeAudit().audit, []).init();
+    await new Snapshot(tmpDir, new NodeFileSystem({ baseDir: tmpDir, enforcePermissions: false }), { write: () => {} }, []).init();
 
     const gitignore = await fsp.readFile(path.join(tmpDir, '.gitignore'), 'utf-8');
     expect(gitignore).toBe('logs/\n*.tmp\n');
   });
 
   it('init preserves duplicate patterns (Snapshot does not dedup)', async () => {
-    await new Snapshot(tmpDir, new NodeFileSystem({ baseDir: tmpDir, enforcePermissions: false }), makeAudit().audit, ['x', 'x', 'y']).init();
+    await new Snapshot(tmpDir, new NodeFileSystem({ baseDir: tmpDir, enforcePermissions: false }), { write: () => {} }, ['x', 'x', 'y']).init();
 
     const gitignore = await fsp.readFile(path.join(tmpDir, '.gitignore'), 'utf-8');
     expect(gitignore).toBe('x\nx\ny\nlogs/\n*.tmp\n');
   });
 
   it('init writes injected patterns before DEFAULT_IGNORES', async () => {
-    await new Snapshot(tmpDir, new NodeFileSystem({ baseDir: tmpDir, enforcePermissions: false }), makeAudit().audit, ['injected1', 'injected2']).init();
+    await new Snapshot(tmpDir, new NodeFileSystem({ baseDir: tmpDir, enforcePermissions: false }), { write: () => {} }, ['injected1', 'injected2']).init();
 
     const gitignore = await fsp.readFile(path.join(tmpDir, '.gitignore'), 'utf-8');
     expect(gitignore).toBe('injected1\ninjected2\nlogs/\n*.tmp\n');
