@@ -8,5 +8,19 @@
 export type { StreamEvent, StreamLog } from './types.js';
 export { STREAM_FILE } from './types.js';
 export { StreamWriter } from './writer.js';
+export type { StreamRetentionOptions } from './writer.js';
 export type { StreamReader } from './reader.js';
 export { createStreamReader, readAll } from './reader.js';
+
+import type { FileSystem } from '../fs/types.js';
+import type { Audit } from '../audit/index.js';
+import { StreamWriter } from './writer.js';
+import type { StreamRetentionOptions } from './writer.js';
+
+export function createStreamWriter(
+  fs: FileSystem,
+  audit: Audit,
+  retention?: StreamRetentionOptions,
+): StreamWriter {
+  return new StreamWriter(fs, audit, retention);
+}

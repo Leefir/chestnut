@@ -6,7 +6,7 @@ import { STREAM_FILE, type StreamEvent, type StreamLog } from './types.js';
 import type { Audit } from '../audit/index.js';
 import { AUDIT_EVENTS } from '../audit/events.js';
 
-interface StreamRetentionOptions {
+export interface StreamRetentionOptions {
   maxFiles?: number | null;
   maxDays?: number | null;
 }
