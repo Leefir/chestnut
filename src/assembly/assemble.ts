@@ -2,8 +2,10 @@ import path from 'path';
 import * as fsNative from 'fs';
 
 import { AuditWriter } from '../foundation/audit/writer.js';
-import { Snapshot, SNAPSHOT_IGNORE_PATTERNS } from '../foundation/snapshot/index.js';
-import { StreamWriter } from '../foundation/stream/writer.js';
+import { SNAPSHOT_IGNORE_PATTERNS, createSnapshot } from '../foundation/snapshot/index.js';
+import type { Snapshot } from '../foundation/snapshot/index.js';
+import { createStreamWriter } from '../foundation/stream/index.js';
+import type { StreamWriter } from '../foundation/stream/writer.js';
 import type { ProcessManager } from '../foundation/process-manager/manager.js';
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import { createAgentProcessManager } from '../cli/commands/process-manager-factory.js';
@@ -60,14 +62,14 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   const isMotion = identity === 'motion';
   const auditMaxSizeMb = globalConfig.audit?.retention?.max_size_mb ?? null;
 
+  // phase155A: 预制 fs 句柄，替换函数体内 4 处零散 new NodeFileSystem
+  const clawFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+  const parentFs = new NodeFileSystem({ baseDir: path.join(clawDir, '..'), enforcePermissions: false });
+
   // --- 1. AuditWriter (daemon.ts L100-104) ---
   let auditWriter: AuditWriter;
   try {
-    auditWriter = new AuditWriter(
-      new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false }),
-      'audit.tsv',
-      auditMaxSizeMb,
-    );
+    auditWriter = new AuditWriter(clawFs, 'audit.tsv', auditMaxSizeMb);
   } catch (e) {
     throw new Error(`Assembly: AuditWriter construct failed: ${errMsg(e)}`, { cause: e });
   }
@@ -136,12 +138,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   // --- 4. Snapshot construct + init + recovery (daemon.ts L140-150) ---
   let snapshot: Snapshot;
   try {
-    snapshot = new Snapshot(
-      clawDir,
-      new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false }),
-      auditWriter,
-      SNAPSHOT_IGNORE_PATTERNS,
-    );
+    snapshot = createSnapshot(clawDir, clawFs, auditWriter, SNAPSHOT_IGNORE_PATTERNS);
   } catch (e) {
     auditWriter.write('assemble_failed', `module=snapshot`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: Snapshot construct failed: ${errMsg(e)}`, { cause: e });
@@ -169,10 +166,9 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     const heartbeatIntervalMs = globalConfig.motion?.heartbeat_interval_ms ?? 0;
     if (heartbeatIntervalMs > 0) {
       try {
-        const heartbeatFs = new NodeFileSystem({ baseDir: path.join(clawDir, '..'), enforcePermissions: false });
         heartbeat = new Heartbeat(path.join(clawDir, '..'), {
           interval: heartbeatIntervalMs / 1000,
-          fs: heartbeatFs,
+          fs: parentFs,
           audit: auditWriter,
         });
       } catch (e) {
@@ -185,8 +181,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   // --- 7. StreamWriter + open + stream event + setParentStreamLog (daemon.ts L172-184) ---
   let streamWriter: StreamWriter;
   try {
-    const streamFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
-    streamWriter = new StreamWriter(streamFs, auditWriter, {
+    streamWriter = createStreamWriter(clawFs, auditWriter, {
       maxFiles: globalConfig.stream?.retention?.max_files ?? null,
       maxDays: globalConfig.stream?.retention?.max_days ?? null,
     });

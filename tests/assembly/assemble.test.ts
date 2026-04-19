@@ -44,10 +44,15 @@ vi.mock('../../src/foundation/audit/writer.js', () => ({
 vi.mock('../../src/foundation/snapshot/index.js', () => ({
   Snapshot: vi.fn(() => mockSnapshot),
   SNAPSHOT_IGNORE_PATTERNS: ['.git', 'node_modules'],
+  createSnapshot: vi.fn(() => mockSnapshot),
 }));
 
 vi.mock('../../src/foundation/stream/writer.js', () => ({
   StreamWriter: vi.fn(() => mockStreamWriter),
+}));
+
+vi.mock('../../src/foundation/stream/index.js', () => ({
+  createStreamWriter: vi.fn(() => mockStreamWriter),
 }));
 
 vi.mock('../../src/foundation/fs/node-fs.js', () => ({
@@ -266,8 +271,8 @@ describe('assemble', () => {
   });
 
   it('StreamWriter 构造失败 → assemble_failed + 抛 Error', async () => {
-    const { StreamWriter } = await import('../../src/foundation/stream/writer.js');
-    (StreamWriter as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
+    const { createStreamWriter } = await import('../../src/foundation/stream/index.js');
+    (createStreamWriter as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
       throw new Error('stream fail');
     });
 
@@ -392,8 +397,8 @@ describe('assemble', () => {
   });
 
   it('Snapshot 构造失败 → assemble_failed + 抛 Error', async () => {
-    const { Snapshot } = await import('../../src/foundation/snapshot/index.js');
-    (Snapshot as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
+    const { createSnapshot } = await import('../../src/foundation/snapshot/index.js');
+    (createSnapshot as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
       throw new Error('snapshot fail');
     });
 
