@@ -128,7 +128,7 @@ export function waitForInbox(
       resolve();
     };
 
-    const timer = setTimeout(done, timeoutMs);
+    const timer = setTimeout(() => void done(), timeoutMs);
 
     try {
       fs.ensureDirSync(inboxPendingDir);

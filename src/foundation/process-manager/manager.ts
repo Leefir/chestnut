@@ -201,6 +201,7 @@ export class ProcessManager {
     this.fs.ensureDirSync(path.dirname(lockFile));
     try {
       this.fs.writeExclusiveSync(lockFile, String(process.pid));
+      this.audit.write(AUDIT_EVENTS.LOCK_ACQUIRED, `claw=${clawId}`, `pid=${process.pid}`);
       return;
     } catch (err: any) {
       if (err?.code !== 'EEXIST') throw err;
@@ -242,6 +243,7 @@ export class ProcessManager {
     }
     try {
       this.fs.writeExclusiveSync(lockFile, String(process.pid));
+      this.audit.write(AUDIT_EVENTS.LOCK_ACQUIRED, `claw=${clawId}`, `pid=${process.pid}`, `context=stale_retry`);
     } catch (retryErr: any) {
       if (retryErr?.code === 'EEXIST') {
         throw new LockHeldError(
@@ -268,6 +270,7 @@ export class ProcessManager {
     const lockFile = this.getLockFile(clawId);
     try {
       this.fs.deleteSync(lockFile);
+      this.audit.write(AUDIT_EVENTS.LOCK_RELEASED, `claw=${clawId}`, `pid=${process.pid}`);
     } catch (err: any) {
       if (err?.code !== 'ENOENT' && err?.code !== 'FS_NOT_FOUND') {
         this.audit.write(

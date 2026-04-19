@@ -544,7 +544,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
         const stale = clawWatchers.get(clawId);
         if (stale) { void stale.close(); clawWatchers.delete(clawId); }
         try {
-          const w = createWatcher(fs, path.relative(options.baseDir, streamFile), () => refreshClawStatus(clawId), options.audit, {
+          const w = createWatcher(fs, streamFile, () => refreshClawStatus(clawId), options.audit, {
             stability: 'immediate',
             persistent: false,
             onError: () => { void w.close(); clawWatchers.delete(clawId); },
@@ -674,7 +674,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
       }
       if (!clawWatchers.has(clawId)) {
         try {
-          const w = createWatcher(fs, path.relative(options.baseDir, streamFile), () => refreshClawStatus(clawId), options.audit, {
+          const w = createWatcher(fs, streamFile, () => refreshClawStatus(clawId), options.audit, {
             stability: 'immediate',
             persistent: false,
             onError: () => { void w.close(); clawWatchers.delete(clawId); },
@@ -831,7 +831,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
         t.referenceMs = Date.now();
         clawTrackMap.set(clawId, t);
         try {
-          const w = createWatcher(fs, path.relative(options.baseDir, path.join(clawDir, STREAM_FILE)), () => refreshClawStatus(clawId), options.audit, {
+          const w = createWatcher(fs, path.join(clawDir, STREAM_FILE), () => refreshClawStatus(clawId), options.audit, {
             stability: 'immediate',
             persistent: false,
             onError: () => { void w.close(); clawWatchers.delete(clawId); },
@@ -1091,7 +1091,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
             clawTrackMap.set(clawId, t);
             // 开 watcher
             try {
-              const w = createWatcher(fs, path.relative(options.baseDir, path.join(clawDir, STREAM_FILE)), () => refreshClawStatus(clawId), options.audit, {
+              const w = createWatcher(fs, path.join(clawDir, STREAM_FILE), () => refreshClawStatus(clawId), options.audit, {
                 stability: 'immediate',
                 onError: () => { void w.close(); clawWatchers.delete(clawId); },
               });

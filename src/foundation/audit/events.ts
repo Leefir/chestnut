@@ -64,6 +64,8 @@ export const AUDIT_EVENTS = {
   ORPHAN_SIGTERM_FAILED: 'orphan_sigterm_failed',
   LOCKFILE_READ_FAILED: 'lockfile_read_failed',
   LOCKFILE_CLEANUP_FAILED: 'lockfile_cleanup_failed',
+  LOCK_ACQUIRED: 'lock_acquired',
+  LOCK_RELEASED: 'lock_released',
   PROCESS_LIST_FAILED: 'process_list_failed',
 } as const;
 

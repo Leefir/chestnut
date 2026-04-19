@@ -20,8 +20,6 @@ import type { Audit } from '../audit/index.js';
 import { createWatcher, type Watcher } from '../file-watcher/index.js';
 import { AUDIT_EVENTS } from '../audit/events.js';
 
-export { STREAM_FILE } from './types.js';
-
 export interface StreamReader {
   /** Start watching and emit new events. Throws if already started. */
   start(): void;
@@ -33,6 +31,7 @@ export interface StreamReader {
 
 /**
  * Read all historical events from STREAM_FILE.
+ * NOTE: reads entire file into memory; suitable for < few MB streams.
  * Returns empty array if file does not exist.
  * Parse failures are audit-logged and skipped.
  * Read failures are audit-logged and thrown.

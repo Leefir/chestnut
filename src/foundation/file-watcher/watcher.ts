@@ -4,6 +4,7 @@
  * Wraps chokidar to provide our Watcher interface
  */
 
+import * as path from 'path';
 import { watch as chokidarWatch, type FSWatcher } from 'chokidar';
 import type { Watcher, WatchEvent, WatchEventType } from './types.js';
 import type { FileSystem } from '../fs/types.js';
@@ -97,7 +98,9 @@ export function createWatcher(
     persistent?: boolean;
   }
 ): Watcher {
-  const watchPath = fs.resolve(relativePath);
+  const watchPath = path.isAbsolute(relativePath)
+    ? relativePath
+    : fs.resolve(relativePath);
   const watcher = chokidarWatch(watchPath, {
     persistent: options?.persistent ?? true,
     ignoreInitial: true,
