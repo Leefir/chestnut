@@ -114,8 +114,6 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
           subagentMaxSteps: globalConfig.motion?.subagent_max_steps,
           maxConcurrentTasks: globalConfig.motion?.max_concurrent_tasks ?? DEFAULT_MAX_CONCURRENT_TASKS,
           idleTimeoutMs: globalConfig.motion?.llm_idle_timeout_ms,
-          auditMaxSizeMb,
-          auditWriter,
         })
       : new ClawRuntime({
           clawId,
@@ -127,8 +125,6 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
           subagentMaxSteps: clawConfig!.subagent_max_steps,
           maxConcurrentTasks: clawConfig!.max_concurrent_tasks,
           idleTimeoutMs: globalConfig.motion?.llm_idle_timeout_ms,
-          auditMaxSizeMb,
-          auditWriter,
         } as ClawRuntimeOptions);
   } catch (e) {
     auditWriter.write('assemble_failed', `module=runtime`, `phase=construct`, `reason=${errMsg(e)}`);

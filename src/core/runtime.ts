@@ -49,6 +49,37 @@ import { Snapshot } from '../foundation/snapshot/index.js';
 import { SNAPSHOT_IGNORE_PATTERNS } from '../foundation/snapshot/index.js';
 import { MaxStepsExceededError } from '../types/errors.js';
 import { MOTION_CLAW_ID, DEFAULT_LLM_IDLE_TIMEOUT_MS, DEFAULT_MAX_STEPS, DEFAULT_MAX_CONCURRENT_TASKS } from '../constants.js';
+import type { FileSystem } from '../foundation/fs/types.js';
+
+/**
+ * Runtime L1-L2 dependencies injected by Assembly
+ *
+ * L1-L2: phase155B 必传
+ * L3-L5: phase155C 装配后必传；当前 optional 以避免 Assembly 传占位值
+ */
+export interface RuntimeDependencies {
+  // === L1（phase155B 填充） ===
+  readonly systemFs: FileSystem;
+  readonly clawFs: FileSystem;
+
+  // === L2（phase155B 填充） ===
+  readonly auditWriter: AuditWriter;
+  readonly snapshot: Snapshot;
+  readonly sessionManager: SessionManager;
+  readonly inboxReader: InboxReader;
+  readonly outboxWriter: OutboxWriter;
+
+  // === L3-L5（phase155B 期间 optional；phase155C PR 单点删 ?） ===
+  readonly monitor?: JsonlLogger;
+  readonly llm?: LLMService;
+  readonly toolRegistry?: ToolRegistryImpl;
+  readonly toolExecutor?: ToolExecutorImpl;
+  readonly skillRegistry?: SkillRegistry;
+  readonly contractManager?: ContractManager;
+  readonly taskSystem?: TaskSystem;
+  readonly contextInjector?: ContextInjector;
+  readonly execContext?: ExecContextImpl;
+}
 
 /**
  * ClawRuntime constructor options
@@ -64,8 +95,7 @@ export interface ClawRuntimeOptions {
   subagentMaxSteps?: number;
   maxConcurrentTasks?: number;
   idleTimeoutMs?: number;  // 覆盖 DEFAULT_LLM_IDLE_TIMEOUT_MS（0 = 禁用）
-  auditMaxSizeMb?: number | null;   // 审计日志大小限制（MB），null = 不限
-  auditWriter?: AuditWriter;
+  dependencies?: RuntimeDependencies;  // Step 1 过渡态：可选；Step 3 末尾改必传
 }
 
 /**
@@ -141,8 +171,8 @@ export class ClawRuntime {
       maxConcurrentTasks: DEFAULT_MAX_CONCURRENT_TASKS,
       ...options,
     };
-    if (options.auditWriter) {
-      this.auditWriter = options.auditWriter;
+    if (options.dependencies?.auditWriter) {
+      this.auditWriter = options.dependencies.auditWriter;
     }
   }
 
@@ -166,7 +196,7 @@ export class ClawRuntime {
       this.auditWriter = new AuditWriter(
         this.systemFs,
         'audit.tsv',
-        this.options.auditMaxSizeMb ?? null,
+        null,  // auditMaxSizeMb 已移出 RuntimeOptions，由 Assembly 装配 AuditWriter 时使用；Step 2 删除此 fallback 分支
       );
     }
     // 若外部已注入 auditWriter，则直接使用，systemFs 与之独立但指向同一目录
