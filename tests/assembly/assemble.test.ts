@@ -296,6 +296,55 @@ describe('assemble', () => {
     );
   });
 
+  it('CronRunner.start 失败 → assemble_failed phase=start + 抛 Error', async () => {
+    mockCronRunner.start.mockImplementationOnce(() => {
+      throw new Error('start boom');
+    });
+
+    await expect(assemble(baseConfig)).rejects.toThrow(
+      'Assembly: CronRunner start failed: start boom'
+    );
+    expect(mockAuditWrite).toHaveBeenCalledWith(
+      'assemble_failed',
+      'module=cron_runner',
+      'phase=start',
+      'reason=start boom'
+    );
+  });
+
+  it('buildLLMConfig 失败 → assemble_failed module=llm_config + 抛 Error', async () => {
+    const { buildLLMConfig } = await import('../../src/cli/config.js');
+    (buildLLMConfig as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
+      throw new Error('llm cfg boom');
+    });
+
+    await expect(assemble(baseConfig)).rejects.toThrow(
+      'Assembly: buildLLMConfig failed: llm cfg boom'
+    );
+    expect(mockAuditWrite).toHaveBeenCalledWith(
+      'assemble_failed',
+      'module=llm_config',
+      'phase=construct',
+      'reason=llm cfg boom'
+    );
+  });
+
+  it('setContractNotifyCallback 失败 → assemble_failed phase=set_contract_notify_callback + 抛 Error', async () => {
+    mockRuntime.setContractNotifyCallback.mockImplementationOnce(() => {
+      throw new Error('setter boom');
+    });
+
+    await expect(assemble(baseConfig)).rejects.toThrow(
+      'Assembly: setContractNotifyCallback failed: setter boom'
+    );
+    expect(mockAuditWrite).toHaveBeenCalledWith(
+      'assemble_failed',
+      'module=runtime',
+      'phase=set_contract_notify_callback',
+      'reason=setter boom'
+    );
+  });
+
   it('setContractNotifyCallback 回调应写 user_notify 到 streamWriter', async () => {
     await assemble(baseConfig);
     const callback = mockRuntime.setContractNotifyCallback.mock.calls[0][0];

@@ -8,7 +8,7 @@
 import * as path from 'path';
 import * as fsNative from 'fs';
 import * as fsAsync from 'fs/promises';
-import { randomUUID, createHash } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { loadGlobalConfig, loadClawConfig, getClawDir, getMotionDir } from '../config.js';
 import type { InboxMessage } from '../../types/contract.js';
 import { startDaemonLoop } from './daemon-loop.js';
