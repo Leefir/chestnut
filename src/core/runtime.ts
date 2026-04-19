@@ -256,7 +256,12 @@ export class ClawRuntime {
       interruptionMessage ? { interruptionMessage } : undefined,
     );
     if (toolCount > 0) {
-      await this.sessionManager.save(repaired);
+      try {
+        await this.sessionManager.save(repaired);
+      } catch (e) {
+        this.auditWriter.write('assemble_failed', `module=session_manager`, `phase=session_repair_save`, `reason=${e instanceof Error ? e.message : String(e)}`);
+        throw e;
+      }
       this.auditWriter.write('session_repaired', `tools=${toolCount}`);
       const result = await this.snapshot.commit(`session-repair tools=${toolCount}`).catch((err: unknown): null => {
         this.auditWriter.write('snapshot_commit_failed', `context=session-repair`, `reason=${err instanceof Error ? err.message : String(err)}`);

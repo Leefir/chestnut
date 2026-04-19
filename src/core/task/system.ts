@@ -146,13 +146,12 @@ export class TaskSystem {
     
     // Cold-start recovery: load existing pending and running tasks
     await this.recoverTasks();
-    
-    // Note: startDispatch() should be called after setLLMService() to avoid race conditions
   }
 
   /**
    * Start dispatching pending tasks.
-   * Must be called after setLLMService() for subagent tasks to work correctly.
+   * The LLM service is injected via constructor; dispatch is ready once
+   * initialize() has completed.
    */
   startDispatch(): void {
     this._dispatch();

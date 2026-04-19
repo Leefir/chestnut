@@ -1,8 +1,10 @@
 /**
- * Runtime.initialize() failure audit tests — phase155B
+ * Runtime.initialize() failure audit tests — phase155B / restored phase155E
  *
  * Covers:
+ * - sessionManager.save(repaired) failure → precise audit + rethrow
  * - inboxReader.init() failure → precise audit + rethrow
+ * - snapshot.commit('session-repair') unhandled failure → audit only, no throw
  *
  * 遗留：本文件 makeDeps helper 仍是 phase155B sync + 7 字段 + `dependencies: deps as any`
  * 形态。phase155C 新契约下 `as any` 是类型破口，应整体迁移到 makeRuntimeDeps
@@ -42,6 +44,73 @@ describe('Runtime.initialize() failure audits', () => {
     };
   }
 
+  function minimalMocks() {
+    return {
+      monitor: { close: vi.fn().mockResolvedValue(undefined) } as any,
+      llm: { close: vi.fn().mockResolvedValue(undefined) } as any,
+      toolRegistry: {
+        register: vi.fn(),
+        getForProfile: vi.fn().mockReturnValue([]),
+        getAll: vi.fn().mockReturnValue([]),
+        formatForLLM: vi.fn().mockReturnValue(''),
+      } as any,
+      toolExecutor: {} as any,
+      skillRegistry: {} as any,
+      contractManager: {} as any,
+      taskSystem: {
+        initialize: vi.fn().mockResolvedValue(undefined),
+        startDispatch: vi.fn(),
+        shutdown: vi.fn().mockResolvedValue(undefined),
+      } as any,
+      contextInjector: {} as any,
+      execContext: {} as any,
+    };
+  }
+
+  it('sessionManager.save failure audits module=session_manager phase=session_repair_save and rethrows', async () => {
+    const clawDir = path.join(tmpdir(), `runtime-fail-test-${randomUUID()}`, 'claws', 'test');
+    await fs.mkdir(clawDir, { recursive: true });
+
+    const deps = await makeDeps(clawDir);
+    const auditSpy = vi.spyOn(deps.auditWriter, 'write');
+
+    // Mock sessionManager.load to return a session that needs repair
+    vi.spyOn(deps.sessionManager, 'load').mockResolvedValue({
+      session: {
+        messages: [
+          { role: 'assistant', content: 'ok', tool_use: { id: 't1', name: 'test', input: {} } },
+        ],
+      },
+      source: 'current',
+    } as any);
+
+    // Mock SessionManager.repair to return toolCount > 0 so save() is triggered
+    vi.spyOn(SessionManager, 'repair').mockReturnValue({ repaired: [], toolCount: 1 } as any);
+
+    // Mock sessionManager.save to throw
+    const saveError = new Error('ENOSPC: no space left on device');
+    vi.spyOn(deps.sessionManager, 'save').mockRejectedValue(saveError);
+
+    const mocks = minimalMocks();
+    const runtime = new ClawRuntime({
+      clawId: 'test-claw',
+      clawDir,
+      llmConfig: { primary: { name: 'mock', apiKey: 'k', model: 'm', maxTokens: 1, temperature: 0, timeoutMs: 1, apiFormat: 'anthropic' }, maxAttempts: 1, retryDelayMs: 0 },
+      dependencies: { ...deps, ...mocks } as any,
+    });
+
+    await expect(runtime.initialize()).rejects.toThrow('ENOSPC: no space left on device');
+
+    const assembleFailedCall = auditSpy.mock.calls.find(c => c[0] === 'assemble_failed');
+    expect(assembleFailedCall).toBeDefined();
+    expect(assembleFailedCall![1]).toContain('module=session_manager');
+    expect(assembleFailedCall![2]).toContain('phase=session_repair_save');
+    expect(assembleFailedCall![3]).toContain('ENOSPC');
+
+    // Cleanup
+    await fs.rm(path.dirname(path.dirname(clawDir)), { recursive: true, force: true }).catch(() => {});
+  });
+
   it('inboxReader.init failure audits module=inbox_reader phase=init and rethrows', async () => {
     const clawDir = path.join(tmpdir(), `runtime-fail-test-${randomUUID()}`, 'claws', 'test');
     await fs.mkdir(clawDir, { recursive: true });
@@ -53,11 +122,12 @@ describe('Runtime.initialize() failure audits', () => {
     const initError = new Error('ensureDir EACCES');
     vi.spyOn(deps.inboxReader, 'init').mockRejectedValue(initError);
 
+    const mocks = minimalMocks();
     const runtime = new ClawRuntime({
       clawId: 'test-claw',
       clawDir,
       llmConfig: { primary: { name: 'mock', apiKey: 'k', model: 'm', maxTokens: 1, temperature: 0, timeoutMs: 1, apiFormat: 'anthropic' }, maxAttempts: 1, retryDelayMs: 0 },
-      dependencies: deps as any,
+      dependencies: { ...deps, ...mocks } as any,
     });
 
     await expect(runtime.initialize()).rejects.toThrow('ensureDir EACCES');
@@ -67,6 +137,54 @@ describe('Runtime.initialize() failure audits', () => {
     expect(assembleFailedCall![1]).toContain('module=inbox_reader');
     expect(assembleFailedCall![2]).toContain('phase=init');
     expect(assembleFailedCall![3]).toContain('EACCES');
+
+    // Cleanup
+    await fs.rm(path.dirname(path.dirname(clawDir)), { recursive: true, force: true }).catch(() => {});
+  });
+
+  it('snapshot.commit session-repair failure writes snapshot_commit_failed and does not throw', async () => {
+    const clawDir = path.join(tmpdir(), `runtime-fail-test-${randomUUID()}`, 'claws', 'test');
+    await fs.mkdir(clawDir, { recursive: true });
+
+    const deps = await makeDeps(clawDir);
+    const auditSpy = vi.spyOn(deps.auditWriter, 'write');
+
+    // Mock sessionManager.load to return a session that needs repair
+    vi.spyOn(deps.sessionManager, 'load').mockResolvedValue({
+      session: {
+        messages: [
+          { role: 'assistant', content: 'ok', tool_use: { id: 't1', name: 'test', input: {} } },
+        ],
+      },
+      source: 'current',
+    } as any);
+
+    // Mock SessionManager.repair to return toolCount > 0 so save() and commit() are triggered
+    vi.spyOn(SessionManager, 'repair').mockReturnValue({ repaired: [], toolCount: 1 } as any);
+
+    // Mock snapshot.commit to throw (unhandled failure path)
+    const commitError = new Error('git write-tree failed');
+    vi.spyOn(deps.snapshot, 'commit').mockRejectedValue(commitError);
+
+    const mocks = minimalMocks();
+    const runtime = new ClawRuntime({
+      clawId: 'test-claw',
+      clawDir,
+      llmConfig: { primary: { name: 'mock', apiKey: 'k', model: 'm', maxTokens: 1, temperature: 0, timeoutMs: 1, apiFormat: 'anthropic' }, maxAttempts: 1, retryDelayMs: 0 },
+      dependencies: { ...deps, ...mocks } as any,
+    });
+
+    // Should NOT throw — commit error is caught internally
+    await expect(runtime.initialize()).resolves.not.toThrow();
+
+    const snapshotCommitFailedCall = auditSpy.mock.calls.find(c => c[0] === 'snapshot_commit_failed');
+    expect(snapshotCommitFailedCall).toBeDefined();
+    expect(snapshotCommitFailedCall![1]).toContain('context=session-repair');
+    expect(snapshotCommitFailedCall![2]).toContain('git write-tree failed');
+
+    // session_repaired should still have been written before commit
+    const sessionRepairedCall = auditSpy.mock.calls.find(c => c[0] === 'session_repaired');
+    expect(sessionRepairedCall).toBeDefined();
 
     // Cleanup
     await fs.rm(path.dirname(path.dirname(clawDir)), { recursive: true, force: true }).catch(() => {});
