@@ -127,4 +127,18 @@ describe('ProcessManager.acquireLock — fix 004: TOCTOU race protection', () =>
     const content = fsNative.readFileSync(path.join(statusDir, 'daemon.lock'), 'utf-8');
     expect(content).toBe('99999');
   });
+
+  it('writes lock_acquired audit on successful acquire', () => {
+    pm.acquireLock('test-claw');
+    const audit = fsNative.readFileSync(path.join(tmpDir, 'audit.tsv'), 'utf-8');
+    expect(audit).toMatch(/lock_acquired/);
+    expect(audit).toContain(`pid=${process.pid}`);
+  });
+
+  it('writes lock_released audit on successful release', () => {
+    pm.acquireLock('test-claw');
+    pm.releaseLock('test-claw');
+    const audit = fsNative.readFileSync(path.join(tmpDir, 'audit.tsv'), 'utf-8');
+    expect(audit).toMatch(/lock_released/);
+  });
 });
