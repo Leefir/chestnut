@@ -19,6 +19,7 @@ export interface AssembleConfig {
 }
 
 export interface Instances {
+  readonly clawId: string;
   readonly runtime: MotionRuntime | ClawRuntime;
   readonly streamWriter: StreamWriter;
   readonly snapshot: Snapshot;

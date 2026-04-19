@@ -269,6 +269,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     auditWriter.write('daemon_started', `clawId=${clawId}`, `pid=${process.pid}`);
 
     return {
+      clawId: config.clawId,
       runtime,
       streamWriter,
       snapshot,
