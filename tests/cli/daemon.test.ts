@@ -63,4 +63,68 @@ describe('ProcessManager.acquireLock — fix 004: TOCTOU race protection', () =>
     const content = fsNative.readFileSync(path.join(statusDir, 'daemon.lock'), 'utf-8');
     expect(content).toBe(String(process.pid));
   });
+
+  it('throws on EPERM (holder alive but no permission to signal)', () => {
+    const fs = (pm as any).fs;
+    vi.spyOn(fs, 'writeExclusiveSync').mockImplementation(() => {
+      const err: any = new Error('EEXIST');
+      err.code = 'EEXIST';
+      throw err;
+    });
+    vi.spyOn(pm as any, 'readLockPid').mockReturnValue(12345);
+    vi.spyOn(process, 'kill').mockImplementation(() => {
+      const err: any = new Error('EPERM');
+      err.code = 'EPERM';
+      throw err;
+    });
+
+    expect(() => pm.acquireLock('test-claw')).toThrow(
+      'Another "test-claw" daemon is running (PID: 12345, no permission to signal)',
+    );
+  });
+
+  it('throws on unknown kill errno (conservative, does not steal)', () => {
+    const fs = (pm as any).fs;
+    vi.spyOn(fs, 'writeExclusiveSync').mockImplementation(() => {
+      const err: any = new Error('EEXIST');
+      err.code = 'EEXIST';
+      throw err;
+    });
+    vi.spyOn(pm as any, 'readLockPid').mockReturnValue(12345);
+    vi.spyOn(process, 'kill').mockImplementation(() => {
+      const err: any = new Error('EINVAL');
+      err.code = 'EINVAL';
+      throw err;
+    });
+
+    expect(() => pm.acquireLock('test-claw')).toThrow(
+      'kill probe failed (errno=EINVAL)',
+    );
+  });
+
+  it('releaseLock deletes lock when held by current process', () => {
+    const statusDir = path.join(tmpDir, 'claws', 'test-claw', 'status');
+    fsNative.mkdirSync(statusDir, { recursive: true });
+    fsNative.writeFileSync(path.join(statusDir, 'daemon.lock'), String(process.pid));
+
+    pm.releaseLock('test-claw');
+
+    expect(fsNative.existsSync(path.join(statusDir, 'daemon.lock'))).toBe(false);
+  });
+
+  it('releaseLock is silent when lock file does not exist', () => {
+    // 无锁文件，releaseLock 不应抛错
+    expect(() => pm.releaseLock('test-claw')).not.toThrow();
+  });
+
+  it('releaseLock does nothing when lock is held by another process', () => {
+    const statusDir = path.join(tmpDir, 'claws', 'test-claw', 'status');
+    fsNative.mkdirSync(statusDir, { recursive: true });
+    fsNative.writeFileSync(path.join(statusDir, 'daemon.lock'), '99999');
+
+    pm.releaseLock('test-claw');
+
+    const content = fsNative.readFileSync(path.join(statusDir, 'daemon.lock'), 'utf-8');
+    expect(content).toBe('99999');
+  });
 });

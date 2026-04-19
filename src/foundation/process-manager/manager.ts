@@ -17,6 +17,18 @@ import {
 } from '../../constants.js';
 import { AUDIT_EVENTS } from '../audit/events.js';
 
+/**
+ * Thrown when a lock is already held by another live process.
+ * Used to distinguish "holder alive" from "stale lock" in acquireLock.
+ */
+class LockHeldError extends Error {
+  readonly kind = 'lock_held';
+  constructor(message: string) {
+    super(message);
+    this.name = 'LockHeldError';
+  }
+}
+
 export interface SpawnOptions {
   /** 可执行文件路径（如 'node'） */
   command: string;
@@ -199,18 +211,26 @@ export class ProcessManager {
     if (holderPid !== null) {
       try {
         process.kill(holderPid, 0);
-        throw new Error(
+        // kill succeeded → holder is alive
+        throw new LockHeldError(
           `Another "${clawId}" daemon is running (PID: ${holderPid})`,
         );
       } catch (killErr: any) {
-        if (killErr?.code !== 'ESRCH' && !(killErr instanceof Error && killErr.message.startsWith('Another'))) {
-          // ESRCH = stale, fall through to cleanup
-          // non-ESRCH kill 失败 = holder 存在但无权限，视为活
-          if (killErr?.code === 'EPERM') {
-            throw new Error(`Another "${clawId}" daemon is running (PID: ${holderPid}, no permission to signal)`);
-          }
+        if (killErr instanceof LockHeldError) throw killErr; // holder alive
+        if (killErr?.code === 'EPERM') {
+          // alive but no permission to signal
+          throw new LockHeldError(
+            `Another "${clawId}" daemon is running (PID: ${holderPid}, no permission to signal)`,
+          );
         }
-        if (killErr instanceof Error && killErr.message.startsWith('Another')) throw killErr;
+        if (killErr?.code === 'ESRCH') {
+          // stale, fall through to cleanup
+        } else {
+          // unknown errno: conservative — treat as alive, do not steal
+          throw new LockHeldError(
+            `kill probe failed (errno=${killErr?.code}): ${killErr instanceof Error ? killErr.message : String(killErr)}`,
+          );
+        }
       }
     }
 
@@ -224,7 +244,9 @@ export class ProcessManager {
       this.fs.writeExclusiveSync(lockFile, String(process.pid));
     } catch (retryErr: any) {
       if (retryErr?.code === 'EEXIST') {
-        throw new Error(`Another "${clawId}" daemon acquired the lock during retry`);
+        throw new LockHeldError(
+          `Another "${clawId}" daemon acquired the lock during retry`,
+        );
       }
       throw retryErr;
     }
@@ -233,6 +255,12 @@ export class ProcessManager {
   /**
    * Release the daemon lock if held by the current process.
    * Deletes the lock file; failures are audit-logged, not thrown.
+   *
+   * TOCTOU note: readLockPid + deleteSync is check-then-act.
+   * Acceptable because releaseLock is only called during daemon shutdown,
+   * when this process still holds the lock. If another daemon had already
+   * stolen the lock, this process would have been SIGKILL'd and its
+   * shutdown handler would not be running.
    */
   releaseLock(clawId: string): void {
     const holderPid = this.readLockPid(clawId);
