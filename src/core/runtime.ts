@@ -17,7 +17,7 @@ import type { OutboxWriteOptions } from './communication/index.js';
 import type { SessionData } from '../foundation/session-store/index.js';
 import { readInboxFileMeta, InboxListFailed, InboxMoveFailed } from '../foundation/messaging/index.js';
 
-import { NodeFileSystem } from '../foundation/fs/node-fs.js';
+import type { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import { LLMServiceImpl } from '../foundation/llm/service.js';
 import { JsonlLogger } from '../foundation/monitor/monitor.js';
 
@@ -38,15 +38,14 @@ import { summarizeLastExit } from './last-exit-summary.js';
 import { IdleTimeoutSignal, PriorityInboxInterrupt, UserInterrupt } from '../types/signals.js';
 import type { ToolResult } from './tools/executor.js';
 import { AuditWriter } from '../foundation/audit/writer.js';
-import { InboxReader } from '../foundation/messaging/index.js';
-import { OutboxWriter } from './communication/index.js';
+import type { InboxReader } from '../foundation/messaging/index.js';
+import type { OutboxWriter } from './communication/index.js';
 import { TaskSystem } from './task/system.js';
 import { SkillRegistry } from './skill/registry.js';
 import { ContractManager } from './contract/manager.js';
 import { CLAW_SUBDIRS } from '../types/paths.js';
 import { oneLine } from '../foundation/utils/string.js';
-import { Snapshot } from '../foundation/snapshot/index.js';
-import { SNAPSHOT_IGNORE_PATTERNS } from '../foundation/snapshot/index.js';
+import type { Snapshot } from '../foundation/snapshot/index.js';
 import { MaxStepsExceededError } from '../types/errors.js';
 import { MOTION_CLAW_ID, DEFAULT_LLM_IDLE_TIMEOUT_MS, DEFAULT_MAX_STEPS, DEFAULT_MAX_CONCURRENT_TASKS } from '../constants.js';
 import type { FileSystem } from '../foundation/fs/types.js';
@@ -183,25 +182,16 @@ export class ClawRuntime {
     if (this.initialized) return;
 
     const { clawId, clawDir, llmConfig, monitorDir, maxSteps, toolProfile } = this.options;
+    const deps = this.options.dependencies;
+    if (!deps) throw new Error('Runtime: dependencies is required');
 
     // 1. Create directory structure
     await this.ensureDirectories(clawDir);
 
-    // 2. Create two NodeFileSystem instances
-    // systemFs: used by system components (dialog/, contract/, etc.), no permission enforcement
-    this.systemFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
-
-    if (!this.auditWriter) {
-      // 2.1 创建 AuditWriter（后续所有 audit 事件共用此实例）
-      this.auditWriter = new AuditWriter(
-        this.systemFs,
-        'audit.tsv',
-        null,  // auditMaxSizeMb 已移出 RuntimeOptions，由 Assembly 装配 AuditWriter 时使用；Step 2 删除此 fallback 分支
-      );
-    }
-    // 若外部已注入 auditWriter，则直接使用，systemFs 与之独立但指向同一目录
-    // clawFs: used by tools, enforces permission checks
-    this.clawFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: true });
+    // 2. L1-L2 from dependencies
+    this.systemFs = deps.systemFs as NodeFileSystem;
+    this.clawFs = deps.clawFs as NodeFileSystem;
+    this.auditWriter = deps.auditWriter;
 
     // 2.5 Clean up orphaned temp files at startup (best-effort)
     this.systemFs.cleanupTempFiles().catch(err => {
@@ -220,8 +210,7 @@ export class ClawRuntime {
       ? path.resolve(clawDir, '..')
       : path.resolve(clawDir, '..', '..');
 
-    // 6. Create SessionManager (uses systemFs; system components need to write to dialog/)
-    this.sessionManager = new SessionManager(this.systemFs, 'dialog', this.auditWriter, clawId);
+    this.sessionManager = deps.sessionManager;
     // Archive previous session on startup (best-effort; first start has no current.json)
     await this.sessionManager.archive().catch((err: any) => {
       if (err?.code !== 'ENOENT' && err?.code !== 'FS_NOT_FOUND') {
@@ -229,8 +218,7 @@ export class ClawRuntime {
       }
     });
 
-    // 2.x 初始化 Snapshot
-    this.snapshot = new Snapshot(this.options.clawDir, this.systemFs, this.auditWriter, SNAPSHOT_IGNORE_PATTERNS);
+    this.snapshot = deps.snapshot;
 
     // Session repair：检测未完成的 tool_use，注入合成 tool_result
     {
@@ -245,7 +233,12 @@ export class ClawRuntime {
           interruptionMessage ? { interruptionMessage } : undefined,
         );
         if (toolCount > 0) {
-          await this.sessionManager.save(repaired);
+          try {
+            await this.sessionManager.save(repaired);
+          } catch (e) {
+            this.auditWriter.write('assemble_failed', `module=session_manager`, `phase=session_repair_save`, `reason=${e instanceof Error ? e.message : String(e)}`);
+            throw e;
+          }
           this.auditWriter.write('session_repaired', `tools=${toolCount}`);
           const result = await this.snapshot.commit(`session-repair tools=${toolCount}`).catch((err: unknown): null => {
             // 不可预期失败：audit 已在 snapshot 内写；此处仅暴露给诊断
@@ -300,8 +293,7 @@ export class ClawRuntime {
       contractManager: this.contractManager,
     });
 
-    // 12. Create OutboxWriter first (needed by ExecContextImpl)
-    this.outboxWriter = new OutboxWriter(clawId, clawDir, this.systemFs, this.auditWriter);
+    this.outboxWriter = deps.outboxWriter;
 
     // Inject late-created dependencies into TaskSystem (created before SkillRegistry/ContractManager/OutboxWriter)
     this.taskSystem.setSkillRegistry(this.skillRegistry);
@@ -329,9 +321,13 @@ export class ClawRuntime {
     // 14. Create ToolExecutorImpl
     this.toolExecutor = new ToolExecutorImpl(this.toolRegistry, this.options.toolTimeoutMs);
 
-    // 15. Create InboxReader
-    this.inboxReader = new InboxReader('inbox/pending', 'inbox/done', 'inbox/failed', this.systemFs, this.auditWriter);
-    await this.inboxReader.init();
+    this.inboxReader = deps.inboxReader;
+    try {
+      await this.inboxReader.init();
+    } catch (e) {
+      this.auditWriter.write('assemble_failed', `module=inbox_reader`, `phase=init`, `reason=${e instanceof Error ? e.message : String(e)}`);
+      throw e;
+    }
 
     this.initialized = true;
   }
