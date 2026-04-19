@@ -9,67 +9,21 @@ import * as path from 'path';
 import * as fsNative from 'fs';
 import * as fsAsync from 'fs/promises';
 import { randomUUID, createHash } from 'node:crypto';
-import { AuditWriter } from '../../foundation/audit/writer.js';
-import { ClawRuntime } from '../../core/runtime.js';
-import { MotionRuntime } from '../../core/motion/runtime.js';
-import { buildLLMConfig, loadGlobalConfig, loadClawConfig, getClawDir, getMotionDir } from '../config.js';
-import type { ClawRuntimeOptions } from '../../core/runtime.js';
+import { loadGlobalConfig, loadClawConfig, getClawDir, getMotionDir } from '../config.js';
 import type { InboxMessage } from '../../types/contract.js';
 import { startDaemonLoop } from './daemon-loop.js';
-import { StreamWriter } from '../../foundation/stream/writer.js';
-import { Heartbeat } from '../../core/heartbeat.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
-import { createAgentProcessManager } from './process-manager-factory.js';
 import { SkillRegistry } from '../../core/skill/registry.js';
 import { ContractManager } from '../../core/contract/manager.js';
 import { DEFAULT_MAX_STEPS, DEFAULT_MAX_CONCURRENT_TASKS } from '../../constants.js';
 import { scheduleSubAgentWithTracking } from '../../core/tools/builtins/spawn.js';
 import type { Message } from '../../types/message.js';
 import { buildRetroPrompt } from '../../prompts/index.js';
-import { CronRunner, parseSchedule } from '../../core/cron/runner.js';
-import { runDiskMonitor } from '../../core/cron/jobs/disk-monitor.js';
-import { runLlmStats } from '../../core/cron/jobs/llm-stats.js';
-import { runDeepDream } from '../../core/cron/jobs/deep-dream.js';
-import { runRandomDream } from '../../core/cron/jobs/random-dream.js';
-import { runContractObserver } from '../../core/cron/jobs/contract-observer.js';
 import { CliError } from '../errors.js';
-import { Snapshot } from '../../foundation/snapshot/index.js';
-import { SNAPSHOT_IGNORE_PATTERNS } from '../../foundation/snapshot/index.js';
+import { assemble, disassemble, LockConflictError } from '../../assembly/index.js';
+import type { Instances } from '../../assembly/index.js';
 
 
-
-// 检测上次是否非正常退出（SIGKILL / OOM 等无法写 daemon_crash 的情况）
-function detectUncleanExit(auditDir: string, auditWriter: AuditWriter): void {
-  const auditPath = path.join(auditDir, 'audit.tsv');
-  if (!fsNative.existsSync(auditPath)) return;
-  try {
-    const stat = fsNative.statSync(auditPath);
-    if (stat.size === 0) return;
-    const chunkSize = 4096;
-    const offset = Math.max(0, stat.size - chunkSize);
-    const fd = fsNative.openSync(auditPath, 'r');
-    try {
-      const buf = Buffer.alloc(Math.min(chunkSize, stat.size));
-      fsNative.readSync(fd, buf, 0, buf.length, offset);
-      const chunk = buf.toString('utf-8');
-      const lastLine = chunk.split('\n').filter(Boolean).at(-1) ?? '';
-      const type = lastLine.split('\t')[1];
-      if (
-        type === 'daemon_stop' ||
-        type === 'daemon_unclean_exit' ||
-        type === 'daemon_crash'
-      ) return;
-      const lastTs = lastLine.split('\t')[0] ?? new Date().toISOString();
-      auditWriter.write('daemon_unclean_exit', `last_ts=${lastTs}`);
-    } finally {
-      fsNative.closeSync(fd);
-    }
-  } catch (err: any) {
-    if (err?.code !== 'ENOENT') {
-      console.warn('[daemon] detectUncleanExit failed:', err?.code || err?.message || err);
-    }
-  }
-}
 
 /**
  * 守护进程主函数（支持 claw 和 motion）
@@ -89,163 +43,30 @@ export async function daemonCommand(name: string): Promise<void> {
   fsNative.writeFileSync(pidFile, String(process.pid));
   
   const clawConfig = isMotion ? null : loadClawConfig(name);
-  const llmConfig = isMotion
-    ? buildLLMConfig(globalConfig)
-    : buildLLMConfig(globalConfig, clawConfig!);
 
-  // 审计日志配置
-  const auditMaxSizeMb = globalConfig.audit?.retention?.max_size_mb ?? null;
-
-  // 提前创建 AuditWriter，供 Snapshot 和 Runtime 共享
-  const sharedAuditWriter = new AuditWriter(
-    new NodeFileSystem({ baseDir: dir, enforcePermissions: false }),
-    'audit.tsv',
-    auditMaxSizeMb,
-  );
-
-  // ProcessManager 装配（用于 lockfile 归位）
-  const pm = createAgentProcessManager(sharedAuditWriter);
-  pm.acquireLock(name);
-
-  // Runtime
-  const runtime = isMotion
-    ? new MotionRuntime({
-        clawId: 'motion',
-        clawDir: dir,
-        llmConfig,
-        maxSteps: globalConfig.motion?.max_steps ?? DEFAULT_MAX_STEPS,
-        toolProfile: 'full',
-        toolTimeoutMs: globalConfig.tool_timeout_ms,
-        subagentMaxSteps: globalConfig.motion?.subagent_max_steps,
-        maxConcurrentTasks: globalConfig.motion?.max_concurrent_tasks ?? DEFAULT_MAX_CONCURRENT_TASKS,
-        idleTimeoutMs: globalConfig.motion?.llm_idle_timeout_ms,
-        auditMaxSizeMb,
-        auditWriter: sharedAuditWriter,
-      })
-    : new ClawRuntime({
-        clawId: name,
-        clawDir: dir,
-        llmConfig,
-        maxSteps: clawConfig!.max_steps,
-        toolProfile: clawConfig!.tool_profile,
-        toolTimeoutMs: globalConfig.tool_timeout_ms,
-        subagentMaxSteps: clawConfig!.subagent_max_steps,
-        maxConcurrentTasks: clawConfig!.max_concurrent_tasks,
-        idleTimeoutMs: globalConfig.motion?.llm_idle_timeout_ms,
-        auditMaxSizeMb,
-        auditWriter: sharedAuditWriter,
-      } as ClawRuntimeOptions);
-
-  // git init（claw 首次启动时无 .git，motion init 已处理 motion 的情况）
-  const snapshot = new Snapshot(dir, new NodeFileSystem({ baseDir: dir, enforcePermissions: false }), sharedAuditWriter, SNAPSHOT_IGNORE_PATTERNS);
-  const initResult = await snapshot.init();
-  if (!initResult.ok) {
-    // 预期失败：audit 已写；启动继续（snapshot 是旁路）
+  // Assembly 装配
+  let instances: Instances;
+  try {
+    instances = await assemble({
+      identity: isMotion ? 'motion' : 'claw',
+      clawId: name,
+      clawDir: dir,
+      globalConfig,
+      clawConfig,
+    });
+  } catch (e) {
+    if (e instanceof LockConflictError) {
+      console.error(`[daemon] ${e.message}`);
+      process.exit(1);
+    }
+    console.error('[daemon] assemble failed:', e instanceof Error ? e.message : String(e));
+    process.exit(1);
   }
 
-  // recovery-snapshot：将上次中断遗留的 working tree 变更固化（在 session repair 之前）
-  const recoveryResult = await snapshot.commit('recovery-snapshot');
-  if (!recoveryResult.ok) {
-    // 预期失败：audit 已写；启动继续
-  }
-
-  detectUncleanExit(dir, sharedAuditWriter);
+  const { runtime, streamWriter, snapshot, auditWriter, heartbeat } = instances;
 
   await runtime.initialize();
   await runtime.resumeContractIfPaused();
-
-  // motion 专属：heartbeat（0 表示禁用）
-  let heartbeat: Heartbeat | null = null;
-  if (isMotion) {
-    const heartbeatIntervalMs = globalConfig.motion?.heartbeat_interval_ms ?? 0;
-    if (heartbeatIntervalMs > 0) {
-      const heartbeatFs = new NodeFileSystem({ baseDir: path.join(dir, '..'), enforcePermissions: false });
-      heartbeat = new Heartbeat(path.join(dir, '..'), {
-        interval: heartbeatIntervalMs / 1000,  // 转换为秒
-        fs: heartbeatFs,
-        audit: sharedAuditWriter,
-      });
-    }
-  }
-
-  // 共用核心循环
-  const streamFs = new NodeFileSystem({ baseDir: dir, enforcePermissions: false });
-  const streamWriter = new StreamWriter(streamFs, sharedAuditWriter, {
-    maxFiles: globalConfig.stream?.retention?.max_files ?? null,
-    maxDays: globalConfig.stream?.retention?.max_days ?? null,
-  });
-  streamWriter.open();
-  streamWriter.write({
-    ts: Date.now(),
-    type: 'daemon_started',
-    clawId: name,
-    pid: process.pid,
-  });
-  runtime.setParentStreamLog(streamWriter);
-
-  // motion 专属：cron 调度器
-  let cronRunner: CronRunner | null = null;
-  if (isMotion && (globalConfig.cron?.enabled ?? true)) {
-    const tickMs = globalConfig.cron?.tick_interval_ms ?? 1000;
-    const clawforumDir = path.join(dir, '..');  // motion/ 的上级即 .clawforum/
-    const diskLimitMB = globalConfig.watchdog?.disk_warning_mb ?? 500;
-    const diskScheduleStr = globalConfig.cron?.jobs?.disk_monitor?.schedule ?? 'hourly';
-
-    cronRunner = new CronRunner([
-      {
-        name: 'disk-monitor',
-        enabled: globalConfig.cron?.jobs?.disk_monitor?.enabled ?? true,
-        schedule: parseSchedule(diskScheduleStr),
-        handler: () => runDiskMonitor({
-          clawforumDir,
-          motionInboxDir: path.join(dir, 'inbox', 'pending'),
-          limitMB: diskLimitMB,
-          fs: new NodeFileSystem({ baseDir: clawforumDir, enforcePermissions: false }),
-        }),
-      },
-      {
-        name: 'llm-stats',
-        enabled: globalConfig.cron?.jobs?.llm_stats?.enabled ?? true,
-        schedule: parseSchedule(globalConfig.cron?.jobs?.llm_stats?.schedule ?? 'daily:06:00'),
-        handler: () => runLlmStats({
-          clawforumDir,
-          motionDir: dir,
-        }),
-      },
-      {
-        name: 'dream-trigger',
-        enabled: globalConfig.cron?.jobs?.dream_trigger?.enabled ?? false,
-        schedule: parseSchedule(globalConfig.cron?.jobs?.dream_trigger?.schedule ?? 'daily:04:00'),
-        handler: async () => {
-          // 深度梦境：串行处理每个 claw
-          const cronFs = new NodeFileSystem({ baseDir: clawforumDir, enforcePermissions: false });
-          await runDeepDream({
-            clawforumDir,
-            llmConfig,
-            maxCompressionTokens: globalConfig.cron?.jobs?.dream_trigger?.max_compression_tokens,
-            fs: cronFs,
-          });
-          // 随机梦境：sub-agent 跨 claw 漫游
-          await runRandomDream({
-            clawforumDir,
-            motionDir: dir,
-            taskSystem: runtime.getTaskSystem(),
-            fs: cronFs,
-          });
-        },
-      },
-      {
-        name: 'contract-observer',
-        enabled: true,
-        schedule: parseSchedule(globalConfig.cron?.jobs?.contract_observer?.schedule ?? 'interval:1m'),
-        handler: () => runContractObserver({
-          clawforumDir: path.join(dir, '..'),
-          motionInboxDir: path.join(dir, 'inbox', 'pending'),
-        }),
-      },
-    ]);
-    cronRunner.start(tickMs);
-  }
 
   // 清理残留心跳（上次 daemon 的遗留，重启后无需立即巡查）
   try {
@@ -268,21 +89,18 @@ export async function daemonCommand(name: string): Promise<void> {
     const agentsContent = fsNative.readFileSync(path.join(dir, 'AGENTS.md'), 'utf-8');
     promptHash = createHash('sha256').update(agentsContent).digest('hex').slice(0, 6);
   } catch { /* AGENTS.md 不存在时跳过 */ }
-  sharedAuditWriter.write('daemon_start', `sha256:${promptHash}`);
+  auditWriter.write('daemon_start', `sha256:${promptHash}`);
 
   // daemon-start commit（不阻塞启动）
   snapshot.commit(`daemon-start ${new Date().toISOString()}`).then((result) => {
     if (!result.ok && result.error.kind === 'uncategorized') {
-      sharedAuditWriter.write('snapshot_commit_uncategorized', `context=daemon-start`, `exitCode=${result.error.exitCode}`);
+      auditWriter.write('snapshot_commit_uncategorized', `context=daemon-start`, `exitCode=${result.error.exitCode}`);
     }
   }).catch((err: unknown) => {
     // 不可预期失败：audit 已在 snapshot 内写
-    sharedAuditWriter.write('snapshot_commit_failed', `context=daemon-start`, `reason=${err instanceof Error ? err.message : String(err)}`);
+    auditWriter.write('snapshot_commit_failed', `context=daemon-start`, `reason=${err instanceof Error ? err.message : String(err)}`);
   });
 
-  runtime.setContractNotifyCallback((type, data) => {
-    streamWriter.write({ ts: Date.now(), type: 'user_notify', subtype: type, ...data });
-  });
   const inboxPendingDir = path.join(dir, 'inbox', 'pending');
 
   // 注册 review_request 处理器（仅 motion）
@@ -419,7 +237,7 @@ export async function daemonCommand(name: string): Promise<void> {
     const msg = reason instanceof Error
       ? `${reason.message}\n${reason.stack ?? ''}`
       : String(reason);
-    sharedAuditWriter.write('daemon_crash', `err=${msg}`);
+    auditWriter.write('daemon_crash', `err=${msg}`);
   };
 
   process.on('uncaughtException', (err) => {
@@ -440,28 +258,21 @@ export async function daemonCommand(name: string): Promise<void> {
     streamWriter,
     heartbeat: heartbeat ?? undefined,  // 传入心跳实例
     onInboxMessages,   // 新增
-    audit: sharedAuditWriter,
+    audit: auditWriter,
   });
 
   // shutdown
   const shutdown = async (signal: string) => {
     stop();
-    cronRunner?.stop();   // 停止 cron 调度器
-    try {
-      await runtime.stop();
-    } catch (e) {
-      console.error('[daemon] runtime.stop() failed:', e instanceof Error ? e.message : String(e));
-    }
-    streamWriter.close();
-    sharedAuditWriter.write('daemon_stop', `reason=${signal.toLowerCase()}`);
-    // 清理 PID 文件和 lockfile（只有文件仍属于本进程才删除，防止误删新 daemon 的文件）
+    await disassemble(instances, signal);
+
+    // pid 文件清理（业务）
     try {
       const storedPid = fsNative.readFileSync(pidFile, 'utf-8').trim();
       if (storedPid === String(process.pid)) fsNative.unlinkSync(pidFile);
     } catch (e: any) {
       console.warn(`[daemon] Failed to clean up pid file: ${e?.message}`);
     }
-    pm.releaseLock(name);
     process.exit(0);
   };
   process.on('SIGTERM', () => shutdown('SIGTERM'));
