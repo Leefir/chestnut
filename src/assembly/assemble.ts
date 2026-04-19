@@ -191,7 +191,6 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       maxDays: globalConfig.stream?.retention?.max_days ?? null,
     });
     streamWriter.open();
-    streamWriter.write({ ts: Date.now(), type: 'daemon_started', clawId, pid: process.pid });
     runtime.setParentStreamLog(streamWriter);
   } catch (e) {
     auditWriter.write('assemble_failed', `module=stream_writer`, `phase=construct`, `reason=${errMsg(e)}`);
@@ -283,6 +282,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
 
   // --- 10. 契约 §4 audit daemon_started ---
   auditWriter.write('daemon_started', `clawId=${clawId}`, `pid=${process.pid}`);
+  streamWriter.write({ ts: Date.now(), type: 'daemon_started', clawId, pid: process.pid });
 
   return {
     clawId: config.clawId,

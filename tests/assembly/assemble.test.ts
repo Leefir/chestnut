@@ -296,6 +296,17 @@ describe('assemble', () => {
     );
   });
 
+  it('CronRunner.start 失败时 stream.daemon_started 未调用', async () => {
+    mockCronRunner.start.mockImplementationOnce(() => {
+      throw new Error('start boom');
+    });
+
+    await expect(assemble(baseConfig)).rejects.toThrow();
+    expect(mockStreamWriter.write).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'daemon_started' }),
+    );
+  });
+
   it('CronRunner.start 失败 → assemble_failed phase=start + 抛 Error', async () => {
     mockCronRunner.start.mockImplementationOnce(() => {
       throw new Error('start boom');
