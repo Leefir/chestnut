@@ -286,6 +286,7 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
             }
           }
         }, 200);
+        interruptPoller.unref();
 
         try {
           if (llmRetryPending) {

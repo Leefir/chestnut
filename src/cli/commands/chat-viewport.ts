@@ -229,6 +229,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
       updateDisplay();
       frame++;
     }, 80);
+    spinnerTimer.unref();
     // 立即显示第一帧
     setStreamingSuffix(`${SPINNER_FRAMES[0]} ${text}`);
   };
@@ -753,6 +754,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
       tui.requestRender();
     }
   }, 200);  // fallback 200ms
+  pollInterval.unref();
 
   // Daemon 存活检测（每 3 秒一次）
   let daemonDead = false;
@@ -780,6 +782,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
     }
   };
   const daemonCheckInterval = setInterval(checkDaemonAlive, 3000);
+  daemonCheckInterval.unref();
 
   // --- 注册 slash 命令 ---
 

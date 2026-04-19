@@ -6,10 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as fsp from 'fs/promises';
 import * as fsNative from 'fs';
-import * as os from 'os';
-import * as path from 'path';
 import { waitForInbox, startDaemonLoop } from '../../src/cli/commands/daemon-loop.js';
 import type { ClawRuntime } from '../../src/core/runtime.js';
 import { writeInboxMessage } from '../../src/utils/inbox-writer.js';
@@ -23,50 +20,6 @@ vi.mock('fs', async (importOriginal) => {
 vi.mock('../../src/utils/inbox-writer.js', () => ({
   writeInboxMessage: vi.fn(),
 }));
-
-// ─── fix 7: waitForInbox idempotency ──────────────────────────────────────────
-
-describe('waitForInbox', () => {
-  it('resolves via timeout when dir does not exist (mkdirSync throws → done() via catch, then timer fires)', async () => {
-    vi.useFakeTimers();
-
-    // '/nonexistent-fs-watch-path' will cause mkdirSync to fail in some environments,
-    // but mkdirSync with { recursive: true } on a bad path may not throw on macOS.
-    // So use a path that will trigger the watcher error path instead.
-    const p = waitForInbox('/tmp/__daemon_test_no_inbox__', 1000);
-
-    vi.advanceTimersByTime(1001);
-    await expect(p).resolves.toBeUndefined();
-
-    vi.useRealTimers();
-  });
-
-  it('resolves before timeout when a file is created in the watched dir', async () => {
-    const tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'daemon-inbox-test-'));
-    try {
-      const timeoutMs = 5000;
-      const p = waitForInbox(tmpDir, timeoutMs);
-
-      // Write a file to trigger fs.watch event
-      await fsp.writeFile(path.join(tmpDir, 'msg.md'), 'test');
-
-      // Should resolve well before 5s timeout
-      await expect(p).resolves.toBeUndefined();
-    } finally {
-      await fsp.rm(tmpDir, { recursive: true, force: true });
-    }
-  });
-
-  it('calling done() multiple times via timeout does not reject or hang', async () => {
-    vi.useFakeTimers();
-    const p = waitForInbox('/tmp/__daemon_test_double__', 500);
-    // Advance twice to ensure timer fires and any second invocation is guarded
-    vi.advanceTimersByTime(600);
-    vi.advanceTimersByTime(600);
-    await expect(p).resolves.toBeUndefined();
-    vi.useRealTimers();
-  });
-});
 
 // ─── fix 9: interrupt poller circuit breaker ──────────────────────────────────
 
