@@ -62,7 +62,7 @@ export async function disassemble(instances: Instances, signal: string): Promise
     );
   }
 
-  // Step 5: audit daemon_stop（最后）
+  // Step 6: audit daemon_stop（最后）
   auditWriter.write('daemon_stop', `signal=${signal.toLowerCase()}`);
 }
 

@@ -216,7 +216,7 @@ describe('assemble', () => {
   // --------------------------------------------------------------------------
   // 分支穷尽
   // --------------------------------------------------------------------------
-  it('motion + cron.enabled + heartbeat>0 → 含 cronRunner 和 heartbeat', async () => {
+  it('motion + cron.enabled + heartbeat>0 → 含 cronRunner / heartbeat / gateway (offline)', async () => {
     const result = await assemble(baseConfig);
 
     expect(result.cronRunner).toBe(mockCronRunner);
@@ -255,7 +255,7 @@ describe('assemble', () => {
     expect(result.cronRunner).toBe(mockCronRunner);
   });
 
-  it('claw identity → 无 cronRunner 无 heartbeat', async () => {
+  it('claw identity → 无 cronRunner / heartbeat / gateway', async () => {
     const config = {
       ...baseConfig,
       identity: 'claw' as const,
