@@ -7,6 +7,7 @@ import type { MotionRuntime } from '../core/motion/runtime.js';
 import type { Heartbeat } from '../core/heartbeat.js';
 import type { CronRunner } from '../core/cron/runner.js';
 import type { ClawGlobalConfig, ClawConfig } from '../cli/config.js';
+import type { Gateway } from '../core/gateway/types.js';
 
 export type Identity = 'motion' | 'claw';
 
@@ -27,6 +28,7 @@ export interface Instances {
   readonly auditWriter: AuditWriter;
   readonly cronRunner?: CronRunner;   // motion + config.cron.enabled
   readonly heartbeat?: Heartbeat;     // motion + heartbeat_interval_ms > 0
+  readonly gateway?: Gateway;          // motion only, offline mode（phase157）
 }
 
 export class LockConflictError extends Error {

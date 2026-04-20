@@ -39,6 +39,9 @@ import { DEFAULT_MAX_STEPS, DEFAULT_MAX_CONCURRENT_TASKS } from '../constants.js
 
 import type { AssembleConfig, Instances } from './index.js';
 import { LockConflictError } from './index.js';
+import { createGateway } from '../core/gateway/gateway.js';
+import type { Gateway } from '../core/gateway/types.js';
+import { createStreamReader } from '../foundation/stream/reader.js';
 
 // 内部 helper（从 daemon.ts L42-75 搬入）
 function detectUncleanExit(auditDir: string, auditWriter: AuditWriter): void {
@@ -359,6 +362,21 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     throw new Error(`Assembly: Runtime construct failed: ${errMsg(e)}`, { cause: e });
   }
 
+  // --- Gateway (motion only, offline mode; phase157 装配, ask_user 注册留 phase169+) ---
+  let gateway: Gateway | undefined;
+  if (isMotion) {
+    try {
+      gateway = createGateway({
+        streamFactory: (onEvent) => createStreamReader(systemFs, onEvent, auditWriter),
+        transport: undefined,                      // offline mode
+        interrupt: () => runtime.abort(),          // offline 不会触发，留接口
+      });
+    } catch (e) {
+      auditWriter.write('assemble_failed', `module=gateway`, `phase=construct`, `reason=${errMsg(e)}`);
+      throw new Error(`Assembly: Gateway construct failed: ${errMsg(e)}`, { cause: e });
+    }
+  }
+
   // --- 5. detectUncleanExit (daemon.ts L152) ---
   detectUncleanExit(clawDir, auditWriter);
 
@@ -499,6 +517,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     auditWriter,
     cronRunner,
     heartbeat,
+    gateway,
   };
 }
 

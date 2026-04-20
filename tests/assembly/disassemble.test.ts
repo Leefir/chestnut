@@ -10,6 +10,7 @@ describe('disassemble', () => {
     auditWriter: { write: ReturnType<typeof vi.fn> };
     cronRunner?: { stop: ReturnType<typeof vi.fn> };
     heartbeat?: unknown;
+    gateway?: { stop: ReturnType<typeof vi.fn> };
   };
 
   beforeEach(() => {
@@ -21,6 +22,7 @@ describe('disassemble', () => {
       auditWriter: { write: vi.fn() },
       cronRunner: { stop: vi.fn() },
       heartbeat: undefined,
+      gateway: { stop: vi.fn().mockResolvedValue(undefined) },
     };
   });
 
@@ -28,6 +30,9 @@ describe('disassemble', () => {
     await disassemble(mockInstances, 'SIGTERM');
 
     // 验证调用顺序
+    expect(mockInstances.gateway!.stop).toHaveBeenCalledBefore(
+      mockInstances.cronRunner!.stop
+    );
     expect(mockInstances.cronRunner!.stop).toHaveBeenCalledBefore(
       mockInstances.runtime.stop
     );
@@ -126,6 +131,33 @@ describe('disassemble', () => {
 
     const lastCall = mockInstances.auditWriter.write.mock.calls.at(-1);
     expect(lastCall).toEqual(['daemon_stop', 'signal=sigterm']);
+  });
+
+  it('无 gateway 时应跳过 gateway_stop 无副作用', async () => {
+    const instancesWithoutGateway = { ...mockInstances, gateway: undefined };
+    await disassemble(instancesWithoutGateway, 'SIGTERM');
+
+    expect(mockInstances.cronRunner!.stop).toHaveBeenCalled();
+    expect(mockInstances.runtime.stop).toHaveBeenCalled();
+    expect(mockInstances.streamWriter.close).toHaveBeenCalled();
+    expect(mockInstances.processManager.releaseLock).toHaveBeenCalled();
+
+    const lastCall = mockInstances.auditWriter.write.mock.calls.at(-1);
+    expect(lastCall).toEqual(['daemon_stop', 'signal=sigterm']);
+  });
+
+  it('gateway.stop 抛错时应继续后续步骤', async () => {
+    mockInstances.gateway!.stop.mockRejectedValue(new Error('gateway stop fail'));
+
+    await disassemble(mockInstances, 'SIGTERM');
+
+    expect(mockInstances.auditWriter.write).toHaveBeenCalledWith(
+      'disassemble_step_failed',
+      'step=gateway_stop',
+      'reason=gateway stop fail'
+    );
+    expect(mockInstances.cronRunner!.stop).toHaveBeenCalled();
+    expect(mockInstances.runtime.stop).toHaveBeenCalled();
   });
 
   it('signal 应转为小写写入 audit', async () => {

@@ -174,6 +174,7 @@ vi.mock('../../src/cli/config.js', () => ({
 vi.mock('../../src/constants.js', () => ({
   DEFAULT_MAX_STEPS: 30,
   DEFAULT_MAX_CONCURRENT_TASKS: 5,
+  GATEWAY_ASK_USER_TIMEOUT_MS: 30 * 60 * 1000,
 }));
 
 // ============================================================================
@@ -221,6 +222,8 @@ describe('assemble', () => {
     expect(result.cronRunner).toBe(mockCronRunner);
     expect(result.heartbeat).toBe(mockHeartbeat);
     expect(result.clawId).toBe('motion');
+    expect(result.gateway).toBeDefined();
+    expect(result.gateway!.isOnline()).toBe(false);
     expect(mockCronRunner.start).toHaveBeenCalled();
   });
 
@@ -269,6 +272,7 @@ describe('assemble', () => {
     expect(result.cronRunner).toBeUndefined();
     expect(result.heartbeat).toBeUndefined();
     expect(result.clawId).toBe('test-claw');
+    expect(result.gateway).toBeUndefined();
   });
 
   // --------------------------------------------------------------------------

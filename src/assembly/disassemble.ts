@@ -1,9 +1,22 @@
 import type { Instances } from './index.js';
 
 export async function disassemble(instances: Instances, signal: string): Promise<void> {
-  const { runtime, streamWriter, processManager, auditWriter, cronRunner, clawId } = instances;
+  const { gateway, runtime, streamWriter, processManager, auditWriter, cronRunner, clawId } = instances;
 
-  // Step 1: cronRunner?.stop()（sync；motion + cron.enabled 才装）
+  // Step 1: gateway?.stop()（async；motion only；最前位置——切断对外推送 + cancel pending askUser）
+  if (gateway) {
+    try {
+      await gateway.stop();
+    } catch (e) {
+      auditWriter.write(
+        'disassemble_step_failed',
+        `step=gateway_stop`,
+        `reason=${_reason(e)}`,
+      );
+    }
+  }
+
+  // Step 2: cronRunner?.stop()（sync；motion + cron.enabled 才装）
   if (cronRunner) {
     try {
       cronRunner.stop();
@@ -16,7 +29,7 @@ export async function disassemble(instances: Instances, signal: string): Promise
     }
   }
 
-  // Step 2: runtime.stop()（async）
+  // Step 3: runtime.stop()（async）
   try {
     await runtime.stop();
   } catch (e) {
@@ -27,7 +40,7 @@ export async function disassemble(instances: Instances, signal: string): Promise
     );
   }
 
-  // Step 3: streamWriter.close()（sync）
+  // Step 4: streamWriter.close()（sync）
   try {
     streamWriter.close();
   } catch (e) {
@@ -38,7 +51,7 @@ export async function disassemble(instances: Instances, signal: string): Promise
     );
   }
 
-  // Step 4: processManager.releaseLock(clawId)（sync）
+  // Step 5: processManager.releaseLock(clawId)（sync）
   try {
     processManager.releaseLock(clawId);
   } catch (e) {
