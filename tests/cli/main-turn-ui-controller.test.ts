@@ -36,8 +36,8 @@ describe('MainTurnUIController', () => {
     expect(deps.audit.write).toHaveBeenCalledTimes(1);
     expect(deps.audit.write).toHaveBeenCalledWith(
       AUDIT_EVENTS.VIEWPORT_UI_CROSS_POLLUTION,
-      'setSuffix',
-      'task',
+      'method=setSuffix',
+      'source=task',
     );
   });
 
@@ -58,16 +58,16 @@ describe('MainTurnUIController', () => {
 
     // startSpinner 内部调用 stopSpinner + setSuffix，所以实际触发次数 > 8
     expect(deps.audit.write.mock.calls.length).toBeGreaterThanOrEqual(8);
-    // 验证关键方法都被 audit 了
+    // 验证关键方法都被 audit 了（载荷格式为 method=xxx）
     const methods = deps.audit.write.mock.calls.map((c: any[]) => c[1]);
-    expect(methods).toContain('setSuffix');
-    expect(methods).toContain('clearSuffix');
-    expect(methods).toContain('startSpinner');
-    expect(methods).toContain('stopSpinner');
-    expect(methods).toContain('appendToBuffer');
-    expect(methods).toContain('flushStreaming');
-    expect(methods).toContain('appendToThinking');
-    expect(methods).toContain('flushThinking');
+    expect(methods).toContain('method=setSuffix');
+    expect(methods).toContain('method=clearSuffix');
+    expect(methods).toContain('method=startSpinner');
+    expect(methods).toContain('method=stopSpinner');
+    expect(methods).toContain('method=appendToBuffer');
+    expect(methods).toContain('method=flushStreaming');
+    expect(methods).toContain('method=appendToThinking');
+    expect(methods).toContain('method=flushThinking');
   });
 
   it('system scope 下写操作不触发 audit', () => {

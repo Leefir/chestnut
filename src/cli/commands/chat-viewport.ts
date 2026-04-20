@@ -89,7 +89,11 @@ export function createMainTurnUI(deps: MainTurnUIDeps): MainTurnUIController {
   const guardWrite = (method: string) => {
     if (currentScope === 'task') {
       try {
-        deps.audit.write(AUDIT_EVENTS.VIEWPORT_UI_CROSS_POLLUTION, method, 'task');
+        deps.audit.write(
+          AUDIT_EVENTS.VIEWPORT_UI_CROSS_POLLUTION,
+          `method=${method}`,
+          'source=task',
+        );
       } catch { /* audit self-failure is tolerated */ }
     }
   };
@@ -297,6 +301,10 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
       })
       .join('\n');
 
+    // NOTE: mainUI 在本函数 ~100 行后才由 createMainTurnUI 赋值；本段仅在初始化期
+    // 之后被调用。optional chaining 仅防 `mainUI` 已赋值但值为 undefined 的场景——
+    // 真正的 TDZ 期（const 未初始化）访问 mainUI 会抛 ReferenceError，不被 `?.` 捕获。
+    // 若未来有代码在 createMainTurnUI 之前调用 updateDisplay()，需把 mainUI 声明提前。
     const currentSuffix = mainUI?.getSuffix() ?? '';
     const suffixBody = currentSuffix
       ? currentSuffix.split('\n')
@@ -568,7 +576,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
       case 'task_started': {
         const taskId = event.taskId as string;
         const callerType = (event.callerType as string) ?? 'subagent';
-        const taskFs = new NodeFileSystem({ baseDir: path.join(options.agentDir, 'tasks', 'results', taskId), enforcePermissions: false });
+        const { fs: taskFs } = createDirContext(path.join(options.agentDir, 'tasks', 'results', taskId));
         const taskReader = createStreamReader(taskFs, STREAM_FILE, (ev) => mainUI.withScope('task', () => handleTaskEvent(taskId, callerType, ev)), options.audit, { persistent: false });
         taskReader.start();
         const tw: TaskWatch = {

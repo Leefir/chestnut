@@ -128,7 +128,7 @@ describe('chat-viewport Phase 72', () => {
 
     it('updateDisplay 应使用 fitLine 动态渲染', () => {
       const updateDisplayMatch = sourceCode.match(
-        /const updateDisplay = \(\) => \{[\s\S]{0,800}?\};/
+        /const updateDisplay = \(\) => \{[\s\S]{0,1200}?\};/
       );
       expect(updateDisplayMatch).toBeTruthy();
       expect(updateDisplayMatch![0]).toContain('fitLine');
@@ -174,7 +174,7 @@ describe('chat-viewport Phase 72', () => {
 
     it('updateDisplay wrap=true 路径应先 split(\\n) 再 flatMap wrapLine', () => {
       const updateDisplayMatch = sourceCode.match(
-        /const updateDisplay = \(\) => \{[\s\S]{0,800}?\};/
+        /const updateDisplay = \(\) => \{[\s\S]{0,1200}?\};/
       );
       expect(updateDisplayMatch).toBeTruthy();
       const body = updateDisplayMatch![0];

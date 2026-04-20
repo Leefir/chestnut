@@ -239,8 +239,8 @@ describe('chat-viewport 主 UI 隔离（phase162）', () => {
     mainUI.withScope('task', () => mainUI.setSuffix('leaked'));
     const crossPollution = events.filter(e => e[0] === AUDIT_EVENTS.VIEWPORT_UI_CROSS_POLLUTION);
     expect(crossPollution).toHaveLength(1);
-    expect(crossPollution[0][1]).toBe('setSuffix');
-    expect(crossPollution[0][2]).toBe('task');
+    expect(crossPollution[0][1]).toBe('method=setSuffix');
+    expect(crossPollution[0][2]).toBe('source=task');
   });
 
   it('TaskEventHandlerDeps 不含 MainTurnUIController（tsc 层隔离）', () => {
