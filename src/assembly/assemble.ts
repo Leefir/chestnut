@@ -42,7 +42,7 @@ import type { AssembleConfig, Instances } from './index.js';
 import { LockConflictError } from './index.js';
 import { createGateway } from '../core/gateway/gateway.js';
 import type { Gateway } from '../core/gateway/types.js';
-import { createStreamReader } from '../foundation/stream/reader.js';
+import { createStreamReader, STREAM_FILE } from '../foundation/stream/index.js';
 
 // 内部 helper（从 daemon.ts L42-75 搬入）
 function detectUncleanExit(auditDir: string, auditWriter: AuditWriter): void {
@@ -368,7 +368,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   if (isMotion) {
     try {
       gateway = createGateway({
-        streamFactory: (onEvent) => createStreamReader(systemFs, onEvent, auditWriter),
+        streamFactory: (onEvent) => createStreamReader(systemFs, STREAM_FILE, onEvent, auditWriter),
         transport: undefined,                      // offline mode
         interrupt: () => runtime.abort(),          // offline 不会触发，留接口
       });

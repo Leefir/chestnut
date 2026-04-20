@@ -20,7 +20,7 @@ import { CliError, handleCliError } from '../../utils/error.js';
 
 import { runChatViewport } from './chat-viewport.js';
 import { buildAgentsMdTemplate } from '../../prompts/index.js';
-import { readAll } from '../../foundation/stream/index.js';
+import { readAll, STREAM_FILE } from '../../foundation/stream/index.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { Audit } from '../../foundation/audit/index.js';
 
@@ -43,7 +43,7 @@ const LLM_OUTPUT_EVENTS = new Set(['thinking_delta', 'text_delta', 'tool_call'])
  */
 async function getLastActiveMs(clawFs: FileSystem, audit: Audit): Promise<number | undefined> {
   try {
-    const events = await readAll(clawFs, audit);
+    const events = await readAll(clawFs, STREAM_FILE, audit);
     let last: number | undefined;
     for (const ev of events) {
       if (LLM_OUTPUT_EVENTS.has(ev.type) && typeof ev.ts === 'number') {
@@ -115,7 +115,6 @@ export async function chatCommand(name: string): Promise<void> {
   await runChatViewport({
     agentDir: clawDir,
     label: name,
-    baseDir,
     audit: systemAudit,
     ensureDaemon: async () => {
       const pm = createProcessManagerForCLI();

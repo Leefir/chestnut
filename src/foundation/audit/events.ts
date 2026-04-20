@@ -38,6 +38,7 @@ export const AUDIT_EVENTS = {
   STREAM_ARCHIVE_FAILED: 'stream_archive_failed',
   STREAM_ARCHIVE_PRUNE_FAILED: 'stream_archive_prune_failed',
   STREAM_READER_CALLBACK_FAILED: 'stream_reader_callback_failed',
+  STREAM_READER_FILE_MISSING: 'stream_reader_file_missing',
   STREAM_READER_PARSE_FAILED: 'stream_reader_parse_failed',
   STREAM_READER_READ_FAILED: 'stream_reader_read_failed',
   STREAM_READER_UNLINKED: 'stream_reader_unlinked',

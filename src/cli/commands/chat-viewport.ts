@@ -29,7 +29,6 @@ export interface ChatViewportOptions {
   showSystemMessages?: boolean;   // system message，默认 false
   showContractEvents?: boolean;   // contract 子任务完成信息，默认 true
   trimOutputNewlines?: boolean;   // LLM 输出首尾换行清理，默认 true
-  baseDir: string;    // .clawforum 根目录，用于 fs 相对路径解析
   audit: AuditWriter; // audit sink for createWatcher
 }
 
@@ -61,7 +60,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
     await options.ensureDaemon();
   }
 
-  const { fs } = createDirContext(options.baseDir);
+  const { fs } = createDirContext(options.agentDir);
   const showRecapStream = options.showRecapStream ?? false;
   const showSystemMessages = options.showSystemMessages ?? false;
   const showContractEvents = options.showContractEvents ?? true;
@@ -454,7 +453,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
         const taskId = event.taskId as string;
         const callerType = (event.callerType as string) ?? 'subagent';
         const taskFs = new NodeFileSystem({ baseDir: path.join(options.agentDir, 'tasks', 'results', taskId), enforcePermissions: false });
-        const taskReader = createStreamReader(taskFs, (ev) => handleTaskEvent(taskId, callerType, ev), options.audit, { persistent: false });
+        const taskReader = createStreamReader(taskFs, STREAM_FILE, (ev) => handleTaskEvent(taskId, callerType, ev), options.audit, { persistent: false });
         taskReader.start();
         const tw: TaskWatch = {
           callerType: callerType as any,
@@ -468,7 +467,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
   };
 
   // tail stream.jsonl
-  const streamReader = createStreamReader(fs, (ev) => handleEvent(ev), options.audit, { persistent: false });
+  const streamReader = createStreamReader(fs, STREAM_FILE, (ev) => handleEvent(ev), options.audit, { persistent: false });
   streamReader.start();
 
   // Motion viewport：各 claw 步数追踪

@@ -195,7 +195,6 @@ export async function chatCommand(): Promise<void> {
   await runChatViewport({
     agentDir: motionDir,
     label: 'motion',
-    baseDir,
     audit: systemAudit,
     ensureDaemon: async () => {
       const pm = createProcessManagerForCLI();

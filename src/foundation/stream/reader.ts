@@ -15,7 +15,7 @@
  */
 
 import type { FileSystem } from '../fs/types.js';
-import { STREAM_FILE, type StreamEvent } from './types.js';
+import type { StreamEvent } from './types.js';
 import type { Audit } from '../audit/index.js';
 import { createWatcher, type Watcher } from '../file-watcher/index.js';
 import { AUDIT_EVENTS } from '../audit/events.js';
@@ -30,7 +30,7 @@ export interface StreamReader {
 }
 
 /**
- * Read all historical events from STREAM_FILE.
+ * Read all historical events from streamPath.
  * NOTE: reads entire file into memory; suitable for < few MB streams.
  * Returns empty array if file does not exist.
  * Parse failures are audit-logged and skipped.
@@ -38,12 +38,13 @@ export interface StreamReader {
  */
 export async function readAll(
   fs: FileSystem,
+  streamPath: string,
   audit: Audit,
 ): Promise<StreamEvent[]> {
-  if (!fs.existsSync(STREAM_FILE)) return [];
+  if (!fs.existsSync(streamPath)) return [];
   let content: string;
   try {
-    content = fs.readSync(STREAM_FILE);
+    content = fs.readSync(streamPath);
   } catch (err) {
     audit.write(
       AUDIT_EVENTS.STREAM_READER_READ_FAILED,
@@ -69,6 +70,7 @@ export async function readAll(
 
 export function createStreamReader(
   fs: FileSystem,
+  streamPath: string,
   onEvent: (event: StreamEvent) => void,
   audit: Audit,
   options?: { persistent?: boolean },
@@ -81,15 +83,15 @@ export function createStreamReader(
 
   const readIncrement = (): void => {
     try {
-      if (!fs.existsSync(STREAM_FILE)) return;
-      const size = fs.statSync(STREAM_FILE).size;
+      if (!fs.existsSync(streamPath)) return;
+      const size = fs.statSync(streamPath).size;
       if (size < offset) {
         // File truncated / replaced — reset
         offset = 0;
         pending = '';
       }
       if (size === offset) return;
-      const all = fs.readSync(STREAM_FILE);
+      const all = fs.readSync(streamPath);
       const chunk = all.slice(offset, size);
       offset = size;
       pending += chunk;
@@ -131,21 +133,26 @@ export function createStreamReader(
       if (started) throw new Error('StreamReader already started');
       started = true;
       active = true;
-      if (fs.existsSync(STREAM_FILE)) {
-        offset = fs.statSync(STREAM_FILE).size;
+      if (fs.existsSync(streamPath)) {
+        offset = fs.statSync(streamPath).size;
       } else {
         offset = 0;
+        audit.write(
+          AUDIT_EVENTS.STREAM_READER_FILE_MISSING,
+          `path=${streamPath}`,
+          'reason=start_existsSync_false',
+        );
       }
       watcher = createWatcher(
         fs,
-        STREAM_FILE,
+        streamPath,
         (ev) => {
           if (ev.type === 'add' || ev.type === 'change') {
             readIncrement();
           } else if (ev.type === 'unlink') {
             audit.write(
               AUDIT_EVENTS.STREAM_READER_UNLINKED,
-              `path=${STREAM_FILE}`,
+              `path=${streamPath}`,
             );
             offset = 0;
             pending = '';
