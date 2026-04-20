@@ -17,7 +17,8 @@ import { ToolRegistryImpl } from '../core/tools/registry.js';
 import { ToolExecutorImpl } from '../core/tools/executor.js';
 import { SkillRegistry } from '../core/skill/registry.js';
 import { ContractManager } from '../core/contract/manager.js';
-import { TaskSystem } from '../core/task/system.js';
+import { createTaskSystem } from '../core/task/index.js';
+import type { TaskSystem } from '../core/task/system.js';
 import { ContextInjector } from '../core/dialog/injector.js';
 import { ExecContextImpl } from '../core/tools/context.js';
 import { registerBuiltinTools } from '../core/tools/builtins/index.js';
@@ -208,7 +209,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   // --- L3-L5: taskSystem（仅构造，不调 initialize / startDispatch；业务动作归 Runtime） ---
   let taskSystem: TaskSystem;
   try {
-    taskSystem = new TaskSystem(clawDir, systemFs, {
+    taskSystem = createTaskSystem(clawDir, systemFs, {
       maxConcurrent,
       auditWriter,
       llm,
