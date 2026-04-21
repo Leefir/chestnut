@@ -171,7 +171,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   // --- L3-L5: skillRegistry + loadAll ---
   let skillRegistry: SkillRegistry;
   try {
-    skillRegistry = createSkillRegistry(systemFs, 'skills');
+    skillRegistry = createSkillRegistry(systemFs, 'skills', auditWriter);
   } catch (e) {
     auditWriter.write('assemble_failed', `module=skill_registry`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: SkillRegistry construct failed: ${errMsg(e)}`, { cause: e });

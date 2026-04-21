@@ -3,6 +3,7 @@
  */
 
 import type { FileSystem } from '../../foundation/fs/types.js';
+import type { Audit } from '../../foundation/audit/index.js';
 import { SkillRegistry } from './registry.js';
 
 export { SkillRegistry, type SkillMeta } from './registry.js';
@@ -14,6 +15,7 @@ export { SkillRegistry, type SkillMeta } from './registry.js';
 export function createSkillRegistry(
   fs: FileSystem,
   skillsDir: string = 'skills',
+  audit?: Audit,
 ): SkillRegistry {
-  return new SkillRegistry(fs, skillsDir);
+  return new SkillRegistry(fs, skillsDir, audit);
 }

@@ -7,6 +7,7 @@
  */
 
 import type { FileSystem } from '../../foundation/fs/types.js';
+import type { Audit } from '../../foundation/audit/index.js';
 import { ToolError } from '../../types/errors.js';
 import { parseFrontmatter } from '../../foundation/message-codec/index.js';
 
@@ -21,10 +22,12 @@ export class SkillRegistry {
   private fs: FileSystem;
   private skillsDir: string;
   private metaMap: Map<string, SkillMeta> = new Map();
+  private audit?: Audit;
 
-  constructor(fs: FileSystem, skillsDir: string = 'skills') {
+  constructor(fs: FileSystem, skillsDir: string = 'skills', audit?: Audit) {
     this.fs = fs;
     this.skillsDir = skillsDir;
+    this.audit = audit;
   }
 
   /**
@@ -53,10 +56,21 @@ export class SkillRegistry {
       try {
         await this.register(skillDir);
       } catch (err) {
+        this.audit?.write('skill_load_failed',
+          `skill_dir=${skillDir}`,
+          `skills_dir=${this.skillsDir}`,
+          `err=${err instanceof Error ? err.message : String(err)}`,
+        );
         console.warn(`[skill] Failed to load skill from ${skillDir}:`, err);
         continue;
       }
     }
+
+    // 正常出口 audit
+    this.audit?.write('skill_registry_loaded',
+      `skills_dir=${this.skillsDir}`,
+      `count=${this.metaMap.size}`,
+    );
   }
 
   /**
@@ -81,8 +95,15 @@ export class SkillRegistry {
 
     // Duplicate check: preserve first registration, skip later ones
     if (this.metaMap.has(meta.name)) {
-      console.warn(`[skill] Duplicate skill "${meta.name}" skipped: ${skillDir} (existing: ${this.metaMap.get(meta.name)!.skillDir})`);
-      return this.metaMap.get(meta.name)!;
+      const existing = this.metaMap.get(meta.name)!;
+      this.audit?.write('skill_duplicate_skipped',
+        `name=${meta.name}`,
+        `existing_skill_dir=${existing.skillDir}`,
+        `attempted_skill_dir=${skillDir}`,
+        `skills_dir=${this.skillsDir}`,
+      );
+      console.warn(`[skill] Duplicate skill "${meta.name}" skipped: ${skillDir} (existing: ${existing.skillDir})`);
+      return existing;
     }
     this.metaMap.set(meta.name, meta);
     return meta;

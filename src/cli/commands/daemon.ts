@@ -176,7 +176,7 @@ export async function daemonCommand(name: string): Promise<void> {
           let skillsSummary = '';
           try {
             const motionFs = new NodeFileSystem({ baseDir: dir, enforcePermissions: false });
-            const reg = createSkillRegistry(motionFs, 'clawspace/dispatch-skills');
+            const reg = createSkillRegistry(motionFs, 'clawspace/dispatch-skills', auditWriter);
             await reg.loadAll();
             const formatted = reg.formatForContext();
             if (!formatted.includes('No skills loaded')) {
