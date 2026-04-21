@@ -76,6 +76,10 @@ export interface RuntimeDependencies {
   readonly taskSystem: TaskSystem;
   readonly contextInjector: ContextInjector;
   readonly execContext: ExecContextImpl;
+
+  // 构造期注入（phase182 B.p166-5 升档：setter 双阶段消除）
+  readonly parentStreamLog?: import('../foundation/stream/types.js').StreamLog;
+  readonly contractNotifyCallback?: (type: string, data: Record<string, unknown>) => void;
 }
 
 export interface ClawRuntimeOptions {
@@ -167,6 +171,13 @@ export class ClawRuntime {
     };
     // auditWriter now comes from dependencies (phase155B+)
     this.auditWriter = options.dependencies.auditWriter;
+    const deps = options.dependencies;
+    if (deps.parentStreamLog) {
+      deps.taskSystem.setParentStreamLog(deps.parentStreamLog);
+    }
+    if (deps.contractNotifyCallback) {
+      deps.contractManager.setOnNotify(deps.contractNotifyCallback);
+    }
   }
 
   /**
@@ -914,17 +925,6 @@ export class ClawRuntime {
     for (const dir of CLAW_SUBDIRS) {
       await nodeFs.mkdir(path.join(clawDir, dir), { recursive: true });
     }
-  }
-
-  /**
-   * Set callback for contract notifications (subtask_completed, acceptance_failed, etc.)
-   */
-  setContractNotifyCallback(cb: (type: string, data: Record<string, unknown>) => void): void {
-    this.contractManager?.setOnNotify(cb);
-  }
-
-  setParentStreamLog(sink: import('../foundation/stream/types.js').StreamLog): void {
-    this.taskSystem?.setParentStreamLog(sink);
   }
 
   getAuditWriter(): AuditWriter {

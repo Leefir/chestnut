@@ -188,6 +188,34 @@ describe('ClawRuntime', () => {
 
       expect(audit.some(e => e.startsWith('session_archive_failed'))).toBe(false);
     });
+
+    it('deps.parentStreamLog 构造期注入 → taskSystem.setParentStreamLog 已调', async () => {
+      const deps = await makeRuntimeDeps({ clawDir, clawId: 'test-claw' });
+      const spy = vi.spyOn(deps.taskSystem, 'setParentStreamLog');
+      const mockStreamLog = { write: vi.fn() } as any;
+      (deps as any).parentStreamLog = mockStreamLog;
+      const runtime = trackRuntime(new ClawRuntime({
+        clawId: 'test-claw',
+        clawDir,
+        llmConfig: createMockLLMConfig(),
+        dependencies: deps,
+      }));
+      expect(spy).toHaveBeenCalledWith(mockStreamLog);
+    });
+
+    it('deps.contractNotifyCallback 构造期注入 → contractManager.setOnNotify 已调', async () => {
+      const deps = await makeRuntimeDeps({ clawDir, clawId: 'test-claw' });
+      const spy = vi.spyOn(deps.contractManager, 'setOnNotify');
+      const cb = vi.fn();
+      (deps as any).contractNotifyCallback = cb;
+      const runtime = trackRuntime(new ClawRuntime({
+        clawId: 'test-claw',
+        clawDir,
+        llmConfig: createMockLLMConfig(),
+        dependencies: deps,
+      }));
+      expect(spy).toHaveBeenCalledWith(cb);
+    });
   });
 
   describe('Runtime TaskSystem business actions (phase155C)', () => {

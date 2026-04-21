@@ -67,5 +67,7 @@ export async function makeRuntimeDeps(input: MakeRuntimeDepsInput): Promise<Runt
     systemFs, clawFs, auditWriter, snapshot, sessionManager,
     inboxReader, outboxWriter, monitor, llm, toolRegistry, toolExecutor,
     skillRegistry, contractManager, taskSystem, contextInjector, execContext,
+    parentStreamLog: undefined,
+    contractNotifyCallback: undefined,
   };
 }

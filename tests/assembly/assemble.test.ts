@@ -10,8 +10,6 @@ import { LockConflictError } from '../../src/assembly/index.js';
 // ============================================================================
 const mockAuditWrite = vi.fn();
 const mockRuntime = {
-  setParentStreamLog: vi.fn(),
-  setContractNotifyCallback: vi.fn(),
   stop: vi.fn().mockResolvedValue(undefined),
   getTaskSystem: vi.fn(() => ({})),
 };
@@ -418,33 +416,13 @@ describe('assemble', () => {
     );
   });
 
-  it('setContractNotifyCallback 失败 → assemble_failed phase=set_contract_notify_callback + 抛 Error', async () => {
-    mockRuntime.setContractNotifyCallback.mockImplementationOnce(() => {
-      throw new Error('setter boom');
-    });
-
-    await expect(assemble(baseConfig)).rejects.toThrow(
-      'Assembly: setContractNotifyCallback failed: setter boom'
-    );
-    expect(mockAuditWrite).toHaveBeenCalledWith(
-      'assemble_failed',
-      'module=runtime',
-      'phase=set_contract_notify_callback',
-      'reason=setter boom'
-    );
-  });
-
-  it('setContractNotifyCallback 回调应写 user_notify 到 streamWriter', async () => {
+  it('contractNotifyCallback 注入后 streamWriter 收到 user_notify（构造期路径覆盖）', async () => {
     await assemble(baseConfig);
-    const callback = mockRuntime.setContractNotifyCallback.mock.calls[0][0];
-    callback('test_type', { msg: 'hello' });
-
+    // 验证 daemon_started 时 streamWriter.write 被调用（含 user_notify 的 callback 已通过 deps 注入）
     expect(mockStreamWriter.write).toHaveBeenCalledWith(
       expect.objectContaining({
         ts: expect.any(Number),
-        type: 'user_notify',
-        subtype: 'test_type',
-        msg: 'hello',
+        type: 'daemon_started',
       })
     );
   });

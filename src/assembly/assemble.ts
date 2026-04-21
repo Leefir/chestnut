@@ -307,6 +307,24 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     auditWriter.write('assemble_failed', `module=snapshot`, `phase=recovery-commit`, `reason=${recoveryResult.error.kind}`);
   }
 
+  // --- StreamWriter 前置（phase182 B.p166-5 升档：setter 双阶段消除） ---
+  let streamWriter: StreamWriter;
+  try {
+    streamWriter = createStreamWriter(systemFs, auditWriter, {
+      maxFiles: globalConfig.stream?.retention?.max_files ?? null,
+      maxDays: globalConfig.stream?.retention?.max_days ?? null,
+    });
+    streamWriter.open();
+  } catch (e) {
+    auditWriter.write('assemble_failed', `module=stream_writer`, `phase=construct`, `reason=${errMsg(e)}`);
+    throw new Error(`Assembly: StreamWriter construct failed: ${errMsg(e)}`, { cause: e });
+  }
+
+  // contractNotify callback 在 Runtime 构造前形成（注入 deps 而非 setter）
+  const contractNotifyCallback = (type: string, data: Record<string, unknown>) => {
+    streamWriter.write({ ts: Date.now(), type: 'user_notify', subtype: type, ...data });
+  };
+
   const dependencies: RuntimeDependencies = {
     systemFs,
     clawFs,
@@ -324,6 +342,8 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     taskSystem,
     contextInjector,
     execContext,
+    parentStreamLog: streamWriter,
+    contractNotifyCallback,
   };
 
   // 孤儿临时文件清理（从 Runtime.initialize 搬来；Assembly 负责一次性的启动清理）
@@ -388,21 +408,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     }
   }
 
-  // --- 7. StreamWriter + open + stream event + setParentStreamLog (daemon.ts L172-184) ---
-  let streamWriter: StreamWriter;
-  try {
-    streamWriter = createStreamWriter(systemFs, auditWriter, {
-      maxFiles: globalConfig.stream?.retention?.max_files ?? null,
-      maxDays: globalConfig.stream?.retention?.max_days ?? null,
-    });
-    streamWriter.open();
-    runtime.setParentStreamLog(streamWriter);
-  } catch (e) {
-    auditWriter.write('assemble_failed', `module=stream_writer`, `phase=construct`, `reason=${errMsg(e)}`);
-    throw new Error(`Assembly: StreamWriter construct failed: ${errMsg(e)}`, { cause: e });
-  }
-
-  // --- 8. CronRunner (motion + cron.enabled, daemon.ts L187-248) ---
+  // --- 7. CronRunner (motion + cron.enabled, daemon.ts L187-248) ---
   let cronRunner: CronRunner | undefined;
   if (isMotion && (globalConfig.cron?.enabled ?? true)) {
     const clawforumDir = path.join(clawDir, '..');
@@ -484,17 +490,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     }
   }
 
-  // --- 9. setContractNotifyCallback (daemon.ts L283-285 上移, 契约 §5 时序对齐) ---
-  try {
-    runtime.setContractNotifyCallback((type, data) => {
-      streamWriter.write({ ts: Date.now(), type: 'user_notify', subtype: type, ...data });
-    });
-  } catch (e) {
-    auditWriter.write('assemble_failed', `module=runtime`, `phase=set_contract_notify_callback`, `reason=${errMsg(e)}`);
-    throw new Error(`Assembly: setContractNotifyCallback failed: ${errMsg(e)}`, { cause: e });
-  }
-
-  // --- 10. 契约 §4 audit daemon_started ---
+  // --- 8. 契约 §4 audit daemon_started ---
   auditWriter.write('daemon_started', `clawId=${clawId}`, `pid=${process.pid}`);
   streamWriter.write({ ts: Date.now(), type: 'daemon_started', clawId, pid: process.pid });
 
