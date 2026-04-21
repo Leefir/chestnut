@@ -208,6 +208,7 @@ export class ClawRuntime {
     // 3. 归档上一次 session（first-run ENOENT 允许）
     await this.sessionManager.archive().catch((err: any) => {
       if (err?.code !== 'ENOENT' && err?.code !== 'FS_NOT_FOUND') {
+        this.auditWriter.write('session_archive_failed', `reason=${err?.message}`);
         console.warn('[runtime] Failed to archive session on startup:', err?.message);
       }
     });
@@ -561,7 +562,9 @@ export class ClawRuntime {
       try {
         await callbacks.onInboxMessages(infos);
       } catch (e) {
-        console.warn('[runtime] onInboxMessages handler failed:', e instanceof Error ? e.message : String(e));
+        const reason = e instanceof Error ? e.message : String(e);
+        this.auditWriter.write('inbox_handler_failed', 'handler=onInboxMessages', `reason=${reason}`);
+        console.warn('[runtime] onInboxMessages handler failed:', reason);
       }
     }
 
@@ -599,29 +602,13 @@ export class ClawRuntime {
       if (err instanceof MaxStepsExceededError) {
         const errorMsg = err.message;
         for (const info of infos) {
-          const sender = info.from;
-          if (sender) {
-            await this.outboxWriter.write({
-              type: 'response',
-              to: sender,
-              content: `Error: ${errorMsg}`,
-              contract_id: info.contract_id,
-            }).catch(e => console.error('[runtime] Failed to write error response:', e));
-          }
+          await this._writeErrorResponse(info, errorMsg, 'max_steps_exhausted');
         }
       } else if (!(err instanceof PriorityInboxInterrupt || err instanceof UserInterrupt || err instanceof IdleTimeoutSignal)) {
         // Non-interrupt error (LLM crash, tool error, etc.) — notify senders
         const errorMsg = err instanceof Error ? err.message : String(err);
         for (const info of infos) {
-          const sender = info.from;
-          if (sender) {
-            await this.outboxWriter.write({
-              type: 'response',
-              to: sender,
-              content: `Error: ${errorMsg}`,
-              contract_id: info.contract_id,
-            }).catch(e => console.error('[runtime] Failed to write error response:', e));
-          }
+          await this._writeErrorResponse(info, errorMsg, 'non_interrupt_error');
         }
       }
       // Log unexpected errors to audit (aborts and MaxSteps are expected control flow)
@@ -831,6 +818,34 @@ export class ClawRuntime {
       callbacks?.onTurnError?.(errorMsg);
       this.auditWriter.write('turn_error', `err=${errorMsg}`);
     }
+  }
+
+  /**
+   * Write an error response to a sender's outbox, with audit + console fallback.
+   */
+  private async _writeErrorResponse(
+    info: InboxMessage,
+    errorMsg: string,
+    scenario: 'max_steps_exhausted' | 'non_interrupt_error',
+  ): Promise<void> {
+    const sender = info.from;
+    if (!sender) return;
+
+    await this.outboxWriter.write({
+      type: 'response',
+      to: sender,
+      content: `Error: ${errorMsg}`,
+      contract_id: info.contract_id,
+    }).catch(e => {
+      const reason = e instanceof Error ? e.message : String(e);
+      this.auditWriter.write(
+        'outbox_write_failed',
+        'context=error_response',
+        `scenario=${scenario}`,
+        `reason=${reason}`,
+      );
+      console.error('[runtime] Failed to write error response:', e);
+    });
   }
 
   /**

@@ -150,6 +150,44 @@ describe('ClawRuntime', () => {
       await runtime.initialize();
       expect(runtime.getStatus().initialized).toBe(true);
     });
+
+    it('sessionManager.archive() 非 ENOENT 失败 → audit session_archive_failed', async () => {
+      const deps = await makeRuntimeDeps({ clawDir, clawId: 'test-claw' });
+      const runtime = trackRuntime(new ClawRuntime({
+        clawId: 'test-claw',
+        clawDir,
+        llmConfig: createMockLLMConfig(),
+        dependencies: deps,
+      }));
+      const audit: string[] = [];
+      vi.spyOn(deps.sessionManager, 'archive').mockRejectedValue(Object.assign(new Error('archive failed injected'), { code: 'EACCES' }));
+      vi.spyOn(deps.auditWriter, 'write').mockImplementation((type: string, ...args: string[]) => {
+        audit.push([type, ...args].join('\t'));
+      });
+
+      await runtime.initialize();
+
+      expect(audit.some(e => /^session_archive_failed\treason=archive failed injected$/.test(e))).toBe(true);
+    });
+
+    it('sessionManager.archive() ENOENT → 不发 audit（first-run 合法）', async () => {
+      const deps = await makeRuntimeDeps({ clawDir, clawId: 'test-claw' });
+      const runtime = trackRuntime(new ClawRuntime({
+        clawId: 'test-claw',
+        clawDir,
+        llmConfig: createMockLLMConfig(),
+        dependencies: deps,
+      }));
+      const audit: string[] = [];
+      vi.spyOn(deps.sessionManager, 'archive').mockRejectedValue(Object.assign(new Error('no such file'), { code: 'ENOENT' }));
+      vi.spyOn(deps.auditWriter, 'write').mockImplementation((type: string, ...args: string[]) => {
+        audit.push([type, ...args].join('\t'));
+      });
+
+      await runtime.initialize();
+
+      expect(audit.some(e => e.startsWith('session_archive_failed'))).toBe(false);
+    });
   });
 
   describe('Runtime TaskSystem business actions (phase155C)', () => {
@@ -458,6 +496,50 @@ Test message
       const doneDir = path.join(clawDir, 'inbox', 'done');
       const doneFiles = await fs.readdir(doneDir);
       expect(doneFiles.length).toBe(1);
+    });
+
+    it('onInboxMessages handler 失败 → audit inbox_handler_failed', async () => {
+      const runtime = trackRuntime(await createTestRuntime({
+        clawId: 'test-claw',
+        clawDir,
+        llmConfig: createMockLLMConfig(),
+      }));
+      await runtime.initialize();
+
+      // Seed inbox with 1 message
+      const pendingDir = path.join(clawDir, 'inbox', 'pending');
+      const content = `---
+id: test-msg
+type: message
+from: sender-claw
+priority: normal
+timestamp: ${new Date().toISOString()}
+---
+
+Test message
+`;
+      await fs.writeFile(path.join(pendingDir, 'test.md'), content);
+
+      // Mock LLM
+      const mockLLM = createMockLLM([{
+        content: [{ type: 'text', text: 'Processed' }],
+        stop_reason: 'end_turn',
+      }]);
+      (runtime as unknown as { llm: typeof mockLLM }).llm = mockLLM;
+
+      const audit: string[] = [];
+      vi.spyOn((runtime as any).auditWriter, 'write').mockImplementation((type: string, ...args: string[]) => {
+        audit.push([type, ...args].join('\t'));
+      });
+
+      const callbacks = {
+        onInboxMessages: vi.fn().mockRejectedValue(new Error('handler boom')),
+      };
+
+      await runtime.processBatch(callbacks);
+
+      expect(audit.some(e => /^inbox_handler_failed\thandler=onInboxMessages\treason=handler boom$/.test(e))).toBe(true);
+      expect(callbacks.onInboxMessages).toHaveBeenCalled();
     });
   });
 
@@ -1106,6 +1188,74 @@ Test message`;
       const err = await runtime.processBatch().catch(e => e);
       expect(err).toBe(originalError);
       expect(err.message).toBe('LLM exploded');
+    });
+
+    it('MaxStepsExceededError 时 outbox.write 失败 → audit outbox_write_failed scenario=max_steps_exhausted', async () => {
+      const runtime = await makeTestRuntime();
+      edgeRuntimes.push(runtime);
+      await runtime.initialize();
+
+      runtime.drainResult = {
+        injected: [{ role: 'user', content: [{ type: 'text', text: 'hello' }] }],
+        sources: [],
+        count: 1,
+        infos: [{
+          id: 'msg1',
+          type: 'message',
+          from: 'sender-claw',
+          to: 'edge-claw',
+          content: 'hello',
+          priority: 'normal',
+          timestamp: new Date().toISOString(),
+          contract_id: 'c-1',
+        } as InboxMessage],
+      };
+      runtime.reactError = new MaxStepsExceededError(10);
+
+      const audit: string[] = [];
+      vi.spyOn((runtime as any).auditWriter, 'write').mockImplementation((type: string, ...args: string[]) => {
+        audit.push([type, ...args].join('\t'));
+      });
+      vi.spyOn((runtime as any).outboxWriter, 'write').mockRejectedValue(new Error('outbox disk full'));
+
+      await expect(runtime.processBatch()).rejects.toThrow(MaxStepsExceededError);
+
+      expect(audit.some(e => /^outbox_write_failed\tcontext=error_response\tscenario=max_steps_exhausted\treason=outbox disk full$/.test(e))).toBe(true);
+    });
+
+    it('non-interrupt error 时 outbox.write 失败 → audit outbox_write_failed scenario=non_interrupt_error', async () => {
+      const runtime = await makeTestRuntime();
+      edgeRuntimes.push(runtime);
+      await runtime.initialize();
+
+      runtime.drainResult = {
+        injected: [{ role: 'user', content: [{ type: 'text', text: 'hello' }] }],
+        sources: [],
+        count: 1,
+        infos: [{
+          id: 'msg1',
+          type: 'message',
+          from: 'sender-claw',
+          to: 'edge-claw',
+          content: 'hello',
+          priority: 'normal',
+          timestamp: new Date().toISOString(),
+          contract_id: 'c-1',
+        } as InboxMessage],
+      };
+      const originalError = new Error('LLM crash injected');
+      runtime.reactError = originalError;
+
+      const audit: string[] = [];
+      vi.spyOn((runtime as any).auditWriter, 'write').mockImplementation((type: string, ...args: string[]) => {
+        audit.push([type, ...args].join('\t'));
+      });
+      vi.spyOn((runtime as any).outboxWriter, 'write').mockRejectedValue(new Error('outbox io err'));
+
+      const err = await runtime.processBatch().catch(e => e);
+      expect(err).toBe(originalError);
+
+      expect(audit.some(e => /^outbox_write_failed\tcontext=error_response\tscenario=non_interrupt_error\treason=outbox io err$/.test(e))).toBe(true);
     });
   });
 
