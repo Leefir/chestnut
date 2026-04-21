@@ -14,7 +14,7 @@ import type { InboxMessage } from '../../types/contract.js';
 import { startDaemonLoop } from './daemon-loop.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import { AuditWriter } from '../../foundation/audit/writer.js';
-import { SkillRegistry } from '../../core/skill/registry.js';
+import { createSkillRegistry } from '../../core/skill/index.js';
 import { ContractManager } from '../../core/contract/manager.js';
 import { DEFAULT_MAX_STEPS, DEFAULT_MAX_CONCURRENT_TASKS, DEFAULT_LLM_IDLE_TIMEOUT_MS } from '../../constants.js';
 import { writePendingSubagentTaskFile } from '../../core/tools/builtins/_pending-task-writer.js';
@@ -176,7 +176,7 @@ export async function daemonCommand(name: string): Promise<void> {
           let skillsSummary = '';
           try {
             const motionFs = new NodeFileSystem({ baseDir: dir, enforcePermissions: false });
-            const reg = new SkillRegistry(motionFs, 'clawspace/dispatch-skills');
+            const reg = createSkillRegistry(motionFs, 'clawspace/dispatch-skills');
             await reg.loadAll();
             const formatted = reg.formatForContext();
             if (!formatted.includes('No skills loaded')) {
