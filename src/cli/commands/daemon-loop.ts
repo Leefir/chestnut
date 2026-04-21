@@ -91,18 +91,35 @@ function createStreamCallbacks(sink: StreamLog): StreamCallbacks {
   };
 }
 
+/** inbox 配置子组 */
+export interface DaemonInboxConfig {
+  pendingDir: string;
+  fallbackTimeoutMs?: number;  // fs.watch fallback timeout (default 30000ms)
+}
+
+/** motion 专用扩展（claw daemon 整体省略此组） */
+export interface DaemonMotionExtensions {
+  heartbeat?: Heartbeat;
+  onInboxMessages?: (messages: InboxMessage[]) => Promise<void>;  // review_request handling
+}
+
 export interface DaemonLoopOptions {
+  // 核心驱动（5 必填）
   runtime: ClawRuntime;
-  agentDir: string;                      // agent root directory, used to listen for interrupt signals
-  clawId: string;                        // agent identifier (kebab-case)
-  inboxPendingDir: string;
-  label: string;                         // log prefix, e.g. '[motion daemon]' or '[daemon]'
-  onBatchComplete?: () => Promise<void>; // callback invoked after a chain reaction finishes
-  fallbackTimeoutMs?: number;            // fs.watch fallback timeout (default 30000ms)
-  streamWriter?: StreamWriter;           // streaming event writer
-  heartbeat?: Heartbeat;                 // heartbeat instance (motion only)
-  onInboxMessages?: (messages: InboxMessage[]) => Promise<void>;  // for review_request handling (motion only)
-  audit: Audit;                          // audit sink for createWatcher
+  agentDir: string;          // agent root directory (listens for interrupt signals)
+  clawId: string;            // agent identifier (kebab-case)
+  label: string;             // log prefix, e.g. '[motion daemon]' or '[daemon]'
+  audit: Audit;              // audit sink for createWatcher
+
+  // inbox 配置（必填子组）
+  inbox: DaemonInboxConfig;
+
+  // motion 专用扩展（claw 整体省略）
+  motion?: DaemonMotionExtensions;
+
+  // 流式 / 回调（2 可选）
+  streamWriter?: StreamWriter;
+  onBatchComplete?: () => Promise<void>;
 }
 
 /**
@@ -148,8 +165,11 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
   promise: Promise<void>;
   stop: () => void;
 } {
-  const { runtime, agentDir, clawId, inboxPendingDir, label, onBatchComplete, streamWriter, audit } = options;
-  const fallbackTimeout = options.fallbackTimeoutMs ?? DAEMON_FALLBACK_TIMEOUT_MS;
+  const { runtime, agentDir, clawId, label, audit, inbox, motion, onBatchComplete, streamWriter } = options;
+  const { pendingDir: inboxPendingDir } = inbox;
+  const fallbackTimeout = inbox.fallbackTimeoutMs ?? DAEMON_FALLBACK_TIMEOUT_MS;
+  const heartbeat = motion?.heartbeat;
+  const onInboxMessages = motion?.onInboxMessages;
   const loopFs = new NodeFileSystem({ baseDir: path.join(agentDir, '..'), enforcePermissions: false });
   let stopped = false;
   let startupFired = false;
@@ -245,8 +265,8 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
       }
 
       // Heartbeat check (moved into daemon loop to avoid setInterval race conditions)
-      if (options.heartbeat?.isDue()) {
-        options.heartbeat.fire();
+      if (heartbeat?.isDue()) {
+        heartbeat.fire();
       }
 
       let interruptPoller: ReturnType<typeof setInterval> | null = null;
@@ -254,8 +274,8 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
       // Build wrappedCallbacks outside try so catch block can access it for retryLastTurn
       const callbacks = streamWriter ? createStreamCallbacks(streamWriter) : undefined;
       const wrappedCallbacks = callbacks
-        ? { ...callbacks, onInboxMessages: options.onInboxMessages }
-        : (options.onInboxMessages ? { onInboxMessages: options.onInboxMessages } : undefined);
+        ? { ...callbacks, onInboxMessages }
+        : (onInboxMessages ? { onInboxMessages } : undefined);
 
       try {
         // Start polling for the interrupt file

@@ -69,10 +69,9 @@ describe('startDaemonLoop interrupt poller circuit breaker', () => {
       runtime: mockRuntime,
       agentDir: '/tmp/test-agent-fix9',
       clawId: 'test-agent-fix9',
-      inboxPendingDir: '/tmp/test-inbox-fix9',
       label: '[test-fix9]',
-      fallbackTimeoutMs: 60_000,
       audit: mockAudit as unknown as Audit,
+      inbox: { pendingDir: '/tmp/test-inbox-fix9', fallbackTimeoutMs: 60_000 },
     });
 
     // Let processBatch resolve (tick microtasks)
@@ -135,10 +134,9 @@ describe('startDaemonLoop - LLM retry', () => {
       runtime: mockRuntime,
       agentDir: '/tmp/daemon-llm-retry-test',
       clawId: 'daemon-llm-retry-test',
-      inboxPendingDir: '/tmp/daemon-llm-retry-test/inbox/pending',
       label: '[retry-test]',
-      fallbackTimeoutMs: 1_000,
       audit: mockAudit as unknown as Audit,
+      inbox: { pendingDir: '/tmp/daemon-llm-retry-test/inbox/pending', fallbackTimeoutMs: 1_000 },
     });
 
     // Let processBatch throw and catch block reach the 30s setTimeout
@@ -182,10 +180,9 @@ describe('startDaemonLoop - LLM retry', () => {
       runtime: mockRuntime,
       agentDir: '/tmp/agent-max-retry',
       clawId: 'agent-max-retry',
-      inboxPendingDir: '/tmp/agent-max-retry/inbox/pending',
       label: '[max-retry-test]',
-      fallbackTimeoutMs: 100,
       audit: mockAudit as unknown as Audit,
+      inbox: { pendingDir: '/tmp/agent-max-retry/inbox/pending', fallbackTimeoutMs: 100 },
     });
 
     // Iteration 1: processBatch throws → wait 30 s
@@ -256,10 +253,9 @@ describe('startDaemonLoop - LLM retry', () => {
       runtime: mockRuntime,
       agentDir: '/tmp/non-llm-error-test',
       clawId: 'non-llm-error-test',
-      inboxPendingDir: '/tmp/non-llm-error-test/inbox/pending',
       label: '[non-llm-test]',
-      fallbackTimeoutMs: 500,
       audit: mockAudit as unknown as Audit,
+      inbox: { pendingDir: '/tmp/non-llm-error-test/inbox/pending', fallbackTimeoutMs: 500 },
     });
 
     await flushMicrotasks();
@@ -305,10 +301,9 @@ describe('startDaemonLoop - interrupt audit', () => {
       runtime: mockRuntime,
       agentDir: '/tmp/idle-test',
       clawId: 'idle-test',
-      inboxPendingDir: '/tmp/idle-test/inbox/pending',
       label: '[idle-test]',
-      fallbackTimeoutMs: 1_000,
       audit: mockAudit as unknown as Audit,
+      inbox: { pendingDir: '/tmp/idle-test/inbox/pending', fallbackTimeoutMs: 1_000 },
     });
 
     await flushMicrotasks();
@@ -337,10 +332,9 @@ describe('startDaemonLoop - interrupt audit', () => {
       runtime: mockRuntime,
       agentDir: '/tmp/user-test',
       clawId: 'user-test',
-      inboxPendingDir: '/tmp/user-test/inbox/pending',
       label: '[user-test]',
-      fallbackTimeoutMs: 1_000,
       audit: mockAudit as unknown as Audit,
+      inbox: { pendingDir: '/tmp/user-test/inbox/pending', fallbackTimeoutMs: 1_000 },
     });
 
     await flushMicrotasks();
@@ -369,10 +363,9 @@ describe('startDaemonLoop - interrupt audit', () => {
       runtime: mockRuntime,
       agentDir: '/tmp/priority-test',
       clawId: 'priority-test',
-      inboxPendingDir: '/tmp/priority-test/inbox/pending',
       label: '[priority-test]',
-      fallbackTimeoutMs: 1_000,
       audit: mockAudit as unknown as Audit,
+      inbox: { pendingDir: '/tmp/priority-test/inbox/pending', fallbackTimeoutMs: 1_000 },
     });
 
     await flushMicrotasks();
@@ -407,10 +400,9 @@ describe('startDaemonLoop - iteration audit', () => {
       runtime: mockRuntime,
       agentDir: '/tmp/chain-test',
       clawId: 'chain-test',
-      inboxPendingDir: '/tmp/chain-test/inbox/pending',
       label: '[chain-test]',
-      fallbackTimeoutMs: 1_000,
       audit: mockAudit as unknown as Audit,
+      inbox: { pendingDir: '/tmp/chain-test/inbox/pending', fallbackTimeoutMs: 1_000 },
     });
 
     await flushMicrotasks();

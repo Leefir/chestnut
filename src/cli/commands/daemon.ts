@@ -155,12 +155,13 @@ export async function daemonCommand(name: string): Promise<void> {
     runtime,
     agentDir: dir,
     clawId: name,
-    inboxPendingDir,
     label: isMotion ? '[motion daemon]' : '[daemon]',
-    streamWriter,
-    heartbeat: heartbeat ?? undefined,  // 传入心跳实例
-    onInboxMessages,   // 新增
     audit: auditWriter,
+    inbox: { pendingDir: inboxPendingDir },
+    motion: isMotion
+      ? { heartbeat: heartbeat ?? undefined, onInboxMessages }
+      : undefined,
+    streamWriter,
   });
 
   // shutdown

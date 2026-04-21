@@ -186,7 +186,7 @@ describe('daemonCommand - A4a startup success', () => {
     // L116 onInboxMessages 注入（startDaemonLoop 收到）
     expect(mockState.mockStartDaemonLoop).toHaveBeenCalledWith(expect.objectContaining({
       label: '[motion daemon]',
-      onInboxMessages: expect.any(Function),
+      motion: expect.objectContaining({ onInboxMessages: expect.any(Function) }),
     }));
   });
 });
@@ -408,9 +408,9 @@ describe('daemonCommand - review_request dispatch (phase184)', () => {
     await flushMicrotasks();
 
     const options = mockState.mockStartDaemonLoop.mock.calls[0][0];
-    expect(options.onInboxMessages).toBeDefined();
+    expect(options.motion?.onInboxMessages).toBeDefined();
 
-    await options.onInboxMessages([{ type: 'review_request', contract_id: 'abc-123' }]);
+    await options.motion?.onInboxMessages([{ type: 'review_request', contract_id: 'abc-123' }]);
 
     expect(mockContractManagerState.handleReviewRequest).toHaveBeenCalledTimes(1);
     expect(mockContractManagerState.handleReviewRequest).toHaveBeenCalledWith(
@@ -432,7 +432,7 @@ describe('daemonCommand - review_request dispatch (phase184)', () => {
     await flushMicrotasks();
 
     const options = mockState.mockStartDaemonLoop.mock.calls[0][0];
-    await options.onInboxMessages([{ type: 'user_chat', contract_id: 'xyz' }]);
+    await options.motion?.onInboxMessages([{ type: 'user_chat', contract_id: 'xyz' }]);
 
     expect(mockContractManagerState.handleReviewRequest).not.toHaveBeenCalled();
 
@@ -445,7 +445,7 @@ describe('daemonCommand - review_request dispatch (phase184)', () => {
     await flushMicrotasks();
 
     const options = mockState.mockStartDaemonLoop.mock.calls[0][0];
-    await options.onInboxMessages([
+    await options.motion?.onInboxMessages([
       { type: 'review_request', contract_id: 'a' },
       { type: 'review_request', contract_id: 'b' },
     ]);
@@ -465,7 +465,7 @@ describe('daemonCommand - review_request dispatch (phase184)', () => {
     await flushMicrotasks();
 
     const options = mockState.mockStartDaemonLoop.mock.calls[0][0];
-    expect(options.onInboxMessages).toBeUndefined();
+    expect(options.motion?.onInboxMessages).toBeUndefined();
 
     if (mockState.stopFn) mockState.stopFn();
     await cmdPromise.catch(() => {});
