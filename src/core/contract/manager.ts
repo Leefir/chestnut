@@ -10,7 +10,6 @@ import * as path from 'path';
 import * as fsNative from 'fs';
 import * as fsAsync from 'fs/promises';
 import type { FileSystem } from '../../foundation/fs/types.js';
-import type { Logger } from '../../foundation/monitor/types.js';
 import type { LLMService } from '../../foundation/llm/index.js';
 import type { Contract, SubTask, ContractStatus, SubtaskStatus } from '../../types/contract.js';
 import { ToolError, ToolTimeoutError } from '../../types/errors.js';
@@ -104,7 +103,7 @@ export class ContractManager {
   private fs: FileSystem;
   private clawDir: string;
   private readonly clawId: string;
-  private monitor?: Logger;
+  private readonly audit: AuditWriter;
   private llm?: LLMService;
   private verifierRegistry?: ToolRegistryImpl;
   private activeDir = 'contract/active';
@@ -117,7 +116,7 @@ export class ContractManager {
     clawDir: string,
     clawId: string,
     fs: FileSystem,
-    monitor?: Logger,
+    audit: AuditWriter,
     llm?: LLMService,
     verifierRegistry?: ToolRegistryImpl,
     auditWriter?: AuditWriter,
@@ -126,7 +125,7 @@ export class ContractManager {
     this.clawDir = clawDir;
     this.clawId = clawId;
     this.fs = fs;
-    this.monitor = monitor;
+    this.audit = audit;
     this.llm = llm;
     this.verifierRegistry = verifierRegistry;
   }
@@ -252,11 +251,7 @@ export class ContractManager {
       await this.fs.delete(lockPath);
     } catch (e) {
       // Ignore deletion failure (may have already been cleaned up by another process)
-      this.monitor?.log('error', {
-        context: 'ContractManager.releaseLock',
-        lockPath,
-        error: e instanceof Error ? e.message : String(e),
-      });
+      this.audit.write(AUDIT_EVENTS.CONTRACT_LOCK_UNLINK_FAILED, `context=ContractManager.releaseLock`, `lockPath=${lockPath}`, `error=${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -309,13 +304,7 @@ export class ContractManager {
             `file=${entry.name}`,
             `err=${error instanceof Error ? error.message : String(error)}`,
           );
-          if (this.monitor) {
-            this.monitor.log('error', {
-              context: 'ContractManager.loadActive',
-              contract: entry.name,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          }
+          this.audit.write(AUDIT_EVENTS.CONTRACT_PROGRESS_CORRUPTED, `context=${'ContractManager.loadActive'}`, `contract=${entry.name}`, `error=${error instanceof Error ? error.message : String(error)}`);
         }
         continue;
       }
@@ -357,11 +346,7 @@ export class ContractManager {
             `file=${entry.name}`,
             `err=${error instanceof Error ? error.message : String(error)}`,
           );
-          this.monitor?.log('error', {
-            context: 'ContractManager.loadPaused',
-            contract: entry.name,
-            error: error instanceof Error ? error.message : String(error),
-          });
+          this.audit.write(AUDIT_EVENTS.CONTRACT_PROGRESS_CORRUPTED, `context=${'ContractManager.loadPaused'}`, `contract=${entry.name}`, `error=${error instanceof Error ? error.message : String(error)}`);
         }
         continue;
       }
@@ -473,8 +458,7 @@ export class ContractManager {
       );
     }
     this.auditWriter?.write('contract_created', contractId, `subtasks=${contractYaml.subtasks.length}`, `title=${contractYaml.title}`);
-    // 保留原有：
-    this.monitor?.log('contract_created', { contractId });
+    this.audit.write(AUDIT_EVENTS.CONTRACT_CREATED, `contractId=${contractId}`);
     return contractId;
   }
 
@@ -544,21 +528,13 @@ export class ContractManager {
       
       await this.saveProgress(contractId, progress);
       
-      this.monitor?.log('contract_acceptance_started', {
-        contractId,
-        subtaskId,
-      });
+      this.audit.write(AUDIT_EVENTS.CONTRACT_ACCEPTANCE_STARTED, `contractId=${contractId}`, `subtaskId=${subtaskId}`);
     });
 
     // Start background acceptance (fire-and-forget)
     this._runAcceptanceInBackground(params, contractYaml, acceptanceConfig)
       .catch(err => {
-        this.monitor?.log('error', {
-          context: 'ContractManager.backgroundAcceptance',
-          contractId,
-          subtaskId,
-          error: err instanceof Error ? err.message : String(err),
-        });
+        this.audit.write(AUDIT_EVENTS.CONTRACT_ACCEPTANCE_RESET_FAILED, `context=ContractManager.backgroundAcceptance`, `contractId=${contractId}`, `subtaskId=${subtaskId}`, `error=${err instanceof Error ? err.message : String(err)}`);
         return this._writeAcceptanceError(contractId, subtaskId, err);
       });
 
@@ -586,12 +562,7 @@ export class ContractManager {
       if (!progress.subtasks[subtaskId]) {
         const validIds = Object.keys(progress.subtasks).join(', ');
         result = { passed: false, feedback: `Unknown subtask "${subtaskId}". Valid subtask IDs: ${validIds}` };
-        this.monitor?.log('error', {
-          context: 'ContractManager._completeSubtaskSync',
-          contractId,
-          subtaskId,
-          message: 'Unknown subtaskId',
-        });
+        this.audit.write(AUDIT_EVENTS.CONTRACT_PROGRESS_CORRUPTED, `context=ContractManager._completeSubtaskSync`, `contractId=${contractId}`, `subtaskId=${subtaskId}`, `message=Unknown subtaskId`);
         return;
       }
 
@@ -599,7 +570,7 @@ export class ContractManager {
       const currentStatus = progress.subtasks[subtaskId].status;
       if (currentStatus === 'in_progress') {
         result = { passed: false, feedback: `Subtask "${subtaskId}" acceptance is already in progress — duplicate done() call ignored.` };
-        this.monitor?.log('warn', {
+        console.warn({
           context: 'ContractManager._completeSubtaskSync',
           contractId,
           subtaskId,
@@ -609,7 +580,7 @@ export class ContractManager {
       }
       if (currentStatus === 'completed') {
         result = { passed: false, feedback: `Subtask "${subtaskId}" is already completed.` };
-        this.monitor?.log('warn', {
+        console.warn({
           context: 'ContractManager._completeSubtaskSync',
           contractId,
           subtaskId,
@@ -652,11 +623,7 @@ export class ContractManager {
 
       await this.saveProgress(contractId, progress);
       
-      this.monitor?.log('contract_updated', {
-        contractId,
-        subtaskId,
-        status: allCompleted ? 'completed' : 'running',
-      });
+      this.audit.write(AUDIT_EVENTS.CONTRACT_UPDATED, `contractId=${contractId}`, `subtaskId=${subtaskId}`, `status=${allCompleted ? 'completed' : 'running'}`);
     });
 
     // Archive and log completion outside the lock (best-effort)
@@ -675,12 +642,7 @@ export class ContractManager {
           AUDIT_EVENTS.CONTRACT_MOVE_ARCHIVE_FAILED,
           `err=${err instanceof Error ? err.message : String(err)}`,
         );
-        this.monitor?.log('error', {
-          context: 'ContractManager._completeSubtaskSync',
-          contractId,
-          message: 'moveToArchive failed; contract stays in active/',
-          error: err instanceof Error ? err.message : String(err),
-        });
+        this.audit.write(AUDIT_EVENTS.CONTRACT_MOVE_ARCHIVE_FAILED, `context=${'ContractManager._completeSubtaskSync'}`, `message=${'moveToArchive failed; contract stays in active/'}`, `error=${err instanceof Error ? err.message : String(err)}`);
       }
     }
     
@@ -709,12 +671,7 @@ export class ContractManager {
       const scriptFile = acceptanceConfig.script_file;
       if (!scriptFile) {
         result = { passed: false, feedback: 'acceptance config script 类型缺少 script_file' };
-        this.monitor?.log('error', {
-          context: 'ContractManager._runAcceptanceInBackground',
-          contractId,
-          subtaskId,
-          message: 'acceptance config missing script_file',
-        });
+        this.audit.write(AUDIT_EVENTS.CONTRACT_ACCEPTANCE_RESET_FAILED, `context=${'ContractManager._runAcceptanceInBackground'}`, `message=${'acceptance config missing script_file'}`);
       } else {
         result = await this.runScriptAcceptance(scriptFile, contractAbsDir);
       }
@@ -722,12 +679,7 @@ export class ContractManager {
       const promptFile = acceptanceConfig.prompt_file;
       if (!promptFile) {
         result = { passed: false, feedback: 'acceptance config llm 类型缺少 prompt_file' };
-        this.monitor?.log('error', {
-          context: 'ContractManager._runAcceptanceInBackground',
-          contractId,
-          subtaskId,
-          message: 'acceptance config missing prompt_file',
-        });
+        this.audit.write(AUDIT_EVENTS.CONTRACT_ACCEPTANCE_RESET_FAILED, `context=${'ContractManager._runAcceptanceInBackground'}`, `message=${'acceptance config missing prompt_file'}`);
       } else {
         result = await this.runLLMAcceptance(
           promptFile,
@@ -747,12 +699,7 @@ export class ContractManager {
       const subtask = progress.subtasks[subtaskId];
       
       if (!subtask) {
-        this.monitor?.log('error', {
-          context: 'ContractManager._runAcceptanceInBackground',
-          contractId,
-          subtaskId,
-          error: 'subtask missing from progress after in_progress mark',
-        });
+        this.audit.write(AUDIT_EVENTS.CONTRACT_PROGRESS_CORRUPTED, `context=ContractManager._runAcceptanceInBackground`, `contractId=${contractId}`, `subtaskId=${subtaskId}`, `error=subtask missing from progress after in_progress mark`);
         return;
       }
       
@@ -808,12 +755,7 @@ export class ContractManager {
               AUDIT_EVENTS.CONTRACT_MOVE_ARCHIVE_FAILED,
               `err=${err instanceof Error ? err.message : String(err)}`,
             );
-            this.monitor?.log('error', {
-              context: 'ContractManager._runAcceptanceInBackground',
-              contractId,
-              message: 'moveToArchive failed; contract stays in active/',
-              error: err instanceof Error ? err.message : String(err),
-            });
+            this.audit.write(AUDIT_EVENTS.CONTRACT_MOVE_ARCHIVE_FAILED, `context=${'ContractManager._runAcceptanceInBackground'}`, `message=${'moveToArchive failed; contract stays in active/'}`, `error=${err instanceof Error ? err.message : String(err)}`);
           }
         }
       } else {
@@ -952,12 +894,7 @@ export class ContractManager {
         AUDIT_EVENTS.CONTRACT_ACCEPTANCE_INBOX_FAILED,
         `err=${e instanceof Error ? e.message : String(e)}`,
       );
-      this.monitor?.log('error', {
-        context: 'ContractManager._writeAcceptanceError',
-        contractId,
-        subtaskId,
-        error: e instanceof Error ? e.message : String(e),
-      });
+      this.audit.write(AUDIT_EVENTS.CONTRACT_ACCEPTANCE_INBOX_FAILED, `context=${'ContractManager._writeAcceptanceError'}`, `error=${e instanceof Error ? e.message : String(e)}`);
     }
 
     // 重置 subtask 状态，防止永久卡在 in_progress
@@ -977,12 +914,7 @@ export class ContractManager {
         AUDIT_EVENTS.CONTRACT_ACCEPTANCE_RESET_FAILED,
         `err=${e instanceof Error ? e.message : String(e)}`,
       );
-      this.monitor?.log('error', {
-        context: 'ContractManager._writeAcceptanceError.resetStatus',
-        contractId,
-        subtaskId,
-        error: e instanceof Error ? e.message : String(e),
-      });
+      this.audit.write(AUDIT_EVENTS.CONTRACT_ACCEPTANCE_RESET_FAILED, `context=${'ContractManager._writeAcceptanceError.resetStatus'}`, `error=${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -1391,7 +1323,7 @@ export class ContractManager {
     // 2.1 加载契约 YAML（临时 new ContractManager for target claw，B.p175-2 登记）
     const clawDir = path.join(ctx.clawsBaseDir, targetClaw);
     const clawFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
-    const clawContractManager = new ContractManager(clawDir, targetClaw, clawFs);
+    const clawContractManager = new ContractManager(clawDir, targetClaw, clawFs, new AuditWriter(clawFs, path.join(clawDir, 'audit.tsv')));
 
     let contractYaml: string;
     try {

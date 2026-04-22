@@ -166,7 +166,7 @@ describe('ContractManager Acceptance Flow', () => {
   let tempDir: string;
   let clawDir: string;
   let manager: ContractManager;
-  let mockMonitor: JsonlLogger;
+  let mockAudit: { write: ReturnType<typeof vi.fn> };
   let mockLLM: LLMService;
   let mockRegistry: ToolRegistryImpl;
 
@@ -191,7 +191,7 @@ describe('ContractManager Acceptance Flow', () => {
     const nodeFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
     const logsDir = path.join(clawDir, 'logs');
     await fs.mkdir(logsDir, { recursive: true });
-    mockMonitor = new JsonlLogger({ logsDir });
+    mockAudit = { write: vi.fn() };
 
     mockLLM = {
       call: vi.fn(),
@@ -200,12 +200,11 @@ describe('ContractManager Acceptance Flow', () => {
 
     mockRegistry = new ToolRegistryImpl();
     const auditWriter = { write: vi.fn() };
-    manager = new ContractManager(clawDir, 'test-claw', nodeFs, mockMonitor, mockLLM, mockRegistry, auditWriter as any);
+    manager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any, mockLLM, mockRegistry, auditWriter as any);
   });
 
   afterEach(async () => {
     vi.useRealTimers();
-    await mockMonitor.close();
     // 清理 rootDir（clawDir 的祖父目录）
     await cleanupTempDir(path.resolve(clawDir, '..', '..'));
   });
@@ -348,7 +347,7 @@ describe('ContractManager Acceptance Flow', () => {
     });
 
     it('should log warn to monitor when script acceptance config has no script_file', async () => {
-      const logSpy = vi.spyOn(mockMonitor, 'log');
+      const logSpy = vi.spyOn(mockAudit, 'write');
       const contractId = 'test-script-no-file-monitor';
       await setupContract(tempDir, contractId, {
         schema_version: 1, title: 'Test', goal: 'Test goal',
@@ -359,9 +358,11 @@ describe('ContractManager Acceptance Flow', () => {
       await manager.completeSubtask({ contractId, subtaskId: 'task-1', evidence: 'e' });
       await waitForAcceptance(tempDir);
 
-      expect(logSpy).toHaveBeenCalledWith('error', expect.objectContaining({
-        context: 'ContractManager._runAcceptanceInBackground',
-      }));
+      expect(logSpy).toHaveBeenCalledWith(
+        AUDIT_EVENTS.CONTRACT_ACCEPTANCE_RESET_FAILED,
+        expect.stringContaining('context=ContractManager._runAcceptanceInBackground'),
+        expect.anything(),
+      );
     });
   });
 
@@ -499,7 +500,7 @@ describe('ContractManager Acceptance Flow', () => {
       const contractId = 'test-llm-not-injected';
       // manager without llm
       const nodeFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
-      const noLLMManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockMonitor);
+      const noLLMManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any);
 
       await setupContract(tempDir, contractId, {
         schema_version: 1,
@@ -524,7 +525,7 @@ describe('ContractManager Acceptance Flow', () => {
     });
 
     it('should log warn to monitor when llm acceptance config has no prompt_file', async () => {
-      const logSpy = vi.spyOn(mockMonitor, 'log');
+      const logSpy = vi.spyOn(mockAudit, 'write');
       const contractId = 'test-llm-no-prompt-monitor';
       await setupContract(tempDir, contractId, {
         schema_version: 1, title: 'Test', goal: 'Test goal',
@@ -535,9 +536,11 @@ describe('ContractManager Acceptance Flow', () => {
       await manager.completeSubtask({ contractId, subtaskId: 'task-1', evidence: 'e' });
       await waitForAcceptance(tempDir);
 
-      expect(logSpy).toHaveBeenCalledWith('error', expect.objectContaining({
-        context: 'ContractManager._runAcceptanceInBackground',
-      }));
+      expect(logSpy).toHaveBeenCalledWith(
+        AUDIT_EVENTS.CONTRACT_ACCEPTANCE_RESET_FAILED,
+        expect.stringContaining('context=ContractManager._runAcceptanceInBackground'),
+        expect.anything(),
+      );
     });
 
     it('should prefer capturedResult over text when report_result tool is called', async () => {

@@ -4,7 +4,6 @@
 
 import { ContractManager } from './manager.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
-import type { Logger } from '../../foundation/monitor/types.js';
 import type { LLMService } from '../../foundation/llm/index.js';
 import type { AuditWriter } from '../../foundation/audit/writer.js';
 import type { ToolRegistryImpl } from '../tools/registry.js';
@@ -29,10 +28,10 @@ export function createContractManager(
   clawDir: string,
   clawId: string,
   fs: FileSystem,
-  monitor?: Logger,
+  audit: AuditWriter,
   llm?: LLMService,
   verifierRegistry?: ToolRegistryImpl,
   auditWriter?: AuditWriter,
 ): ContractManager {
-  return new ContractManager(clawDir, clawId, fs, monitor, llm, verifierRegistry, auditWriter);
+  return new ContractManager(clawDir, clawId, fs, audit, llm, verifierRegistry, auditWriter);
 }

@@ -117,7 +117,7 @@ export async function daemonCommand(name: string): Promise<void> {
 
   // review_request → ContractManager.handleReviewRequest（B.p172-3 迁移完成 phase188）
   const motionFs = isMotion ? new NodeFileSystem({ baseDir: dir, enforcePermissions: false }) : undefined;
-  const contractManager = isMotion && motionFs ? new ContractManager(dir, 'motion', motionFs) : undefined;
+  const contractManager = isMotion && motionFs ? new ContractManager(dir, 'motion', motionFs, auditWriter) : undefined;
   const clawsBaseDir = isMotion ? path.resolve(dir, '..', 'claws') : undefined;
 
   const reviewCtx: MotionReviewContext | undefined = isMotion && motionFs && clawsBaseDir

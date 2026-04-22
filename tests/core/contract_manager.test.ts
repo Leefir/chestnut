@@ -1,7 +1,7 @@
 /**
  * ContractManager 测试 - 状态转换
  * 
- * 构造函数: new ContractManager(clawDir, clawId, fs, monitor?, llm?, verifierRegistry?, motionInboxDir?)
+ * 构造函数: new ContractManager(clawDir, clawId, fs, audit, llm?, verifierRegistry?, auditWriter?)
  * 
  * 新增测试：
  * - loadActive() 按 started_at 排序
@@ -50,7 +50,8 @@ describe('ContractManager', () => {
     await fs.mkdir(clawDir, { recursive: true });
 
     nodeFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
-    manager = new ContractManager(clawDir, 'test-claw', nodeFs, undefined);
+    const mockAudit = { write: vi.fn() };
+    manager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any);
   });
 
   it('should create contract with running status and todo subtasks', async () => {
@@ -443,7 +444,7 @@ describe('ContractManager', () => {
   it('should audit cleanup failure when unlinking stale lock fails (EACCES)', async () => {
     const mockAudit = { write: vi.fn() };
     const testManager = new ContractManager(
-      clawDir, 'test-claw', nodeFs, undefined, undefined, undefined, mockAudit as any
+      clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, undefined, mockAudit as any
     );
 
     const contractId = await testManager.create({
@@ -494,7 +495,7 @@ describe('ContractManager', () => {
   it('should NOT audit when stale lock is already gone (ENOENT)', async () => {
     const mockAudit = { write: vi.fn() };
     const testManager = new ContractManager(
-      clawDir, 'test-claw', nodeFs, undefined, undefined, undefined, mockAudit as any
+      clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, undefined, mockAudit as any
     );
 
     const contractId = await testManager.create({
@@ -591,8 +592,8 @@ describe('ContractManager', () => {
 
   describe('monitor error reporting', () => {
     it('should log error to monitor when loadActive finds corrupted progress.json', async () => {
-      const mockMonitor = { log: vi.fn() };
-      const monitorManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockMonitor as any);
+      const mockAudit = { write: vi.fn() };
+      const monitorManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any);
 
       // 写入损坏的 progress.json
       const contractId = 'corrupt-contract';
@@ -602,14 +603,17 @@ describe('ContractManager', () => {
 
       const result = await monitorManager.loadActive();
       expect(result).toBeNull(); // 损坏的契约被跳过，返回 null
-      expect(mockMonitor.log).toHaveBeenCalledWith('error', expect.objectContaining({
-        context: 'ContractManager.loadActive',
-      }));
+      expect(mockAudit.write).toHaveBeenCalledWith(
+        AUDIT_EVENTS.CONTRACT_PROGRESS_CORRUPTED,
+        expect.stringContaining('context=ContractManager.loadActive'),
+        expect.stringContaining('contract=corrupt-contract'),
+        expect.anything(),
+      );
     });
 
     it('should log error to monitor when loadPaused finds corrupted progress.json', async () => {
-      const mockMonitor = { log: vi.fn() };
-      const monitorManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockMonitor as any);
+      const mockAudit = { write: vi.fn() };
+      const monitorManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any);
 
       const contractId = 'corrupt-paused-contract';
       const contractDir = path.join(clawDir, 'contract', 'paused', contractId);
@@ -618,14 +622,17 @@ describe('ContractManager', () => {
 
       const result = await monitorManager.loadPaused();
       expect(result).toBeNull();
-      expect(mockMonitor.log).toHaveBeenCalledWith('error', expect.objectContaining({
-        context: 'ContractManager.loadPaused',
-      }));
+      expect(mockAudit.write).toHaveBeenCalledWith(
+        AUDIT_EVENTS.CONTRACT_PROGRESS_CORRUPTED,
+        expect.stringContaining('context=ContractManager.loadPaused'),
+        expect.stringContaining('contract=corrupt-paused-contract'),
+        expect.anything(),
+      );
     });
 
     it('should log warn to monitor when unknown subtaskId is used in completeSubtask', async () => {
-      const mockMonitor = { log: vi.fn() };
-      const monitorManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockMonitor as any);
+      const mockAudit = { write: vi.fn() };
+      const monitorManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any);
 
       const contractId = await monitorManager.create({
         schema_version: 1,
@@ -645,10 +652,13 @@ describe('ContractManager', () => {
 
       expect(result.passed).toBe(false);
       expect(result.feedback).toContain('nonexistent-task');
-      expect(mockMonitor.log).toHaveBeenCalledWith('error', expect.objectContaining({
-        context: 'ContractManager._completeSubtaskSync',
-        subtaskId: 'nonexistent-task',
-      }));
+      expect(mockAudit.write).toHaveBeenCalledWith(
+        AUDIT_EVENTS.CONTRACT_PROGRESS_CORRUPTED,
+        expect.stringContaining('context=ContractManager._completeSubtaskSync'),
+        expect.anything(),
+        expect.stringContaining('subtaskId=nonexistent-task'),
+        expect.stringContaining('message=Unknown subtaskId'),
+      );
     });
 
     it('should clean up contract.yaml if progress.json write fails', async () => {
@@ -659,7 +669,8 @@ describe('ContractManager', () => {
         return fs.writeFile(path.join(clawDir, p), c);
       });
 
-      const failManager = new ContractManager(clawDir, 'test-claw', nodeFs);
+      const mockAudit = { write: vi.fn() };
+      const failManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any);
       await expect(failManager.create({
         schema_version: 1,
         title: 'Test',
@@ -723,7 +734,8 @@ describe('ContractManager', () => {
       await fs.mkdir(path.dirname(scriptPath), { recursive: true });
       await fs.writeFile(scriptPath, 'echo ok\n', { mode: 0o644 });
 
-      const testManager = new ContractManager(testClawDir, 'test-claw', new NodeFileSystem({ baseDir: testClawDir, enforcePermissions: false }));
+      const mockAudit = { write: vi.fn() };
+      const testManager = new ContractManager(testClawDir, 'test-claw', new NodeFileSystem({ baseDir: testClawDir, enforcePermissions: false }), mockAudit as any);
       // @ts-expect-error - runScriptAcceptance is private
       const result = await testManager.runScriptAcceptance('task-1.sh', path.join(testClawDir, 'acceptance'));
 
@@ -735,7 +747,7 @@ describe('ContractManager', () => {
     it('writes CONTRACT_ARCHIVE_STARTED audit when auto-archiving existing contract', async () => {
       const mockAudit = { write: vi.fn() };
       const testManager = new ContractManager(
-        clawDir, 'test-claw', nodeFs, undefined, undefined, undefined, mockAudit as any
+        clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, undefined, mockAudit as any
       );
 
       const contract1 = await testManager.create({
@@ -774,7 +786,7 @@ describe('ContractManager', () => {
 
       const mockAudit = { write: vi.fn() };
       const failManager = new ContractManager(
-        clawDir, 'test-claw', nodeFs, undefined, undefined, undefined, mockAudit as any
+        clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, undefined, mockAudit as any
       );
 
       await expect(failManager.create({
@@ -797,7 +809,7 @@ describe('ContractManager', () => {
     it('writes CONTRACT_NOTIFY_FAILED audit when onNotify throws during create', async () => {
       const mockAudit = { write: vi.fn() };
       const testManager = new ContractManager(
-        clawDir, 'test-claw', nodeFs, undefined, undefined, undefined, mockAudit as any
+        clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, undefined, mockAudit as any
       );
 
       testManager.setOnNotify(() => {
@@ -821,10 +833,9 @@ describe('ContractManager', () => {
     });
 
     it('writes CONTRACT_MOVE_ARCHIVE_FAILED audit when moveToArchive fails on completion', async () => {
-      const mockMonitor = { log: vi.fn() };
       const mockAudit = { write: vi.fn() };
       const testManager = new ContractManager(
-        clawDir, 'test-claw', nodeFs, mockMonitor as any, undefined, undefined, mockAudit as any
+        clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, undefined, mockAudit as any
       );
 
       const contractId = await testManager.create({
@@ -850,9 +861,8 @@ describe('ContractManager', () => {
 
   describe('moveToArchive and audit consistency', () => {
     it('should NOT write audit when moveToArchive fails', async () => {
-      const mockMonitor = { log: vi.fn() };
       const mockAudit = { write: vi.fn() };
-      const testManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockMonitor as any, undefined, undefined, mockAudit as any);
+      const testManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, undefined, mockAudit as any);
 
       // Create contract with no-op acceptance (no script_file/prompt_file = no acceptance)
       const contractId = await testManager.create({
@@ -878,18 +888,19 @@ describe('ContractManager', () => {
         (c: any[]) => c[0] === 'contract_completed' && c.some((arg: any) => String(arg).includes('title='))
       );
       expect(titleAuditCalls).toHaveLength(0);
-      expect(mockMonitor.log).toHaveBeenCalledWith('error', expect.objectContaining({
-        context: 'ContractManager._completeSubtaskSync',
-        contractId,
-      }));
+      expect(mockAudit.write).toHaveBeenCalledWith(
+        AUDIT_EVENTS.CONTRACT_MOVE_ARCHIVE_FAILED,
+        expect.stringContaining('context=ContractManager._completeSubtaskSync'),
+        expect.anything(),
+        expect.anything(),
+      );
 
       moveSpy.mockRestore();
     });
 
     it('should write audit when moveToArchive succeeds', async () => {
-      const mockMonitor = { log: vi.fn() };
       const mockAudit = { write: vi.fn() };
-      const testManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockMonitor as any, undefined, undefined, mockAudit as any);
+      const testManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, undefined, mockAudit as any);
 
       const contractId = await testManager.create({
         schema_version: 1,
@@ -915,8 +926,8 @@ describe('ContractManager', () => {
 
   describe('LLM acceptance', () => {
     it('should reset subtask to todo when verifier throws exception', async () => {
-      const mockMonitor = { log: vi.fn() };
-      const testManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockMonitor as any);
+      const mockAudit = { write: vi.fn() };
+      const testManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any);
 
       // Create contract with LLM acceptance
       const contractId = await testManager.create({
@@ -978,8 +989,8 @@ describe('ContractManager', () => {
 
   describe('escalation writes escalated_at', () => {
     it('should set escalated_at after reaching max retries', async () => {
-      const mockMonitor = { log: vi.fn() };
-      const testManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockMonitor as any);
+      const mockAudit = { write: vi.fn() };
+      const testManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any);
 
       const contractId = await testManager.create({
         schema_version: 1,
@@ -1034,8 +1045,8 @@ describe('ContractManager', () => {
     });
 
     it('should not set escalated_at before reaching max retries', async () => {
-      const mockMonitor = { log: vi.fn() };
-      const testManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockMonitor as any);
+      const mockAudit = { write: vi.fn() };
+      const testManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any);
 
       const contractId = await testManager.create({
         schema_version: 1,
@@ -1150,6 +1161,86 @@ describe('ContractManager', () => {
         expect(typeof subtask.created_at).toBe('string');
         expect(typeof subtask.updated_at).toBe('string');
       }
+    });
+  });
+
+  // === Phase 239: B.2 Monitor 废止 sub-phase 1 — audit 生命周期事件断言 ===
+
+  describe('phase239 audit lifecycle events', () => {
+    it('writes CONTRACT_CREATED audit on contract creation', async () => {
+      const mockAudit = { write: vi.fn() };
+      const testManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any);
+
+      const contractId = await testManager.create({
+        schema_version: 1 as const,
+        title: 'Audit Lifecycle Test',
+        goal: 'Test',
+        deliverables: [],
+        subtasks: [{ id: 't1', description: 'T1' }],
+        acceptance: [],
+        auth_level: 'auto' as const,
+      });
+
+      expect(mockAudit.write).toHaveBeenCalledWith(
+        AUDIT_EVENTS.CONTRACT_CREATED,
+        expect.stringContaining(`contractId=${contractId}`),
+      );
+    });
+
+    it('writes CONTRACT_ACCEPTANCE_STARTED audit when async acceptance begins', async () => {
+      const mockAudit = { write: vi.fn() };
+      const testManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any);
+
+      // Create contract with script acceptance (triggers async background acceptance)
+      const contractId = await testManager.create({
+        schema_version: 1 as const,
+        title: 'Async Acceptance Test',
+        goal: 'Test',
+        deliverables: [],
+        subtasks: [{ id: 't1', description: 'T1' }],
+        acceptance: [
+          { subtask_id: 't1', type: 'script' as const, script_file: 'acceptance/t1.sh' },
+        ],
+        auth_level: 'auto' as const,
+      });
+
+      // Create the script file so acceptance config resolves
+      const contractDir = path.join(clawDir, 'contract/active', contractId);
+      await fs.mkdir(path.join(contractDir, 'acceptance'), { recursive: true });
+      await fs.writeFile(path.join(contractDir, 'acceptance', 't1.sh'), '#!/bin/sh\nexit 0', { mode: 0o755 });
+
+      const result = await testManager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'done' });
+      expect(result.async).toBe(true);
+
+      expect(mockAudit.write).toHaveBeenCalledWith(
+        AUDIT_EVENTS.CONTRACT_ACCEPTANCE_STARTED,
+        expect.stringContaining(`contractId=${contractId}`),
+        expect.stringContaining('subtaskId=t1'),
+      );
+    });
+
+    it('writes CONTRACT_UPDATED audit on subtask completion', async () => {
+      const mockAudit = { write: vi.fn() };
+      const testManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any);
+
+      const contractId = await testManager.create({
+        schema_version: 1 as const,
+        title: 'Contract Updated Test',
+        goal: 'Test',
+        deliverables: [],
+        subtasks: [{ id: 't1', description: 'T1' }],
+        acceptance: [], // No acceptance = sync completion
+        auth_level: 'auto' as const,
+      });
+
+      await testManager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'done' });
+
+      expect(mockAudit.write).toHaveBeenCalledWith(
+        AUDIT_EVENTS.CONTRACT_UPDATED,
+        expect.stringContaining(`contractId=${contractId}`),
+        expect.stringContaining('subtaskId=t1'),
+        expect.stringContaining('status=completed'),
+      );
     });
   });
 });

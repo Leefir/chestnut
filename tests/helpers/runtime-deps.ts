@@ -48,7 +48,7 @@ export async function makeRuntimeDeps(input: MakeRuntimeDepsInput): Promise<Runt
   await skillRegistry.loadAll();
   const verifierRegistry = new ToolRegistryImpl();
   const contractManager = new ContractManager(
-    clawDir, clawId, systemFs, monitor, llm, verifierRegistry, auditWriter,
+    clawDir, clawId, systemFs, auditWriter, llm, verifierRegistry, auditWriter,
   );
   const taskSystem = new TaskSystem(clawDir, systemFs, {
     auditWriter, llm, skillRegistry, contractManager, outboxWriter,

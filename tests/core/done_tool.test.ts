@@ -38,7 +38,8 @@ describe('doneTool', () => {
     await fs.rm(testDir, { recursive: true, force: true }).catch(() => {});
     await fs.mkdir(clawDir, { recursive: true });
     nodeFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
-    manager = new ContractManager(clawDir, 'test-claw', nodeFs, undefined);
+    const mockAudit = { write: vi.fn() };
+    manager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any);
   });
 
   afterEach(async () => {

@@ -191,7 +191,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       verifierRegistry.register(tool);
     }
     contractManager = createContractManager(
-      clawDir, clawId, systemFs, monitor, llm, verifierRegistry, auditWriter,
+      clawDir, clawId, systemFs, auditWriter, llm, verifierRegistry, auditWriter,
     );
   } catch (e) {
     auditWriter.write('assemble_failed', `module=contract_manager`, `phase=construct`, `reason=${errMsg(e)}`);

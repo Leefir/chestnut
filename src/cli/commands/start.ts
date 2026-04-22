@@ -391,7 +391,7 @@ async function _start(): Promise<void> {
     await daemonReady;
     if (!isWatchdogAlive()) await watchdogStartCommand();
 
-    const manager = new ContractManager(motionDir, MOTION_CLAW_ID, notifyFs);
+    const manager = new ContractManager(motionDir, MOTION_CLAW_ID, notifyFs, notifyAudit);
     const contractId = await manager.create({
       title: 'Onboarding',
       goal: 'Get to know the user and establish your identity before anything else. No interrogation — just talk.',
@@ -420,7 +420,7 @@ async function _start(): Promise<void> {
 
     
     if (onboarding.state === 'not_found') {
-      const manager = new ContractManager(motionDir, MOTION_CLAW_ID, notifyFs);
+      const manager = new ContractManager(motionDir, MOTION_CLAW_ID, notifyFs, notifyAudit);
       const contractId = await manager.create({
         title: 'Onboarding',
         goal: 'Get to know the user and establish your identity before anything else.',
