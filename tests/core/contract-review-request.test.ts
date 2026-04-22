@@ -8,6 +8,7 @@ import { ContractManager } from '../../src/core/contract/manager.js';
 import type { MotionReviewContext } from '../../src/core/contract/manager.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { AuditWriter } from '../../src/foundation/audit/writer.js';
+import { AUDIT_EVENTS } from '../../src/foundation/audit/events.js';
 
 // ============================================================================
 // Mock: SkillRegistry（D4 C 方案：窄 mock 避免建真 skills/ 目录）
@@ -45,6 +46,7 @@ interface TestFixtures {
   contractId: string;
   ctx: MotionReviewContext;
   manager: ContractManager;
+  mockAudit: { write: ReturnType<typeof vi.fn> };
 }
 
 async function setupFixtures(): Promise<TestFixtures> {
@@ -74,7 +76,8 @@ async function setupFixtures(): Promise<TestFixtures> {
   // 构造 motion 侧 ContractManager + ctx
   const motionFs = new NodeFileSystem({ baseDir: motionDir, enforcePermissions: false });
   const motionAudit = new AuditWriter(motionFs, 'audit.tsv');
-  const manager = new ContractManager(motionDir, 'motion', motionFs);
+  const mockAudit = { write: vi.fn() };
+  const manager = new ContractManager(motionDir, 'motion', motionFs, undefined, undefined, undefined, mockAudit as any);
   const ctx: MotionReviewContext = {
     motionFs,
     motionBaseDir: motionDir,
@@ -82,7 +85,7 @@ async function setupFixtures(): Promise<TestFixtures> {
     clawsBaseDir,
   };
 
-  return { motionDir, clawsBaseDir, targetClawDir, contractId, ctx, manager };
+  return { motionDir, clawsBaseDir, targetClawDir, contractId, ctx, manager, mockAudit };
 }
 
 async function cleanupFixtures(tmpBase: string) {
@@ -135,16 +138,16 @@ describe('ContractManager.handleReviewRequest - happy path', () => {
 
 describe('ContractManager.handleReviewRequest - best-effort branches', () => {
   let fixtures: TestFixtures;
-  let warnSpy: ReturnType<typeof vi.spyOn>;
+  let auditSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
     fixtures = await setupFixtures();
-    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    auditSpy = vi.spyOn(fixtures.mockAudit, 'write');
   });
 
   afterEach(async () => {
-    warnSpy.mockRestore();
+    auditSpy.mockRestore();
     await cleanupFixtures(path.dirname(fixtures.motionDir));
   });
 
@@ -160,31 +163,34 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
     // sub-case A: 非 JSON
     await fs.writeFile(byContractPath, 'not-json{{{');
     await manager.handleReviewRequest(contractId, ctx);
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('not valid JSON'),
-      expect.anything(),
+    expect(auditSpy).toHaveBeenCalledWith(
+      AUDIT_EVENTS.CONTRACT_RETRO_INDEX_FAILED,
+      expect.stringContaining('contractId='),
+      'reason=invalid_json',
     );
     expect(mockWritePending).not.toHaveBeenCalled();
 
     // sub-case B: 格式错（非 object）
     vi.clearAllMocks();
-    warnSpy.mockClear();
+    auditSpy.mockClear();
     await fs.writeFile(byContractPath, '"just a string"');
     await manager.handleReviewRequest(contractId, ctx);
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('unexpected format'),
-      expect.anything(),
+    expect(auditSpy).toHaveBeenCalledWith(
+      AUDIT_EVENTS.CONTRACT_RETRO_INDEX_FAILED,
+      expect.stringContaining('contractId='),
+      'reason=unexpected_format',
     );
 
     // sub-case C: targetClaw 非法
     vi.clearAllMocks();
-    warnSpy.mockClear();
+    auditSpy.mockClear();
     await fs.writeFile(byContractPath, JSON.stringify({ targetClaw: 'INVALID_UPPERCASE' }));
     await manager.handleReviewRequest(contractId, ctx);
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('invalid targetClaw'),
-      expect.anything(),
-      'INVALID_UPPERCASE',
+    expect(auditSpy).toHaveBeenCalledWith(
+      AUDIT_EVENTS.CONTRACT_RETRO_INDEX_FAILED,
+      expect.stringContaining('contractId='),
+      'reason=invalid_targetClaw',
+      expect.stringContaining('rawTarget='),
     );
   });
 
@@ -203,10 +209,10 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
 
     await manager.handleReviewRequest(contractId, ctx);
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to read by-contract index'),
-      contractId,
-      expect.stringContaining('EISDIR'),
+    expect(auditSpy).toHaveBeenCalledWith(
+      AUDIT_EVENTS.CONTRACT_RETRO_INDEX_FAILED,
+      expect.stringContaining('contractId='),
+      expect.stringContaining('err='),
     );
     expect(mockWritePending).not.toHaveBeenCalled();
   });
@@ -222,10 +228,10 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
 
     await manager.handleReviewRequest(contractId, ctx);
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to load contract YAML'),
-      contractId,
-      expect.anything(),
+    expect(auditSpy).toHaveBeenCalledWith(
+      AUDIT_EVENTS.CONTRACT_RETRO_YAML_FAILED,
+      expect.stringContaining('contractId='),
+      expect.stringContaining('err='),
     );
     expect(mockWritePending).not.toHaveBeenCalled();
   });
@@ -241,9 +247,9 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
 
     await manager.handleReviewRequest(contractId, ctx);
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to load dispatch-skills'),
-      expect.anything(),
+    expect(auditSpy).toHaveBeenCalledWith(
+      AUDIT_EVENTS.CONTRACT_RETRO_SKILL_FAILED,
+      expect.stringContaining('err='),
     );
     // writePending 仍被调（退化继续，不 skip）
     expect(mockWritePending).toHaveBeenCalled();
@@ -269,9 +275,10 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
 
     // sub-case A: ENOENT
     await manager.handleReviewRequest(contractId, ctx);
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Mining task messages not found'),
-      'nonexistent-task-id',
+    expect(auditSpy).toHaveBeenCalledWith(
+      AUDIT_EVENTS.CONTRACT_RETRO_MINING_FAILED,
+      expect.stringContaining('taskId='),
+      'reason=ENOENT',
     );
     expect(mockWritePending).toHaveBeenCalled();
     const args1 = mockWritePending.mock.calls[0][2];
@@ -280,7 +287,7 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
 
     // sub-case B: 非 ENOENT（目录当文件读触发 EISDIR）
     vi.clearAllMocks();
-    warnSpy.mockClear();
+    auditSpy.mockClear();
     await fs.writeFile(byContractPath, JSON.stringify({
       targetClaw: 'claw-a', mode: 'mining', miningTaskId: 'mining-123',
     }));
@@ -288,9 +295,10 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
     await fs.mkdir(path.join(motionDir, 'tasks', 'results', 'mining-123', 'messages.json'), { recursive: true });
 
     await manager.handleReviewRequest(contractId, ctx);
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to load mining task messages'),
-      expect.stringContaining('EISDIR'),
+    expect(auditSpy).toHaveBeenCalledWith(
+      AUDIT_EVENTS.CONTRACT_RETRO_MINING_FAILED,
+      expect.stringContaining('taskId='),
+      expect.stringContaining('err='),
     );
   });
 
@@ -307,9 +315,9 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
 
     await manager.handleReviewRequest(contractId, ctx);
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('retrospective schedule failed'),
-      expect.anything(),
+    expect(auditSpy).toHaveBeenCalledWith(
+      AUDIT_EVENTS.CONTRACT_RETRO_SCHEDULE_FAILED,
+      expect.stringContaining('err='),
     );
     // by-contract 未删
     await expect(fs.access(byContractPath)).resolves.toBeUndefined();
@@ -329,9 +337,9 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
 
     await expect(manager.handleReviewRequest(contractId, ctx)).resolves.toBeUndefined();
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to clean by-contract'),
-      expect.anything(),
+    expect(auditSpy).toHaveBeenCalledWith(
+      AUDIT_EVENTS.CONTRACT_RETRO_CLEANUP_FAILED,
+      expect.stringContaining('err='),
     );
   });
 });

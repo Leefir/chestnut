@@ -15,6 +15,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { ContractManager } from '../../src/core/contract/manager.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
+import { AUDIT_EVENTS } from '../../src/foundation/audit/events.js';
 
 vi.mock('child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('child_process')>();
@@ -727,6 +728,123 @@ describe('ContractManager', () => {
       const result = await testManager.runScriptAcceptance('task-1.sh', path.join(testClawDir, 'acceptance'));
 
       expect(result.passed).toBe(true);
+    });
+  });
+
+  describe('phase230 audit events', () => {
+    it('writes CONTRACT_ARCHIVE_STARTED audit when auto-archiving existing contract', async () => {
+      const mockAudit = { write: vi.fn() };
+      const testManager = new ContractManager(
+        clawDir, 'test-claw', nodeFs, undefined, undefined, undefined, mockAudit as any
+      );
+
+      const contract1 = await testManager.create({
+        schema_version: 1 as const,
+        title: 'First',
+        goal: 'First',
+        deliverables: [],
+        subtasks: [{ id: 't1', description: 'T1' }],
+        acceptance: [],
+        auth_level: 'auto' as const,
+      });
+
+      const contract2 = await testManager.create({
+        schema_version: 1 as const,
+        title: 'Second',
+        goal: 'Second',
+        deliverables: [],
+        subtasks: [{ id: 't2', description: 'T2' }],
+        acceptance: [],
+        auth_level: 'auto' as const,
+      });
+
+      expect(mockAudit.write).toHaveBeenCalledWith(
+        AUDIT_EVENTS.CONTRACT_ARCHIVE_STARTED,
+        `old=${contract1}`,
+        `new=${contract2}`,
+      );
+    });
+
+    it('writes CONTRACT_ROLLBACK_FAILED audit when contract dir rollback fails', async () => {
+      vi.spyOn(nodeFs, 'writeAtomic').mockImplementation(async (p: string, c: string) => {
+        if (p.includes('progress.json')) throw new Error('disk full');
+        return fs.writeFile(path.join(clawDir, p), c);
+      });
+      vi.spyOn(nodeFs, 'removeDir').mockRejectedValue(new Error('rm failed'));
+
+      const mockAudit = { write: vi.fn() };
+      const failManager = new ContractManager(
+        clawDir, 'test-claw', nodeFs, undefined, undefined, undefined, mockAudit as any
+      );
+
+      await expect(failManager.create({
+        schema_version: 1,
+        title: 'Test',
+        goal: 'Test goal',
+        deliverables: [],
+        subtasks: [{ id: 't1', description: 'T1' }],
+        acceptance: [],
+        auth_level: 'auto',
+      })).rejects.toThrow('disk full');
+
+      expect(mockAudit.write).toHaveBeenCalledWith(
+        AUDIT_EVENTS.CONTRACT_ROLLBACK_FAILED,
+        expect.stringContaining('contractId='),
+        expect.stringContaining('err='),
+      );
+    });
+
+    it('writes CONTRACT_NOTIFY_FAILED audit when onNotify throws during create', async () => {
+      const mockAudit = { write: vi.fn() };
+      const testManager = new ContractManager(
+        clawDir, 'test-claw', nodeFs, undefined, undefined, undefined, mockAudit as any
+      );
+
+      testManager.setOnNotify(() => {
+        throw new Error('notify crash');
+      });
+
+      await testManager.create({
+        schema_version: 1 as const,
+        title: 'Test',
+        goal: 'Test',
+        deliverables: [],
+        subtasks: [{ id: 't1', description: 'T1' }],
+        acceptance: [],
+        auth_level: 'auto' as const,
+      });
+
+      expect(mockAudit.write).toHaveBeenCalledWith(
+        AUDIT_EVENTS.CONTRACT_NOTIFY_FAILED,
+        expect.stringContaining('notify crash'),
+      );
+    });
+
+    it('writes CONTRACT_MOVE_ARCHIVE_FAILED audit when moveToArchive fails on completion', async () => {
+      const mockMonitor = { log: vi.fn() };
+      const mockAudit = { write: vi.fn() };
+      const testManager = new ContractManager(
+        clawDir, 'test-claw', nodeFs, mockMonitor as any, undefined, undefined, mockAudit as any
+      );
+
+      const contractId = await testManager.create({
+        schema_version: 1,
+        title: 'Test',
+        goal: 'Test goal',
+        deliverables: [],
+        subtasks: [{ id: 't1', description: 'T1' }],
+        acceptance: [],
+        auth_level: 'auto',
+      });
+
+      const moveSpy = vi.spyOn(testManager as any, 'moveToArchive').mockRejectedValue(new Error('disk full'));
+      await testManager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'done' });
+
+      expect(mockAudit.write).toHaveBeenCalledWith(
+        AUDIT_EVENTS.CONTRACT_MOVE_ARCHIVE_FAILED,
+        expect.stringContaining('disk full'),
+      );
+      moveSpy.mockRestore();
     });
   });
 

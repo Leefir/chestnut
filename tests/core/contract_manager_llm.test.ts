@@ -66,6 +66,8 @@ import { JsonlLogger } from '../../src/foundation/monitor/index.js';
 import type { LLMService } from '../../src/foundation/llm/index.js';
 import { ToolRegistryImpl } from '../../src/core/tools/registry.js';
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';
+import { AUDIT_EVENTS } from '../../src/foundation/audit/events.js';
+import { InboxWriter } from '../../src/foundation/messaging/index.js';
 
 /**
  * Setup contract files for testing
@@ -715,6 +717,71 @@ describe('ContractManager Acceptance Flow', () => {
       const escalationCalls = auditWriter.write.mock.calls.filter((c: any[]) => c[0] === 'contract_escalation');
       expect(escalationCalls.length).toBeGreaterThan(0);
       expect(escalationCalls[0][1]).toContain('task-1');
+    });
+  });
+
+  describe('phase230 audit events', () => {
+    it('writes CONTRACT_ACCEPTANCE_SCRIPT_STARTED audit when running script acceptance', async () => {
+      const contractId = 'test-script-audit';
+      await setupContract(tempDir, contractId, {
+        schema_version: 1,
+        title: 'Test Contract',
+        goal: 'Test goal',
+        subtasks: [{ id: 'task-1', description: 'Test task' }],
+        acceptance: [{ subtask_id: 'task-1', type: 'script', script_file: 'acceptance/task-1.sh' }],
+      });
+
+      const acceptanceDir = path.join(tempDir, 'contract', 'active', contractId, 'acceptance');
+      await fs.mkdir(acceptanceDir, { recursive: true });
+      await fs.writeFile(path.join(acceptanceDir, 'task-1.sh'), '#!/bin/bash\necho "ok"', { mode: 0o755 });
+
+      execFileMockBehavior = 'success';
+
+      await manager.completeSubtask({ contractId, subtaskId: 'task-1', evidence: 'done' });
+      await waitForAcceptance(tempDir);
+
+      const auditWriter = (manager as any).auditWriter;
+      expect(auditWriter.write).toHaveBeenCalledWith(
+        AUDIT_EVENTS.CONTRACT_ACCEPTANCE_SCRIPT_STARTED,
+        expect.stringContaining('script='),
+        expect.stringContaining('cwd='),
+      );
+    });
+
+    it('writes CONTRACT_ACCEPTANCE_INBOX_FAILED when inbox write fails', async () => {
+      const writeSyncSpy = vi.spyOn(InboxWriter.prototype, 'writeSync').mockImplementation(() => {
+        throw new Error('inbox full');
+      });
+
+      try {
+        // @ts-expect-error - private method
+        await manager._writeAcceptanceError('contract-1', 'task-1', new Error('acceptance crashed'));
+
+        const auditWriter = (manager as any).auditWriter;
+        expect(auditWriter.write).toHaveBeenCalledWith(
+          AUDIT_EVENTS.CONTRACT_ACCEPTANCE_INBOX_FAILED,
+          expect.stringContaining('inbox full'),
+        );
+      } finally {
+        writeSyncSpy.mockRestore();
+      }
+    });
+
+    it('writes CONTRACT_ACCEPTANCE_RESET_FAILED when reset status fails', async () => {
+      const lockSpy = vi.spyOn(manager as any, 'withProgressLock').mockRejectedValue(new Error('lock busy'));
+
+      try {
+        // @ts-expect-error - private method
+        await manager._writeAcceptanceError('contract-1', 'task-1', new Error('acceptance crashed'));
+
+        const auditWriter = (manager as any).auditWriter;
+        expect(auditWriter.write).toHaveBeenCalledWith(
+          AUDIT_EVENTS.CONTRACT_ACCEPTANCE_RESET_FAILED,
+          expect.stringContaining('lock busy'),
+        );
+      } finally {
+        lockSpy.mockRestore();
+      }
     });
   });
 

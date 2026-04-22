@@ -28,6 +28,7 @@ import { AuditWriter } from '../../foundation/audit/writer.js';
 import type { Message } from '../../types/message.js';
 import { SkillRegistry } from '../skill/registry.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
+import { AUDIT_EVENTS } from '../../foundation/audit/events.js';
 
 
 /**
@@ -190,7 +191,12 @@ export class ContractManager {
           } else if (Date.now() - time > LOCK_STALE_TIMEOUT_MS) {
             // 持有者存活但持锁超时：强制清理（防止 bug 导致永久死锁）
             lastReason = `holder PID ${pid} exceeded timeout (${LOCK_STALE_TIMEOUT_MS}ms)`;
-            console.warn(`[contract] Lock held too long (> ${LOCK_STALE_TIMEOUT_MS}ms) by PID ${pid}, force clearing`);
+            this.auditWriter?.write(
+              AUDIT_EVENTS.CONTRACT_LOCK_CLEARED,
+              `pid=${pid}`,
+              `timeout=${LOCK_STALE_TIMEOUT_MS}`,
+              'reason=stale',
+            );
             if (await this.unlinkStaleLock(absoluteLockPath, `timeout_pid_${pid}`)) continue;
             lastReason = `unlink failed on timeout lock (PID ${pid})`;
           } else {
@@ -222,14 +228,18 @@ export class ContractManager {
       return true;
     } catch (err: any) {
       if (err?.code === 'ENOENT') return true; // 已被其他路径清理，等同成功
-      // 真故障（权限/IO）：记 audit + console.warn，让循环外层最终失败有信号
+      // 真故障（权限/IO）：记 audit（phase230 清零后 / L232 已 audit 化 / 循环外层通过 audit.tsv 审计）
       this.auditWriter?.write(
         'contract_lock_cleanup_failed',
         reason,
         err?.code ?? 'unknown',
         err?.message ?? String(err),
       );
-      console.warn(`[contract] Failed to unlink stale lock (${reason}): ${err?.message ?? err}`);
+      this.auditWriter?.write(
+        AUDIT_EVENTS.CONTRACT_LOCK_UNLINK_FAILED,
+        `reason=${reason}`,
+        `err=${err?.message ?? String(err)}`,
+      );
       return false;
     }
   }
@@ -294,7 +304,11 @@ export class ContractManager {
         // Distinguish file-not-found (ENOENT, skip normally) from other errors (JSON parse failure, corruption, etc.)
         const code = (error as NodeJS.ErrnoException).code;
         if (code !== 'ENOENT') {
-          console.warn(`[contract] progress.json corrupted: ${entry.name}`, error);
+          this.auditWriter?.write(
+            AUDIT_EVENTS.CONTRACT_PROGRESS_CORRUPTED,
+            `file=${entry.name}`,
+            `err=${error instanceof Error ? error.message : String(error)}`,
+          );
           if (this.monitor) {
             this.monitor.log('error', {
               context: 'ContractManager.loadActive',
@@ -338,7 +352,11 @@ export class ContractManager {
       } catch (error) {
         const code = (error as NodeJS.ErrnoException).code;
         if (code !== 'ENOENT') {
-          console.warn(`[contract] progress.json corrupted: ${entry.name}`, error);
+          this.auditWriter?.write(
+            AUDIT_EVENTS.CONTRACT_PROGRESS_CORRUPTED,
+            `file=${entry.name}`,
+            `err=${error instanceof Error ? error.message : String(error)}`,
+          );
           this.monitor?.log('error', {
             context: 'ContractManager.loadPaused',
             contract: entry.name,
@@ -394,6 +412,11 @@ export class ContractManager {
     // Archive any existing active contract (prevents conflicts with multiple running contracts)
     const existing = await this.loadActive();
     if (existing && existing.id !== contractId) {
+      this.auditWriter?.write(
+        AUDIT_EVENTS.CONTRACT_ARCHIVE_STARTED,
+        `old=${existing.id}`,
+        `new=${contractId}`,
+      );
       console.log(`[contract] Archiving existing contract ${existing.id} for new contract ${contractId}`);
       await this.moveToArchive(existing.id);
     }
@@ -432,7 +455,11 @@ export class ContractManager {
     } catch (err) {
       // 清理整个合约目录，避免残留空目录或孤立文件在 active/
       await this.fs.removeDir(`${this.activeDir}/${contractId}`).catch((deleteErr) => {
-        console.warn(`[contract] Failed to rollback contract dir for ${contractId}: ${deleteErr instanceof Error ? deleteErr.message : String(deleteErr)}`);
+        this.auditWriter?.write(
+          AUDIT_EVENTS.CONTRACT_ROLLBACK_FAILED,
+          `contractId=${contractId}`,
+          `err=${deleteErr instanceof Error ? deleteErr.message : String(deleteErr)}`,
+        );
       });
       throw err;
     }
@@ -440,7 +467,10 @@ export class ContractManager {
     try {
       this.onNotify?.('contract_created', { contractId, title: contractYaml.title, subtaskCount: contractYaml.subtasks.length });
     } catch (err) {
-      console.warn('[contract] onNotify error:', err instanceof Error ? err.message : String(err));
+      this.auditWriter?.write(
+        AUDIT_EVENTS.CONTRACT_NOTIFY_FAILED,
+        `err=${err instanceof Error ? err.message : String(err)}`,
+      );
     }
     this.auditWriter?.write('contract_created', contractId, `subtasks=${contractYaml.subtasks.length}`, `title=${contractYaml.title}`);
     // 保留原有：
@@ -598,7 +628,10 @@ export class ContractManager {
       try {
         this.onNotify?.('subtask_completed', { contractId, subtaskId });
       } catch (err) {
-        console.warn('[contract] onNotify error:', err instanceof Error ? err.message : String(err));
+        this.auditWriter?.write(
+          AUDIT_EVENTS.CONTRACT_NOTIFY_FAILED,
+          `err=${err instanceof Error ? err.message : String(err)}`,
+        );
       }
       const subtaskTotal = contractYaml.subtasks.length;
       const completedCount = Object.values(progress.subtasks).filter(s => s.status === 'completed').length;
@@ -638,7 +671,10 @@ export class ContractManager {
           `claw=${this.clawId}`,
         );
       } catch (err) {
-        console.error('[contract] moveToArchive failed, skipping completion notification:', err);
+        this.auditWriter?.write(
+          AUDIT_EVENTS.CONTRACT_MOVE_ARCHIVE_FAILED,
+          `err=${err instanceof Error ? err.message : String(err)}`,
+        );
         this.monitor?.log('error', {
           context: 'ContractManager._completeSubtaskSync',
           contractId,
@@ -727,7 +763,10 @@ export class ContractManager {
         try {
           this.onNotify?.('subtask_completed', { contractId, subtaskId });
         } catch (err) {
-          console.warn('[contract] onNotify error:', err instanceof Error ? err.message : String(err));
+          this.auditWriter?.write(
+            AUDIT_EVENTS.CONTRACT_NOTIFY_FAILED,
+            `err=${err instanceof Error ? err.message : String(err)}`,
+          );
         }
         const subtaskTotal = contractYaml.subtasks.length;
         const completedCount = Object.values(progress.subtasks).filter(s => s.status === 'completed').length;
@@ -765,7 +804,10 @@ export class ContractManager {
               `claw=${this.clawId}`,
             );
           } catch (err) {
-            console.error('[contract] moveToArchive failed, skipping completion notification:', err);
+            this.auditWriter?.write(
+              AUDIT_EVENTS.CONTRACT_MOVE_ARCHIVE_FAILED,
+              `err=${err instanceof Error ? err.message : String(err)}`,
+            );
             this.monitor?.log('error', {
               context: 'ContractManager._runAcceptanceInBackground',
               contractId,
@@ -785,7 +827,10 @@ export class ContractManager {
         try {
           this.onNotify?.('acceptance_failed', { contractId, subtaskId, feedback: result.feedback });
         } catch (err) {
-          console.warn('[contract] onNotify error:', err instanceof Error ? err.message : String(err));
+          this.auditWriter?.write(
+            AUDIT_EVENTS.CONTRACT_NOTIFY_FAILED,
+            `err=${err instanceof Error ? err.message : String(err)}`,
+          );
         }
 
         // Audit: acceptance_failed
@@ -903,7 +948,10 @@ export class ContractManager {
       });
     } catch (e) {
       // Best-effort: log but don't throw
-      console.error('[contract] Failed to write acceptance error to inbox:', e);
+      this.auditWriter?.write(
+        AUDIT_EVENTS.CONTRACT_ACCEPTANCE_INBOX_FAILED,
+        `err=${e instanceof Error ? e.message : String(e)}`,
+      );
       this.monitor?.log('error', {
         context: 'ContractManager._writeAcceptanceError',
         contractId,
@@ -925,7 +973,10 @@ export class ContractManager {
         }
       });
     } catch (e) {
-      console.error('[contract] Failed to reset subtask status after acceptance error:', e);
+      this.auditWriter?.write(
+        AUDIT_EVENTS.CONTRACT_ACCEPTANCE_RESET_FAILED,
+        `err=${e instanceof Error ? e.message : String(e)}`,
+      );
       this.monitor?.log('error', {
         context: 'ContractManager._writeAcceptanceError.resetStatus',
         contractId,
@@ -1132,6 +1183,11 @@ export class ContractManager {
       return { passed: false, feedback: `路径安全拒绝: script_file 必须在契约目录内` };
     }
 
+    this.auditWriter?.write(
+      AUDIT_EVENTS.CONTRACT_ACCEPTANCE_SCRIPT_STARTED,
+      `script=${scriptFile}`,
+      `cwd=${this.clawDir}`,
+    );
     console.log(`[contract] Running acceptance script: ${scriptFile} (cwd: ${this.clawDir})`);
 
     try {
@@ -1288,17 +1344,30 @@ export class ContractManager {
       try {
         raw = JSON.parse(fileContent);
       } catch {
-        console.warn('[contract] by-contract index is not valid JSON, skipping retrospective:', contractId);
+        this.auditWriter?.write(
+          AUDIT_EVENTS.CONTRACT_RETRO_INDEX_FAILED,
+          `contractId=${contractId}`,
+          'reason=invalid_json',
+        );
         return;
       }
       if (typeof raw !== 'object' || raw === null) {
-        console.warn('[contract] by-contract index has unexpected format, skipping retrospective:', contractId);
+        this.auditWriter?.write(
+          AUDIT_EVENTS.CONTRACT_RETRO_INDEX_FAILED,
+          `contractId=${contractId}`,
+          'reason=unexpected_format',
+        );
         return;
       }
       const r = raw as Record<string, unknown>;
       const rawTarget = typeof r.targetClaw === 'string' ? r.targetClaw : null;
       if (!rawTarget || !/^[a-z0-9-]+$/.test(rawTarget)) {
-        console.warn('[contract] by-contract index has invalid targetClaw, skipping retrospective:', contractId, rawTarget);
+        this.auditWriter?.write(
+          AUDIT_EVENTS.CONTRACT_RETRO_INDEX_FAILED,
+          `contractId=${contractId}`,
+          `reason=invalid_targetClaw`,
+          `rawTarget=${rawTarget ?? 'null'}`,
+        );
         return;
       }
       targetClaw = rawTarget;
@@ -1308,7 +1377,11 @@ export class ContractManager {
     } catch (e) {
       const code = (e as NodeJS.ErrnoException).code;
       if (code !== 'ENOENT') {
-        console.warn('[contract] Failed to read by-contract index, skipping retrospective:', contractId, e instanceof Error ? e.message : String(e));
+        this.auditWriter?.write(
+          AUDIT_EVENTS.CONTRACT_RETRO_INDEX_FAILED,
+          `contractId=${contractId}`,
+          `err=${e instanceof Error ? e.message : String(e)}`,
+        );
       }
       return;
     }
@@ -1324,7 +1397,11 @@ export class ContractManager {
     try {
       contractYaml = await clawContractManager.readContractYamlRaw(contractId);
     } catch (e) {
-      console.warn('[contract] Failed to load contract YAML for retrospective:', contractId, e instanceof Error ? e.message : String(e));
+      this.auditWriter?.write(
+        AUDIT_EVENTS.CONTRACT_RETRO_YAML_FAILED,
+        `contractId=${contractId}`,
+        `err=${e instanceof Error ? e.message : String(e)}`,
+      );
       return;
     }
 
@@ -1338,7 +1415,10 @@ export class ContractManager {
         skillsSummary = formatted;
       }
     } catch (e) {
-      console.warn('[contract] Failed to load dispatch-skills for retro prompt:', e instanceof Error ? e.message : String(e));
+      this.auditWriter?.write(
+        AUDIT_EVENTS.CONTRACT_RETRO_SKILL_FAILED,
+        `err=${e instanceof Error ? e.message : String(e)}`,
+      );
     }
 
     // 2.3 加载 mining task messages（若 mining 模式，2 best-effort 退化）
@@ -1354,9 +1434,17 @@ export class ContractManager {
       } catch (e) {
         const code = (e as NodeJS.ErrnoException).code;
         if (code === 'ENOENT') {
-          console.warn('[contract] Mining task messages not found, retro will run without mining context:', miningTaskId);
+          this.auditWriter?.write(
+            AUDIT_EVENTS.CONTRACT_RETRO_MINING_FAILED,
+            `taskId=${miningTaskId}`,
+            'reason=ENOENT',
+          );
         } else {
-          console.warn('[contract] Failed to load mining task messages:', e instanceof Error ? e.message : String(e));
+          this.auditWriter?.write(
+            AUDIT_EVENTS.CONTRACT_RETRO_MINING_FAILED,
+            `taskId=${miningTaskId}`,
+            `err=${e instanceof Error ? e.message : String(e)}`,
+          );
         }
         // best-effort：加载失败退化为空上下文
       }
@@ -1382,13 +1470,19 @@ export class ContractManager {
         originClawId: 'motion',
       });
     } catch (e) {
-      console.warn('[contract] retrospective schedule failed, keeping pending files for retry:', e instanceof Error ? e.message : String(e));
+      this.auditWriter?.write(
+        AUDIT_EVENTS.CONTRACT_RETRO_SCHEDULE_FAILED,
+        `err=${e instanceof Error ? e.message : String(e)}`,
+      );
       return;  // 不清 by-contract，留待下次 daemon 重启重试
     }
 
     // 3.3 调度成功后 cleanup by-contract 索引（best-effort）
     await fsAsync.unlink(byContractPath).catch(e =>
-      console.warn('[contract] Failed to clean by-contract file:', e instanceof Error ? e.message : String(e))
+      this.auditWriter?.write(
+        AUDIT_EVENTS.CONTRACT_RETRO_CLEANUP_FAILED,
+        `err=${e instanceof Error ? e.message : String(e)}`,
+      )
     );
   }
 

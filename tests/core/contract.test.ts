@@ -2,7 +2,7 @@
  * Contract system tests
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as path from 'path';
 import { promises as fs } from 'fs';
 import { tmpdir } from 'os';
@@ -10,6 +10,7 @@ import { randomUUID } from 'crypto';
 import { ContractManager } from '../../src/core/contract/manager.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';
+import { AUDIT_EVENTS } from '../../src/foundation/audit/events.js';
 
 async function createContract(
   tempDir: string,
@@ -302,6 +303,27 @@ auth_level: auto
       
       const updatedProgress = await manager.getProgress('contract-007');
       expect(updatedProgress.checkpoint).toBeNull();
+    });
+
+    it('writes CONTRACT_PROGRESS_CORRUPTED audit when loadActive finds corrupted progress.json', async () => {
+      const mockAudit = { write: vi.fn() };
+      const auditManager = new ContractManager(
+        tempDir, 'test-claw', mockFs, undefined, undefined, undefined, mockAudit as any
+      );
+
+      const contractId = 'corrupt-audit-contract';
+      const contractDir = path.join(tempDir, 'contract', 'active', contractId);
+      await fs.mkdir(contractDir, { recursive: true });
+      await fs.writeFile(path.join(contractDir, 'progress.json'), '{ broken json');
+
+      const result = await auditManager.loadActive();
+      expect(result).toBeNull();
+
+      expect(mockAudit.write).toHaveBeenCalledWith(
+        AUDIT_EVENTS.CONTRACT_PROGRESS_CORRUPTED,
+        expect.stringContaining('file='),
+        expect.stringContaining('err='),
+      );
     });
   });
 });

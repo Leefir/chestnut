@@ -115,6 +115,24 @@ export const AUDIT_EVENTS = {
 
   // --- TaskSystem ---
   PENDING_INGEST_FAILED: 'pending_ingest_failed',
+
+  // --- Contract ---
+  CONTRACT_LOCK_CLEARED: 'contract_lock_cleared',
+  CONTRACT_LOCK_UNLINK_FAILED: 'contract_lock_unlink_failed',
+  CONTRACT_PROGRESS_CORRUPTED: 'contract_progress_corrupted',
+  CONTRACT_ARCHIVE_STARTED: 'contract_archive_started',
+  CONTRACT_ROLLBACK_FAILED: 'contract_rollback_failed',
+  CONTRACT_NOTIFY_FAILED: 'contract_notify_failed',
+  CONTRACT_MOVE_ARCHIVE_FAILED: 'contract_move_archive_failed',
+  CONTRACT_ACCEPTANCE_INBOX_FAILED: 'contract_acceptance_inbox_failed',
+  CONTRACT_ACCEPTANCE_RESET_FAILED: 'contract_acceptance_reset_failed',
+  CONTRACT_ACCEPTANCE_SCRIPT_STARTED: 'contract_acceptance_script_started',
+  CONTRACT_RETRO_INDEX_FAILED: 'contract_retro_index_failed',
+  CONTRACT_RETRO_YAML_FAILED: 'contract_retro_yaml_failed',
+  CONTRACT_RETRO_SKILL_FAILED: 'contract_retro_skill_failed',
+  CONTRACT_RETRO_MINING_FAILED: 'contract_retro_mining_failed',
+  CONTRACT_RETRO_SCHEDULE_FAILED: 'contract_retro_schedule_failed',
+  CONTRACT_RETRO_CLEANUP_FAILED: 'contract_retro_cleanup_failed',
 } as const;
 
 export type AuditEventName = typeof AUDIT_EVENTS[keyof typeof AUDIT_EVENTS];

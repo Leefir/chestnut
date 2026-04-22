@@ -9,13 +9,14 @@
  * - Corrupt lock（JSON 损坏）自动恢复
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 import { randomUUID } from 'crypto';
 import { ContractManager } from '../../src/core/contract/manager.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
+import { AUDIT_EVENTS } from '../../src/foundation/audit/events.js';
 
 // 无验收配置（completeSubtask 同步完成，锁定时间极短，适合并发测试）
 const BASE_YAML = {
@@ -176,5 +177,35 @@ describe('ContractManager — 并发幂等与锁', () => {
     });
 
     expect(result.passed).toBe(true);
+  });
+
+  it('writes CONTRACT_LOCK_CLEARED audit when force clearing stale timeout lock', async () => {
+    const mockAudit = { write: vi.fn() };
+    const auditManager = new ContractManager(
+      clawDir, 'test-claw', nodeFs, undefined, undefined, undefined, mockAudit as any
+    );
+
+    const contractId = await auditManager.create(BASE_YAML);
+
+    const lockDir = path.join(clawDir, 'contract', 'active', contractId);
+    await fs.mkdir(lockDir, { recursive: true });
+    const lockPath = path.join(lockDir, 'progress.lock');
+
+    // 写入当前进程 PID 但时间很久以前，模拟超时锁
+    await fs.writeFile(lockPath, JSON.stringify({ pid: process.pid, time: 0 }));
+
+    const result = await auditManager.completeSubtask({
+      contractId,
+      subtaskId: 'st-a',
+      evidence: 'After stale lock force clear',
+    });
+
+    expect(result.passed).toBe(true);
+    expect(mockAudit.write).toHaveBeenCalledWith(
+      AUDIT_EVENTS.CONTRACT_LOCK_CLEARED,
+      `pid=${process.pid}`,
+      expect.stringContaining('timeout='),
+      'reason=stale',
+    );
   });
 });
