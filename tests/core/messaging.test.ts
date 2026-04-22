@@ -1,5 +1,5 @@
 /**
- * Communication module tests
+ * Messaging module tests
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -33,7 +33,7 @@ ${msg.content}
 `;
 }
 
-describe('Communication', () => {
+describe('Messaging', () => {
   describe('InboxReader', () => {
     let tempDir: string;
     let mockFs: NodeFileSystem;
