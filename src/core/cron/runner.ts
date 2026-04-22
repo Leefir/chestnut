@@ -46,12 +46,14 @@ export class CronRunner {
   start(tickIntervalMs = 1000): void {
     if (this.timer) return;
     this.timer = setInterval(() => this.tick(), tickIntervalMs);
+    this.audit.write('cron_runner_started', `jobs=${this.jobs.length}`);
   }
 
   stop(): void {
     if (this.timer) {
       clearInterval(this.timer);
       this.timer = null;
+      this.audit.write('cron_runner_stopped', `jobs=${this.jobs.length}`);
     }
   }
 

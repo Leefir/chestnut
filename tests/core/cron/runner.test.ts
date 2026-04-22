@@ -79,6 +79,23 @@ describe('CronRunner', () => {
     runner.stop();
   });
 
+  it('start() writes cron_runner_started audit', () => {
+    const job: CronJob = { name: 'test', enabled: true, schedule: { type: 'hourly' }, handler: vi.fn() };
+    const runner = new CronRunner([job], audit as unknown as Audit);
+    runner.start();
+    expect(audit.write).toHaveBeenCalledWith('cron_runner_started', 'jobs=1');
+    runner.stop();
+  });
+
+  it('stop() writes cron_runner_stopped audit', () => {
+    const job: CronJob = { name: 'test', enabled: true, schedule: { type: 'hourly' }, handler: vi.fn() };
+    const runner = new CronRunner([job], audit as unknown as Audit);
+    runner.start();
+    audit.write.mockClear();
+    runner.stop();
+    expect(audit.write).toHaveBeenCalledWith('cron_runner_stopped', 'jobs=1');
+  });
+
   it('stop clears timer; subsequent tick no-op', () => {
     const handler = vi.fn().mockResolvedValue(undefined);
     const job: CronJob = { name: 'test', enabled: true, schedule: { type: 'hourly' }, handler };

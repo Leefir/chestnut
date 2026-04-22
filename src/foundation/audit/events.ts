@@ -142,6 +142,10 @@ export const AUDIT_EVENTS = {
   CRON_LLM_STATS: 'cron_llm_stats',
   CRON_RANDOM_DREAM_JOB: 'cron_random_dream_job',
   CRON_RANDOM_DREAM_WARNING: 'cron_random_dream_warning',
+
+  // --- Cron Runner Lifecycle (Phase 232) ---
+  CRON_RUNNER_STARTED: 'cron_runner_started',
+  CRON_RUNNER_STOPPED: 'cron_runner_stopped',
 } as const;
 
 export type AuditEventName = typeof AUDIT_EVENTS[keyof typeof AUDIT_EVENTS];
