@@ -14,7 +14,7 @@ import type { FileSystem } from '../foundation/fs/types.js';
 import type { ToolProfile } from '../types/config.js';
 import type { Message } from '../types/message.js';
 import type { InboxMessage, Priority } from '../types/contract.js';
-import type { OutboxWriteOptions } from './communication/index.js';
+import type { OutboxWriteOptions } from '../foundation/messaging/index.js';
 import type { SessionData } from '../foundation/session-store/index.js';
 import { readInboxFileMeta, InboxListFailed, InboxMoveFailed } from '../foundation/messaging/index.js';
 
@@ -40,7 +40,7 @@ import { IdleTimeoutSignal, PriorityInboxInterrupt, UserInterrupt } from '../typ
 import type { ToolResult } from './tools/executor.js';
 import { AuditWriter } from '../foundation/audit/writer.js';
 import { InboxReader } from '../foundation/messaging/index.js';
-import { OutboxWriter } from './communication/index.js';
+import { OutboxWriter } from '../foundation/messaging/index.js';
 import { TaskSystem } from './task/system.js';
 import { SkillRegistry } from './skill/registry.js';
 import { ContractManager } from './contract/manager.js';

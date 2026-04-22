@@ -23,7 +23,7 @@ import { SessionManager } from '../../src/foundation/session-store/index.js';
 import { Snapshot } from '../../src/foundation/snapshot/index.js';
 import { SNAPSHOT_IGNORE_PATTERNS } from '../../src/foundation/snapshot/index.js';
 import { InboxReader } from '../../src/foundation/messaging/index.js';
-import { OutboxWriter } from '../../src/core/communication/index.js';
+import { OutboxWriter } from '../../src/foundation/messaging/index.js';
 
 describe('Runtime.initialize() failure audits', () => {
   async function makeDeps(clawDir: string, overrides: { sessionManager?: SessionManager; inboxReader?: InboxReader } = {}) {

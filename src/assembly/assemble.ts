@@ -26,7 +26,7 @@ import { registerBuiltinTools } from '../core/tools/builtins/index.js';
 import { createInboxReader, createOutboxWriter } from '../foundation/messaging/index.js';
 import { createSessionManager } from '../foundation/session-store/index.js';
 import type { InboxReader } from '../foundation/messaging/index.js';
-import type { OutboxWriter } from '../core/communication/index.js';
+import type { OutboxWriter } from '../foundation/messaging/index.js';
 import type { SessionManager } from '../foundation/session-store/index.js';
 
 import { Heartbeat } from '../core/heartbeat.js';

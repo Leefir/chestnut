@@ -11,7 +11,7 @@ import { randomUUID } from 'crypto';
 import { readTool, writeTool, lsTool, searchTool, statusTool, sendTool, memorySearchTool, execTool, spawnTool } from '../../src/core/tools/builtins/index.js';
 import { ExecContextImpl } from '../../src/core/tools/context.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
-import { OutboxWriter } from '../../src/core/communication/index.js';
+import { OutboxWriter } from '../../src/foundation/messaging/index.js';
 import { makeAudit } from '../helpers/audit.js';
 import { ContractManager } from '../../src/core/contract/manager.js';
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';

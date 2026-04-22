@@ -9,7 +9,7 @@ import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
 
 import { InboxReader } from '../../src/foundation/messaging/index.js';
-import { OutboxWriter } from '../../src/core/communication/index.js';
+import { OutboxWriter } from '../../src/foundation/messaging/index.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import { makeAudit } from '../helpers/audit.js';
 import type { InboxMessage } from '../../src/types/contract.js';

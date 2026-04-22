@@ -20,7 +20,7 @@ import type { CallerType } from '../tools/caller-type.js';
 import { callerTypeToProfile } from '../tools/caller-type.js';
 import type { ToolResult, Tool } from '../tools/executor.js';
 import type { Message, ToolDefinition } from '../../types/message.js';
-import type { OutboxWriter } from '../communication/index.js';
+import type { OutboxWriter } from '../../foundation/messaging/index.js';
 import type { ContractManager } from '../contract/manager.js';
 import type { SkillRegistry } from '../skill/registry.js';
 import { AuditWriter } from '../../foundation/audit/writer.js';

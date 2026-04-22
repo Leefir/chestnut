@@ -13,7 +13,7 @@ import type { FileSystem } from '../../foundation/fs/types.js';
 import type { Logger } from '../../foundation/monitor/types.js';
 import type { LLMService } from '../../foundation/llm/index.js';
 import type { TaskSystem } from '../task/system.js';
-import type { OutboxWriter } from '../communication/index.js';
+import type { OutboxWriter } from '../../foundation/messaging/index.js';
 import type { Message } from '../../types/message.js';
 import type { ContractManager } from '../contract/manager.js';
 import type { CallerType } from './caller-type.js';

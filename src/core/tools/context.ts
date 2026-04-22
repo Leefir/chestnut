@@ -17,7 +17,7 @@ import { MOTION_CLAW_ID, DEFAULT_MAX_STEPS } from '../../constants.js';
 import type { TaskSystem } from '../task/system.js';
 import type { SkillRegistry } from '../skill/registry.js';
 import type { ContractManager } from '../contract/manager.js';
-import type { OutboxWriter } from '../communication/index.js';
+import type { OutboxWriter } from '../../foundation/messaging/index.js';
 import type { Message } from '../../types/message.js';
 import type { AuditWriter } from '../../foundation/audit/writer.js';
 import type { CallerType } from './caller-type.js';
