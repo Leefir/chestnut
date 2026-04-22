@@ -11,7 +11,7 @@ import type { FileSystem } from '../fs/types.js';
 import type { InboxMessage } from '../../types/contract.js';
 import { encodeInbox, parseFrontmatter } from '../message-codec/index.js';
 import type { Audit } from '../audit/index.js';
-import { ok, err as errResult, type Result } from '../common/result.js';
+import { ok, err as errResult, type Result } from '../../types/result.js';
 import type { InboxMetaError } from './errors.js';
 
 export interface InboxMessageOptionsBase {

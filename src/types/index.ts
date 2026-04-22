@@ -62,3 +62,6 @@ export {
   PriorityInboxInterrupt,
   UserInterrupt,
 } from './signals.js';
+
+// Result ADT (phase202 搬自 foundation/common/result.ts)
+export { ok, err, type Result } from './result.js';

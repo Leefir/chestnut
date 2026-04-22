@@ -15,7 +15,7 @@ import { exec } from '../process-exec/index.js';
 import type { FileSystem } from '../fs/types.js';
 import type { Audit } from '../audit/index.js';
 import { AUDIT_EVENTS } from '../audit/events.js';
-import { ok, err as errResult, type Result } from '../common/result.js';
+import { ok, err as errResult, type Result } from '../../types/result.js';
 import { classifyGitError, type ExpectedGitFailure } from './git-errors.js';
 
 const DEFAULT_IGNORES = ['logs/', '*.tmp'];
