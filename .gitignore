@@ -38,3 +38,4 @@ clawspace/
 
 # TypeScript incremental build info (pre-commit hook)
 .tsbuildinfo
+.tsbuildinfo.test
