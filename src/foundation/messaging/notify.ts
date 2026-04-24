@@ -4,10 +4,10 @@
  * Standardizes error handling and formatting for inbox notifications.
  */
 
-import { InboxWriter } from '../foundation/messaging/index.js';
-import type { InboxMessageOptionsBase } from '../foundation/messaging/inbox-writer.js';
-import type { FileSystem } from '../foundation/fs/types.js';
-import type { Audit } from '../foundation/audit/index.js';
+import { InboxWriter } from './inbox-writer.js';
+import type { InboxMessageOptionsBase } from './inbox-writer.js';
+import type { FileSystem } from '../fs/types.js';
+import type { Audit } from '../audit/index.js';
 
 /**
  * Send an inbox notification with standardized error handling.
