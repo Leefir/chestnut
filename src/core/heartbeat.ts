@@ -8,14 +8,13 @@ import * as path from 'path';
 import type { FileSystem } from '../foundation/fs/types.js';
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import { InboxWriter } from '../foundation/messaging/index.js';
-import type { Logger } from '../foundation/monitor/types.js';
+import { AUDIT_EVENTS } from '../foundation/audit/events.js';
 import { AuditWriter } from '../foundation/audit/writer.js';
 import type { Audit } from '../foundation/audit/index.js';
 
 export interface HeartbeatOptions {
   /** 心跳间隔（秒），默认 300（5分钟） */
   interval?: number;
-  monitor?: Logger;
   fs?: FileSystem;
   audit?: Audit;
 }
@@ -27,7 +26,6 @@ export class Heartbeat {
   private baseDir: string;
   private interval: number;
   private lastRun: number;
-  private monitor?: Logger;
   private fs?: FileSystem;
   private audit?: Audit;
 
@@ -35,7 +33,6 @@ export class Heartbeat {
     this.baseDir = baseDir;
     this.interval = (options.interval ?? 300) * 1000;
     this.lastRun = Date.now();  // 启动后等满一个 interval 再首次触发
-    this.monitor = options.monitor;
     this.fs = options.fs;
     this.audit = options.audit;
   }
@@ -75,11 +72,11 @@ export class Heartbeat {
       this.lastRun = Date.now();  // 只在成功写入后更新
     } catch (error) {
       // lastRun 未更新 → 下次 isDue() 立即可重试
-      if (this.monitor) {
-        this.monitor.log('error', { context: 'Heartbeat.fire', error: String(error) });
-      } else {
-        console.warn('[Heartbeat] fire failed:', String(error));
-      }
+      this.audit?.write(
+        AUDIT_EVENTS.HEARTBEAT_FIRE_FAILED,
+        'context=Heartbeat.fire',
+        `error=${String(error)}`,
+      );
     }
   }
 }

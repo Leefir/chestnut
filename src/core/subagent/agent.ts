@@ -21,6 +21,7 @@ import type { ContractManager } from '../contract/manager.js';
 import type { SkillRegistry } from '../skill/registry.js';
 import type { Message } from '../../types/message.js';
 import type { AuditWriter } from '../../foundation/audit/writer.js';
+import { AUDIT_EVENTS } from '../../foundation/audit/events.js';
 import type { StreamLog } from '../../foundation/stream/types.js';
 import type { CallerType } from '../tools/caller-type.js';
 import { callerTypeToProfile } from '../tools/caller-type.js';
@@ -33,6 +34,7 @@ export interface SubAgentOptions {
   registry: ToolRegistryImpl;
   fs: FileSystem;
   monitor?: Logger;
+  audit?: AuditWriter;
   maxSteps?: number;
   timeoutMs?: number;
   signal?: AbortSignal;
@@ -60,6 +62,7 @@ export class SubAgent {
   private registry: ToolRegistryImpl;
   private fs: FileSystem;
   private monitor?: Logger;
+  private audit?: AuditWriter;
   private maxSteps: number;
   private timeoutMs: number;
   private signal?: AbortSignal;
@@ -88,6 +91,7 @@ export class SubAgent {
     this.registry = options.registry;
     this.fs = options.fs;
     this.monitor = options.monitor;
+    this.audit = options.audit;
     this.maxSteps = options.maxSteps ?? DEFAULT_MAX_STEPS;
     this.timeoutMs = options.timeoutMs ?? SUBAGENT_TIMEOUT_MS; // 5 min default
     this.signal = options.signal;
@@ -291,11 +295,11 @@ export class SubAgent {
               });
               await this.fs.append(stepsLogPath, entry + '\n');
             } catch (err) {
-              this.monitor?.log('error', {
-                context: 'SubAgent.onStepComplete',
-                agentId: this.agentId,
-                error: err instanceof Error ? err.message : String(err),
-              });
+              this.audit?.write(
+                AUDIT_EVENTS.SUBAGENT_STEP_COMPLETE_FAILED,
+                `agentId=${this.agentId}`,
+                `error=${err instanceof Error ? err.message : String(err)}`,
+              );
               // 不 throw — audit 失败不终止任务
             }
             auditStep++;
@@ -323,11 +327,11 @@ export class SubAgent {
           JSON.stringify(messages),
         );
       } catch (e) {
-        this.monitor?.log('error', {
-          context: 'SubAgent.persistMessages',
-          agentId: this.agentId,
-          error: e instanceof Error ? e.message : String(e),
-        });
+        this.audit?.write(
+          AUDIT_EVENTS.SUBAGENT_PERSIST_FAILED,
+          `agentId=${this.agentId}`,
+          `error=${e instanceof Error ? e.message : String(e)}`,
+        );
       }
 
       sw?.write({ ts: Date.now(), type: 'turn_end' });
@@ -372,11 +376,11 @@ export class SubAgent {
       await this.fs.append(this.logPath, text);
     } catch (e) {
       // Log failures are non-fatal
-      this.monitor?.log('error', {
-        context: 'SubAgent.appendToLog',
-        agentId: this.agentId,
-        error: e instanceof Error ? e.message : String(e),
-      });
+      this.audit?.write(
+        AUDIT_EVENTS.SUBAGENT_LOG_APPEND_FAILED,
+        `agentId=${this.agentId}`,
+        `error=${e instanceof Error ? e.message : String(e)}`,
+      );
     }
   }
 }

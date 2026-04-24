@@ -19,6 +19,7 @@ import type { StreamChunk } from '../../src/foundation/llm/types.js';
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 import { makeAudit } from '../helpers/audit.js';
 import { createTestTaskSystem } from '../helpers/task-system.js';
+import { AUDIT_EVENTS } from '../../src/foundation/audit/events.js';
 
 /**
  * Convert LLMResponse to stream chunks for mock
@@ -657,8 +658,8 @@ describe('Task System + SubAgent', () => {
       vi.useRealTimers();
     });
 
-    it('should log error to monitor when appendToLog fs.append throws', async () => {
-      const mockMonitor = { log: vi.fn() };
+    it('should write audit event when appendToLog fs.append throws', async () => {
+      const mockAudit = { write: vi.fn() };
 
       // FS mock：append 始终失败，其余方法正常
       const throwingFs = Object.create(mockFs);
@@ -674,15 +675,17 @@ describe('Task System + SubAgent', () => {
         }]),
         registry,
         fs: throwingFs,
-        monitor: mockMonitor as any,
+        audit: mockAudit as any,
       });
 
       // run 应该正常完成，appendToLog 失败不影响主流程
       await agent.run();
 
-      expect(mockMonitor.log).toHaveBeenCalledWith('error', expect.objectContaining({
-        context: 'SubAgent.appendToLog',
-      }));
+      expect(mockAudit.write).toHaveBeenCalledWith(
+        AUDIT_EVENTS.SUBAGENT_LOG_APPEND_FAILED,
+        expect.stringContaining('agentId='),
+        expect.stringContaining('error='),
+      );
     });
   });
 });

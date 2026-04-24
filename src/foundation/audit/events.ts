@@ -149,6 +149,17 @@ export const AUDIT_EVENTS = {
   // --- Cron Runner Lifecycle (Phase 232) ---
   CRON_RUNNER_STARTED: 'cron_runner_started',
   CRON_RUNNER_STOPPED: 'cron_runner_stopped',
+
+  // --- Heartbeat ---
+  HEARTBEAT_FIRE_FAILED: 'heartbeat_fire_failed',
+
+  // --- SubAgent ---
+  SUBAGENT_STEP_COMPLETE_FAILED: 'subagent_step_complete_failed',
+  SUBAGENT_PERSIST_FAILED: 'subagent_persist_failed',
+  SUBAGENT_LOG_APPEND_FAILED: 'subagent_log_append_failed',
+
+  // --- Runtime ---
+  RUNTIME_PROCESS_BATCH_FAILED: 'runtime_process_batch_failed',
 } as const;
 
 export type AuditEventName = typeof AUDIT_EVENTS[keyof typeof AUDIT_EVENTS];

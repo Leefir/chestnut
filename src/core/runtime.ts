@@ -39,6 +39,7 @@ import { summarizeLastExit } from './last-exit-summary.js';
 import { IdleTimeoutSignal, PriorityInboxInterrupt, UserInterrupt } from '../types/signals.js';
 import type { ToolResult } from './tools/executor.js';
 import { AuditWriter } from '../foundation/audit/writer.js';
+import { AUDIT_EVENTS } from '../foundation/audit/events.js';
 import { InboxReader } from '../foundation/messaging/index.js';
 import { OutboxWriter } from '../foundation/messaging/index.js';
 import { TaskSystem } from './task/system.js';
@@ -627,11 +628,12 @@ export class ClawRuntime {
         !(err instanceof PriorityInboxInterrupt || err instanceof UserInterrupt || err instanceof IdleTimeoutSignal) &&
         !(err instanceof MaxStepsExceededError)
       ) {
-        this.monitor?.log('error', {
-          context: 'Runtime.processBatch',
-          error: err instanceof Error ? err.message : String(err),
-          stack: err instanceof Error ? err.stack : undefined,
-        });
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        this.auditWriter.write(
+          AUDIT_EVENTS.RUNTIME_PROCESS_BATCH_FAILED,
+          'context=Runtime.processBatch',
+          `error=${errorMsg}`,
+        );
       }
       throw err;
     } finally {

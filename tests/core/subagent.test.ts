@@ -8,6 +8,7 @@ import type { FileSystem } from '../../src/foundation/fs/types.js';
 import type { Logger } from '../../src/foundation/monitor/types.js';
 import type { LLMService } from '../../src/foundation/llm/index.js';
 import type { ToolRegistryImpl } from '../../src/core/tools/registry.js';
+import { AUDIT_EVENTS } from '../../src/foundation/audit/events.js';
 
 // Mock the entire react loop module so runReact is fully controllable
 vi.mock('../../src/core/react/loop.js', () => ({
@@ -60,6 +61,8 @@ function makeSubAgent(
     ...overrides.monitor,
   } as unknown as Logger;
 
+  const mockAudit = { write: vi.fn() };
+
   const mockRegistry = {
     getAll: vi.fn().mockReturnValue([]),
     formatForLLM: vi.fn().mockReturnValue([]),
@@ -82,10 +85,12 @@ function makeSubAgent(
       registry: mockRegistry,
       fs: mockFs,
       monitor: mockMonitor,
+      audit: mockAudit as any,
       maxSteps: 5,
     }),
     mockFs,
     mockMonitor,
+    mockAudit,
   };
 }
 
@@ -96,8 +101,8 @@ describe('SubAgent', () => {
 
   // ─── fix 1: onStepComplete fs.append failure is caught ──────────────────────
   describe('fix 1 — onStepComplete error handling', () => {
-    it('when steps log append throws, monitor logs the error and run() still completes', async () => {
-      const { agent, mockFs, mockMonitor } = makeSubAgent();
+    it('when steps log append throws, audit writes the error and run() still completes', async () => {
+      const { agent, mockFs, mockAudit } = makeSubAgent();
 
       // fs.append fails for the steps JSONL, succeeds for main log
       (mockFs.append as ReturnType<typeof vi.fn>).mockImplementation(
@@ -120,9 +125,10 @@ describe('SubAgent', () => {
       const result = await agent.run();
 
       expect(result).toBe('result');
-      expect(mockMonitor.log).toHaveBeenCalledWith(
-        'error',
-        expect.objectContaining({ context: 'SubAgent.onStepComplete' }),
+      expect(mockAudit.write).toHaveBeenCalledWith(
+        AUDIT_EVENTS.SUBAGENT_STEP_COMPLETE_FAILED,
+        expect.stringContaining('agentId='),
+        expect.stringContaining('error='),
       );
     });
 
