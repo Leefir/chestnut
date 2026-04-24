@@ -195,7 +195,11 @@ export class CustomAnthropicAdapter extends BaseAnthropicAdapter {
           try {
             event = JSON.parse(data);
           } catch (err) {
-            console.warn(`[anthropic] Failed to parse SSE event, skipping. data="${data.slice(0, 100)}" err=${err instanceof Error ? err.message : String(err)}`);
+            this.onStreamParseError?.({
+              provider: this.name,
+              raw: data.slice(0, 100),
+              error: err instanceof Error ? err.message : String(err),
+            });
             continue;
           }
 
