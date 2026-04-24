@@ -116,6 +116,20 @@ export const AUDIT_EVENTS = {
   // --- TaskSystem ---
   PENDING_INGEST_FAILED: 'pending_ingest_failed',
 
+  // --- TaskSystem （phase248 B.2 sub-phase 2 补齐）---
+  TASK_DISCARDED: 'task_discarded',
+  TASK_RECOVERED: 'task_recovered',
+  TASK_RECOVERY_COMPLETE: 'task_recovery_complete',
+  TASK_RECOVERY_FAILED: 'task_recovery_failed',
+  TASK_START_FAILED: 'task_start_failed',
+  TASK_STREAM_FAILED: 'task_stream_failed',
+  TASK_HANDLER_FAILED: 'task_handler_failed',
+  TASK_RESULT_WRITE_FAILED: 'task_result_write_failed',
+  TASK_INBOX_WRITE_FAILED: 'task_inbox_write_failed',
+  TASK_MOVE_FAILED: 'task_move_failed',
+  TASK_CANCELLED: 'task_cancelled',
+  TOOL_TASK_RETRY: 'tool_task_retry',
+
   // --- Contract ---
   CONTRACT_LOCK_CLEARED: 'contract_lock_cleared',
   CONTRACT_LOCK_UNLINK_FAILED: 'contract_lock_unlink_failed',

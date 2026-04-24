@@ -1060,7 +1060,7 @@ describe('TaskSystem Tool Tasks', () => {
         }
       );
 
-      const logSpy = vi.spyOn((taskSystem as any).monitor, 'log');
+      const writeSpy = vi.spyOn((taskSystem as any).auditWriter, 'write');
 
       const taskId = await taskSystem.scheduleTool(
         'testTool',
@@ -1068,12 +1068,9 @@ describe('TaskSystem Tool Tasks', () => {
         'parent-claw',
       );
 
-      await waitFor(() => logSpy.mock.calls.some(c => c[0] === 'error'));
+      await waitFor(() => writeSpy.mock.calls.some(c => c[0] === 'task_move_failed'));
 
-      expect(logSpy).toHaveBeenCalledWith('error', expect.objectContaining({
-        taskId,
-        error: expect.stringContaining('Disk full'),
-      }));
+      expect(writeSpy).toHaveBeenCalledWith('task_move_failed', taskId, 'context=move_to_done', expect.stringContaining('Disk full'));
 
       vi.restoreAllMocks();
     });

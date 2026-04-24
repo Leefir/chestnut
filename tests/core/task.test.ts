@@ -336,9 +336,10 @@ describe('Task System + SubAgent', () => {
       expect(runningExists).toBe(false);
     });
 
-    it('should write subagent_completed event to monitor log', async () => {
+    it('should write task_completed event to audit on subagent success', async () => {
       await taskSystem.shutdown(100);
-      taskSystem = createTestTaskSystem(tempDir, mockFs, makeAudit().audit, createMockLLM([{
+      const { audit, events } = makeAudit();
+      taskSystem = createTestTaskSystem(tempDir, mockFs, audit, createMockLLM([{
         content: [{ type: 'text', text: 'task done' }],
         stop_reason: 'end_turn',
       }]));
@@ -355,22 +356,26 @@ describe('Task System + SubAgent', () => {
         parentClawId: 'test-claw',
       });
 
-      // 等待任务完成 + monitor 异步写入
-      await waitFor(async () => {
-        const content = await fs.readFile(path.join(tempDir, 'logs', 'monitor.jsonl'), 'utf-8').catch(() => '');
-        return content.includes('subagent_completed');
-      });
+      // 等待任务完成 + audit 异步写入
+      await waitFor(() => events.some(e => e[0] === 'task_completed'));
 
-      // subagent_completed → logs/monitor.jsonl
-      const logPath = path.join(tempDir, 'logs', 'monitor.jsonl');
-      const logContent = await fs.readFile(logPath, 'utf-8').catch(() => '');
-      expect(logContent).toContain('subagent_completed');
-      expect(logContent).toContain(taskId);
+      expect(events).toEqual(
+        expect.arrayContaining([
+          expect.arrayContaining([
+            'task_completed',
+            taskId,
+            'ok',
+            expect.stringMatching(/^ms=\d+$/),
+            expect.stringMatching(/^len=\d+$/),
+          ]),
+        ])
+      );
     });
 
-    it('should write error event to monitor log when subagent times out', async () => {
+    it('should write task_completed err to audit when subagent times out', async () => {
       await taskSystem.shutdown(100);
-      taskSystem = createTestTaskSystem(tempDir, mockFs, makeAudit().audit, createAbortableHangingMockLLM());
+      const { audit, events } = makeAudit();
+      taskSystem = createTestTaskSystem(tempDir, mockFs, audit, createAbortableHangingMockLLM());
       await taskSystem.initialize();
       taskSystem.startDispatch();
 
@@ -398,10 +403,17 @@ describe('Task System + SubAgent', () => {
       const inboxContent = await fs.readFile(path.join(inboxDir, mdFiles[0]), 'utf-8');
       expect(inboxContent).toContain('"is_error":true');
 
-      // error 事件 → logs/monitor.jsonl（验证 monitor.log 被调用）
-      const logPath = path.join(tempDir, 'logs', 'monitor.jsonl');
-      const logContent = await fs.readFile(logPath, 'utf-8').catch(() => '');
-      expect(logContent).toContain(taskId);
+      // audit 中应有 task_completed err 事件
+      expect(events).toEqual(
+        expect.arrayContaining([
+          expect.arrayContaining([
+            'task_completed',
+            taskId,
+            'err',
+            expect.stringMatching(/^ms=\d+$/),
+          ]),
+        ])
+      );
     });
 
     it('should write fallback inbox message when main sendResult fails', async () => {

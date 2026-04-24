@@ -199,18 +199,10 @@ export class TaskSystem {
               // callback 已丢失，移动到 failed，不重新执行
               const failedPath = `tasks/failed/${task.id}.json`;
               await this.fs.move(entry.path, failedPath);
-              this.monitor.log('task_discarded', {
-                taskId: task.id,
-                kind: 'tool',
-                reason: 'daemon_restarted',
-              });
+              this.auditWriter?.write(AUDIT_EVENTS.TASK_DISCARDED, task.id, 'kind=tool', 'reason=daemon_restarted');
               // 通知 parent，避免永久挂起
               await this.sendFallbackError(task, 'daemon restarted, tool task discarded').catch((e) => {
-                this.monitor.log('error', {
-                  context: 'recoverTasks.sendFallbackError',
-                  taskId: task.id,
-                  error: e instanceof Error ? e.message : String(e),
-                });
+                this.auditWriter?.write(AUDIT_EVENTS.TASK_RECOVERY_FAILED, task.id, 'context=sendFallbackError', `error=${e instanceof Error ? e.message : JSON.stringify(e)}`);
               });
             } else {
               // subagent 任务：检测是否已写出结果
@@ -225,21 +217,14 @@ export class TaskSystem {
                 await this.fs.move(entry.path, `tasks/done/${task.id}.json`).catch(() => {
                   this.fs.delete(entry.path).catch(() => {});
                 });
-                this.monitor.log('task_recovered_as_done', {
-                  taskId: task.id,
-                  reason: 'already_sent',
-                });
+                this.auditWriter?.write(AUDIT_EVENTS.TASK_RECOVERED, task.id, 'reason=already_sent');
               } else if (resultExists) {
                 // 结果已写出，补发 inbox；成功后写 .sent 标记防止重复投递
                 const resultContent = await this.fs.read(resultPath);
                 const resultSent = await this.sendResult(task, resultContent, false)
                   .then(() => true)
                   .catch((e) => {
-                    this.monitor.log('error', {
-                      context: 'recoverTasks.resend_result_failed',
-                      taskId: task.id,
-                      error: e instanceof Error ? e.message : String(e),
-                    });
+                    this.auditWriter?.write(AUDIT_EVENTS.TASK_RECOVERY_FAILED, task.id, 'context=resend_result_failed', `error=${e instanceof Error ? e.message : JSON.stringify(e)}`);
                     // resend 失败降级：发 fallbackError，parent 知道任务状态
                     this.sendFallbackError(task, 'Result resend failed after recovery').catch(() => {});
                     return false;
@@ -250,29 +235,18 @@ export class TaskSystem {
                 await this.fs.move(entry.path, `tasks/done/${task.id}.json`).catch(() => {
                   this.fs.delete(entry.path).catch(() => {});
                 });
-                this.monitor.log('task_recovered_as_done', {
-                  taskId: task.id,
-                  reason: 'result_file_exists',
-                });
+                this.auditWriter?.write(AUDIT_EVENTS.TASK_RECOVERED, task.id, 'reason=result_file_exists');
               } else {
                 // 结果未写出：移回 pending 重新执行（原有逻辑）
                 const pendingPath = `${TASKS_PENDING_DIR}/${task.id}.json`;
                 await this.fs.move(entry.path, pendingPath);
                 recoveredFromRunning++;
-                this.monitor.log('task_recovered', {
-                  taskId: task.id,
-                  kind: task.kind,
-                  from: 'running',
-                  to: 'pending',
-                });
+                this.auditWriter?.write(AUDIT_EVENTS.TASK_RECOVERED, task.id, `kind=${task.kind}`, 'from=running', 'to=pending');
               }
             }
           } catch (err) {
             const errMsg = err instanceof Error ? err.message : String(err);
-            this.monitor.log('error', {
-              error: `Failed to recover running task: ${errMsg}`,
-              path: entry.path,
-            });
+            this.auditWriter?.write(AUDIT_EVENTS.TASK_RECOVERY_FAILED, entry.path, 'context=recover_running', `error=${errMsg}`);
           }
         }
       }
@@ -288,28 +262,17 @@ export class TaskSystem {
               // pending 里的 tool 任务同样 callback 已丢失，移动到 failed
               const failedPath = `tasks/failed/${task.id}.json`;
               await this.fs.move(entry.path, failedPath);
-              this.monitor.log('task_discarded', {
-                taskId: task.id,
-                kind: 'tool',
-                reason: 'daemon_restarted',
-              });
+              this.auditWriter?.write(AUDIT_EVENTS.TASK_DISCARDED, task.id, 'kind=tool', 'reason=daemon_restarted');
               // 通知 parent，避免永久挂起
               await this.sendFallbackError(task, 'daemon restarted, tool task discarded').catch((e) => {
-                this.monitor.log('error', {
-                  context: 'recoverTasks.sendFallbackError_pending',
-                  taskId: task.id,
-                  error: e instanceof Error ? e.message : String(e),
-                });
+                this.auditWriter?.write(AUDIT_EVENTS.TASK_RECOVERY_FAILED, task.id, 'context=sendFallbackError_pending', `error=${e instanceof Error ? e.message : JSON.stringify(e)}`);
               });
             } else {
               // subagent 文件保留在 pending/，由 _initialScanPending 统一入队
             }
           } catch (err) {
             const errMsg = err instanceof Error ? err.message : String(err);
-            this.monitor.log('error', {
-              error: `Failed to load pending task: ${errMsg}`,
-              path: entry.path,
-            });
+            this.auditWriter?.write(AUDIT_EVENTS.TASK_RECOVERY_FAILED, entry.path, 'context=load_pending', `error=${errMsg}`);
           }
         }
       }
@@ -318,18 +281,12 @@ export class TaskSystem {
       const failedEntries = await this.fs.list('tasks/failed').catch(() => []);
       const failedCount = failedEntries.filter(e => e.name.endsWith('.json')).length;
       
-      this.monitor.log('task_recovery_complete', {
-        pendingCount: this.pendingQueue.length,
-        recoveredFromRunning,
-        failedCount,
-      });
+      this.auditWriter?.write(AUDIT_EVENTS.TASK_RECOVERY_COMPLETE, 'system', `pending=${this.pendingQueue.length}`, `recovered_running=${recoveredFromRunning}`, `failed=${failedCount}`);
 
       // _initialScanPending 已迁至 startDispatch（避免在 initialize 期间触发 _dispatch）
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      this.monitor.log('error', {
-        error: `Task recovery failed: ${errMsg}`,
-      });
+      this.auditWriter?.write(AUDIT_EVENTS.TASK_RECOVERY_FAILED, 'system', 'context=recovery_top', `error=${errMsg}`);
     }
   }
 
@@ -355,13 +312,7 @@ export class TaskSystem {
     const taskPath = `${TASKS_PENDING_DIR}/${taskId}.json`;
     await this.fs.writeAtomic(taskPath, JSON.stringify(task, null, 2));
 
-    // Log
-    this.monitor.log('subagent_scheduled', {
-      taskId,
-      parentClawId: task.parentClawId,
-      maxSteps: task.maxSteps,
-    });
-    this.auditWriter?.write('task_scheduled', taskId, 'kind=subagent', `parent=${task.parentClawId}`);
+    this.auditWriter?.write('task_scheduled', taskId, 'kind=subagent', `parent=${task.parentClawId}`, `maxSteps=${task.maxSteps}`);
 
     // No push, no dispatch; watcher ingests asynchronously
     return taskId;
@@ -405,14 +356,7 @@ export class TaskSystem {
     this.pendingCallbacks.set(taskId, executeCallback);
     this.pendingQueue.push(task);
 
-    // Log
-    this.monitor.log('tool_task_scheduled', {
-      taskId,
-      parentClawId,
-      toolName,
-      queuePosition: this.pendingQueue.length,
-    });
-    this.auditWriter?.write('task_scheduled', taskId, 'kind=tool', `parent=${parentClawId}`, `tool=${toolName}`);
+    this.auditWriter?.write('task_scheduled', taskId, 'kind=tool', `parent=${parentClawId}`, `tool=${toolName}`, `queue=${this.pendingQueue.length}`);
 
     // Trigger dispatch
     this._dispatch();
@@ -467,12 +411,6 @@ export class TaskSystem {
         `path=${filePath}`,
         `reason=${err instanceof Error ? err.message : String(err)}`,
       );
-      this.monitor.log('error', {
-        context: 'pending_ingest_failed',
-        taskId,
-        path: filePath,
-        error: err instanceof Error ? err.message : String(err),
-      });
     }
   }
 
@@ -523,17 +461,10 @@ export class TaskSystem {
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      this.monitor.log('error', {
-        taskId: task.id,
-        error: `Task start/execution failed: ${errorMsg}`,
-      });
+      this.auditWriter?.write(AUDIT_EVENTS.TASK_START_FAILED, task.id, `error=${errorMsg}`);
       // 通知 parent，避免永久挂起
       await this.sendFallbackError(task, `Task failed to start: ${errorMsg}`).catch((e) => {
-        this.monitor?.log('error', {
-          context: 'sendFallbackError_FAILED',
-          taskId: task.id,
-          error: e instanceof Error ? e.message : String(e),
-        });
+        this.auditWriter?.write(AUDIT_EVENTS.TASK_START_FAILED, task.id, 'context=sendFallbackError', `error=${e instanceof Error ? e.message : JSON.stringify(e)}`);
       });
       
       // Clean up callback if present
@@ -574,11 +505,7 @@ export class TaskSystem {
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
       if (code !== 'ENOENT') {
-        this.monitor.log('warn', {
-          context: 'executeTask.openStream',
-          taskId: task.id,
-          error: String(err),
-        });
+        this.auditWriter?.write(AUDIT_EVENTS.TASK_STREAM_FAILED, task.id, 'context=openStream', `code=${code}`);
       }
     }
 
@@ -587,11 +514,7 @@ export class TaskSystem {
       try {
         fsSync.writeSync(taskStreamFd, JSON.stringify({ ts: Date.now(), ...event }) + '\n');
       } catch (err) {
-        this.monitor.log('warn', {
-          context: 'executeTask.writeStream',
-          taskId: task.id,
-          error: String(err),
-        });
+        this.auditWriter?.write(AUDIT_EVENTS.TASK_STREAM_FAILED, task.id, 'context=writeStream', `error=${err instanceof Error ? err.message : JSON.stringify(err)}`);
       }
     };
 
@@ -658,22 +581,13 @@ export class TaskSystem {
         try {
           inboxResult = await handler(task.id, task.callerType, inboxResult, false);
         } catch (handlerErr) {
-          this.monitor.log('error', {
-            context: 'taskResultHandler_threw',
-            taskId: task.id,
-            error: handlerErr instanceof Error ? handlerErr.message : String(handlerErr),
-          });
+          this.auditWriter?.write(AUDIT_EVENTS.TASK_HANDLER_FAILED, task.id, 'context=handler_threw', `error=${handlerErr instanceof Error ? handlerErr.message : JSON.stringify(handlerErr)}`);
           // inboxResult 保持上一个 handler 的输出，继续后续 handler
         }
       }
       await this.sendResult(task, inboxResult, false);
 
-      this.monitor.log('subagent_completed', {
-        taskId: task.id,
-        parentClawId: task.parentClawId,
-        resultLength: result.length,
-      });
-      this.auditWriter?.write('task_completed', task.id, 'ok', `ms=${Date.now() - taskStartTime}`);
+      this.auditWriter?.write('task_completed', task.id, 'ok', `ms=${Date.now() - taskStartTime}`, `len=${result.length}`);
     } catch (error) {
       taskFailed = true;
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -685,11 +599,7 @@ export class TaskSystem {
           inboxResult = await handler(task.id, task.callerType, inboxResult, true);
         } catch (handlerErr) {
           // handler 本身抛异常不影响清理链，继续执行后续 handler
-          this.monitor.log('error', {
-            context: 'taskResultHandler_threw_on_error_path',
-            taskId: task.id,
-            error: handlerErr instanceof Error ? handlerErr.message : String(handlerErr),
-          });
+          this.auditWriter?.write(AUDIT_EVENTS.TASK_HANDLER_FAILED, task.id, 'context=handler_threw_error_path', `error=${handlerErr instanceof Error ? handlerErr.message : JSON.stringify(handlerErr)}`);
         }
       }
 
@@ -699,19 +609,11 @@ export class TaskSystem {
       } catch (sendErr) {
         // sendResult 本身失败：降级写最小通知，确保 parent 不被永远挂起
         await this.sendFallbackError(task, errorMsg).catch((e) => {
-          this.monitor?.log('error', {
-            context: 'sendFallbackError_FAILED',
-            taskId: task.id,
-            error: e instanceof Error ? e.message : String(e),
-          });
+          this.auditWriter?.write(AUDIT_EVENTS.TASK_HANDLER_FAILED, task.id, 'context=sendFallbackError', `error=${e instanceof Error ? e.message : JSON.stringify(e)}`);
         });
       }
 
-      this.monitor.log('error', {
-        taskId: task.id,
-        parentClawId: task.parentClawId,
-        error: errorMsg,
-      });
+      this.auditWriter?.write(AUDIT_EVENTS.TASK_HANDLER_FAILED, task.id, `parent=${task.parentClawId}`, `error=${errorMsg}`);
       this.auditWriter?.write('task_completed', task.id, 'err', `ms=${Date.now() - taskStartTime}`);
     } finally {
       // Close task stream
@@ -754,21 +656,11 @@ export class TaskSystem {
         } catch (sendErr) {
           // sendToolResult 本身失败：降级写最小通知，不进入重试（执行已成功）
           await this.sendFallbackError(task, 'Failed to send result').catch((e) => {
-            this.monitor?.log('error', {
-              context: 'sendFallbackError_FAILED',
-              taskId: task.id,
-              error: e instanceof Error ? e.message : String(e),
-            });
+            this.auditWriter?.write(AUDIT_EVENTS.TASK_HANDLER_FAILED, task.id, 'context=sendFallbackError_error_path', `error=${e instanceof Error ? e.message : JSON.stringify(e)}`);
           });
         }
         success = true;
-        this.monitor.log('tool_task_completed', {
-          taskId: task.id,
-          parentClawId: task.parentClawId,
-          toolName: task.toolName,
-          retriesUsed: attempt,
-        });
-        this.auditWriter?.write('task_completed', task.id, 'ok', `ms=${Date.now() - taskStartTime}`);
+        this.auditWriter?.write('task_completed', task.id, 'ok', `ms=${Date.now() - taskStartTime}`, `retries=${attempt}`);
         // tool_async_result：仅当 toolUseId 已记录时写入
         if (task.toolUseId) {
           this.auditWriter?.write('tool_async_result', task.toolName, task.toolUseId, `task=${task.id}`);
@@ -789,20 +681,10 @@ export class TaskSystem {
             );
           } catch (writeErr) {
             // Non-critical: just log
-            this.monitor.log('error', {
-              taskId: task.id,
-              error: `Failed to update retry count: ${writeErr instanceof Error ? writeErr.message : String(writeErr)}`,
-            });
+            this.auditWriter?.write(AUDIT_EVENTS.TASK_HANDLER_FAILED, task.id, 'context=retry_count_update', `error=${writeErr instanceof Error ? writeErr.message : JSON.stringify(writeErr)}`);
           }
 
-          this.monitor.log('tool_task_retry', {
-            taskId: task.id,
-            toolName: task.toolName,
-            parentClawId: task.parentClawId,
-            attempt: attempt + 1,
-            maxRetries: task.maxRetries,
-            error: errorMsg,
-          });
+          this.auditWriter?.write(AUDIT_EVENTS.TOOL_TASK_RETRY, task.id, `tool=${task.toolName}`, `attempt=${attempt + 1}`, `max=${task.maxRetries}`, `error=${errorMsg}`);
 
           // Exponential backoff: retryBaseDelayMs, retryBaseDelayMs*2, etc.
           const backoffMs = this.retryBaseDelayMs * (attempt + 1);
@@ -832,21 +714,11 @@ export class TaskSystem {
       } catch (sendErr) {
         // sendToolResult 失败：降级写最小通知
         await this.sendFallbackError(task, finalError).catch((e) => {
-          this.monitor?.log('error', {
-            context: 'sendFallbackError_FAILED',
-            taskId: task.id,
-            error: e instanceof Error ? e.message : String(e),
-          });
+          this.auditWriter?.write(AUDIT_EVENTS.TASK_HANDLER_FAILED, task.id, 'context=sendFallbackError_retry', `error=${e instanceof Error ? e.message : JSON.stringify(e)}`);
         });
       }
 
-      this.monitor.log('error', {
-        taskId: task.id,
-        parentClawId: task.parentClawId,
-        toolName: task.toolName,
-        error: finalError,
-        retriesExhausted: task.maxRetries > 0,
-      });
+      this.auditWriter?.write(AUDIT_EVENTS.TASK_HANDLER_FAILED, task.id, `tool=${task.toolName}`, 'context=retries_exhausted', `error=${finalError}`);
       this.auditWriter?.write('task_completed', task.id, 'err', `ms=${Date.now() - taskStartTime}`);
     }
 
@@ -876,11 +748,7 @@ export class TaskSystem {
     } catch (writeErr) {
       // Degrade gracefully: resultRef remains undefined, send full content in inbox
       const errMsg = writeErr instanceof Error ? writeErr.message : String(writeErr);
-      this.monitor.log('error', {
-        taskId: task.id,
-        parentClawId: task.parentClawId,
-        error: `Failed to write result to file: ${errMsg}`,
-      });
+      this.auditWriter?.write(AUDIT_EVENTS.TASK_RESULT_WRITE_FAILED, task.id, 'context=write_result', `error=${errMsg}`);
     }
 
     // Build summary (preview if resultRef exists, full content otherwise)
@@ -921,12 +789,7 @@ export class TaskSystem {
       if (resultRef) {
         // inbox 写失败：删除孤立的 results 文件，降级为 inline 内容重试
         await this.fs.delete(resultRef).catch((delErr) => {
-          this.monitor.log('warn', {
-            context: 'sendToolResult.orphan_result_delete_failed',
-            taskId: task.id,
-            resultRef,
-            error: delErr instanceof Error ? delErr.message : String(delErr),
-          });
+          this.auditWriter?.write(AUDIT_EVENTS.TASK_RESULT_WRITE_FAILED, task.id, 'context=orphan_delete', `error=${delErr instanceof Error ? delErr.message : JSON.stringify(delErr)}`);
         });
         try {
           await new InboxWriter(this.fs, 'inbox/pending', this.auditWriter).write({ ...baseMsg, content: inlineContent });
@@ -937,11 +800,7 @@ export class TaskSystem {
       }
       const errMsg = err instanceof Error ? err.message : String(err);
       console.error(`[task] Failed to write inbox message for tool task ${task.id}:`, err);
-      this.monitor.log('error', {
-        taskId: task.id,
-        parentClawId: task.parentClawId,
-        error: `Failed to write inbox message: ${errMsg}`,
-      });
+      this.auditWriter?.write(AUDIT_EVENTS.TASK_INBOX_WRITE_FAILED, task.id, `error=${errMsg}`);
       throw err;  // Re-throw to allow caller fallback
     }
   }
@@ -961,11 +820,7 @@ export class TaskSystem {
     } catch (writeErr) {
       // Degrade gracefully: resultRef remains undefined, send full content in inbox
       const errMsg = writeErr instanceof Error ? writeErr.message : String(writeErr);
-      this.monitor.log('error', {
-        taskId: task.id,
-        parentClawId: task.parentClawId,
-        error: `Failed to write result to file: ${errMsg}`,
-      });
+      this.auditWriter?.write(AUDIT_EVENTS.TASK_RESULT_WRITE_FAILED, task.id, 'context=send_result_write', `error=${errMsg}`);
     }
 
     // Build summary (preview if resultRef exists, full content otherwise)
@@ -1004,12 +859,7 @@ export class TaskSystem {
       if (resultRef) {
         // inbox 写失败：删除孤立的 results 文件，降级为 inline 内容重试
         await this.fs.delete(resultRef).catch((delErr) => {
-          this.monitor.log('warn', {
-            context: 'sendResult.orphan_result_delete_failed',
-            taskId: task.id,
-            resultRef,
-            error: delErr instanceof Error ? delErr.message : String(delErr),
-          });
+          this.auditWriter?.write(AUDIT_EVENTS.TASK_RESULT_WRITE_FAILED, task.id, 'context=orphan_delete_send', `error=${delErr instanceof Error ? delErr.message : JSON.stringify(delErr)}`);
         });
         try {
           await new InboxWriter(this.fs, 'inbox/pending', this.auditWriter).write({ ...baseMsg, content: inlineContent });
@@ -1020,11 +870,7 @@ export class TaskSystem {
       }
       const errMsg = err instanceof Error ? err.message : String(err);
       console.error(`[task] Failed to write inbox message for task ${task.id}:`, err);
-      this.monitor.log('error', {
-        taskId: task.id,
-        parentClawId: task.parentClawId,
-        error: `Failed to write inbox message: ${errMsg}`,
-      });
+      this.auditWriter?.write(AUDIT_EVENTS.TASK_INBOX_WRITE_FAILED, task.id, `error=${errMsg}`);
       throw err;  // Re-throw to allow caller fallback
     }
   }
@@ -1058,10 +904,10 @@ export class TaskSystem {
       );
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      this.monitor.log('error', { taskId, error: errMsg });
+      this.auditWriter?.write(AUDIT_EVENTS.TASK_MOVE_FAILED, taskId, 'context=move_to_done', `error=${errMsg}`);
       // 删除 running 文件防止重启后重复执行，丢失记录好过重复副作用
       await this.fs.delete(`tasks/running/${taskId}.json`).catch((e) => {
-        this.monitor.log('error', { taskId, context: 'moveTaskToDone.delete', error: e instanceof Error ? e.message : String(e) });
+        this.auditWriter?.write(AUDIT_EVENTS.TASK_MOVE_FAILED, taskId, 'context=move_done_delete', `error=${e instanceof Error ? e.message : JSON.stringify(e)}`);
       });
     }
   }
@@ -1074,9 +920,9 @@ export class TaskSystem {
       );
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      this.monitor.log('error', { taskId, error: errMsg });
+      this.auditWriter?.write(AUDIT_EVENTS.TASK_MOVE_FAILED, taskId, 'context=move_to_failed', `error=${errMsg}`);
       await this.fs.delete(`tasks/running/${taskId}.json`).catch((e) => {
-        this.monitor.log('error', { taskId, context: 'moveTaskToFailed.delete', error: e instanceof Error ? e.message : String(e) });
+        this.auditWriter?.write(AUDIT_EVENTS.TASK_MOVE_FAILED, taskId, 'context=move_failed_delete', `error=${e instanceof Error ? e.message : JSON.stringify(e)}`);
       });
     }
   }
@@ -1108,7 +954,7 @@ export class TaskSystem {
     if (state) {
       state.abortController.abort();
       try { await state.promise; } catch {}
-      this.monitor.log('info', { event: 'task_cancelled', taskId, from: 'running' });
+      this.auditWriter?.write(AUDIT_EVENTS.TASK_CANCELLED, taskId, 'from=running');
       return;
     }
 
@@ -1142,26 +988,18 @@ export class TaskSystem {
         `${TASKS_PENDING_DIR}/${taskId}.json`,
         `tasks/failed/${taskId}.json`
       ).catch((e) => {
-        this.monitor.log('error', {
-          context: 'cancel_pending.move_failed',
-          taskId,
-          error: e instanceof Error ? e.message : String(e),
-        });
+        this.auditWriter?.write(AUDIT_EVENTS.TASK_MOVE_FAILED, taskId, 'context=cancel_pending_move', `error=${e instanceof Error ? e.message : JSON.stringify(e)}`);
       });
     }
 
     // tool 任务：通知 parent
     if (task?.kind === 'tool') {
       await this.sendFallbackError(task, 'Task cancelled before execution').catch((e) => {
-        this.monitor.log('error', {
-          context: 'cancel_pending.sendFallbackError',
-          taskId,
-          error: e instanceof Error ? e.message : String(e),
-        });
+        this.auditWriter?.write(AUDIT_EVENTS.TASK_MOVE_FAILED, taskId, 'context=cancel_sendFallbackError', `error=${e instanceof Error ? e.message : JSON.stringify(e)}`);
       });
     }
 
-    this.monitor.log('info', { event: 'task_cancelled', taskId, from: 'pending' });
+    this.auditWriter?.write(AUDIT_EVENTS.TASK_CANCELLED, taskId, 'from=pending');
     return;
   }
 
@@ -1193,6 +1031,5 @@ export class TaskSystem {
     this.runningTasks.clear();
     this.pendingQueue = [];
     this.pendingCallbacks.clear();
-    await this.monitor.close();
   }
 }
