@@ -167,6 +167,9 @@ export const AUDIT_EVENTS = {
 
   // --- Watchdog ---
   WATCHDOG_CLEANUP_FAILED: 'watchdog_cleanup_failed',
+  WATCHDOG_CRASH: 'watchdog_crash',
+  CLAW_CRASH_DETECTED: 'claw_crash_detected',
+  CLAW_CRASH_NOTIFY_DROPPED: 'claw_crash_notify_dropped',
 
   // --- Heartbeat ---
   HEARTBEAT_FIRE_FAILED: 'heartbeat_fire_failed',

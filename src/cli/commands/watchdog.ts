@@ -214,6 +214,12 @@ export function setAuditWriter(auditWriter: AuditWriter | null): void {
   _auditWriter = auditWriter;
 }
 
+export function writeWatchdogCrash(err: Error): void {
+  try {
+    _auditWriter?.write(AUDIT_EVENTS.WATCHDOG_CRASH, `err=${err.message?.slice(0, 200) ?? String(err)}`);
+  } catch { /* ignore: crash handler 不抛 */ }
+}
+
 // Check for claws with an active contract but no progress for a long time, and send a reminder
 export async function maybeCronClawInactivity(pm: ProcessManager, audit: AuditWriter): Promise<void> {
   const timeoutMs = getGlobalConfig().watchdog?.claw_inactivity_timeout_ms ?? 300000;
@@ -298,7 +304,7 @@ export async function maybeCronClawInactivity(pm: ProcessManager, audit: AuditWr
 }
 
 // Detect claw process crashes and notify motion
-function maybeCronClawCrash(pm: ProcessManager): void {
+export function maybeCronClawCrash(pm: ProcessManager, audit: AuditWriter): void {
   const clawsDir = path.join(getClawforumDir(), 'claws');
   if (!fs.existsSync(clawsDir)) return;
 
@@ -329,19 +335,24 @@ function maybeCronClawCrash(pm: ProcessManager): void {
         continue;
       }
       log(`[watchdog] Claw ${clawId} crashed (was alive, now stopped)`);
+      audit.write(AUDIT_EVENTS.CLAW_CRASH_DETECTED, `claw=${clawId}`);
 
       // Collect snapshot info
       const snapshot = gatherClawSnapshot(clawDir, pm, clawId);
       const body = `contract: ${snapshot.contract}, outbox_pending: ${snapshot.outboxPending}`;
 
       const { fs: motionFs, audit: motionAudit } = getMotionContext();
-      new InboxWriter(motionFs, path.join(getMotionDir(), 'inbox', 'pending'), motionAudit).writeSync({
-        type: 'crash_notification',
-        source: clawId,
-        priority: 'high',
-        body,
-        filenameTag: 'claw_crash',
-      });
+      try {
+        new InboxWriter(motionFs, path.join(getMotionDir(), 'inbox', 'pending'), motionAudit).writeSync({
+          type: 'crash_notification',
+          source: clawId,
+          priority: 'high',
+          body,
+          filenameTag: 'claw_crash',
+        });
+      } catch (err) {
+        audit.write(AUDIT_EVENTS.CLAW_CRASH_NOTIFY_DROPPED, `claw=${clawId}`, `err=${err instanceof Error ? err.message : String(err)}`);
+      }
     }
 
     clawPreviouslyAlive.set(clawId, currentlyAlive);
@@ -445,7 +456,7 @@ export async function runWatchdogLoop(): Promise<void> {
     
     // 2. Cron checks (disk_check moved to CronRunner in daemon.ts)
     await maybeCronClawInactivity(pm, auditWriter);
-    maybeCronClawCrash(pm);
+    maybeCronClawCrash(pm, auditWriter);
     saveWatchdogState();   // 持久化通知状态（每 tick 一次）
     
     // 3. Sleep with backoff on consecutive failures (max 5 minutes)

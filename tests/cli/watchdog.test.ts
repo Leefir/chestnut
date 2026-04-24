@@ -34,9 +34,10 @@ vi.mock('../../src/cli/commands/watchdog-utils.js', async (importOriginal) => {
   };
 });
 
-import { maybeCronClawInactivity, shutdownWatchdog, logWithAudit, setAuditWriter } from '../../src/cli/commands/watchdog.js';
+import { maybeCronClawInactivity, shutdownWatchdog, logWithAudit, setAuditWriter, maybeCronClawCrash, writeWatchdogCrash } from '../../src/cli/commands/watchdog.js';
 import { getMotionDir, loadGlobalConfig } from '../../src/cli/config.js';
-import { clawHasContract } from '../../src/cli/commands/watchdog-utils.js';
+import { clawHasContract, gatherClawSnapshot } from '../../src/cli/commands/watchdog-utils.js';
+import { InboxWriter } from '../../src/foundation/messaging/index.js';
 
 describe('maybeCronClawInactivity — fix 4: per-claw error isolation', () => {
   let tmpDir: string;
@@ -237,5 +238,101 @@ describe('shutdownWatchdog — fix 005: save state on signal', () => {
 
     exitSpy.mockRestore();
     fs.chmodSync(stateFile, 0o644);
+  });
+});
+
+
+describe('maybeCronClawCrash — crash audit', () => {
+  let tmpDir: string;
+  let clawsDir: string;
+  let mockPm: ProcessManager;
+  let mockAudit: { write: ReturnType<typeof vi.fn>; flush?: () => void };
+  let writeSyncSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    tmpDir = path.join(os.tmpdir(), `wdcrash-${randomUUID()}`);
+    const clawforumDir = path.join(tmpDir, '.clawforum');
+    clawsDir = path.join(clawforumDir, 'claws');
+    fs.mkdirSync(clawsDir, { recursive: true });
+    fs.mkdirSync(path.join(clawforumDir, 'motion', 'inbox', 'pending'), { recursive: true });
+
+    vi.mocked(getMotionDir).mockReturnValue(path.join(clawforumDir, 'motion'));
+    vi.mocked(loadGlobalConfig).mockReturnValue({} as any);
+    vi.mocked(clawHasContract).mockReturnValue(true);
+    vi.mocked(gatherClawSnapshot).mockReturnValue({
+      contract: 'c1', outboxPending: 0, inboxPending: 0, status: 'alive',
+    } as any);
+
+    mockPm = { isAlive: vi.fn(), getAliveStatus: vi.fn() } as unknown as ProcessManager;
+    mockAudit = { write: vi.fn() };
+
+    writeSyncSpy = vi.spyOn(InboxWriter.prototype, 'writeSync').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    writeSyncSpy.mockRestore();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('emits CLAW_CRASH_DETECTED when claw transitions alive→dead with contract', () => {
+    const clawId = `claw-crash-${randomUUID().slice(0, 8)}`;
+    fs.mkdirSync(path.join(clawsDir, clawId), { recursive: true });
+
+    // First call: alive=true (establish baseline)
+    vi.mocked(mockPm.isAlive).mockReturnValue(true);
+    maybeCronClawCrash(mockPm, mockAudit as any);
+
+    // Second call: alive=false (crash detected)
+    vi.mocked(mockPm.isAlive).mockReturnValue(false);
+    maybeCronClawCrash(mockPm, mockAudit as any);
+
+    expect(mockAudit.write).toHaveBeenCalledWith(
+      AUDIT_EVENTS.CLAW_CRASH_DETECTED,
+      expect.stringContaining(clawId),
+    );
+  });
+
+  it('emits CLAW_CRASH_NOTIFY_DROPPED when inbox write throws', () => {
+    const clawId = `claw-drop-${randomUUID().slice(0, 8)}`;
+    fs.mkdirSync(path.join(clawsDir, clawId), { recursive: true });
+
+    // Establish alive baseline
+    vi.mocked(mockPm.isAlive).mockReturnValue(true);
+    maybeCronClawCrash(mockPm, mockAudit as any);
+
+    // Mock InboxWriter to throw
+    writeSyncSpy.mockImplementation(() => {
+      throw new Error('disk full');
+    });
+
+    vi.mocked(mockPm.isAlive).mockReturnValue(false);
+    maybeCronClawCrash(mockPm, mockAudit as any);
+
+    expect(mockAudit.write).toHaveBeenCalledWith(
+      AUDIT_EVENTS.CLAW_CRASH_NOTIFY_DROPPED,
+      expect.stringContaining(clawId),
+      expect.stringContaining('disk full'),
+    );
+  });
+});
+
+describe('writeWatchdogCrash', () => {
+  it('writes WATCHDOG_CRASH audit when _auditWriter is set', () => {
+    const mockAudit = { write: vi.fn() };
+    setAuditWriter(mockAudit as any);
+
+    writeWatchdogCrash(new Error('test crash'));
+
+    expect(mockAudit.write).toHaveBeenCalledWith(
+      AUDIT_EVENTS.WATCHDOG_CRASH,
+      expect.stringContaining('test crash'),
+    );
+
+    setAuditWriter(null);  // cleanup
+  });
+
+  it('does not throw when _auditWriter is null', () => {
+    setAuditWriter(null);
+    expect(() => writeWatchdogCrash(new Error('no writer'))).not.toThrow();
   });
 });
