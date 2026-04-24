@@ -72,6 +72,7 @@ export interface InboxMessage {
   timestamp: string;
   contract_id?: string;
   reply_to?: string;   // For threading
+  extraMeta?: Record<string, string>;   // decode 时保存白名单外的字段
 }
 
 export interface OutboxMessage {

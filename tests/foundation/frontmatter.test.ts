@@ -10,7 +10,7 @@
  * - CRLF 支持
  */
 import { describe, it, expect } from 'vitest';
-import { parseFrontmatter } from '../../src/foundation/message-codec/index.js';
+import { parseFrontmatter, decodeInbox, encodeInbox } from '../../src/foundation/message-codec/index.js';
 
 describe('parseFrontmatter', () => {
   it('parses normal frontmatter', () => {
@@ -110,5 +110,44 @@ Body`;
     const { meta, body } = parseFrontmatter(raw);
     expect(meta.title).toBe('Test');
     expect(body).toBe('Body content');
+  });
+});
+
+
+describe('decodeInbox extraMeta（A.1/A.2/A.3）', () => {
+  // A.1: 未识别 key → extraMeta
+  it('A.1 未识别 meta key 装入 extraMeta', () => {
+    const raw = '---\nid: test-id\ntype: message\nfrom: claw-a\nto: motion\npriority: normal\ntimestamp: 2026-01-01T00:00:00.000Z\ncustom_field: hello\n---\nbody';
+    const msg = decodeInbox(raw);
+    expect(msg.extraMeta?.custom_field).toBe('hello');
+    expect((msg as any).custom_field).toBeUndefined();
+  });
+
+  // A.2: 非白名单 priority → fallback + extraMeta.__original_priority
+  it('A.2 非白名单 priority fallback normal + 原值进 extraMeta', () => {
+    const raw = '---\nid: test-id\ntype: message\nfrom: claw-a\nto: motion\npriority: urgent\ntimestamp: 2026-01-01T00:00:00.000Z\n---\nbody';
+    const msg = decodeInbox(raw);
+    expect(msg.priority).toBe('normal');
+    expect(msg.extraMeta?.__original_priority).toBe('urgent');
+  });
+
+  // A.3: 非白名单 type → fallback + extraMeta.__original_type
+  it('A.3 非白名单 type fallback message + 原值进 extraMeta', () => {
+    const raw = '---\nid: test-id\ntype: watchdog_claw_inactivity\nfrom: watchdog\nto: motion\npriority: high\ntimestamp: 2026-01-01T00:00:00.000Z\n---\nbody';
+    const msg = decodeInbox(raw);
+    expect(msg.type).toBe('message');
+    expect(msg.extraMeta?.__original_type).toBe('watchdog_claw_inactivity');
+  });
+
+  // round-trip: 普通 extraMeta 字段写出再解码
+  it('encodeInbox 写出非 __ 前缀 extraMeta 字段', () => {
+    const msg = {
+      id: 'test-id', type: 'message' as const, from: 'claw-a', to: 'motion',
+      content: 'hello', priority: 'normal' as const, timestamp: '2026-01-01T00:00:00.000Z',
+      extraMeta: { custom_field: 'world' },
+    };
+    const encoded = encodeInbox(msg);
+    const decoded = decodeInbox(encoded);
+    expect(decoded.extraMeta?.custom_field).toBe('world');
   });
 });

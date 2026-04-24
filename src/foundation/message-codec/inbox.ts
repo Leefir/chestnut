@@ -49,6 +49,19 @@ export function encodeInbox(
     }
   }
 
+  // Write out extraMeta fields (non __-prefixed), extraFields takes precedence
+  if (msg.extraMeta) {
+    const reservedAndExtra = new Set([
+      'id', 'type', 'from', 'to', 'priority', 'timestamp',
+      ...(extraFields ? Object.keys(extraFields) : []),
+    ]);
+    for (const [k, v] of Object.entries(msg.extraMeta)) {
+      if (!reservedAndExtra.has(k) && !k.startsWith('__')) {
+        lines.push(`${k}: ${yamlQuote(v)}`);
+      }
+    }
+  }
+
   lines.push('---', '', msg.content, '');
   return lines.join('\n');
 }
@@ -65,14 +78,40 @@ export function decodeInbox(raw: string): InboxMessage {
 
   const { meta, body } = parseFrontmatter(raw);
 
+  const knownKeys = new Set(['id', 'type', 'from', 'source', 'to', 'content',
+    'priority', 'timestamp', 'contract_id', 'claw_id', 'reply_to']);
+
+  // A.1: 收集未识别字段
+  const extraMeta: Record<string, string> = {};
+  for (const [k, v] of Object.entries(meta)) {
+    if (!knownKeys.has(k)) {
+      extraMeta[k] = v;
+    }
+  }
+
+  // A.2: priority 违规原值保存
+  const rawPriority = meta.priority;
+  const priority = validatePriority(rawPriority);
+  if (rawPriority !== undefined && priority !== rawPriority) {
+    extraMeta.__original_priority = rawPriority;
+  }
+
+  // A.3: type 违规原值保存
+  const rawType = meta.type;
+  const type = validateType(rawType);
+  if (rawType !== undefined && type !== rawType) {
+    extraMeta.__original_type = rawType;
+  }
+
   return {
     id: meta.id ?? randomUUID(),
-    type: validateType(meta.type),
+    type,
     from: meta.from ?? meta.source ?? 'unknown',
     to: meta.to ?? '',
     content: body,
-    priority: validatePriority(meta.priority),
+    priority,
     timestamp: meta.timestamp ?? new Date().toISOString(),
     contract_id: meta.claw_id ?? meta.contract_id,
+    ...(Object.keys(extraMeta).length > 0 ? { extraMeta } : {}),
   };
 }

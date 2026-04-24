@@ -60,15 +60,15 @@ describe('validateType', () => {
     expect(validateType('claw_outbox')).toBe('claw_outbox');
   });
 
-  it('watchdog_ 前缀类型原样透传', () => {
-    expect(validateType('watchdog_ping')).toBe('watchdog_ping');
-    expect(validateType('watchdog_')).toBe('watchdog_');
-    expect(validateType('watchdog_complex_name')).toBe('watchdog_complex_name');
+  it('watchdog_ 前缀类型强白名单降级为 message', () => {
+    expect(validateType('watchdog_ping')).toBe('message');
+    expect(validateType('watchdog_')).toBe('message');
+    expect(validateType('watchdog_complex_name')).toBe('message');
   });
 
-  it('未知字符串原样透传', () => {
-    expect(validateType('unknown_event')).toBe('unknown_event');
-    expect(validateType('HEARTBEAT')).toBe('HEARTBEAT');
+  it('未知字符串降级为 message', () => {
+    expect(validateType('unknown_event')).toBe('message');
+    expect(validateType('HEARTBEAT')).toBe('message');
   });
 
   it('非字符串输入降级为 message', () => {

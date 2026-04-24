@@ -20,6 +20,8 @@ export function validatePriority(value: unknown): Priority {
 }
 
 export function validateType(value: unknown): InboxMessage['type'] {
-  if (typeof value !== 'string') return 'message';
-  return value;
+  if (typeof value === 'string' && VALID_TYPES.includes(value)) {
+    return value as InboxMessage['type'];
+  }
+  return 'message';
 }
