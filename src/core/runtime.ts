@@ -392,7 +392,7 @@ export class ClawRuntime {
       this.auditWriter.write(
         'inbox_inject',
         `file=${path.basename(filePath)}`,
-        `type=${message.type}`,
+        `type=${message.extraMeta?.__original_type ?? message.type}`,
         `from=${message.from}`,
         `to=${message.to || this.options.clawId}`,
         `pri=${message.priority}`,
@@ -402,7 +402,7 @@ export class ClawRuntime {
       this.auditWriter.write(
         'inbox_unaddressed',
         `file=${path.basename(filePath)}`,
-        `type=${message.type}`,
+        `type=${message.extraMeta?.__original_type ?? message.type}`,
         `from=${message.from}`,
         `to=${message.to}`,
       );

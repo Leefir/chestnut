@@ -988,6 +988,42 @@ Test message`;
       expect(userMsg?.content).toContain('2h ago');
     });
 
+    it('inbox_inject audit 日志对 watchdog 消息显示原始 type（B.p257-1）', async () => {
+      const runtime = await makeRuntime();
+      const pendingDir = path.join(clawDir, 'inbox', 'pending');
+
+      // watchdog 发来的消息：type 为 watchdog_claw_inactivity（白名单外）
+      // decodeInbox 后 type='message', extraMeta.__original_type='watchdog_claw_inactivity'
+      await writePendingMsg(
+        pendingDir,
+        'watchdog-msg.md',
+        [
+          '---',
+          'id: wd-001',
+          'type: watchdog_claw_inactivity',  // 白名单外，decode 后变 message
+          'from: watchdog',
+          `to: test-claw`,
+          'priority: high',
+          `timestamp: ${new Date().toISOString()}`,
+          '---',
+          '',
+          'Claw inactive',
+        ].join('\n'),
+      );
+
+      const mockLLM = createMockLLM([{ role: 'assistant', content: 'ok' }]);
+      (runtime as unknown as { llm: typeof mockLLM }).llm = mockLLM;
+
+      await runtime.processBatch();
+
+      const auditLog = await fs.readFile(path.join(clawDir, 'audit.tsv'), 'utf-8');
+      const entries = auditLog.trim().split('\n').map(line => line.split('\t'));
+      const injectEntry = entries.find((e: string[]) => e[1] === 'inbox_inject');
+      expect(injectEntry).toBeDefined();
+      // 原始 type 应在 audit 日志中可见，不应是 'message'
+      expect(injectEntry!.some((col: string) => col === 'type=watchdog_claw_inactivity')).toBe(true);
+    });
+
     // Note: "timestamp missing" test removed because decodeInbox always fills a default
     // timestamp, so this edge case no longer exists on the InboxReader path.
   });
