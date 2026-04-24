@@ -126,6 +126,7 @@ export const AUDIT_EVENTS = {
   TASK_HANDLER_FAILED: 'task_handler_failed',
   TASK_RESULT_WRITE_FAILED: 'task_result_write_failed',
   TASK_INBOX_WRITE_FAILED: 'task_inbox_write_failed',
+  TASK_SHUTDOWN_TIMEOUT: 'task_shutdown_timeout',
   TASK_MOVE_FAILED: 'task_move_failed',
   TASK_CANCELLED: 'task_cancelled',
   TOOL_TASK_RETRY: 'tool_task_retry',

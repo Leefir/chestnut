@@ -1024,6 +1024,7 @@ export class TaskSystem {
         new Promise((_, reject) => setTimeout(() => reject(new Error('Shutdown timeout')), timeoutMs)),
       ]).catch(() => {
         // Timeout is acceptable
+        this.auditWriter?.write(AUDIT_EVENTS.TASK_SHUTDOWN_TIMEOUT);
         console.warn('[task] Shutdown timeout, some tasks may not have stopped');
       });
     }

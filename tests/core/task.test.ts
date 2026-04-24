@@ -504,6 +504,57 @@ describe('Task System + SubAgent', () => {
       expect(content).toContain(taskId);
       expect(content).toContain('is_error');
     });
+
+    it('should write TASK_SHUTDOWN_TIMEOUT audit event when shutdown times out', async () => {
+      await taskSystem.shutdown(100);
+      const { audit, events } = makeAudit();
+      taskSystem = createTestTaskSystem(tempDir, mockFs, audit, createHangingMockLLM());
+      await taskSystem.initialize();
+      taskSystem.startDispatch();
+
+      const taskId = await taskSystem.scheduleSubAgent({
+        kind: 'subagent',
+        prompt: 'Hanging task',
+        tools: [],
+        timeout: 60,
+        maxSteps: 5,
+        parentClawId: 'test-claw',
+      });
+
+      // Wait for task to be dispatched to running
+      await waitFor(() => taskSystem.listRunning().includes(taskId));
+
+      // Shutdown with 1ms timeout to force timeout path
+      await taskSystem.shutdown(1);
+
+      expect(events).toEqual(
+        expect.arrayContaining([
+          expect.arrayContaining([AUDIT_EVENTS.TASK_SHUTDOWN_TIMEOUT]),
+        ])
+      );
+    });
+
+    it('should not throw when shutdown times out with null auditWriter', async () => {
+      await taskSystem.shutdown(100);
+      taskSystem = createTestTaskSystem(tempDir, mockFs, null as any, createHangingMockLLM());
+      await taskSystem.initialize();
+      taskSystem.startDispatch();
+
+      const taskId = await taskSystem.scheduleSubAgent({
+        kind: 'subagent',
+        prompt: 'Hanging task',
+        tools: [],
+        timeout: 60,
+        maxSteps: 5,
+        parentClawId: 'test-claw',
+      });
+
+      // Wait for task to be dispatched to running
+      await waitFor(() => taskSystem.listRunning().includes(taskId));
+
+      // Should not throw even with null auditWriter
+      await expect(taskSystem.shutdown(1)).resolves.not.toThrow();
+    });
   });
 
   describe('SubAgent', () => {
