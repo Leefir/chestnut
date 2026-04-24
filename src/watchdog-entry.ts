@@ -1,2 +1,2 @@
-import { daemonCommand as watchdogDaemonCommand } from './cli/commands/watchdog.js';
-await watchdogDaemonCommand();
+import { runWatchdogLoop } from './cli/commands/watchdog.js';
+await runWatchdogLoop();

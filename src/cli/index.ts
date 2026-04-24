@@ -34,7 +34,7 @@ import { skillInstallUserCommand, skillInstallClawCommand } from './commands/ski
 import {
   startCommand as watchdogStartCommand,
   stopCommand as watchdogStopCommand,
-  daemonCommand as watchdogDaemonCommand,
+  runWatchdogLoop,
 } from './commands/watchdog.js';
 import { configCommand } from './commands/config.js';
 import { stopAllCommand } from './commands/stop.js';
@@ -472,7 +472,7 @@ watchdogCmd
   .description('Run watchdog daemon (internal)')
   .action(async () => {
     try {
-      await watchdogDaemonCommand();
+      await runWatchdogLoop();
     } catch (error) {
       process.exitCode = handleCliError(error);
     }

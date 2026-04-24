@@ -332,7 +332,7 @@ function maybeCronClawCrash(pm: ProcessManager): void {
 }
 
 // Daemon main loop
-export async function daemonCommand(): Promise<void> {
+export async function runWatchdogLoop(): Promise<void> {
   log('[watchdog] Daemon starting...');
   
   writeWatchdogPid(process.pid);
