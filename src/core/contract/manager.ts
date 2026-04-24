@@ -18,7 +18,7 @@ import { ProcessExecError } from '../../foundation/process-exec/index.js';
 import { LOCK_MAX_RETRIES, LOCK_RETRY_DELAY_MS, LOCK_STALE_TIMEOUT_MS, CONTRACT_SCRIPT_TIMEOUT_MS, DEFAULT_LLM_IDLE_TIMEOUT_MS, DEFAULT_MAX_STEPS } from '../../constants.js';
 import { CONTRACT_VERIFIER_SYSTEM_PROMPT } from '../../prompts/subagent.js';
 import { InboxWriter } from '../../foundation/messaging/index.js';
-import { createSubAgent } from '../subagent/index.js';
+import { createSubAgent, NoopStreamWriter, NoopAuditWriter } from '../subagent/index.js';
 import { ToolRegistryImpl } from '../tools/registry.js';
 import { buildRetroPrompt } from '../../prompts/retrospective.js';
 import { writePendingSubagentTaskFile } from '../tools/builtins/_pending-task-writer.js';
@@ -1203,6 +1203,8 @@ export class ContractManager {
           );
         },
         systemPrompt: CONTRACT_VERIFIER_SYSTEM_PROMPT,
+        taskStreamWriter: new NoopStreamWriter(),
+        auditWriter: new NoopAuditWriter(),
       });
 
       // Run verification

@@ -20,6 +20,7 @@ import type { OutboxWriter } from '../../foundation/messaging/index.js';
 import type { ContractManager } from '../contract/manager.js';
 import type { SkillRegistry } from '../skill/registry.js';
 import type { Message } from '../../types/message.js';
+import type { Audit } from '../../foundation/audit/index.js';
 import type { AuditWriter } from '../../foundation/audit/writer.js';
 import { AUDIT_EVENTS } from '../../foundation/audit/events.js';
 import type { StreamLog } from '../../foundation/stream/types.js';
@@ -50,8 +51,8 @@ export interface SubAgentOptions {
   subagentMaxSteps?: number;                 // 传给子 SubAgent
   messages?: Message[];                      // 若提供，直接用；否则从 prompt 构建
   originClawId?: string;                     // 创建链路源头，传给子 SubAgent
-  taskStreamWriter?: StreamLog;
-  auditWriter?: AuditWriter;   // tasks/results/{id}/audit.tsv，step 11+ 写事件
+  taskStreamWriter: StreamLog;
+  auditWriter: Audit;          // tasks/results/{id}/audit.tsv，step 11+ 写事件
 }
 
 export class SubAgent {
@@ -80,8 +81,8 @@ export class SubAgent {
   private subagentMaxSteps?: number;
   private messages?: Message[];
   private originClawId?: string;
-  private taskStreamWriter?: StreamLog;
-  private auditWriter?: AuditWriter;
+  private taskStreamWriter: StreamLog;
+  private auditWriter: Audit;
 
   constructor(options: SubAgentOptions) {
     this.agentId = options.agentId;
@@ -152,8 +153,8 @@ export class SubAgent {
     let turnEnded = false;
 
     // Turn start: written before any potentially-throwing init so catch always pairs it
-    sw?.write({ ts: Date.now(), type: 'turn_start' });
-    this.auditWriter?.write('turn_start');
+    sw.write({ ts: Date.now(), type: 'turn_start' });
+    this.auditWriter.write('turn_start');
 
     try {
       const callerType = this.callerType ?? 'subagent';
@@ -215,7 +216,7 @@ export class SubAgent {
       timeoutPromise.catch(() => {}); // 防止 race 胜出后的孤立 rejection
 
       // Stream writer callbacks for per-task stream.jsonl
-      const streamCallbacks = sw ? {
+      const streamCallbacks = {
         onBeforeLLMCall: () => {
           sw.write({ ts: Date.now(), type: 'llm_start' });
         },
@@ -242,13 +243,13 @@ export class SubAgent {
             step: step + 1,
             maxSteps,
           });
-          this.auditWriter?.write(
+          this.auditWriter.write(
             'tool_result', name, toolUseId,
             result.success ? 'ok' : 'err',
             `summary=${oneLine(result.content ?? '')}`,
           );
         },
-      } : {};
+      };
 
       const result = await Promise.race([
         runReact({
@@ -266,7 +267,6 @@ export class SubAgent {
           registry: this.registry,  // Enable parallel execution for readonly tools
           tools,                    // Enable native tool_use
           onLLMResult: (info) => {
-            if (!this.auditWriter) return;
             if (info.error) {
               this.auditWriter.write('llm_error', info.model, `err=${info.error}`, `ms=${info.latencyMs}`);
             } else {
@@ -335,8 +335,8 @@ export class SubAgent {
         );
       }
 
-      sw?.write({ ts: Date.now(), type: 'turn_end' });
-      this.auditWriter?.write('turn_end');
+      sw.write({ ts: Date.now(), type: 'turn_end' });
+      this.auditWriter.write('turn_end');
       turnEnded = true;
 
       // Extract final text result
@@ -347,11 +347,11 @@ export class SubAgent {
       await this.appendToLog(`=== Error: ${errMsg} ===\n`);
 
       if (error instanceof ToolTimeoutError) {
-        sw?.write({ ts: Date.now(), type: 'turn_interrupted', message: `Timeout after ${this.timeoutMs}ms` });
-        this.auditWriter?.write('turn_interrupted', 'reason=system');
+        sw.write({ ts: Date.now(), type: 'turn_interrupted', message: `Timeout after ${this.timeoutMs}ms` });
+        this.auditWriter.write('turn_interrupted', 'reason=system');
       } else {
-        sw?.write({ ts: Date.now(), type: 'turn_error', error: errMsg });
-        this.auditWriter?.write('turn_error', `err=${errMsg}`);
+        sw.write({ ts: Date.now(), type: 'turn_error', error: errMsg });
+        this.auditWriter.write('turn_error', `err=${errMsg}`);
       }
       turnEnded = true;
 
@@ -362,8 +362,8 @@ export class SubAgent {
       clearTimeout(idleTimerId);
       // Safety net: write turn_end only if no specific turn end event was already written
       if (!turnEnded) {
-        sw?.write({ ts: Date.now(), type: 'turn_end' });
-        this.auditWriter?.write('turn_end');
+        sw.write({ ts: Date.now(), type: 'turn_end' });
+        this.auditWriter.write('turn_end');
       }
     }
   }

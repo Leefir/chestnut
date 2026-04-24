@@ -4,6 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SubAgent } from '../../src/core/subagent/agent.js';
+import { NoopStreamWriter, NoopAuditWriter } from '../../src/core/subagent/noop-writers.js';
 import type { FileSystem } from '../../src/foundation/fs/types.js';
 import type { Logger } from '../../src/foundation/monitor/types.js';
 import type { LLMService } from '../../src/foundation/llm/index.js';
@@ -87,6 +88,8 @@ function makeSubAgent(
       monitor: mockMonitor,
       audit: mockAudit as any,
       maxSteps: 5,
+      taskStreamWriter: new NoopStreamWriter(),
+      auditWriter: new NoopAuditWriter(),
     }),
     mockFs,
     mockMonitor,

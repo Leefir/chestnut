@@ -10,6 +10,7 @@ import { randomUUID } from 'crypto';
 
 import { TaskSystem } from '../../src/core/task/system.js';
 import { SubAgent } from '../../src/core/subagent/agent.js';
+import { NoopStreamWriter, NoopAuditWriter } from '../../src/core/subagent/noop-writers.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import { ToolRegistryImpl } from '../../src/core/tools/registry.js';
 import { registerBuiltinTools } from '../../src/core/tools/builtins/index.js';
@@ -573,6 +574,8 @@ describe('Task System + SubAgent', () => {
         fs: mockFs,
         maxSteps: 10,
         timeoutMs: 5000,
+        taskStreamWriter: new NoopStreamWriter(),
+        auditWriter: new NoopAuditWriter(),
       });
 
       const result = await agent.run();
@@ -607,6 +610,8 @@ describe('Task System + SubAgent', () => {
         fs: mockFs,
         maxSteps: 10,
         timeoutMs: 5000,
+        taskStreamWriter: new NoopStreamWriter(),
+        auditWriter: new NoopAuditWriter(),
       });
 
       const result = await agent.run();
@@ -639,6 +644,8 @@ describe('Task System + SubAgent', () => {
         fs: mockFs,
         maxSteps: 10,
         timeoutMs: 5000,
+        taskStreamWriter: new NoopStreamWriter(),
+        auditWriter: new NoopAuditWriter(),
       });
 
       const result = await agent.run();
@@ -681,6 +688,8 @@ describe('Task System + SubAgent', () => {
         fs: mockFs,
         maxSteps: 10,
         timeoutMs: 100, // Very short timeout
+        taskStreamWriter: new NoopStreamWriter(),
+        auditWriter: new NoopAuditWriter(),
       });
 
       await expect(agent.run()).rejects.toThrow();
@@ -709,6 +718,8 @@ describe('Task System + SubAgent', () => {
         timeoutMs: 10000, // main timeout is long
         idleTimeoutMs: 100, // idle timeout is short
         onIdleTimeout,
+        taskStreamWriter: new NoopStreamWriter(),
+        auditWriter: new NoopAuditWriter(),
       });
 
       const runPromise = agent.run().catch(() => {}); // 预期抛 ToolTimeoutError
@@ -739,6 +750,8 @@ describe('Task System + SubAgent', () => {
         registry,
         fs: throwingFs,
         audit: mockAudit as any,
+        taskStreamWriter: new NoopStreamWriter(),
+        auditWriter: new NoopAuditWriter(),
       });
 
       // run 应该正常完成，appendToLog 失败不影响主流程

@@ -3,6 +3,7 @@
  */
 
 export { SubAgent, type SubAgentOptions } from './agent.js';
+export { NoopStreamWriter, NoopAuditWriter } from './noop-writers.js';
 
 import { SubAgent } from './agent.js';
 import type { SubAgentOptions } from './agent.js';

@@ -19,7 +19,7 @@ import type { SkillRegistry } from '../skill/registry.js';
 import type { ContractManager } from '../contract/manager.js';
 import type { OutboxWriter } from '../../foundation/messaging/index.js';
 import type { Message } from '../../types/message.js';
-import type { AuditWriter } from '../../foundation/audit/writer.js';
+import type { Audit } from '../../foundation/audit/index.js';
 import type { CallerType } from './caller-type.js';
 
 /**
@@ -79,7 +79,7 @@ export interface ExecContextImplOptions {
   /** 创建链路的源头 clawId，由 dispatch/spawn 传播 */
   originClawId?: string;
   /** Audit writer for tool events */
-  auditWriter?: AuditWriter;
+  auditWriter?: Audit;
 }
 
 /**
@@ -104,7 +104,7 @@ export class ExecContextImpl implements ExecContext {
   outboxWriter?: OutboxWriter;
   dialogMessages?: Message[];
   originClawId?: string;
-  auditWriter?: AuditWriter;
+  auditWriter?: Audit;
   
   private startTime: number;
 

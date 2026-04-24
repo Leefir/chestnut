@@ -18,7 +18,7 @@ import type { Message } from '../../types/message.js';
 import type { ContractManager } from '../contract/manager.js';
 import type { CallerType } from './caller-type.js';
 import type { SkillRegistry } from '../skill/registry.js';
-import type { AuditWriter } from '../../foundation/audit/writer.js';
+import type { Audit } from '../../foundation/audit/index.js';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import {
@@ -90,7 +90,7 @@ export interface ExecContext {
   getElapsedMs(): number;
   incrementStep(): void;
   /** Audit writer for tool events */
-  auditWriter?: AuditWriter;
+  auditWriter?: Audit;
 }
 
 /**
@@ -356,7 +356,7 @@ export interface ToolExecutorOptions {
   contractManager?: ContractManager;
   skillRegistry?: SkillRegistry;
   subagentMaxSteps?: number;
-  auditWriter?: AuditWriter;
+  auditWriter?: Audit;
 }
 
 /**
@@ -375,7 +375,7 @@ export class ToolExecutor extends ToolExecutorImpl {
   private contractManager?: ContractManager;
   private skillRegistry?: SkillRegistry;
   private subagentMaxSteps?: number;
-  private auditWriter?: AuditWriter;
+  private auditWriter?: Audit;
 
   constructor(options: ToolExecutorOptions) {
     super(options.registry);
