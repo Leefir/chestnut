@@ -57,6 +57,7 @@ export const AUDIT_EVENTS = {
   // --- Messaging ---
   INBOX_DONE: 'inbox_done',
   INBOX_WRITTEN: 'inbox_written',
+  INBOX_WRITE_FAILED: 'inbox_write_failed',
   INBOX_FAILED: 'inbox_failed',
   INBOX_LIST_FAILED: 'inbox_list_failed',
   INBOX_MOVE_FAILED: 'inbox_move_failed',

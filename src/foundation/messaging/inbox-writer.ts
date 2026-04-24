@@ -44,7 +44,7 @@ export class InboxWriter {
       await this.fs.writeAtomic(filePath, encodeInbox(msg, extraFields));
     } catch (e) {
       const reason = e instanceof Error ? e.message : String(e);
-      this.audit.write('inbox_write_failed', `file=${filename}`, `to=${msg.to ?? 'broadcast'}`, `reason=${reason}`);
+      this.audit.write(AUDIT_EVENTS.INBOX_WRITE_FAILED, `file=${filename}`, `to=${msg.to ?? 'broadcast'}`, `reason=${reason}`);
       throw e;
     }
     this.audit.write(AUDIT_EVENTS.INBOX_WRITTEN, `file=${filename}`, `to=${msg.to ?? 'broadcast'}`);
@@ -75,7 +75,7 @@ export class InboxWriter {
       this.fs.writeAtomicSync(path.join(this.inboxDir, filename), content);
     } catch (e) {
       const reason = e instanceof Error ? e.message : String(e);
-      this.audit.write('inbox_write_failed', `file=${filename}`, `to=${opts.to ?? 'broadcast'}`, `reason=${reason}`);
+      this.audit.write(AUDIT_EVENTS.INBOX_WRITE_FAILED, `file=${filename}`, `to=${opts.to ?? 'broadcast'}`, `reason=${reason}`);
       throw e;
     }
     this.audit.write(AUDIT_EVENTS.INBOX_WRITTEN, `file=${filename}`, `to=${opts.to ?? 'broadcast'}`);
