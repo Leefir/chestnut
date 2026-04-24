@@ -98,6 +98,8 @@ export class OpenAIAdapter implements ProviderAdapter {
   private readonly config: ProviderConfig;
   private readonly baseUrl: string;
   
+  onStreamParseError?: (event: { provider: string; raw: string; error: string }) => void;
+  
   constructor(config: ProviderConfig) {
     this.config = config;
     this.name = config.name;

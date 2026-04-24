@@ -26,6 +26,8 @@ export abstract class BaseAnthropicAdapter implements ProviderAdapter {
   abstract call(options: LLMCallOptions): Promise<LLMResponse>;
   abstract stream?(options: LLMCallOptions): AsyncIterableIterator<StreamChunk>;
 
+  onStreamParseError?: (event: { provider: string; raw: string; error: string }) => void;
+
   /**
    * Build base request body without thinking section (subclasses add thinking).
    */

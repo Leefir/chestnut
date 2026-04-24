@@ -318,6 +318,7 @@ export function buildLLMConfig(
     fallbacks: fallbackList.map(toProviderConfig),
     maxAttempts: globalConfig.llm.retry_attempts,
     retryDelayMs: globalConfig.llm.retry_delay_ms,
+    events: { emit: () => {} },  // default noop; assembly layer overrides with real sink
     circuitBreaker: cb ? {
       failureThreshold: cb.failure_threshold,
       resetTimeoutMs: cb.reset_timeout_ms,
