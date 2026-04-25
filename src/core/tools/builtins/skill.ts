@@ -6,7 +6,7 @@
  */
 
 import type { Tool, ToolResult, ExecContext } from '../executor.js';
-import { SkillRegistry } from '../../skill/registry.js';
+import { createSkillRegistry, type SkillRegistry } from '../../skill/index.js';
 
 /**
  * Skill tool implementation
@@ -39,7 +39,7 @@ export const skillTool: Tool & { skillRegistry?: SkillRegistry } = {
     // Load from custom skills directory if specified (e.g., dispatch templates)
     if (args.skillsDir) {
       try {
-        const tempRegistry = new SkillRegistry(ctx.fs, String(args.skillsDir));
+        const tempRegistry = createSkillRegistry(ctx.fs, String(args.skillsDir));
         await tempRegistry.loadAll();
         const content = await tempRegistry.loadFull(name);
         return { success: true, content, metadata: { skillName: name } };
