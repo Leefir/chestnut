@@ -198,6 +198,10 @@ export const AUDIT_EVENTS = {
   // --- Runtime ---
   RUNTIME_PROCESS_BATCH_FAILED: 'runtime_process_batch_failed',
 
+  // --- LLM Response anomalies ---
+  LLM_EMPTY_RESPONSE: 'llm_empty_response',
+  LLM_UNKNOWN_STOP_REASON: 'llm_unknown_stop_reason',
+
   // --- LLM Service (Phase 254) ---
   LLM_PROVIDER_ATTEMPT_FAILED: 'llm_provider_attempt_failed',
   LLM_RETRY_SCHEDULED: 'llm_retry_scheduled',

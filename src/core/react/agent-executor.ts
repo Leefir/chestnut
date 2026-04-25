@@ -11,7 +11,7 @@ import type { LLMService } from '../../foundation/llm/index.js';
 import type { IToolExecutor, ExecContext, ToolRegistry } from '../tools/executor.js';
 import type { SessionManager } from '../../foundation/session-store/index.js';
 import { executeStep, type StepCallbacks, type StepMeta, throwAbortError } from './step-executor.js';
-import { MaxStepsExceededError } from '../../types/errors.js';
+import { MaxStepsExceededError, ConsecutiveParseErrorsExceededError, ConsecutiveMaxTokensToolUseError } from '../../types/errors.js';
 import { MAX_CONSECUTIVE_PARSE_ERRORS, MAX_CONSECUTIVE_MAX_TOKENS_TOOL_USE } from '../../constants.js';
 
 export interface AgentInput {
@@ -99,9 +99,7 @@ export async function runAgent(input: AgentInput): Promise<AgentResult> {
                 .map(b => b.name)
                 .join(', ')
             : '';
-          throw new Error(
-            `工具输入 JSON 连续解析失败 ${MAX_CONSECUTIVE_PARSE_ERRORS} 次（工具: ${toolNames}），终止执行`
-          );
+          throw new ConsecutiveParseErrorsExceededError(MAX_CONSECUTIVE_PARSE_ERRORS, toolNames);
         }
       } else {
         consecutiveParseErrors = 0;
@@ -119,9 +117,7 @@ export async function runAgent(input: AgentInput): Promise<AgentResult> {
     if (result.kind === 'max_tokens_tool_use') {
       consecutiveMaxTokensToolUse++;
       if (consecutiveMaxTokensToolUse >= MAX_CONSECUTIVE_MAX_TOKENS_TOOL_USE) {
-        throw new Error(
-          `LLM 连续 ${MAX_CONSECUTIVE_MAX_TOKENS_TOOL_USE} 次 max_tokens 截断 tool_use，终止执行。请减少 system prompt 或 tool schema 体积。`
-        );
+        throw new ConsecutiveMaxTokensToolUseError(MAX_CONSECUTIVE_MAX_TOKENS_TOOL_USE);
       }
       // 不 stepCount++、不 save、不 onAfterStep
       continue;

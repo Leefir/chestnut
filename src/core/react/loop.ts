@@ -33,6 +33,8 @@ export interface ReactOptions {
   onReset?: (provider: string, timeoutMs: number) => void;
   onProviderFailed?: (provider: string, model: string, error: string) => void;
   onLLMResult?: (info: LLMCallInfo) => void;
+  onEmptyResponse?: (stopReason: string) => void;
+  onUnknownStopReason?: (stopReason: string) => void;
 }
 
 export interface ReactResult {
@@ -51,6 +53,7 @@ export async function runReact(options: ReactOptions): Promise<ReactResult> {
     registry,
     onTextDelta, onTextEnd, onThinkingDelta,
     onReset, onProviderFailed, onLLMResult,
+    onEmptyResponse, onUnknownStopReason,
   } = options;
 
   // 用闭包捕获 stepCount（适配旧 onToolResult 签名的 step/maxSteps 参数）
@@ -68,6 +71,8 @@ export async function runReact(options: ReactOptions): Promise<ReactResult> {
       : undefined,
     onReset,
     onProviderFailed,
+    onEmptyResponse,
+    onUnknownStopReason,
   };
 
   const result = await runAgent({

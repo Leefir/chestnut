@@ -34,6 +34,8 @@ export interface StepCallbacks {
   onToolResult?: (toolName: string, toolUseId: string, result: ToolResult) => void;
   onReset?: (provider: string, timeoutMs: number) => void;
   onProviderFailed?: (provider: string, model: string, error: string) => void;
+  onEmptyResponse?: (stopReason: string) => void;
+  onUnknownStopReason?: (stopReason: string) => void;
 }
 
 export interface StepInput {
@@ -113,7 +115,11 @@ export async function executeStep(input: StepInput): Promise<StepResult> {
   callbacks?.onLLMResult?.(llmInfo);
 
   if (response.content.length === 0) {
-    console.warn(`[step-executor] LLM returned empty response (stop_reason=${response.stop_reason})`);
+    if (callbacks?.onEmptyResponse) {
+      callbacks.onEmptyResponse(response.stop_reason);
+    } else {
+      console.warn(`[step-executor] LLM returned empty response (stop_reason=${response.stop_reason})`);
+    }
   }
 
   // ── tool_use ──
@@ -204,7 +210,11 @@ export async function executeStep(input: StepInput): Promise<StepResult> {
   }
 
   // ── unknown ──
-  console.warn(`[step-executor] Unknown stop_reason: "${response.stop_reason}", treating as end_turn`);
+  if (callbacks?.onUnknownStopReason) {
+    callbacks.onUnknownStopReason(response.stop_reason);
+  } else {
+    console.warn(`[step-executor] Unknown stop_reason: "${response.stop_reason}", treating as end_turn`);
+  }
   const text = extractText(response.content);
   appendAssistantMessage(messages, response.content);
   return { kind: 'final', stopReason: 'unknown', finalText: text };
