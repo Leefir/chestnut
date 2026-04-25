@@ -1,4 +1,14 @@
 /**
+ * @module L6a.Watchdog
+ * @layer L6a 应用层（Watchdog 守护进程）
+ * @depends L1.FileSystem, L2.AuditLog, L2.Messaging, L2.ProcessManager, L6b.CLI
+ * @consumers L6b.CLI（spawn）
+ * @contract design/modules/l6_watchdog.md
+ *
+ * Watchdog 守护进程 — 每 30s 检查 motion 存活 / 内建简易 cron。
+ */
+
+/**
  * Watchdog daemon
  * Checks motion liveness every 30s, with a built-in simple cron
  */

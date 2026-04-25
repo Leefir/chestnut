@@ -1,4 +1,14 @@
 /**
+ * @module L6a.DaemonLoop
+ * @layer L6a 应用层（Daemon 事件循环）
+ * @depends L1.FileSystem, L2.AuditLog, L2.FileWatcher, L2.Stream, L2.Messaging, L5.Runtime
+ * @consumers L6a.Daemon
+ * @contract design/modules/l6_daemon.md
+ *
+ * 通用 daemon 事件循环 — motion 和 claw 共用。
+ */
+
+/**
  * Generic daemon event loop
  * Shared by both motion and claw
  */
