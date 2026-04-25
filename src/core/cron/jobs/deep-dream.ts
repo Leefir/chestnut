@@ -4,7 +4,7 @@ import type { FileSystem } from '../../../foundation/fs/types.js';
 import type { Audit } from '../../../foundation/audit/index.js';
 import { LLMServiceImpl } from '../../../foundation/llm/service.js';
 import type { LLMServiceConfig } from '../../../foundation/llm/types.js';
-import { createLLMAuditSink } from '../../../assembly/llm-audit-sink.js';
+import { createLLMAuditSink } from '../../../foundation/llm/index.js';
 import type { Message, ContentBlock, TextBlock, LLMResponse } from '../../../types/message.js';
 import { InboxWriter } from '../../../foundation/messaging/index.js';
 import { AuditWriter } from '../../../foundation/audit/index.js';
