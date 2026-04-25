@@ -129,6 +129,7 @@ export async function executeStep(input: StepInput): Promise<StepResult> {
     if (toolCalls.length === 0) {
       const text = extractText(response.content);
       appendAssistantMessage(messages, response.content);
+      console.warn(`[step-executor] LLM returned tool_use stop_reason but no parseable tool calls, treating as no_tool`);
       return { kind: 'final', stopReason: 'no_tool', finalText: text };
     }
     appendAssistantMessage(messages, response.content);
