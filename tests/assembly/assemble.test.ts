@@ -625,7 +625,7 @@ describe('assemble', () => {
       await assemble(baseConfig);
 
       const required = [
-        'JsonlLogger', 'LLMServiceImpl', 'ToolRegistryImpl',
+        'LLMServiceImpl', 'ToolRegistryImpl',
         'SkillRegistry', 'ContractManager',
         'TaskSystem', 'ContextInjector', 'ExecContextImpl', 'ToolExecutorImpl',
       ];
@@ -697,14 +697,6 @@ describe('assemble', () => {
       expect(thrown).toBeDefined();
       return { events, thrown: thrown!, auditTs, throwTs };
     }
-
-    it('monitor construct failure → audit module=monitor phase=construct + throw', async () => {
-      const { events, thrown } = await expectAssembleFailure(
-        '../../src/foundation/monitor/monitor.js', 'JsonlLogger', 'ctor',
-      );
-      expect(events.some(e => /^assemble_failed\tmodule=monitor\tphase=construct\treason=injected/.test(e))).toBe(true);
-      expect(thrown.message).toMatch(/JsonlLogger construct failed/);
-    });
 
     it('llm construct failure → audit module=llm phase=construct + throw', async () => {
       const { events, thrown } = await expectAssembleFailure(

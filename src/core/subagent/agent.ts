@@ -8,7 +8,6 @@ import { runReact } from '../react/loop.js';
 import { ToolExecutor } from '../tools/executor.js';
 import { ToolRegistryImpl } from '../tools/registry.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
-import type { Logger } from '../../foundation/monitor/types.js';
 import type { LLMService } from '../../foundation/llm/index.js';
 import type { ToolDefinition } from '../../types/message.js';
 import { ToolTimeoutError } from '../../types/errors.js';
@@ -34,7 +33,6 @@ export interface SubAgentOptions {
   llm: LLMService;
   registry: ToolRegistryImpl;
   fs: FileSystem;
-  monitor?: Logger;
   audit?: AuditWriter;
   maxSteps?: number;
   timeoutMs?: number;
@@ -62,7 +60,6 @@ export class SubAgent {
   private llm: LLMService;
   private registry: ToolRegistryImpl;
   private fs: FileSystem;
-  private monitor?: Logger;
   private audit?: AuditWriter;
   private maxSteps: number;
   private timeoutMs: number;
@@ -91,7 +88,6 @@ export class SubAgent {
     this.llm = options.llm;
     this.registry = options.registry;
     this.fs = options.fs;
-    this.monitor = options.monitor;
     this.audit = options.audit;
     this.maxSteps = options.maxSteps ?? DEFAULT_MAX_STEPS;
     this.timeoutMs = options.timeoutMs ?? SUBAGENT_TIMEOUT_MS; // 5 min default
@@ -164,7 +160,6 @@ export class SubAgent {
         clawDir: this.clawDir,
         fs: this.fs,
         llm: this.llm,
-        monitor: this.monitor,
         taskSystem: this.taskSystem,
         subagentMaxSteps: this.subagentMaxSteps ?? this.maxSteps,
         profile: executorProfile,

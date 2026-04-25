@@ -10,7 +10,6 @@ import * as path from 'path';
 import * as fsSync from 'fs';
 import type { FileSystem } from '../../foundation/fs/types.js';
 
-import { JsonlLogger } from '../../foundation/monitor/index.js';
 import { createSubAgent } from '../subagent/index.js';
 import { DEFAULT_LLM_IDLE_TIMEOUT_MS, DEFAULT_MAX_CONCURRENT_TASKS } from '../../constants.js';
 import { ToolRegistryImpl } from '../tools/registry.js';
@@ -84,7 +83,6 @@ interface TaskState {
 export class TaskSystem {
   private runningTasks: Map<string, TaskState> = new Map();
   private maxConcurrent: number;
-  private monitor: JsonlLogger;
   private registry: ToolRegistryImpl;
   private readonly llm: LLMService;
   private readonly skillRegistry: SkillRegistry;
@@ -135,7 +133,6 @@ export class TaskSystem {
     this.skillRegistry = options.skillRegistry;
     this.contractManager = options.contractManager;
     this.outboxWriter = options.outboxWriter;
-    this.monitor = new JsonlLogger({ logsDir: path.join(clawDir, 'logs') });
     // Create tool registry for subagents
     this.registry = new ToolRegistryImpl();
     registerBuiltinTools(this.registry);
@@ -554,7 +551,6 @@ export class TaskSystem {
         llm: this.llm,
         registry: effectiveRegistry,
         fs: this.fs,
-        monitor: this.monitor,
         maxSteps: task.maxSteps,
         timeoutMs: task.timeout * 1000,
         signal,

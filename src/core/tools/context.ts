@@ -4,12 +4,11 @@
  * Provides context for tool execution including:
  * - Identity (clawId, clawDir)
  * - Permissions based on tool profile
- * - Dependencies (fs, monitor, llm)
+ * - Dependencies (fs, llm)
  * - Execution tracking (stepNumber, elapsed time)
  */
 
 import type { FileSystem } from '../../foundation/fs/types.js';
-import type { Logger } from '../../foundation/monitor/types.js';
 import type { LLMService } from '../../foundation/llm/index.js';
 import type { ToolProfile } from '../../types/config.js';
 import type { ExecContext } from './executor.js';
@@ -38,9 +37,6 @@ export interface ExecContextImplOptions {
   
   /** File system instance */
   fs: FileSystem;
-  
-  /** Optional monitor for logging */
-  monitor?: Logger;
   
   /** Optional LLM service */
   llm?: LLMService;
@@ -74,7 +70,6 @@ export class ExecContextImpl implements ExecContext {
   profile: ToolProfile;
   callerType: CallerType;
   fs: FileSystem;
-  monitor?: Logger;
   llm?: LLMService;
   stepNumber: number;
   maxSteps: number;
@@ -92,7 +87,6 @@ export class ExecContextImpl implements ExecContext {
     this.profile = options.profile;
     this.callerType = options.callerType ?? 'claw';
     this.fs = options.fs;
-    this.monitor = options.monitor;
     this.llm = options.llm;
     this.maxSteps = options.maxSteps ?? DEFAULT_MAX_STEPS;
     this.signal = options.signal;

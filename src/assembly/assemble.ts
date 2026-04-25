@@ -13,7 +13,6 @@ import { type ClawRuntime, type RuntimeDependencies } from '../core/runtime/inde
 import { createRuntime } from '../core/runtime/index.js';
 import { createLLMService, type LLMServiceImpl } from '../foundation/llm/index.js';
 import { createLLMAuditSink } from './llm-audit-sink.js';
-import { JsonlLogger } from '../foundation/monitor/monitor.js';
 import { createToolRegistry, type ToolRegistryImpl } from '../core/tools/index.js';
 import { createToolExecutor, type ToolExecutorImpl } from '../core/tools/index.js';
 import { createSkillRegistry, SkillRegistry } from '../core/skill/index.js';
@@ -146,16 +145,6 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   const toolTimeoutMs = globalConfig.tool_timeout_ms;
   const idleTimeoutMs = globalConfig.motion?.llm_idle_timeout_ms;
 
-  // --- L3-L5: monitor ---
-  const logsDir = path.join(clawDir, 'logs');
-  let monitor: JsonlLogger;
-  try {
-    monitor = new JsonlLogger({ logsDir });
-  } catch (e) {
-    auditWriter.write('assemble_failed', `module=monitor`, `phase=construct`, `reason=${errMsg(e)}`);
-    throw new Error(`Assembly: JsonlLogger construct failed: ${errMsg(e)}`, { cause: e });
-  }
-
   // --- L3-L5: llm ---
   let llm: LLMServiceImpl;
   try {
@@ -251,7 +240,6 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       profile: toolProfile,
       callerType: 'claw',
       fs: clawFs,
-      monitor,
       llm,
       maxSteps,
       subagentMaxSteps,
@@ -343,7 +331,6 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     sessionManager,
     inboxReader,
     outboxWriter,
-    monitor,
     llm,
     toolRegistry,
     toolExecutor,

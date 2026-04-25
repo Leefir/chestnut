@@ -10,7 +10,6 @@
 import type { JSONSchema7 } from '../../types/message.js';
 import type { ToolProfile } from '../../types/config.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
-import type { Logger } from '../../foundation/monitor/types.js';
 import type { LLMService } from '../../foundation/llm/index.js';
 import type { TaskSystem } from '../task/system.js';
 import type { OutboxWriter } from '../../foundation/messaging/index.js';
@@ -64,7 +63,6 @@ export interface ExecContext {
   callerType: CallerType;
   fs: FileSystem;
   llm?: LLMService;
-  monitor?: Logger;
   profile: ToolProfile;
   stepNumber: number;
   maxSteps: number;
@@ -339,7 +337,6 @@ export interface ToolExecutorOptions {
   registry: ToolRegistry;
   clawDir: string;
   fs: FileSystem;
-  monitor?: Logger;
   llm?: LLMService;
   taskSystem?: TaskSystem;
   profile?: ToolProfile;
@@ -354,7 +351,6 @@ export interface ToolExecutorOptions {
 export class ToolExecutor extends ToolExecutorImpl {
   private clawDir: string;
   private fs: FileSystem;
-  private monitor?: Logger;
   private llm?: LLMService;
   private profile: ToolProfile;
   private subagentMaxSteps?: number;
@@ -364,7 +360,6 @@ export class ToolExecutor extends ToolExecutorImpl {
     super(options.registry);
     this.clawDir = options.clawDir;
     this.fs = options.fs;
-    this.monitor = options.monitor;
     this.llm = options.llm;
     this.taskSystem = options.taskSystem;
     this.profile = options.profile ?? 'full';
@@ -385,7 +380,6 @@ export class ToolExecutor extends ToolExecutorImpl {
       profile,
       callerType: options.callerType ?? 'claw',
       fs: this.fs,
-      monitor: this.monitor,
       llm: this.llm,
       maxSteps: options.maxSteps ?? DEFAULT_MAX_STEPS,
       signal: options.signal,

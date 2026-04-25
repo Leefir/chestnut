@@ -46,7 +46,6 @@ describe('Runtime.initialize() failure audits', () => {
 
   function minimalMocks() {
     return {
-      monitor: { close: vi.fn().mockResolvedValue(undefined) } as any,
       llm: { close: vi.fn().mockResolvedValue(undefined) } as any,
       toolRegistry: {
         register: vi.fn(),

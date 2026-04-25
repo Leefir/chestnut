@@ -6,7 +6,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SubAgent } from '../../src/core/subagent/agent.js';
 import { NoopStreamWriter, NoopAuditWriter } from '../../src/core/subagent/noop-writers.js';
 import type { FileSystem } from '../../src/foundation/fs/types.js';
-import type { Logger } from '../../src/foundation/monitor/types.js';
 import type { LLMService } from '../../src/foundation/llm/index.js';
 import type { ToolRegistryImpl } from '../../src/core/tools/registry.js';
 import { AUDIT_EVENTS } from '../../src/foundation/audit/events.js';
@@ -35,7 +34,7 @@ vi.mock('../../src/core/tools/executor.js', () => ({
 import { runReact } from '../../src/core/react/loop.js';
 
 function makeSubAgent(
-  overrides: { fs?: Partial<FileSystem>; monitor?: Partial<Logger> } = {},
+  overrides: { fs?: Partial<FileSystem> } = {},
 ) {
   const mockFs: FileSystem = {
     read: vi.fn().mockResolvedValue(''),
@@ -52,15 +51,6 @@ function makeSubAgent(
     stat: vi.fn().mockResolvedValue({ size: 0, mtime: new Date() }),
     ...overrides.fs,
   } as unknown as FileSystem;
-
-  const mockMonitor: Logger = {
-    log: vi.fn(),
-    logFileOperation: vi.fn(),
-    logError: vi.fn(),
-    flush: vi.fn().mockResolvedValue(undefined),
-    query: vi.fn().mockResolvedValue([]),
-    ...overrides.monitor,
-  } as unknown as Logger;
 
   const mockAudit = { write: vi.fn() };
 
@@ -85,14 +75,12 @@ function makeSubAgent(
       llm: mockLLM,
       registry: mockRegistry,
       fs: mockFs,
-      monitor: mockMonitor,
       audit: mockAudit as any,
       maxSteps: 5,
       taskStreamWriter: new NoopStreamWriter(),
       auditWriter: new NoopAuditWriter(),
     }),
     mockFs,
-    mockMonitor,
     mockAudit,
   };
 }

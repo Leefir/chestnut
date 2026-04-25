@@ -2,7 +2,7 @@
  * ClawRuntime - assembles all modules into a runnable Claw instance
  *
  * This is the final assembly layer for Phase 1, integrating the following modules into a unified runtime:
- * - Foundation: NodeFileSystem, LLMService, JsonlLogger
+ * - Foundation: NodeFileSystem, LLMService
  * - Core: Dialog, Tools, ReAct, Communication, Task, Skill, Contract
  */
 
@@ -20,8 +20,6 @@ import { InboxWriter, InboxListFailed, InboxMoveFailed } from '../../foundation/
 
 
 import { LLMServiceImpl } from '../../foundation/llm/service.js';
-import { JsonlLogger } from '../../foundation/monitor/monitor.js';
-
 
 import { SessionManager } from '../../foundation/session-store/index.js';
 import { ContextInjector } from '../dialog/injector.js';
@@ -64,7 +62,6 @@ export interface RuntimeDependencies {
   readonly outboxWriter: OutboxWriter;
 
   // === L3-L5 ===
-  readonly monitor: JsonlLogger;
   readonly llm: LLMService;
   readonly toolRegistry: ToolRegistryImpl;
   readonly toolExecutor: ToolExecutorImpl;
@@ -83,7 +80,6 @@ export interface ClawRuntimeOptions {
   clawId: string;
   clawDir: string;
   llmConfig: LLMServiceConfig;
-  monitorDir?: string;
   maxSteps?: number;
   toolProfile?: ToolProfile;
   toolTimeoutMs?: number;
@@ -145,7 +141,6 @@ export class ClawRuntime {
    */
   protected systemFs!: FileSystem;  // used by system components (no permission check)
   private clawFs!: FileSystem;    // used by tools (with permission check)
-  private monitor!: JsonlLogger;
   protected llm!: LLMService;
 
   // Core
@@ -200,7 +195,6 @@ export class ClawRuntime {
     this.systemFs = deps.systemFs;
     this.clawFs = deps.clawFs;
     this.auditWriter = deps.auditWriter;
-    this.monitor = deps.monitor;
     this.llm = deps.llm;
     this.snapshot = deps.snapshot;
     this.sessionManager = deps.sessionManager;
@@ -300,7 +294,6 @@ export class ClawRuntime {
    */
   async stop(): Promise<void> {
     await this.taskSystem.shutdown(30_000);
-    await this.monitor.close();
     await this.llm.close();
   }
 
@@ -534,6 +527,12 @@ export class ClawRuntime {
         },
         onProviderFailed: (provider, model, error) => {
           callbacks?.onProviderFailed?.({ provider, model, error });
+        },
+        onEmptyResponse: (stopReason) => {
+          this.auditWriter.write(AUDIT_EVENTS.LLM_EMPTY_RESPONSE, `stop_reason=${stopReason}`);
+        },
+        onUnknownStopReason: (stopReason) => {
+          this.auditWriter.write(AUDIT_EVENTS.LLM_UNKNOWN_STOP_REASON, `stop_reason=${stopReason}`);
         },
       });
     await this.sessionManager.save(messages);
