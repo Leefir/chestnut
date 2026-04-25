@@ -27,7 +27,7 @@ import { InboxWriter } from '../../foundation/messaging/index.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
 import { PROCESS_SPAWN_CONFIRM_MS } from '../../foundation/process-manager/index.js';
 import { CliError } from '../errors.js';
-import { startCommand as watchdogStartCommand, isWatchdogAlive } from './watchdog.js';
+import { startCommand as watchdogStartCommand, isWatchdogAlive } from '../../watchdog/watchdog.js';
 
 export function buildOnboardingSubtasks(language: string): Array<{ id: string; description: string }> {
   let langInstruction: string;

@@ -60,7 +60,7 @@ vi.mock('../../src/assembly/index.js', () => ({
   },
 }));
 
-vi.mock('../../src/cli/commands/daemon-loop.js', () => ({
+vi.mock('../../src/daemon/daemon-loop.js', () => ({
   startDaemonLoop: mockState.mockStartDaemonLoop,
 }));
 
@@ -145,7 +145,7 @@ async function flushMicrotasks(n = 10) {
 // ============================================================================
 // Tests
 // ============================================================================
-import { daemonCommand } from '../../src/cli/commands/daemon.js';
+import { daemonCommand } from '../../src/daemon/daemon.js';
 
 describe('daemonCommand - A4a startup success', () => {
   beforeEach(() => {

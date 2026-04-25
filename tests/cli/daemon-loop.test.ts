@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fsNative from 'fs';
-import { waitForInbox, startDaemonLoop } from '../../src/cli/commands/daemon-loop.js';
+import { waitForInbox, startDaemonLoop } from '../../src/daemon/daemon-loop.js';
 import type { ClawRuntime } from '../../src/core/runtime/index.js';
 import type { Audit } from '../../src/foundation/audit/index.js';
 import type { Watcher } from '../../src/foundation/file-watcher/types.js';

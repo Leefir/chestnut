@@ -14,7 +14,7 @@ import {
   gatherClawSnapshot,
   getEffectiveInterval,
   shouldResetNotifyCount,
-} from '../../src/cli/commands/watchdog-utils.js';
+} from '../../src/watchdog/watchdog-utils.js';
 
 let testDir: string;
 

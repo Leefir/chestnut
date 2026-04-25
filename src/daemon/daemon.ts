@@ -9,17 +9,17 @@ import * as path from 'path';
 import * as fsNative from 'fs';
 import * as fsAsync from 'fs/promises';
 import { createHash } from 'node:crypto';
-import { loadGlobalConfig, loadClawConfig, getClawDir, getMotionDir } from '../config.js';
-import type { InboxMessage } from '../../types/contract.js';
+import { loadGlobalConfig, loadClawConfig, getClawDir, getMotionDir } from '../cli/config.js';
+import type { InboxMessage } from '../types/contract.js';
 import { startDaemonLoop } from './daemon-loop.js';
-import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
-import { AuditWriter } from '../../foundation/audit/writer.js';
-import { createSystemAudit, type Audit } from '../../foundation/audit/index.js';
-import { createAgentProcessManager } from './process-manager-factory.js';
-import { ContractManager, type MotionReviewContext } from '../../core/contract/manager.js';
-import { CliError } from '../errors.js';
-import { assemble, disassemble, LockConflictError } from '../../assembly/index.js';
-import type { Instances } from '../../assembly/index.js';
+import { NodeFileSystem } from '../foundation/fs/node-fs.js';
+import { AuditWriter } from '../foundation/audit/writer.js';
+import { createSystemAudit, type Audit } from '../foundation/audit/index.js';
+import { createAgentProcessManager } from '../cli/commands/process-manager-factory.js';
+import { ContractManager, type MotionReviewContext } from '../core/contract/manager.js';
+import { CliError } from '../cli/errors.js';
+import { assemble, disassemble, LockConflictError } from '../assembly/index.js';
+import type { Instances } from '../assembly/index.js';
 
 
 

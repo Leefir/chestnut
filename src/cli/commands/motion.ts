@@ -212,7 +212,7 @@ export async function chatCommand(): Promise<void> {
         await new Promise(resolve => setTimeout(resolve, PROCESS_SPAWN_CONFIRM_MS));
       }
       // 确保 watchdog 在运行（idempotent）
-      const { startCommand: startWatchdog } = await import('./watchdog.js');
+      const { startCommand: startWatchdog } = await import('../../watchdog/watchdog.js');
       await startWatchdog();
     },
     showRecapStream: globalConfig.viewport?.show_recap_stream,

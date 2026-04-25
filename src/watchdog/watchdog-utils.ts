@@ -4,9 +4,9 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import type { FileSystem } from '../../foundation/fs/types.js';
-import type { Audit } from '../../foundation/audit/index.js';
-import { readAll, STREAM_FILE } from '../../foundation/stream/index.js';
+import type { FileSystem } from '../foundation/fs/types.js';
+import type { Audit } from '../foundation/audit/index.js';
+import { readAll, STREAM_FILE } from '../foundation/stream/index.js';
 
 // Parse stream.jsonl, return the timestamp of the last event and the last error message
 export interface ClawActivityInfo {

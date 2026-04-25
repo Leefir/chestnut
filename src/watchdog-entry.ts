@@ -1,4 +1,4 @@
-import { runWatchdogLoop, writeWatchdogCrash } from './cli/commands/watchdog.js';
+import { runWatchdogLoop, writeWatchdogCrash } from './watchdog/watchdog.js';
 
 const errMsg = (reason: unknown): string =>
   reason instanceof Error ? `${reason.message}\n${reason.stack ?? ''}` : String(reason);

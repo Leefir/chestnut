@@ -5,17 +5,17 @@
 
 import * as fsNative from 'fs';
 import * as path from 'path';
-import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
-import type { FileSystem } from '../../foundation/fs/types.js';
-import type { ClawRuntime, StreamCallbacks } from '../../core/runtime/index.js';
-import type { InboxMessage } from '../../types/contract.js';
-import type { StreamWriter, StreamLog } from '../../foundation/stream/index.js';
-import { createWatcher } from '../../foundation/file-watcher/index.js';
-import type { Watcher } from '../../foundation/file-watcher/types.js';
-import type { Audit } from '../../foundation/audit/index.js';
-import { oneLine } from '../../types/utils.js';
+import { NodeFileSystem } from '../foundation/fs/node-fs.js';
+import type { FileSystem } from '../foundation/fs/types.js';
+import type { ClawRuntime, StreamCallbacks } from '../core/runtime/index.js';
+import type { InboxMessage } from '../types/contract.js';
+import type { StreamWriter, StreamLog } from '../foundation/stream/index.js';
+import { createWatcher } from '../foundation/file-watcher/index.js';
+import type { Watcher } from '../foundation/file-watcher/types.js';
+import type { Audit } from '../foundation/audit/index.js';
+import { oneLine } from '../types/utils.js';
 
-import type { Heartbeat } from '../../core/runtime/index.js';
+import type { Heartbeat } from '../core/runtime/index.js';
 
 import {
   DAEMON_FALLBACK_TIMEOUT_MS,
@@ -25,9 +25,9 @@ import {
   LLM_MAX_RETRIES,
   LLM_RETRY_INITIAL_DELAY_MS,
   LLM_RETRY_MAX_DELAY_MS,
-} from '../../constants.js';
-import { notifyInbox } from '../../foundation/messaging/index.js';
-import { IdleTimeoutSignal, PriorityInboxInterrupt, UserInterrupt } from '../../types/signals.js';
+} from '../constants.js';
+import { notifyInbox } from '../foundation/messaging/index.js';
+import { IdleTimeoutSignal, PriorityInboxInterrupt, UserInterrupt } from '../types/signals.js';
 
 /**
  * 创建 StreamCallbacks 实现，将业务事件转为 StreamEvent 写入 StreamLog。

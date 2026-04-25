@@ -10,7 +10,7 @@ import chokidar from 'chokidar';
 import { InboxWriter } from '../../foundation/messaging/index.js';
 import { createDirContext, createProcessManagerForCLI } from '../cli-factories.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
-import { getContractCreatedMs, LLM_OUTPUT_EVENTS } from './watchdog-utils.js';
+import { getContractCreatedMs, LLM_OUTPUT_EVENTS } from '../../watchdog/watchdog-utils.js';
 import stringWidth from 'string-width';
 import { sliceFromStart, fitLine, wrapLine } from '../utils/string.js';
 import { OUTPUT_LINES_CAP } from '../../constants.js';

@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 import { loadGlobalConfig, getMotionDir } from '../config.js';
 import { ProcessManager, ProcessListUnavailable } from '../../foundation/process-manager/index.js';
 import { createProcessManagerForCLI } from '../cli-factories.js';
-import { getWatchdogPid, isWatchdogAlive, getWatchdogEntryPath } from './watchdog.js';
+import { getWatchdogPid, isWatchdogAlive, getWatchdogEntryPath } from '../../watchdog/watchdog.js';
 
 export async function statusCommand(): Promise<void> {
   loadGlobalConfig();

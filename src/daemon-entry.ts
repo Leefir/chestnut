@@ -35,5 +35,5 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
-import { daemonCommand } from './cli/commands/daemon.js';
+import { daemonCommand } from './daemon/daemon.js';
 await daemonCommand(process.argv[2]);

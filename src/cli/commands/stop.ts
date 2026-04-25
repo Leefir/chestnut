@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import { existsSync } from 'fs';
 import * as path from 'path';
 import { loadGlobalConfig, getGlobalConfigPath } from '../config.js';
-import { stopCommand as watchdogStop } from './watchdog.js';
+import { stopCommand as watchdogStop } from '../../watchdog/watchdog.js';
 import { stopCommand as motionStop } from './motion.js';
 import { ProcessManager, ProcessListUnavailable } from '../../foundation/process-manager/index.js';
 import { createProcessManagerForCLI } from '../cli-factories.js';

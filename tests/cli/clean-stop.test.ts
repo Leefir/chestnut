@@ -15,9 +15,9 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const watchdogPath = path.join(__dirname, '../../src/cli/commands/watchdog.ts');
+const watchdogPath = path.join(__dirname, '../../src/watchdog/watchdog.ts');
 const stopPath = path.join(__dirname, '../../src/cli/commands/stop.ts');
-const daemonLoopPath = path.join(__dirname, '../../src/cli/commands/daemon-loop.ts');
+const daemonLoopPath = path.join(__dirname, '../../src/daemon/daemon-loop.ts');
 
 describe('Phase 86: clean stop 生命周期修复', () => {
   const watchdogSource = fs.readFileSync(watchdogPath, 'utf-8');

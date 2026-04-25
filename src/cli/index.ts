@@ -35,7 +35,7 @@ import {
   startCommand as watchdogStartCommand,
   stopCommand as watchdogStopCommand,
   runWatchdogLoop,
-} from './commands/watchdog.js';
+} from '../watchdog/watchdog.js';
 import { configCommand } from './commands/config.js';
 import { stopAllCommand } from './commands/stop.js';
 import { statusCommand } from './commands/status.js';

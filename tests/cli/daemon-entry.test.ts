@@ -46,7 +46,7 @@ describe('daemon-entry shim audit', () => {
       getClawDir: vi.fn(() => '/tmp/test-claw'),
       getMotionDir: vi.fn(() => '/tmp/test-motion'),
     }));
-    vi.doMock('../../src/cli/commands/daemon.js', () => ({
+    vi.doMock('../../src/daemon/daemon.js', () => ({
       daemonCommand: vi.fn().mockResolvedValue(undefined),
     }));
 
@@ -74,7 +74,7 @@ describe('daemon-entry shim audit', () => {
       getClawDir: vi.fn(() => '/tmp/test-claw'),
       getMotionDir: vi.fn(() => '/tmp/test-motion'),
     }));
-    vi.doMock('../../src/cli/commands/daemon.js', () => ({
+    vi.doMock('../../src/daemon/daemon.js', () => ({
       daemonCommand: vi.fn().mockResolvedValue(undefined),
     }));
 
@@ -111,7 +111,7 @@ describe('daemon-entry shim audit', () => {
       getClawDir: vi.fn(() => '/tmp/test-claw'),
       getMotionDir: vi.fn(() => '/tmp/test-motion'),
     }));
-    vi.doMock('../../src/cli/commands/daemon.js', () => ({
+    vi.doMock('../../src/daemon/daemon.js', () => ({
       daemonCommand: vi.fn().mockResolvedValue(undefined),
     }));
 
@@ -148,7 +148,7 @@ describe('daemon-entry shim audit', () => {
       getClawDir: vi.fn(() => '/tmp/test-claw'),
       getMotionDir: vi.fn(() => '/tmp/test-motion'),
     }));
-    vi.doMock('../../src/cli/commands/daemon.js', () => ({
+    vi.doMock('../../src/daemon/daemon.js', () => ({
       daemonCommand: vi.fn().mockResolvedValue(undefined),
     }));
 
@@ -184,7 +184,7 @@ describe('daemon-entry shim audit', () => {
       getClawDir: vi.fn(() => '/tmp/test-claw'),
       getMotionDir: vi.fn(() => '/tmp/test-motion'),
     }));
-    vi.doMock('../../src/cli/commands/daemon.js', () => ({
+    vi.doMock('../../src/daemon/daemon.js', () => ({
       daemonCommand: vi.fn().mockResolvedValue(undefined),
     }));
 

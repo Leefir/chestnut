@@ -8,17 +8,17 @@ import { existsSync } from 'fs';
 import * as path from 'path';
 import { spawn, spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
-import type { SpawnOptions } from '../../foundation/process-manager/index.js';
+import type { SpawnOptions } from '../foundation/process-manager/index.js';
 import { setTimeout } from 'timers/promises';
-import { getMotionDir, loadGlobalConfig } from '../config.js';
-import { ProcessManager } from '../../foundation/process-manager/index.js';
-import type { FileSystem } from '../../foundation/fs/types.js';
-import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
-import { AuditWriter } from '../../foundation/audit/writer.js';
-import { createDirContext, createProcessManagerForCLI } from '../cli-factories.js';
-import { InboxWriter } from '../../foundation/messaging/index.js';
+import { getMotionDir, loadGlobalConfig } from '../cli/config.js';
+import { ProcessManager } from '../foundation/process-manager/index.js';
+import type { FileSystem } from '../foundation/fs/types.js';
+import { NodeFileSystem } from '../foundation/fs/node-fs.js';
+import { AuditWriter } from '../foundation/audit/writer.js';
+import { createDirContext, createProcessManagerForCLI } from '../cli/cli-factories.js';
+import { InboxWriter } from '../foundation/messaging/index.js';
 import { type ClawActivityInfo, LLM_OUTPUT_EVENTS, getClawActivityInfo, clawHasContract, getContractCreatedMs, type ClawSnapshot, type ProcessLiveness, gatherClawSnapshot, getEffectiveInterval, shouldResetNotifyCount } from './watchdog-utils.js';
-import { AUDIT_EVENTS } from '../../foundation/audit/events.js';
+import { AUDIT_EVENTS } from '../foundation/audit/events.js';
 
 // Get the .clawforum/ directory (CLAWFORUM_ROOT takes priority)
 function getClawforumDir(): string {
@@ -34,7 +34,7 @@ export function getWatchdogEntryPath(): string {
   const bundleEntry = path.join(thisDir, 'watchdog-entry.js');
   return existsSync(bundleEntry)
     ? bundleEntry
-    : path.resolve(thisDir, '..', '..', '..', 'dist', 'watchdog-entry.js');
+    : path.resolve(thisDir, '..', '..', 'dist', 'watchdog-entry.js');
 }
 
 // PID file path
@@ -455,7 +455,7 @@ export async function runWatchdogLoop(): Promise<void> {
         });
         const thisDir = path.dirname(fileURLToPath(import.meta.url));
         const bundleEntry = path.join(thisDir, 'daemon-entry.js');
-        const daemonEntryPath = fs.existsSync(bundleEntry) ? bundleEntry : path.resolve(thisDir, '..', '..', 'daemon-entry.js');
+        const daemonEntryPath = fs.existsSync(bundleEntry) ? bundleEntry : path.resolve(thisDir, '..', 'daemon-entry.js');
         const clawforumDir = getClawforumDir();
         const pid = await pm.spawn('motion', {
           command: 'node',
