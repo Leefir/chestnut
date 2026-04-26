@@ -7,6 +7,7 @@ import * as os from 'os';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { StreamWriter } from '../../src/foundation/stream/index.js';
 import { AUDIT_EVENTS } from '../../src/foundation/audit/events.js';
+import { STREAM_AUDIT_EVENTS } from '../../src/foundation/stream/audit-events.js';
 import { makeAudit } from '../helpers/audit.js';
 
 describe('StreamWriter', () => {
@@ -69,7 +70,7 @@ describe('StreamWriter', () => {
     const writer = new StreamWriter(fs, audit);
     writer.open();
 
-    expect(events.some(e => e[0] === AUDIT_EVENTS.STREAM_ARCHIVE_FAILED)).toBe(true);
+    expect(events.some(e => e[0] === STREAM_AUDIT_EVENTS.ARCHIVE_FAILED)).toBe(true);
 
     // session_boundary business event should also be written to stream.jsonl
     const content = fsSync.readFileSync(path.join(tmpDir, 'stream.jsonl'), 'utf-8');
@@ -96,9 +97,9 @@ describe('StreamWriter', () => {
     });
 
     writer.write({ ts: 1, type: 'fail' });
-    expect(events.some(e => e[0] === AUDIT_EVENTS.STREAM_APPEND_FAILED)).toBe(true);
+    expect(events.some(e => e[0] === STREAM_AUDIT_EVENTS.APPEND_FAILED)).toBe(true);
 
-    const failEvent = events.find(e => e[0] === AUDIT_EVENTS.STREAM_APPEND_FAILED);
+    const failEvent = events.find(e => e[0] === STREAM_AUDIT_EVENTS.APPEND_FAILED);
     expect(failEvent?.some((col: unknown) => String(col).startsWith('type='))).toBe(true);
     expect(failEvent?.some((col: unknown) => String(col).startsWith('body='))).toBe(true);
 
@@ -126,7 +127,7 @@ describe('StreamWriter', () => {
     const writer = new StreamWriter(fs, audit, { maxFiles: 1 });
     writer.open();
 
-    const pruneEvents = events.filter(e => e[0] === AUDIT_EVENTS.STREAM_ARCHIVE_PRUNE_FAILED);
+    const pruneEvents = events.filter(e => e[0] === STREAM_AUDIT_EVENTS.ARCHIVE_PRUNE_FAILED);
     expect(pruneEvents.length).toBeGreaterThanOrEqual(1);
     expect(pruneEvents[0].some((col: any) => String(col).includes('path='))).toBe(true);
   });
@@ -143,7 +144,7 @@ describe('StreamWriter', () => {
     const writer = new StreamWriter(fs, audit, { maxFiles: 1 });
     writer.open();
 
-    const pruneEvents = events.filter(e => e[0] === AUDIT_EVENTS.STREAM_ARCHIVE_PRUNE_FAILED);
+    const pruneEvents = events.filter(e => e[0] === STREAM_AUDIT_EVENTS.ARCHIVE_PRUNE_FAILED);
     expect(pruneEvents.length).toBeGreaterThanOrEqual(1);
     // outer failure should not have path column
     const noPathEvent = pruneEvents.find(e => !e.some(col => String(col).startsWith('path=')));

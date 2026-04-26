@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { OutboxWriter } from '../../src/foundation/messaging/index.js';
 import { AUDIT_EVENTS } from '../../src/foundation/audit/events.js';
+import { MESSAGING_AUDIT_EVENTS } from '../../src/foundation/messaging/audit-events.js';
 import { makeAudit } from '../helpers/audit.js';
 
 describe('OutboxWriter', () => {
@@ -36,8 +37,8 @@ describe('OutboxWriter', () => {
     const content = await fsp.readFile(filePath, 'utf-8');
     expect(content).toContain('Hello');
 
-    expect(events.some(e => e[0] === AUDIT_EVENTS.OUTBOX_SENT)).toBe(true);
-    const sent = events.find(e => e[0] === AUDIT_EVENTS.OUTBOX_SENT)!;
+    expect(events.some(e => e[0] === MESSAGING_AUDIT_EVENTS.OUTBOX_SENT)).toBe(true);
+    const sent = events.find(e => e[0] === MESSAGING_AUDIT_EVENTS.OUTBOX_SENT)!;
     expect(sent.some((c: any) => String(c).includes('from=claw-a'))).toBe(true);
     expect(sent.some((c: any) => String(c).includes('to=claw-b'))).toBe(true);
     expect(sent.some((c: any) => String(c).includes('type=response'))).toBe(true);
@@ -54,7 +55,7 @@ describe('OutboxWriter', () => {
       contract_id: 'contract-123',
     });
 
-    const sent = events.find(e => e[0] === AUDIT_EVENTS.OUTBOX_SENT)!;
+    const sent = events.find(e => e[0] === MESSAGING_AUDIT_EVENTS.OUTBOX_SENT)!;
     expect(sent.some((c: any) => String(c).includes('contract_id=contract-123'))).toBe(true);
   });
 
@@ -67,8 +68,8 @@ describe('OutboxWriter', () => {
 
     await expect(writer.write({ type: 'error', to: 'claw-b', content: 'Oops' })).rejects.toThrow('disk full');
 
-    expect(events.some(e => e[0] === AUDIT_EVENTS.OUTBOX_SEND_FAILED)).toBe(true);
-    const failed = events.find(e => e[0] === AUDIT_EVENTS.OUTBOX_SEND_FAILED)!;
+    expect(events.some(e => e[0] === MESSAGING_AUDIT_EVENTS.OUTBOX_SEND_FAILED)).toBe(true);
+    const failed = events.find(e => e[0] === MESSAGING_AUDIT_EVENTS.OUTBOX_SEND_FAILED)!;
     expect(failed.some((c: any) => String(c).includes('reason=disk full'))).toBe(true);
   });
 

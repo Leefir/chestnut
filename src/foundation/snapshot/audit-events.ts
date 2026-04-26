@@ -1,0 +1,13 @@
+/**
+ * Snapshot audit event names.
+ *
+ * Module-owned event namespace per H1 design (phase334 / r36 α 决策).
+ * 字符串值与 phase148 起 events.ts 中央注册表的 SNAPSHOT_* 系列等价 / 0 漂移。
+ */
+export const SNAPSHOT_AUDIT_EVENTS = {
+  INIT_FAILED: 'snapshot_init_failed',
+  INIT_CLEANUP_FAILED: 'snapshot_init_cleanup_failed',
+  COMMIT_FAILED: 'snapshot_commit_failed',
+  COMMITTED: 'snapshot_committed',
+  DEGRADED: 'snapshot_degraded',
+} as const;

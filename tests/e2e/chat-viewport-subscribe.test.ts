@@ -6,6 +6,7 @@ import { createDirContext } from '../../src/cli/cli-factories.js';
 import { createStreamReader, STREAM_FILE, type StreamEvent, type StreamReader } from '../../src/foundation/stream/index.js';
 import { makeAudit } from '../helpers/audit.js';
 import { AUDIT_EVENTS } from '../../src/foundation/audit/events.js';
+import { STREAM_AUDIT_EVENTS } from '../../src/foundation/stream/audit-events.js';
 import { createMainTurnUI, createTaskEventHandler, type MainTurnUIController } from '../../src/cli/commands/chat-viewport.js';
 
 const TIMEOUT_MS = 10000;
@@ -77,7 +78,7 @@ describe('chat-viewport 订阅 motion stream（phase161 回归）', () => {
     reader.start();
     // start() 内的 existsSync 探测是同步的（Step 1 §7.b 论证），无需 waitFor
 
-    expect(events.some(e => e[0] === AUDIT_EVENTS.STREAM_READER_FILE_MISSING)).toBe(true);
+    expect(events.some(e => e[0] === STREAM_AUDIT_EVENTS.READER_FILE_MISSING)).toBe(true);
   });
 });
 

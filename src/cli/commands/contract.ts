@@ -12,7 +12,7 @@ import { createDirContext } from '../cli-factories.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import { getClawDir } from '../config.js';
 import { notifySystem } from '../../foundation/messaging/index.js';
-import { AUDIT_EVENTS } from '../../foundation/audit/events.js';
+import { STREAM_AUDIT_EVENTS } from '../../foundation/stream/audit-events.js';
 import { AuditWriter } from '../../foundation/audit/writer.js';
 import { STREAM_FILE } from '../../foundation/stream/index.js';
 
@@ -43,7 +43,7 @@ function notifyContractCreated(clawDir: string, clawId: string, contractId: stri
     fs.appendSync(STREAM_FILE, streamLine);
   } catch (err) {
     contractAudit.write(
-      AUDIT_EVENTS.STREAM_APPEND_FAILED,
+      STREAM_AUDIT_EVENTS.APPEND_FAILED,
       `context=contract_notify`,
       `reason=${err instanceof Error ? err.message : String(err)}`,
     );

@@ -10,7 +10,7 @@ import type { FileSystem } from '../fs/types.js';
 import type { OutboxMessage } from '../../types/contract.js';
 import type { Audit } from '../audit/index.js';
 import { encodeOutbox } from '../message-codec/index.js';
-import { AUDIT_EVENTS } from '../audit/events.js';
+import { MESSAGING_AUDIT_EVENTS } from './audit-events.js';
 
 /**
  * Outbox writer options
@@ -70,7 +70,7 @@ export class OutboxWriter {
       // Write file
       await this.fs.writeAtomic(filePath, content);
       this.audit.write(
-        AUDIT_EVENTS.OUTBOX_SENT,
+        MESSAGING_AUDIT_EVENTS.OUTBOX_SENT,
         `from=${this.clawId}`,
         `to=${options.to}`,
         `type=${options.type}`,
@@ -80,7 +80,7 @@ export class OutboxWriter {
       return filePath;
     } catch (err) {
       this.audit.write(
-        AUDIT_EVENTS.OUTBOX_SEND_FAILED,
+        MESSAGING_AUDIT_EVENTS.OUTBOX_SEND_FAILED,
         `from=${this.clawId}`,
         `to=${options.to}`,
         `type=${options.type}`,

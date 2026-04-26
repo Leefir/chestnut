@@ -18,7 +18,7 @@ import type { FileSystem } from '../fs/types.js';
 import type { StreamEvent } from './types.js';
 import type { Audit } from '../audit/index.js';
 import { createWatcher, type Watcher } from '../file-watcher/index.js';
-import { AUDIT_EVENTS } from '../audit/events.js';
+import { STREAM_AUDIT_EVENTS } from './audit-events.js';
 import { StringDecoder } from 'node:string_decoder';
 
 /** 连续 parse_failed 达到此值触发 STREAM_READER_CORRUPT（trigger=consecutive_fail）。 */
@@ -57,7 +57,7 @@ export async function readAll(
     content = fs.readSync(streamPath);
   } catch (err) {
     audit.write(
-      AUDIT_EVENTS.STREAM_READER_READ_FAILED,
+      STREAM_AUDIT_EVENTS.READER_READ_FAILED,
       `reason=${err instanceof Error ? err.message : String(err)}`,
     );
     throw err;
@@ -69,7 +69,7 @@ export async function readAll(
       events.push(JSON.parse(line) as StreamEvent);
     } catch (err) {
       audit.write(
-        AUDIT_EVENTS.STREAM_READER_PARSE_FAILED,
+        STREAM_AUDIT_EVENTS.READER_PARSE_FAILED,
         `line_prefix=${line.slice(0, 80)}`,
         `reason=${err instanceof Error ? err.message : String(err)}`,
       );
@@ -104,7 +104,7 @@ export function createStreamReader(
   const triggerCorrupt = (trigger: 'consecutive_fail' | 'ratio_high'): void => {
     const recentFail = recentOutcomes.filter((ok) => !ok).length;
     audit.write(
-      AUDIT_EVENTS.STREAM_READER_CORRUPT,
+      STREAM_AUDIT_EVENTS.READER_CORRUPT,
       `path=${streamPath}`,
       `consecutive=${consecutiveParseFails}`,
       `trigger=${trigger}`,
@@ -162,7 +162,7 @@ export function createStreamReader(
               onEvent(ev);
             } catch (cbErr) {
               audit.write(
-                AUDIT_EVENTS.STREAM_READER_CALLBACK_FAILED,
+                STREAM_AUDIT_EVENTS.READER_CALLBACK_FAILED,
                 `reason=${cbErr instanceof Error ? cbErr.message : String(cbErr)}`,
               );
             }
@@ -170,7 +170,7 @@ export function createStreamReader(
             consecutiveParseFails++;
             recordOutcome(false);
             audit.write(
-              AUDIT_EVENTS.STREAM_READER_PARSE_FAILED,
+              STREAM_AUDIT_EVENTS.READER_PARSE_FAILED,
               `line_prefix=${line.slice(0, 80)}`,
               `reason=${err instanceof Error ? err.message : String(err)}`,
             );
@@ -183,7 +183,7 @@ export function createStreamReader(
       }
     } catch (err) {
       audit.write(
-        AUDIT_EVENTS.STREAM_READER_READ_FAILED,
+        STREAM_AUDIT_EVENTS.READER_READ_FAILED,
         `reason=${err instanceof Error ? err.message : String(err)}`,
       );
     }
@@ -199,7 +199,7 @@ export function createStreamReader(
       } else {
         offset = 0;
         audit.write(
-          AUDIT_EVENTS.STREAM_READER_FILE_MISSING,
+          STREAM_AUDIT_EVENTS.READER_FILE_MISSING,
           `path=${streamPath}`,
           'reason=start_existsSync_false',
         );
@@ -211,7 +211,7 @@ export function createStreamReader(
             readIncrement();
           } else if (ev.type === 'unlink') {
             audit.write(
-              AUDIT_EVENTS.STREAM_READER_UNLINKED,
+              STREAM_AUDIT_EVENTS.READER_UNLINKED,
               `path=${streamPath}`,
             );
             offset = 0;
@@ -224,14 +224,14 @@ export function createStreamReader(
           onError: (err, context) => {
             if (context === 'callback') {
               audit.write(
-                AUDIT_EVENTS.STREAM_READER_WATCHER_CALLBACK_FAILED,
+                STREAM_AUDIT_EVENTS.READER_WATCHER_CALLBACK_FAILED,
                 `path=${streamPath}`,
                 `reason=${err.message}`,
               );
               return;
             }
             audit.write(
-              AUDIT_EVENTS.STREAM_READER_WATCHER_FAILED,
+              STREAM_AUDIT_EVENTS.READER_WATCHER_FAILED,
               `path=${streamPath}`,
               `context=${context}`,
               `reason=${err.message}`,

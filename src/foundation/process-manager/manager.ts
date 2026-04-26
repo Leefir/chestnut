@@ -11,7 +11,7 @@ import { openSync, closeSync } from 'fs';  // openSync/closeSync 仅用于日志
 import type { FileSystem } from '../fs/types.js';
 import type { Audit } from '../audit/index.js';
 import { ProcessListUnavailable } from './errors.js';
-import { AUDIT_EVENTS } from '../audit/events.js';
+import { PROCESS_MANAGER_AUDIT_EVENTS } from './audit-events.js';
 
 export const PROCESS_SPAWN_CONFIRM_MS = 3000;
 export const SIGTERM_GRACE_MS = 5000;
@@ -93,10 +93,10 @@ export class ProcessManager {
       const content = await this.fs.read(pidFile);
       const pid = parseInt(content.trim(), 10);
       if (!Number.isFinite(pid)) {
-        this.audit.write(AUDIT_EVENTS.PID_READ_FAILED, `claw=${clawId}`, `reason=invalid_pid`);
+        this.audit.write(PROCESS_MANAGER_AUDIT_EVENTS.PID_READ_FAILED, `claw=${clawId}`, `reason=invalid_pid`);
         return null;
       }
-      this.audit.write(AUDIT_EVENTS.PID_READ_OK, `claw=${clawId}`, `pid=${pid}`);
+      this.audit.write(PROCESS_MANAGER_AUDIT_EVENTS.PID_READ_OK, `claw=${clawId}`, `pid=${pid}`);
       return pid;
     } catch (err: any) {
       // ENOENT/FS_NOT_FOUND is expected (process not running); other errors should be logged
@@ -104,7 +104,7 @@ export class ProcessManager {
         return null;
       }
       this.audit.write(
-        AUDIT_EVENTS.PID_READ_FAILED,
+        PROCESS_MANAGER_AUDIT_EVENTS.PID_READ_FAILED,
         `claw=${clawId}`,
         `reason=${err?.message || String(err)}`,
       );
@@ -119,14 +119,14 @@ export class ProcessManager {
     try {
       const pidFile = this.getPidFile(clawId);
       await this.fs.delete(pidFile);
-      this.audit.write(AUDIT_EVENTS.PID_REMOVE_OK, `claw=${clawId}`);
+      this.audit.write(PROCESS_MANAGER_AUDIT_EVENTS.PID_REMOVE_OK, `claw=${clawId}`);
     } catch (err: any) {
       // Ignore file-not-found (ENOENT or NodeFileSystem's FS_NOT_FOUND)
       if (err.code === 'ENOENT' || err.code === 'FS_NOT_FOUND') {
         return;
       }
       this.audit.write(
-        AUDIT_EVENTS.PID_REMOVE_FAILED,
+        PROCESS_MANAGER_AUDIT_EVENTS.PID_REMOVE_FAILED,
         `claw=${clawId}`,
         `reason=${err instanceof Error ? err.message : String(err)}`,
       );
@@ -190,7 +190,7 @@ export class ProcessManager {
     } catch (err: any) {
       if (err?.code !== 'ENOENT' && err?.code !== 'FS_NOT_FOUND') {
         this.audit.write(
-          AUDIT_EVENTS.LOCKFILE_READ_FAILED,
+          PROCESS_MANAGER_AUDIT_EVENTS.LOCKFILE_READ_FAILED,
           `claw=${clawId}`,
           `reason=${err?.message || String(err)}`,
         );
@@ -209,7 +209,7 @@ export class ProcessManager {
     this.fs.ensureDirSync(path.dirname(lockFile));
     try {
       this.fs.writeExclusiveSync(lockFile, String(process.pid));
-      this.audit.write(AUDIT_EVENTS.LOCK_ACQUIRED, `claw=${clawId}`, `pid=${process.pid}`);
+      this.audit.write(PROCESS_MANAGER_AUDIT_EVENTS.LOCK_ACQUIRED, `claw=${clawId}`, `pid=${process.pid}`);
       return;
     } catch (err: any) {
       if (err?.code !== 'EEXIST') throw err;
@@ -246,12 +246,12 @@ export class ProcessManager {
     // stale: remove and retry once
     try { this.fs.deleteSync(lockFile); } catch (e: any) {
       if (e?.code !== 'ENOENT' && e?.code !== 'FS_NOT_FOUND') {
-        this.audit.write(AUDIT_EVENTS.LOCKFILE_CLEANUP_FAILED, `claw=${clawId}`, `op=acquire_retry`, `reason=${e?.message || String(e)}`);
+        this.audit.write(PROCESS_MANAGER_AUDIT_EVENTS.LOCKFILE_CLEANUP_FAILED, `claw=${clawId}`, `op=acquire_retry`, `reason=${e?.message || String(e)}`);
       }
     }
     try {
       this.fs.writeExclusiveSync(lockFile, String(process.pid));
-      this.audit.write(AUDIT_EVENTS.LOCK_ACQUIRED, `claw=${clawId}`, `pid=${process.pid}`, `context=stale_retry`);
+      this.audit.write(PROCESS_MANAGER_AUDIT_EVENTS.LOCK_ACQUIRED, `claw=${clawId}`, `pid=${process.pid}`, `context=stale_retry`);
     } catch (retryErr: any) {
       if (retryErr?.code === 'EEXIST') {
         throw new LockHeldError(
@@ -278,11 +278,11 @@ export class ProcessManager {
     const lockFile = this.getLockFile(clawId);
     try {
       this.fs.deleteSync(lockFile);
-      this.audit.write(AUDIT_EVENTS.LOCK_RELEASED, `claw=${clawId}`, `pid=${process.pid}`);
+      this.audit.write(PROCESS_MANAGER_AUDIT_EVENTS.LOCK_RELEASED, `claw=${clawId}`, `pid=${process.pid}`);
     } catch (err: any) {
       if (err?.code !== 'ENOENT' && err?.code !== 'FS_NOT_FOUND') {
         this.audit.write(
-          AUDIT_EVENTS.LOCKFILE_CLEANUP_FAILED,
+          PROCESS_MANAGER_AUDIT_EVENTS.LOCKFILE_CLEANUP_FAILED,
           `claw=${clawId}`,
           `op=release`,
           `reason=${err?.message || String(err)}`,
@@ -325,7 +325,7 @@ export class ProcessManager {
       } catch (err: any) {
         if (err?.code !== 'ESRCH') {
           this.audit.write(
-            AUDIT_EVENTS.ORPHAN_SIGTERM_FAILED,
+            PROCESS_MANAGER_AUDIT_EVENTS.ORPHAN_SIGTERM_FAILED,
             `claw=${clawId}`,
             `pid=${pid}`,
             `reason=${err?.message || String(err)}`,
@@ -358,7 +358,7 @@ export class ProcessManager {
           } catch (err: any) {
             if (err?.code !== 'ESRCH') {
               this.audit.write(
-                AUDIT_EVENTS.LOCKFILE_CLEANUP_FAILED,
+                PROCESS_MANAGER_AUDIT_EVENTS.LOCKFILE_CLEANUP_FAILED,
                 `claw=${clawId}`,
                 `op=sigterm`,
                 `pid=${lockPid}`,
@@ -372,7 +372,7 @@ export class ProcessManager {
       try { await this.fs.delete(lockFile); } catch (err: any) {
         if (err?.code !== 'ENOENT' && err?.code !== 'FS_NOT_FOUND') {
           this.audit.write(
-            AUDIT_EVENTS.LOCKFILE_CLEANUP_FAILED,
+            PROCESS_MANAGER_AUDIT_EVENTS.LOCKFILE_CLEANUP_FAILED,
             `claw=${clawId}`,
             `op=delete`,
             `path=${lockFile}`,
@@ -383,7 +383,7 @@ export class ProcessManager {
     } catch (err: any) {
       if (err?.code !== 'ENOENT' && err?.code !== 'FS_NOT_FOUND') {
         this.audit.write(
-          AUDIT_EVENTS.LOCKFILE_READ_FAILED,
+          PROCESS_MANAGER_AUDIT_EVENTS.LOCKFILE_READ_FAILED,
           `claw=${clawId}`,
           `reason=${err?.code || err?.message || String(err)}`,
         );
@@ -409,7 +409,7 @@ export class ProcessManager {
         if (existingContent === '') {
           // 空文件：可能有并发 spawn，记录警告后继续（接受极小概率重复启动）
           this.audit.write(
-            AUDIT_EVENTS.PID_EMPTY,
+            PROCESS_MANAGER_AUDIT_EVENTS.PID_EMPTY,
             `claw=${clawId}`,
           );
         }
@@ -459,7 +459,7 @@ export class ProcessManager {
       }
 
       this.audit.write(
-        AUDIT_EVENTS.PROCESS_SPAWNED,
+        PROCESS_MANAGER_AUDIT_EVENTS.PROCESS_SPAWNED,
         `claw=${clawId}`,
         `pid=${pid}`,
         `command=${options.command}`,
@@ -471,7 +471,7 @@ export class ProcessManager {
       // Startup failed — clean up the PID file
       await this.removePid(clawId).catch(() => {});
       this.audit.write(
-        AUDIT_EVENTS.PROCESS_SPAWN_FAILED,
+        PROCESS_MANAGER_AUDIT_EVENTS.PROCESS_SPAWN_FAILED,
         `claw=${clawId}`,
         `command=${options.command}`,
         `reason=${err instanceof Error ? err.message : String(err)}`,
@@ -498,7 +498,7 @@ export class ProcessManager {
     if (!this.isAlive(clawId)) {
       await this.removePid(clawId);
       this.audit.write(
-        AUDIT_EVENTS.PROCESS_STOP_STALE,
+        PROCESS_MANAGER_AUDIT_EVENTS.PROCESS_STOP_STALE,
         `claw=${clawId}`,
         `pid=${pid}`,
       );
@@ -519,7 +519,7 @@ export class ProcessManager {
         process.kill(pid, 'SIGKILL');
         via = 'sigkill';
         this.audit.write(
-          AUDIT_EVENTS.PROCESS_KILL_ESCALATED,
+          PROCESS_MANAGER_AUDIT_EVENTS.PROCESS_KILL_ESCALATED,
           `claw=${clawId}`,
           `pid=${pid}`,
         );
@@ -527,7 +527,7 @@ export class ProcessManager {
 
       await this.removePid(clawId);
       this.audit.write(
-        AUDIT_EVENTS.PROCESS_STOPPED,
+        PROCESS_MANAGER_AUDIT_EVENTS.PROCESS_STOPPED,
         `claw=${clawId}`,
         `pid=${pid}`,
         `via=${via}`,
@@ -538,7 +538,7 @@ export class ProcessManager {
       if (err.code === 'ESRCH') {
         await this.removePid(clawId);
         this.audit.write(
-          AUDIT_EVENTS.PROCESS_STOP_STALE,
+          PROCESS_MANAGER_AUDIT_EVENTS.PROCESS_STOP_STALE,
           `claw=${clawId}`,
           `pid=${pid}`,
           `via=esrch`,
@@ -546,7 +546,7 @@ export class ProcessManager {
         return true;
       }
       this.audit.write(
-        AUDIT_EVENTS.PROCESS_STOP_FAILED,
+        PROCESS_MANAGER_AUDIT_EVENTS.PROCESS_STOP_FAILED,
         `claw=${clawId}`,
         `pid=${pid}`,
         `via=${via}`,
@@ -568,9 +568,9 @@ export class ProcessManager {
       await this.ensureStatusDir(clawId);
       const pidFile = this.getPidFile(clawId);
       await this.fs.writeAtomic(pidFile, String(process.pid));
-      this.audit.write(AUDIT_EVENTS.PID_WRITE_OK, `claw=${clawId}`, `pid=${process.pid}`);
+      this.audit.write(PROCESS_MANAGER_AUDIT_EVENTS.PID_WRITE_OK, `claw=${clawId}`, `pid=${process.pid}`);
     } catch (e: any) {
-      this.audit.write(AUDIT_EVENTS.PID_WRITE_FAILED, `claw=${clawId}`, `reason=${e?.message ?? String(e)}`);
+      this.audit.write(PROCESS_MANAGER_AUDIT_EVENTS.PID_WRITE_FAILED, `claw=${clawId}`, `reason=${e?.message ?? String(e)}`);
       throw e;
     }
   }
@@ -598,7 +598,7 @@ export class ProcessManager {
       // spawnSync 本身抛（ENOENT: pgrep 不存在 / ENOMEM 等）
       const reason = err instanceof Error ? err.message : String(err);
       this.audit.write(
-        AUDIT_EVENTS.PROCESS_LIST_FAILED,
+        PROCESS_MANAGER_AUDIT_EVENTS.PROCESS_LIST_FAILED,
         `pattern=${pattern}`,
         `reason=${reason}`,
       );
@@ -615,7 +615,7 @@ export class ProcessManager {
     const stderr = result.stderr ?? '';
     const err = new Error(`pgrep exited with status=${result.status}, stderr=${stderr}`);
     this.audit.write(
-      AUDIT_EVENTS.PROCESS_LIST_FAILED,
+      PROCESS_MANAGER_AUDIT_EVENTS.PROCESS_LIST_FAILED,
       `pattern=${pattern}`,
       `status=${result.status}`,
     );

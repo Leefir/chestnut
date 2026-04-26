@@ -4,7 +4,7 @@
 import type { FileSystem } from '../fs/types.js';
 import { STREAM_FILE, type StreamEvent, type StreamLog } from './types.js';
 import type { Audit } from '../audit/index.js';
-import { AUDIT_EVENTS } from '../audit/events.js';
+import { STREAM_AUDIT_EVENTS } from './audit-events.js';
 
 export interface StreamRetentionOptions {
   maxFiles?: number | null;
@@ -38,7 +38,7 @@ export class StreamWriter implements StreamLog {
       } catch (err) {
         archiveFailed = true;
         this.audit.write(
-          AUDIT_EVENTS.STREAM_ARCHIVE_FAILED,
+          STREAM_AUDIT_EVENTS.ARCHIVE_FAILED,
           `reason=${err instanceof Error ? err.message : String(err)}`,
         );
       }
@@ -60,7 +60,7 @@ export class StreamWriter implements StreamLog {
       this.fs.appendSync(STREAM_FILE, line);
     } catch (err) {
       this.audit.write(
-        AUDIT_EVENTS.STREAM_APPEND_FAILED,
+        STREAM_AUDIT_EVENTS.APPEND_FAILED,
         `type=${event.type}`,
         `reason=${err instanceof Error ? err.message : String(err)}`,
         `body=${line.trimEnd()}`,
@@ -101,7 +101,7 @@ export class StreamWriter implements StreamLog {
           this.fs.deleteSync(p);
         } catch (err) {
           this.audit.write(
-            AUDIT_EVENTS.STREAM_ARCHIVE_PRUNE_FAILED,
+            STREAM_AUDIT_EVENTS.ARCHIVE_PRUNE_FAILED,
             `path=${p}`,
             `reason=${err instanceof Error ? err.message : String(err)}`,
           );
@@ -109,7 +109,7 @@ export class StreamWriter implements StreamLog {
       }
     } catch (err) {
       this.audit.write(
-        AUDIT_EVENTS.STREAM_ARCHIVE_PRUNE_FAILED,
+        STREAM_AUDIT_EVENTS.ARCHIVE_PRUNE_FAILED,
         `reason=${err instanceof Error ? err.message : String(err)}`,
       );
     }

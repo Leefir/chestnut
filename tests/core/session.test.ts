@@ -15,6 +15,7 @@ import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { SessionManager } from '../../src/foundation/session-store/index.js';
 import type { Message } from '../../src/types/message.js';
 import { AUDIT_EVENTS } from '../../src/foundation/audit/events.js';
+import { SESSION_AUDIT_EVENTS } from '../../src/foundation/session-store/audit-events.js';
 
 describe('Session Persistence', () => {
   let testDir: string;
@@ -409,12 +410,12 @@ describe('SessionManager unit tests', () => {
     const result = await smAudit.load();
     expect(result.source).toBe('archive');
     expect(audit.write).toHaveBeenCalledWith(
-      AUDIT_EVENTS.SESSION_CORRUPTED,
+      SESSION_AUDIT_EVENTS.CORRUPTED,
       'file=3000_corrupted.json',
       expect.stringContaining('reason='),
     );
     expect(audit.write).toHaveBeenCalledWith(
-      AUDIT_EVENTS.SESSION_RECOVERED,
+      SESSION_AUDIT_EVENTS.RECOVERED,
       'from=2000_valid.json',
     );
   });
@@ -428,7 +429,7 @@ describe('SessionManager unit tests', () => {
     const smFail = new SessionManager(failingFs, 'dialog', audit, 'test-claw');
     await expect(smFail.save([{ role: 'user', content: 'hi' }])).rejects.toThrow('disk full');
     expect(audit.write).toHaveBeenCalledWith(
-      AUDIT_EVENTS.SESSION_SAVE_FAILED,
+      SESSION_AUDIT_EVENTS.SAVE_FAILED,
       expect.stringContaining('path='),
       expect.stringContaining('reason=disk full'),
     );
@@ -440,7 +441,7 @@ describe('SessionManager unit tests', () => {
     // no current.json exists → move will throw ENOENT
     await expect(smArc.archive()).rejects.toMatchObject({ code: 'ENOENT' });
     expect(audit.write).toHaveBeenCalledWith(
-      AUDIT_EVENTS.SESSION_ARCHIVE_FAILED,
+      SESSION_AUDIT_EVENTS.ARCHIVE_FAILED,
       expect.stringContaining('path='),
       expect.stringContaining('reason='),
     );
@@ -456,7 +457,7 @@ describe('SessionManager unit tests', () => {
     const result = await smFail.load();
     expect(result.source).toBe('empty');
     expect(audit.write).toHaveBeenCalledWith(
-      AUDIT_EVENTS.SESSION_ARCHIVE_READ_FAILED,
+      SESSION_AUDIT_EVENTS.ARCHIVE_READ_FAILED,
       expect.stringContaining('dir='),
       expect.stringContaining('reason=permission denied'),
     );
@@ -472,12 +473,12 @@ describe('SessionManager unit tests', () => {
     const smFail = new SessionManager(failingFs, 'dialog', audit, 'test-claw');
     await smFail.load();
     expect(audit.write).toHaveBeenCalledWith(
-      AUDIT_EVENTS.SESSION_CORRUPTED,
+      SESSION_AUDIT_EVENTS.CORRUPTED,
       'file=current.json',
       expect.stringContaining('reason='),
     );
     expect(audit.write).toHaveBeenCalledWith(
-      AUDIT_EVENTS.SESSION_CORRUPTED_ISOLATE_FAILED,
+      SESSION_AUDIT_EVENTS.CORRUPTED_ISOLATE_FAILED,
       expect.stringContaining('path='),
       expect.stringContaining('reason=rename failed'),
     );

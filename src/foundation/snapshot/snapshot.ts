@@ -14,7 +14,7 @@ import * as path from 'path';
 import { exec } from '../process-exec/index.js';
 import type { FileSystem } from '../fs/types.js';
 import type { Audit } from '../audit/index.js';
-import { AUDIT_EVENTS } from '../audit/events.js';
+import { SNAPSHOT_AUDIT_EVENTS } from './audit-events.js';
 import { ok, err as errResult, type Result } from '../../types/result.js';
 import { classifyGitError, type ExpectedGitFailure } from './git-errors.js';
 
@@ -79,7 +79,7 @@ export class Snapshot {
       if (classified.ok) {
         await this.tryCleanupGit(classified.value);
         this.audit.write(
-          AUDIT_EVENTS.SNAPSHOT_INIT_FAILED,
+          SNAPSHOT_AUDIT_EVENTS.INIT_FAILED,
           `dir=${this.dir}`,
           `kind=${classified.value.kind}`,
         );
@@ -96,7 +96,7 @@ export class Snapshot {
     } catch (cleanupErr) {
       const reason = cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr);
       this.audit.write(
-        AUDIT_EVENTS.SNAPSHOT_INIT_CLEANUP_FAILED,
+        SNAPSHOT_AUDIT_EVENTS.INIT_CLEANUP_FAILED,
         `dir=${this.dir}`,
         `reason=${reason}`,
       );
@@ -120,7 +120,7 @@ export class Snapshot {
       await Snapshot.git(this.dir, ['commit', '-m', message]);
       this.consecutiveFailures = 0;
       this.audit.write(
-        AUDIT_EVENTS.SNAPSHOT_COMMITTED,
+        SNAPSHOT_AUDIT_EVENTS.COMMITTED,
         `dir=${this.dir}`,
         `message=${message.slice(0, 200)}`,
       );
@@ -130,14 +130,14 @@ export class Snapshot {
       if (classified.ok) {
         this.consecutiveFailures++;
         this.audit.write(
-          AUDIT_EVENTS.SNAPSHOT_COMMIT_FAILED,
+          SNAPSHOT_AUDIT_EVENTS.COMMIT_FAILED,
           `dir=${this.dir}`,
           `kind=${classified.value.kind}`,
           `consecutive=${this.consecutiveFailures}`,
         );
         if (this.consecutiveFailures === 3) {
           this.audit.write(
-            AUDIT_EVENTS.SNAPSHOT_DEGRADED,
+            SNAPSHOT_AUDIT_EVENTS.DEGRADED,
             `dir=${this.dir}`,
             `consecutive=${this.consecutiveFailures}`,
           );

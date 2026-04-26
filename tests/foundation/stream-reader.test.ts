@@ -7,6 +7,7 @@ import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import { StreamWriter, createStreamReader, STREAM_FILE, type StreamReader, type StreamEvent } from '../../src/foundation/stream/index.js';
 import { makeAudit } from '../helpers/audit.js';
 import { AUDIT_EVENTS } from '../../src/foundation/audit/events.js';
+import { STREAM_AUDIT_EVENTS } from '../../src/foundation/stream/audit-events.js';
 
 const TIMEOUT_MS = 10000;
 
@@ -127,7 +128,7 @@ describe('StreamReader', () => {
 
     await waitFor(() => events.length === 2);
     expect(events[1].type).toBe('after');
-    expect(auditEvents.some(e => e[0] === AUDIT_EVENTS.STREAM_READER_PARSE_FAILED)).toBe(true);
+    expect(auditEvents.some(e => e[0] === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED)).toBe(true);
   });
 
   it('onEvent callback error triggers stream_reader_callback_failed', async () => {
@@ -148,7 +149,7 @@ describe('StreamReader', () => {
 
     await waitFor(() => events.length === 1);
     expect(events[0].type).toBe('second');
-    expect(auditEvents.some(e => e[0] === AUDIT_EVENTS.STREAM_READER_CALLBACK_FAILED)).toBe(true);
+    expect(auditEvents.some(e => e[0] === STREAM_AUDIT_EVENTS.READER_CALLBACK_FAILED)).toBe(true);
   });
 
   it('emits appended events with < 50ms latency (immediate stability mode)', async () => {
@@ -204,7 +205,7 @@ describe('StreamReader', () => {
     expect(events[1]).toMatchObject({ type: 'msg', text: '测试中文增量读取' });
     expect(events[2]).toMatchObject({ type: 'msg', text: '哈喽 🎯' });
 
-    const parseFailed = auditRec.events.filter(([t]) => t === AUDIT_EVENTS.STREAM_READER_PARSE_FAILED);
+    const parseFailed = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED);
     expect(parseFailed.length).toBe(0);
   });
 
@@ -227,7 +228,7 @@ describe('StreamReader', () => {
 
     await new Promise(r => setTimeout(r, 200));
     expect(events.length).toBe(0);
-    const partial_parseFailed = auditRec.events.filter(([t]) => t === AUDIT_EVENTS.STREAM_READER_PARSE_FAILED);
+    const partial_parseFailed = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED);
     expect(partial_parseFailed.length).toBe(0);
 
     nativeAppend(streamAbs, Buffer.concat([charRest, suffix]));
@@ -235,7 +236,7 @@ describe('StreamReader', () => {
     await waitFor(() => events.length === 1);
     expect(events[0]).toMatchObject({ type: 't', text: '中' });
 
-    const parseFailed = auditRec.events.filter(([t]) => t === AUDIT_EVENTS.STREAM_READER_PARSE_FAILED);
+    const parseFailed = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED);
     expect(parseFailed.length).toBe(0);
   });
 
@@ -262,7 +263,7 @@ describe('StreamReader', () => {
     await waitFor(() => events.length === 1);
     expect(events[0]).toMatchObject({ type: 't', text: '🎯' });
 
-    const parseFailed = auditRec.events.filter(([t]) => t === AUDIT_EVENTS.STREAM_READER_PARSE_FAILED);
+    const parseFailed = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED);
     expect(parseFailed.length).toBe(0);
   });
 
@@ -281,10 +282,10 @@ describe('StreamReader', () => {
     }
 
     await waitFor(() =>
-      auditRec.events.some(([t]) => t === AUDIT_EVENTS.STREAM_READER_CORRUPT)
+      auditRec.events.some(([t]) => t === STREAM_AUDIT_EVENTS.READER_CORRUPT)
     );
 
-    const corruptEvents = auditRec.events.filter(([t]) => t === AUDIT_EVENTS.STREAM_READER_CORRUPT);
+    const corruptEvents = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_CORRUPT);
     expect(corruptEvents.length).toBe(1);
     const cols = corruptEvents[0].slice(1) as string[];
     expect(cols.some(c => c.startsWith('path='))).toBe(true);
@@ -293,7 +294,7 @@ describe('StreamReader', () => {
     expect(cols.some(c => c.startsWith('recent_total='))).toBe(true);
     expect(cols.some(c => c.startsWith('recent_fail='))).toBe(true);
 
-    const parseFailed = auditRec.events.filter(([t]) => t === AUDIT_EVENTS.STREAM_READER_PARSE_FAILED);
+    const parseFailed = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED);
     expect(parseFailed.length).toBeGreaterThanOrEqual(5);
 
     expect(reader.isActive()).toBe(false);
@@ -323,10 +324,10 @@ describe('StreamReader', () => {
     }
 
     await waitFor(() =>
-      auditRec.events.some(([t]) => t === AUDIT_EVENTS.STREAM_READER_CORRUPT)
+      auditRec.events.some(([t]) => t === STREAM_AUDIT_EVENTS.READER_CORRUPT)
     );
 
-    const corruptEvents = auditRec.events.filter(([t]) => t === AUDIT_EVENTS.STREAM_READER_CORRUPT);
+    const corruptEvents = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_CORRUPT);
     expect(corruptEvents.length).toBe(1);
     const cols = corruptEvents[0].slice(1) as string[];
 

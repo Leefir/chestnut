@@ -11,6 +11,7 @@ import * as os from 'os';
 import { Snapshot } from '../../src/foundation/snapshot/index.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { AUDIT_EVENTS } from '../../src/foundation/audit/events.js';
+import { SNAPSHOT_AUDIT_EVENTS } from '../../src/foundation/snapshot/audit-events.js';
 
 // git 必须可用才能跑这些测试
 let gitAvailable = false;
@@ -93,7 +94,7 @@ describe.skipIf(!gitAvailable)('Snapshot', () => {
     // .git 应被清理
     expect(fsSync.existsSync(path.join(tmpDir, '.git'))).toBe(false);
     expect(audit.write).toHaveBeenCalledWith(
-      AUDIT_EVENTS.SNAPSHOT_INIT_FAILED,
+      SNAPSHOT_AUDIT_EVENTS.INIT_FAILED,
       expect.stringContaining('dir='),
       expect.stringContaining('kind='),
     );
@@ -228,11 +229,11 @@ describe.skipIf(!gitAvailable)('Snapshot', () => {
 
     await snapshot.commit('fail-1');
     await snapshot.commit('fail-2');
-    expect(audit.write).not.toHaveBeenCalledWith(AUDIT_EVENTS.SNAPSHOT_DEGRADED, expect.anything(), expect.anything());
+    expect(audit.write).not.toHaveBeenCalledWith(SNAPSHOT_AUDIT_EVENTS.DEGRADED, expect.anything(), expect.anything());
 
     await snapshot.commit('fail-3');
     expect(audit.write).toHaveBeenCalledWith(
-      AUDIT_EVENTS.SNAPSHOT_DEGRADED,
+      SNAPSHOT_AUDIT_EVENTS.DEGRADED,
       expect.stringContaining('dir='),
       expect.stringContaining('consecutive=3'),
     );
@@ -251,7 +252,7 @@ describe.skipIf(!gitAvailable)('Snapshot', () => {
     await snapshot.commit('fail-4');
     await snapshot.commit('fail-5');
 
-    const degradedCalls = audit.write.mock.calls.filter((c: any[]) => c[0] === AUDIT_EVENTS.SNAPSHOT_DEGRADED);
+    const degradedCalls = audit.write.mock.calls.filter((c: any[]) => c[0] === SNAPSHOT_AUDIT_EVENTS.DEGRADED);
     expect(degradedCalls).toHaveLength(1);
   });
 

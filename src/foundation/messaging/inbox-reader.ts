@@ -15,7 +15,7 @@ import type { InboxMessage } from '../../types/contract.js';
 import { PRIORITY_VALUES } from '../../types/contract.js';
 import { decodeInbox } from '../message-codec/index.js';
 import type { Audit } from '../audit/index.js';
-import { AUDIT_EVENTS } from '../audit/events.js';
+import { MESSAGING_AUDIT_EVENTS } from './audit-events.js';
 import { InboxListFailed, InboxMoveFailed } from './errors.js';
 
 export interface InboxEntry {
@@ -55,7 +55,7 @@ export class InboxReader {
       // 其余 list 失败均为不可预期 I/O / 权限错误，必须冒泡
       const reason = err instanceof Error ? err.message : String(err);
       this.audit.write(
-        AUDIT_EVENTS.INBOX_LIST_FAILED,
+        MESSAGING_AUDIT_EVENTS.INBOX_LIST_FAILED,
         `dir=${this.pendingDir}`,
         `reason=${reason}`,
       );
@@ -73,7 +73,7 @@ export class InboxReader {
       } catch (err) {
         const reason = err instanceof Error ? err.message : String(err);
         this.audit.write(
-          AUDIT_EVENTS.INBOX_FAILED,
+          MESSAGING_AUDIT_EVENTS.INBOX_FAILED,
           `file=${entry.name}`,
           `reason=${reason}`,
         );
@@ -108,14 +108,14 @@ export class InboxReader {
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
       this.audit.write(
-        AUDIT_EVENTS.INBOX_MOVE_FAILED,
+        MESSAGING_AUDIT_EVENTS.INBOX_MOVE_FAILED,
         `file=${fileName}`,
         `op=done`,
         `reason=${reason}`,
       );
       throw new InboxMoveFailed(filePath, 'done', err);
     }
-    this.audit?.write(AUDIT_EVENTS.INBOX_DONE, `file=${fileName}`);
+    this.audit?.write(MESSAGING_AUDIT_EVENTS.INBOX_DONE, `file=${fileName}`);
   }
 
   /** Move failed file to failed/ */
@@ -128,7 +128,7 @@ export class InboxReader {
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
       this.audit.write(
-        AUDIT_EVENTS.INBOX_MOVE_FAILED,
+        MESSAGING_AUDIT_EVENTS.INBOX_MOVE_FAILED,
         `file=${fileName}`,
         `op=failed`,
         `reason=${reason}`,

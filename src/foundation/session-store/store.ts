@@ -13,7 +13,7 @@ import type { FileSystem } from '../fs/types.js';
 import type { Message, ToolUseBlock, ToolResultBlock } from '../../types/message.js';
 import type { SessionData, LoadResult } from './types.js';
 import type { Audit } from '../audit/index.js';
-import { AUDIT_EVENTS } from '../audit/events.js';
+import { SESSION_AUDIT_EVENTS } from './audit-events.js';
 import { randomUUID } from 'crypto';
 
 /**
@@ -53,13 +53,13 @@ export class SessionManager {
       if (code === 'ENOENT' || code === 'FS_NOT_FOUND') {
         // Cold start: missing file is expected
       } else {
-        this.audit.write(AUDIT_EVENTS.SESSION_CORRUPTED, 'file=current.json', `reason=${err instanceof Error ? err.message : String(err)}`);
+        this.audit.write(SESSION_AUDIT_EVENTS.CORRUPTED, 'file=current.json', `reason=${err instanceof Error ? err.message : String(err)}`);
         // Rename corrupted file so subsequent loads don't retry parsing it
         try {
           await this.fs.move(this.currentPath, this.currentPath + '.corrupted');
         } catch (renameErr) {
           this.audit.write(
-            AUDIT_EVENTS.SESSION_CORRUPTED_ISOLATE_FAILED,
+            SESSION_AUDIT_EVENTS.CORRUPTED_ISOLATE_FAILED,
             `path=${this.currentPath}`,
             `reason=${renameErr instanceof Error ? renameErr.message : String(renameErr)}`,
           );
@@ -70,7 +70,7 @@ export class SessionManager {
     // Try to recover from archive (cold start recovery)
     const archived = await this.loadLatestArchive();
     if (archived) {
-      this.audit.write(AUDIT_EVENTS.SESSION_RECOVERED, `from=${archived.name}`);
+      this.audit.write(SESSION_AUDIT_EVENTS.RECOVERED, `from=${archived.name}`);
       return { session: archived.session, source: 'archive' };
     }
 
@@ -155,7 +155,7 @@ export class SessionManager {
       await this.fs.writeAtomic(this.currentPath, JSON.stringify(data, null, 2));
     } catch (err) {
       this.audit.write(
-        AUDIT_EVENTS.SESSION_SAVE_FAILED,
+        SESSION_AUDIT_EVENTS.SAVE_FAILED,
         `path=${this.currentPath}`,
         `reason=${err instanceof Error ? err.message : String(err)}`,
       );
@@ -180,7 +180,7 @@ export class SessionManager {
       this.createdAt = null;  // Reset so next save() starts a fresh session
     } catch (err) {
       this.audit.write(
-        AUDIT_EVENTS.SESSION_ARCHIVE_FAILED,
+        SESSION_AUDIT_EVENTS.ARCHIVE_FAILED,
         `path=${this.currentPath}`,
         `reason=${err instanceof Error ? err.message : String(err)}`,
       );
@@ -217,7 +217,7 @@ export class SessionManager {
           return { session: this.validateSession(data), name: entry.name };
         } catch (parseErr) {
           this.audit.write(
-            AUDIT_EVENTS.SESSION_CORRUPTED,
+            SESSION_AUDIT_EVENTS.CORRUPTED,
             `file=${entry.name}`,
             `reason=${parseErr instanceof Error ? parseErr.message : String(parseErr)}`,
           );
@@ -227,7 +227,7 @@ export class SessionManager {
       return null;
     } catch (err) {
       this.audit.write(
-        AUDIT_EVENTS.SESSION_ARCHIVE_READ_FAILED,
+        SESSION_AUDIT_EVENTS.ARCHIVE_READ_FAILED,
         `dir=${this.archiveDir}`,
         `reason=${err instanceof Error ? err.message : String(err)}`,
       );

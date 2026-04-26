@@ -10,6 +10,7 @@ import {
   type StreamEvent,
 } from '../../src/foundation/stream/index.js';
 import { AUDIT_EVENTS } from '../../src/foundation/audit/events.js';
+import { STREAM_AUDIT_EVENTS } from '../../src/foundation/stream/audit-events.js';
 import { AUDIT_FILE } from '../../src/foundation/audit/index.js';
 import {
   createMainTurnUI,
@@ -251,10 +252,10 @@ describe('chat-viewport regression baseline', () => {
     expect(fx.receivedEvents[1]).toMatchObject({ type: 'msg', text: '测试中文分 chunk' });
     expect(fx.receivedEvents[2]).toMatchObject({ type: 'msg', text: '边界验证 🎯' });
 
-    const parseFailed = fx.audit.filter(AUDIT_EVENTS.STREAM_READER_PARSE_FAILED);
+    const parseFailed = fx.audit.filter(STREAM_AUDIT_EVENTS.READER_PARSE_FAILED);
     expect(parseFailed.length).toBe(0);
 
-    const corrupt = fx.audit.filter(AUDIT_EVENTS.STREAM_READER_CORRUPT);
+    const corrupt = fx.audit.filter(STREAM_AUDIT_EVENTS.READER_CORRUPT);
     expect(corrupt.length).toBe(0);
   });
 
@@ -338,8 +339,8 @@ describe('chat-viewport regression baseline', () => {
     expect(allTypesCovered.has('tool_result')).toBe(true);
     expect(allTypesCovered.has('turn_end')).toBe(true);
 
-    expect(fx.audit.filter(AUDIT_EVENTS.STREAM_READER_PARSE_FAILED).length).toBe(0);
-    expect(fx.audit.filter(AUDIT_EVENTS.STREAM_READER_CORRUPT).length).toBe(0);
+    expect(fx.audit.filter(STREAM_AUDIT_EVENTS.READER_PARSE_FAILED).length).toBe(0);
+    expect(fx.audit.filter(STREAM_AUDIT_EVENTS.READER_CORRUPT).length).toBe(0);
   });
 
   it('基线 3：连续 10 轮 tool_call + tool_result 全部到达（防 [4/100] 漏类型回归）', async () => {
@@ -391,8 +392,8 @@ describe('chat-viewport regression baseline', () => {
     expect(totalToolResult).toBe(N);
     expect(totalToolCall).toBe(N);
 
-    expect(fx.audit.filter(AUDIT_EVENTS.STREAM_READER_PARSE_FAILED).length).toBe(0);
-    expect(fx.audit.filter(AUDIT_EVENTS.STREAM_READER_CORRUPT).length).toBe(0);
+    expect(fx.audit.filter(STREAM_AUDIT_EVENTS.READER_PARSE_FAILED).length).toBe(0);
+    expect(fx.audit.filter(STREAM_AUDIT_EVENTS.READER_CORRUPT).length).toBe(0);
   });
 
   it('基线 4：连续 ≥5 行畸形 JSON 触发 STREAM_READER_CORRUPT + 停订阅 + 哨兵阻断后续事件', async () => {
@@ -405,9 +406,9 @@ describe('chat-viewport regression baseline', () => {
       await new Promise(r => setTimeout(r, 50));
     }
 
-    await waitForAudit(fx, AUDIT_EVENTS.STREAM_READER_CORRUPT, 1);
+    await waitForAudit(fx, STREAM_AUDIT_EVENTS.READER_CORRUPT, 1);
 
-    const corruptEvents = fx.audit.filter(AUDIT_EVENTS.STREAM_READER_CORRUPT);
+    const corruptEvents = fx.audit.filter(STREAM_AUDIT_EVENTS.READER_CORRUPT);
     expect(corruptEvents.length).toBe(1);
 
     const cols = corruptEvents[0].slice(1) as string[];
@@ -432,7 +433,7 @@ describe('chat-viewport regression baseline', () => {
       fx.receivedEvents.find(e => (e as unknown as { type: string }).type === 'post_corrupt_probe')
     ).toBeUndefined();
 
-    expect(fx.audit.filter(AUDIT_EVENTS.STREAM_READER_PARSE_FAILED).length).toBeGreaterThanOrEqual(5);
+    expect(fx.audit.filter(STREAM_AUDIT_EVENTS.READER_PARSE_FAILED).length).toBeGreaterThanOrEqual(5);
   });
 
   it('基线 5：VIEWPORT_* 事件写 agentDir/audit.tsv，非父目录或其他路径（防 baseDir 归属漂回）', async () => {
@@ -543,7 +544,7 @@ describe('chat-viewport regression baseline', () => {
     const expectedExec = tToolResult - tToolCall;
     expect(Math.abs(elapsedExec - expectedExec)).toBeLessThanOrEqual(TOLERANCE_MS);
 
-    expect(fx.audit.filter(AUDIT_EVENTS.STREAM_READER_PARSE_FAILED).length).toBe(0);
-    expect(fx.audit.filter(AUDIT_EVENTS.STREAM_READER_CORRUPT).length).toBe(0);
+    expect(fx.audit.filter(STREAM_AUDIT_EVENTS.READER_PARSE_FAILED).length).toBe(0);
+    expect(fx.audit.filter(STREAM_AUDIT_EVENTS.READER_CORRUPT).length).toBe(0);
   });
 });
