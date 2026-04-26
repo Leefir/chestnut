@@ -71,27 +71,60 @@ export type StepResult =
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function executeStep(input: StepInput): Promise<StepResult> {
-  const { messages, systemPrompt, llm, tools, executor, registry, ctx, callbacks } = input;
+  const { messages, systemPrompt, llm, tools, ctx, callbacks } = input;
   const maxTokens = input.maxTokens ?? REACT_DEFAULT_MAX_TOKENS;
 
   if (ctx.signal?.aborted) throwAbortError(ctx.signal);
   safeCallback('onBeforeLLMCall', () => callbacks?.onBeforeLLMCall?.());
 
   const llmStartTime = Date.now();
+  const callOptions: LLMCallOptions = {
+    messages, system: systemPrompt, tools, maxTokens,
+    signal: ctx.signal, idleTimeoutMs: input.idleTimeoutMs,
+  };
+  const { response, llmInfo } = await runLLMCall(llm, callOptions, llmStartTime, callbacks);
+
+  if (response.content.length === 0) {
+    if (callbacks?.onEmptyResponse) callbacks.onEmptyResponse(response.stop_reason);
+    else console.warn(`[step-executor] LLM returned empty response (stop_reason=${response.stop_reason})`);
+  }
+
+  if (response.stop_reason === 'tool_use') return handleToolUseStop(response, input, llmInfo);
+
+  if (response.stop_reason === 'end_turn' || response.stop_reason === 'stop') {
+    const text = extractText(response.content);
+    appendAssistantMessage(messages, response.content);
+    return { kind: 'final', stopReason: 'end_turn', finalText: text };
+  }
+
+  if (response.stop_reason === 'max_tokens') return handleMaxTokensStop(response, input, llmInfo, maxTokens);
+
+  if (response.stop_reason === 'model_context_window_exceeded' || response.stop_reason === 'context_length_exceeded') {
+    const preserved = response.content.filter((b) => b.type === 'thinking' || b.type === 'text');
+    if (preserved.length > 0) appendAssistantMessage(messages, preserved);
+    return { kind: 'context_window_exceeded' };
+  }
+
+  if (callbacks?.onUnknownStopReason) callbacks.onUnknownStopReason(response.stop_reason);
+  else console.warn(`[step-executor] Unknown stop_reason: "${response.stop_reason}", treating as end_turn`);
+  const text = extractText(response.content);
+  appendAssistantMessage(messages, response.content);
+  return { kind: 'final', stopReason: 'unknown', finalText: text };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function runLLMCall(
+  llm: LLMService,
+  callOptions: LLMCallOptions,
+  llmStartTime: number,
+  callbacks?: StepCallbacks,
+): Promise<{ response: LLMResponse; llmInfo: LLMCallInfo }> {
   let response: LLMResponse;
   try {
-    response = await collectStreamResponse(
-      llm,
-      {
-        messages,
-        system: systemPrompt,
-        tools,
-        maxTokens,
-        signal: ctx.signal,
-        idleTimeoutMs: input.idleTimeoutMs,
-      },
-      callbacks,
-    );
+    response = await collectStreamResponse(llm, callOptions, callbacks);
   } catch (err) {
     const info: LLMCallInfo = {
       model: llm.getProviderInfo?.().model ?? 'unknown',
@@ -107,7 +140,6 @@ export async function executeStep(input: StepInput): Promise<StepResult> {
     callbacks?.onLLMResult?.(info);
     throw err;
   }
-
   const llmInfo: LLMCallInfo = {
     model: llm.getProviderInfo?.().model ?? 'unknown',
     inputTokens: response.usage?.input_tokens ?? 0,
@@ -115,116 +147,85 @@ export async function executeStep(input: StepInput): Promise<StepResult> {
     latencyMs: Date.now() - llmStartTime,
   };
   callbacks?.onLLMResult?.(llmInfo);
+  return { response, llmInfo };
+}
 
-  if (response.content.length === 0) {
-    if (callbacks?.onEmptyResponse) {
-      callbacks.onEmptyResponse(response.stop_reason);
-    } else {
-      console.warn(`[step-executor] LLM returned empty response (stop_reason=${response.stop_reason})`);
-    }
-  }
-
-  // ── tool_use ──
-  if (response.stop_reason === 'tool_use') {
-    const toolCalls = extractToolCalls(response.content);
-    if (toolCalls.length === 0) {
-      const text = extractText(response.content);
-      appendAssistantMessage(messages, response.content);
-      console.warn(`[step-executor] LLM returned tool_use stop_reason but no parseable tool calls, treating as no_tool`);
-      return { kind: 'final', stopReason: 'no_tool', finalText: text };
-    }
+async function handleToolUseStop(
+  response: LLMResponse,
+  input: StepInput,
+  llmInfo: LLMCallInfo,
+): Promise<StepResult> {
+  const { messages, executor, registry, ctx, callbacks } = input;
+  const toolCalls = extractToolCalls(response.content);
+  if (toolCalls.length === 0) {
+    const text = extractText(response.content);
     appendAssistantMessage(messages, response.content);
+    console.warn(`[step-executor] LLM returned tool_use stop_reason but no parseable tool calls, treating as no_tool`);
+    return { kind: 'final', stopReason: 'no_tool', finalText: text };
+  }
+  appendAssistantMessage(messages, response.content);
 
-    let parseErrorCount = 0;
-    const trackingCallbacks: StepCallbacks = {
-      ...callbacks,
-      onToolResult: (name, id, result) => {
-        if (result.metadata?.parseError === true) parseErrorCount++;
-        callbacks?.onToolResult?.(name, id, result);
-      },
-    };
-    // B.idle-abort: signal 已 abort 但 tool_use 已完整收集时，先让工具执行完
-    const toolCtx = ctx.signal?.aborted
-      ? cloneExecContext(ctx, { signal: undefined })
-      : ctx;
-    const toolResults = await executeToolCalls(toolCalls, executor, toolCtx, registry, trackingCallbacks);
+  let parseErrorCount = 0;
+  const trackingCallbacks: StepCallbacks = {
+    ...callbacks,
+    onToolResult: (name, id, result) => {
+      if (result.metadata?.parseError === true) parseErrorCount++;
+      callbacks?.onToolResult?.(name, id, result);
+    },
+  };
+  const toolCtx = ctx.signal?.aborted
+    ? cloneExecContext(ctx, { signal: undefined })
+    : ctx;
+  const toolResults = await executeToolCalls(toolCalls, executor, toolCtx, registry, trackingCallbacks);
 
-    if (ctx.signal?.aborted) throwAbortError(ctx.signal);
-    appendToolResults(messages, toolResults);
+  if (ctx.signal?.aborted) throwAbortError(ctx.signal);
+  appendToolResults(messages, toolResults);
 
+  return {
+    kind: 'continue',
+    meta: {
+      toolCallCount: toolCalls.length,
+      parseErrorCount,
+      allParseErrors: toolCalls.length > 0 && parseErrorCount === toolCalls.length,
+      llm: llmInfo,
+    },
+  };
+}
+
+function handleMaxTokensStop(
+  response: LLMResponse,
+  input: StepInput,
+  llmInfo: LLMCallInfo,
+  maxTokens: number,
+): StepResult {
+  const { messages } = input;
+  const toolCalls = extractToolCalls(response.content);
+  if (toolCalls.length > 0) {
+    appendAssistantMessage(messages, response.content);
+    const truncatedResults: ToolResultBlock[] = toolCalls.map(tc => ({
+      type: 'tool_result' as const,
+      tool_use_id: tc.id,
+      content: `[TRUNCATED] 输出超过单次 token 上限（${maxTokens} tokens），工具调用被截断未执行。请将内容拆分为多次较小的调用。`,
+      is_error: true,
+    }));
+    appendToolResults(messages, truncatedResults);
     return {
-      kind: 'continue',
+      kind: 'max_tokens_tool_use',
       meta: {
         toolCallCount: toolCalls.length,
-        parseErrorCount,
-        allParseErrors: toolCalls.length > 0 && parseErrorCount === toolCalls.length,
+        parseErrorCount: 0,
+        allParseErrors: false,
         llm: llmInfo,
       },
     };
   }
-
-  // ── end_turn / stop ──
-  if (response.stop_reason === 'end_turn' || response.stop_reason === 'stop') {
-    const text = extractText(response.content);
-    appendAssistantMessage(messages, response.content);
-    return { kind: 'final', stopReason: 'end_turn', finalText: text };
-  }
-
-  // ── max_tokens ──
-  if (response.stop_reason === 'max_tokens') {
-    const toolCalls = extractToolCalls(response.content);
-    if (toolCalls.length > 0) {
-      appendAssistantMessage(messages, response.content);
-      const truncatedResults: ToolResultBlock[] = toolCalls.map(tc => ({
-        type: 'tool_result' as const,
-        tool_use_id: tc.id,
-        content: `[TRUNCATED] 输出超过单次 token 上限（${maxTokens} tokens），工具调用被截断未执行。请将内容拆分为多次较小的调用。`,
-        is_error: true,
-      }));
-      appendToolResults(messages, truncatedResults);
-      return {
-        kind: 'max_tokens_tool_use',
-        meta: {
-          toolCallCount: toolCalls.length,
-          parseErrorCount: 0,
-          allParseErrors: false,
-          llm: llmInfo,
-        },
-      };
-    } else {
-      const text = extractText(response.content);
-      appendAssistantMessage(messages, response.content);
-      return {
-        kind: 'final',
-        stopReason: 'max_tokens_text',
-        finalText: text + '\n\n[Response truncated due to length limit]',
-      };
-    }
-  }
-
-  // ── context window exceeded ──
-  if (response.stop_reason === 'model_context_window_exceeded' || response.stop_reason === 'context_length_exceeded') {
-    // 保留 thinking/text（运行中对用户可见的产出），丢弃 tool_use（孤儿意图——
-    // 此分支不会执行工具，保留会产生无 tool_result 配对的 assistant 消息，
-    // 下次 resume 时会被 provider API 拒绝）。
-    const preserved = response.content.filter(
-      (b) => b.type === 'thinking' || b.type === 'text'
-    );
-    if (preserved.length > 0) {
-      appendAssistantMessage(messages, preserved);
-    }
-    return { kind: 'context_window_exceeded' };
-  }
-
-  // ── unknown ──
-  if (callbacks?.onUnknownStopReason) {
-    callbacks.onUnknownStopReason(response.stop_reason);
-  } else {
-    console.warn(`[step-executor] Unknown stop_reason: "${response.stop_reason}", treating as end_turn`);
-  }
   const text = extractText(response.content);
   appendAssistantMessage(messages, response.content);
-  return { kind: 'final', stopReason: 'unknown', finalText: text };
+  return {
+    kind: 'final',
+    stopReason: 'max_tokens_text',
+    finalText: text + '\n\n[Response truncated due to length limit]',
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -241,163 +242,292 @@ async function safeCallbackAsync(label: string, fn: () => Promise<void>): Promis
   catch (err) { console.warn(`[step-executor] ${label} error:`, err instanceof Error ? err.message : String(err)); }
 }
 
+interface StreamState {
+  contentBlocks: ContentBlock[];
+  currentText: string;
+  currentThinking: string;
+  currentSignature: string;
+  currentToolUse: { id: string; name: string; input: string } | null;
+  stopReason: string;
+  usage: { input_tokens: number; output_tokens: number } | undefined;
+}
+
+function createStreamState(): StreamState {
+  return {
+    contentBlocks: [],
+    currentText: '',
+    currentThinking: '',
+    currentSignature: '',
+    currentToolUse: null,
+    stopReason: 'end_turn',
+    usage: undefined,
+  };
+}
+
+function parseToolInput(raw: string, toolName: string): Record<string, unknown> {
+  try {
+    return JSON.parse(raw || '{}');
+  } catch (err) {
+    console.error(`[step-executor] Failed to parse tool input for "${toolName}": ${err instanceof Error ? err.message : String(err)}`);
+    return { __parseError: true, __raw: raw ?? '' };
+  }
+}
+
+function flushThinking(state: StreamState): void {
+  if (state.currentThinking) {
+    state.contentBlocks.push({
+      type: 'thinking',
+      thinking: state.currentThinking,
+      signature: state.currentSignature,
+    });
+    state.currentThinking = '';
+    state.currentSignature = '';
+  }
+}
+
+function flushText(state: StreamState, callbacks?: StepCallbacks): void {
+  if (state.currentText) {
+    state.contentBlocks.push({ type: 'text', text: state.currentText });
+    state.currentText = '';
+    callbacks?.onTextEnd?.();
+  }
+}
+
+function flushToolUse(state: StreamState): void {
+  if (state.currentToolUse) {
+    state.contentBlocks.push({
+      type: 'tool_use',
+      id: state.currentToolUse.id,
+      name: state.currentToolUse.name,
+      input: parseToolInput(state.currentToolUse.input, state.currentToolUse.name),
+    });
+  }
+}
+
+function resetState(state: StreamState): void {
+  state.contentBlocks.length = 0;
+  state.currentText = '';
+  state.currentThinking = '';
+  state.currentSignature = '';
+  state.currentToolUse = null;
+  state.stopReason = 'end_turn';
+  state.usage = undefined;
+}
+
+function finalizeContent(state: StreamState, callbacks?: StepCallbacks): void {
+  if (state.currentThinking) {
+    state.contentBlocks.push({
+      type: 'thinking',
+      thinking: state.currentThinking,
+      signature: state.currentSignature,
+    });
+  }
+  if (state.currentText) {
+    state.contentBlocks.push({ type: 'text', text: state.currentText });
+    callbacks?.onTextEnd?.();
+  }
+  if (state.currentToolUse) {
+    state.contentBlocks.push({
+      type: 'tool_use',
+      id: state.currentToolUse.id,
+      name: state.currentToolUse.name,
+      input: parseToolInput(state.currentToolUse.input, state.currentToolUse.name),
+    } as ContentBlock);
+    state.currentToolUse = null;
+  }
+}
+
 async function collectStreamResponse(
   llm: LLMService,
   callOptions: LLMCallOptions,
   callbacks?: StepCallbacks,
 ): Promise<LLMResponse> {
-  const contentBlocks: ContentBlock[] = [];
-  let currentText = '';
-  let currentThinking = '';
-  let currentSignature = '';
-  let currentToolUse: { id: string; name: string; input: string } | null = null;
-  let stopReason = 'end_turn';
-  let usage: { input_tokens: number; output_tokens: number } | undefined;
-
-  function parseToolInput(raw: string, toolName: string): Record<string, unknown> {
-    try {
-      return JSON.parse(raw || '{}');
-    } catch (err) {
-      console.error(`[step-executor] Failed to parse tool input for "${toolName}": ${err instanceof Error ? err.message : String(err)}`);
-      return { __parseError: true, __raw: raw ?? '' };
-    }
-  }
+  const state = createStreamState();
 
   try {
     for await (const chunk of llm.stream(callOptions)) {
-      // 每个 chunk 后检查 signal，确保及时响应 abort
-      if (callOptions.signal?.aborted) {
-        throwAbortError(callOptions.signal);
-      }
+      if (callOptions.signal?.aborted) throwAbortError(callOptions.signal);
       switch (chunk.type) {
         case 'text_delta':
-          // Flush thinking before text starts
-          if (currentThinking) {
-            contentBlocks.push({ type: 'thinking', thinking: currentThinking, signature: currentSignature });
-            currentThinking = '';
-            currentSignature = '';
-          }
+          flushThinking(state);
           if (chunk.delta) {
-            currentText += chunk.delta;
+            state.currentText += chunk.delta;
             callbacks?.onTextDelta?.(chunk.delta);
           }
           break;
-
         case 'thinking_delta':
           if (chunk.delta) {
-            currentThinking += chunk.delta;
+            state.currentThinking += chunk.delta;
             callbacks?.onThinkingDelta?.(chunk.delta);
           }
           break;
-
         case 'thinking_signature':
-          if (chunk.signature) {
-            currentSignature = chunk.signature;
-          }
+          if (chunk.signature) state.currentSignature = chunk.signature;
           break;
-
         case 'tool_use_start':
-          // Flush thinking before tool_use
-          if (currentThinking) {
-            contentBlocks.push({ type: 'thinking', thinking: currentThinking, signature: currentSignature });
-            currentThinking = '';
-            currentSignature = '';
-          }
-          // 保存之前的 text block
-          if (currentText) {
-            contentBlocks.push({ type: 'text', text: currentText });
-            currentText = '';
-            callbacks?.onTextEnd?.();
-          }
-          // 保存之前的 tool_use（如果有多个）
-          if (currentToolUse) {
-            contentBlocks.push({
-              type: 'tool_use',
-              id: currentToolUse.id,
-              name: currentToolUse.name,
-              input: parseToolInput(currentToolUse.input, currentToolUse.name),
-            });
-          }
-          currentToolUse = {
-            id: chunk.toolUse!.id,
-            name: chunk.toolUse!.name,
-            input: '',
-          };
-          stopReason = 'tool_use';
+          flushThinking(state);
+          flushText(state, callbacks);
+          flushToolUse(state);
+          state.currentToolUse = { id: chunk.toolUse!.id, name: chunk.toolUse!.name, input: '' };
+          state.stopReason = 'tool_use';
           break;
-
         case 'tool_use_delta':
-          if (currentToolUse && chunk.toolUse?.partialInput) {
-            currentToolUse.input += chunk.toolUse.partialInput;
+          if (state.currentToolUse && chunk.toolUse?.partialInput) {
+            state.currentToolUse.input += chunk.toolUse.partialInput;
           }
           break;
-
         case 'reset':
-          // Mid-stream provider failover: discard partial state, new provider will start fresh
           console.warn(`[llm] mid-stream failover: ${chunk.provider} timed out after ${chunk.timeoutMs}ms`);
-          contentBlocks.length = 0;
-          currentText = '';
-          currentThinking = '';
-          currentSignature = '';
-          currentToolUse = null;
-          stopReason = 'end_turn';
-          usage = undefined;
+          resetState(state);
           callbacks?.onReset?.(chunk.provider ?? 'unknown', chunk.timeoutMs ?? 0);
           break;
-
         case 'provider_failed':
           callbacks?.onProviderFailed?.(chunk.provider ?? 'unknown', chunk.model ?? 'unknown', chunk.error ?? 'unknown error');
           break;
-
         case 'done':
           if (chunk.usage) {
-            usage = {
-              input_tokens: chunk.usage.inputTokens,
-              output_tokens: chunk.usage.outputTokens,
-            };
+            state.usage = { input_tokens: chunk.usage.inputTokens, output_tokens: chunk.usage.outputTokens };
           }
-          if (chunk.stopReason && chunk.stopReason !== 'end_turn') {
-            stopReason = chunk.stopReason;
-          }
+          if (chunk.stopReason && chunk.stopReason !== 'end_turn') state.stopReason = chunk.stopReason;
           break;
       }
     }
   } catch (err) {
     if (callOptions.signal?.aborted) {
-      // B.idle-abort 修复：tool_use 已开始收集时不在此处 abort，
-      // fall through 到 "保存最后的 blocks" 节，由 executeStep L145 在工具执行后 abort。
-      if (stopReason !== 'tool_use') {
-        throwAbortError(callOptions.signal);
-      }
+      if (state.stopReason !== 'tool_use') throwAbortError(callOptions.signal);
       // stopReason === 'tool_use'：不 throw，fall through
     } else {
       throw err;
     }
   }
 
-  // 保存最后的 blocks
-  if (currentThinking) {
-    contentBlocks.push({ type: 'thinking', thinking: currentThinking, signature: currentSignature });
-  }
-  if (currentText) {
-    contentBlocks.push({ type: 'text', text: currentText });
-    callbacks?.onTextEnd?.();
-  }
-  if (currentToolUse) {
-    contentBlocks.push({
-      type: 'tool_use',
-      id: currentToolUse.id,
-      name: currentToolUse.name,
-      input: parseToolInput(currentToolUse.input, currentToolUse.name),
-    } as ContentBlock);
-    currentToolUse = null;
-  }
+  finalizeContent(state, callbacks);
 
   return {
-    content: contentBlocks,
-    stop_reason: stopReason,
-    usage,
+    content: state.contentBlocks,
+    stop_reason: state.stopReason,
+    usage: state.usage,
   };
+}
+
+interface CategorizedCalls {
+  readonlyAsync: { call: ToolUseBlock; index: number }[];
+  readonlySync: { call: ToolUseBlock; index: number }[];
+  write: { call: ToolUseBlock; index: number }[];
+}
+
+function categorizeToolCalls(
+  toolCalls: ToolUseBlock[],
+  registry: ToolRegistry,
+): CategorizedCalls {
+  const readonlyAsync: { call: ToolUseBlock; index: number }[] = [];
+  const readonlySync: { call: ToolUseBlock; index: number }[] = [];
+  const write: { call: ToolUseBlock; index: number }[] = [];
+
+  for (const [i, call] of toolCalls.entries()) {
+    const tool = registry.get(call.name);
+    const wantsAsync = (call.input as Record<string, unknown>)?.async === true;
+    if (tool?.readonly === true && !wantsAsync) {
+      readonlySync.push({ call, index: i });
+    } else if (tool?.readonly === true && wantsAsync) {
+      readonlyAsync.push({ call, index: i });
+    } else {
+      write.push({ call, index: i });
+    }
+  }
+  return { readonlyAsync, readonlySync, write };
+}
+
+async function executeSequential(
+  toolCalls: ToolUseBlock[],
+  executor: IToolExecutor,
+  ctx: ExecContext,
+  callbacks?: StepCallbacks,
+): Promise<ToolResultBlock[]> {
+  const results: ToolResultBlock[] = [];
+  for (const call of toolCalls) {
+    if (ctx.signal?.aborted) throwAbortError(ctx.signal);
+    await safeCallbackAsync('onToolCall', async () => await callbacks?.onToolCall?.(call.name, call.id));
+    const result = await executeSingleTool(call, executor, ctx);
+    safeCallback('onToolResult', () => callbacks?.onToolResult?.(call.name, call.id, result));
+    results.push(toToolResultBlock(call.id, result));
+  }
+  return results;
+}
+
+async function executeReadonlyAsync(
+  group: { call: ToolUseBlock; index: number }[],
+  executor: IToolExecutor,
+  ctx: ExecContext,
+  results: Map<number, ToolResultBlock>,
+  callbacks?: StepCallbacks,
+): Promise<void> {
+  for (const { call, index } of group) {
+    if (ctx.signal?.aborted) throwAbortError(ctx.signal);
+    await safeCallbackAsync('onToolCall', async () => await callbacks?.onToolCall?.(call.name, call.id));
+    const result = await executeSingleTool(call, executor, ctx);
+    safeCallback('onToolResult', () => callbacks?.onToolResult?.(call.name, call.id, result));
+    results.set(index, toToolResultBlock(call.id, result));
+  }
+}
+
+async function executeReadonlySync(
+  group: { call: ToolUseBlock; index: number }[],
+  executor: IToolExecutor,
+  ctx: ExecContext,
+  results: Map<number, ToolResultBlock>,
+  callbacks?: StepCallbacks,
+): Promise<void> {
+  const parseErrorCalls = group.filter(
+    ({ call }) => (call.input as Record<string, unknown>)?.__parseError === true
+  );
+  const cleanCalls = group.filter(
+    ({ call }) => (call.input as Record<string, unknown>)?.__parseError !== true
+  );
+
+  for (const { call, index } of parseErrorCalls) {
+    if (ctx.signal?.aborted) throwAbortError(ctx.signal);
+    await safeCallbackAsync('onToolCall', async () => await callbacks?.onToolCall?.(call.name, call.id));
+    const result = await executeSingleTool(call, executor, ctx);
+    safeCallback('onToolResult', () => callbacks?.onToolResult?.(call.name, call.id, result));
+    results.set(index, toToolResultBlock(call.id, result));
+  }
+
+  if (cleanCalls.length === 0) return;
+
+  for (const { call } of cleanCalls) {
+    await safeCallbackAsync('onToolCall', async () => await callbacks?.onToolCall?.(call.name, call.id));
+  }
+
+  const batch = cleanCalls.map(({ call }) => {
+    const { async: _asyncMode, ...toolArgs } = call.input as Record<string, unknown>;
+    return { toolName: call.name, args: toolArgs };
+  });
+
+  const parallelResults = await executor.executeParallel(batch, ctx);
+
+  for (let i = 0; i < cleanCalls.length; i++) {
+    const { call, index } = cleanCalls[i];
+    const result = parallelResults[i];
+    safeCallback('onToolResult', () => callbacks?.onToolResult?.(call.name, call.id, result));
+    results.set(index, toToolResultBlock(call.id, result));
+  }
+}
+
+async function executeWriteCalls(
+  group: { call: ToolUseBlock; index: number }[],
+  executor: IToolExecutor,
+  ctx: ExecContext,
+  results: Map<number, ToolResultBlock>,
+  callbacks?: StepCallbacks,
+): Promise<void> {
+  for (const { call, index } of group) {
+    if (ctx.signal?.aborted) throwAbortError(ctx.signal);
+    await safeCallbackAsync('onToolCall', async () => await callbacks?.onToolCall?.(call.name, call.id));
+    const result = await executeSingleTool(call, executor, ctx);
+    safeCallback('onToolResult', () => callbacks?.onToolResult?.(call.name, call.id, result));
+    results.set(index, toToolResultBlock(call.id, result));
+  }
 }
 
 async function executeToolCalls(
@@ -407,106 +537,15 @@ async function executeToolCalls(
   registry: ToolRegistry | undefined,
   callbacks?: StepCallbacks,
 ): Promise<ToolResultBlock[]> {
-  // If no registry, fall back to sequential execution
-  if (!registry) {
-    const toolResults: ToolResultBlock[] = [];
-    for (const toolCall of toolCalls) {
-      if (ctx.signal?.aborted) throwAbortError(ctx.signal);
-      await safeCallbackAsync('onToolCall', async () => await callbacks?.onToolCall?.(toolCall.name, toolCall.id));
-      const result = await executeSingleTool(toolCall, executor, ctx);
-      safeCallback('onToolResult', () => callbacks?.onToolResult?.(toolCall.name, toolCall.id, result));
-      toolResults.push(toToolResultBlock(toolCall.id, result));
-    }
-    return toolResults;
-  }
+  if (!registry) return executeSequential(toolCalls, executor, ctx, callbacks);
 
-  // Group tool calls into three categories:
-  // 1. Readonly + async:true → executeSingleTool (preserves async routing)
-  // 2. Readonly + sync → executeParallel (parallel optimization)
-  // 3. Write → executeSingleTool (sequential, for safety)
-  const readonlyAsyncCalls: { call: ToolUseBlock; index: number }[] = [];
-  const readonlySyncCalls: { call: ToolUseBlock; index: number }[] = [];
-  const writeCalls: { call: ToolUseBlock; index: number }[] = [];
-
-  for (const [i, call] of toolCalls.entries()) {
-    const tool = registry.get(call.name);
-    const wantsAsync = (call.input as Record<string, unknown>)?.async === true;
-    if (tool?.readonly === true && !wantsAsync) {
-      readonlySyncCalls.push({ call, index: i });
-    } else if (tool?.readonly === true && wantsAsync) {
-      readonlyAsyncCalls.push({ call, index: i });
-    } else {
-      writeCalls.push({ call, index: i });
-    }
-  }
-
-  // Results map: index -> ToolResultBlock
+  const { readonlyAsync, readonlySync, write } = categorizeToolCalls(toolCalls, registry);
   const results = new Map<number, ToolResultBlock>();
 
-  // Execute readonly + async tools sequentially (preserve async routing)
-  for (const { call, index } of readonlyAsyncCalls) {
-    if (ctx.signal?.aborted) throwAbortError(ctx.signal);
-    await safeCallbackAsync('onToolCall', async () => await callbacks?.onToolCall?.(call.name, call.id));
-    const result = await executeSingleTool(call, executor, ctx);
-    safeCallback('onToolResult', () => callbacks?.onToolResult?.(call.name, call.id, result));
-    results.set(index, toToolResultBlock(call.id, result));
-  }
+  await executeReadonlyAsync(readonlyAsync, executor, ctx, results, callbacks);
+  await executeReadonlySync(readonlySync, executor, ctx, results, callbacks);
+  await executeWriteCalls(write, executor, ctx, results, callbacks);
 
-  // Execute readonly sync tools in parallel
-  if (readonlySyncCalls.length > 0) {
-    // Split: __parseError calls must NOT reach executeParallel (would leak
-    // __parseError/__raw into tool args, and parseError flag would be lost).
-    const parseErrorCalls = readonlySyncCalls.filter(
-      ({ call }) => (call.input as Record<string, unknown>)?.__parseError === true
-    );
-    const cleanCalls = readonlySyncCalls.filter(
-      ({ call }) => (call.input as Record<string, unknown>)?.__parseError !== true
-    );
-
-    // Handle parseError calls via executeSingleTool (symmetric with sequential branch)
-    for (const { call, index } of parseErrorCalls) {
-      if (ctx.signal?.aborted) throwAbortError(ctx.signal);
-      await safeCallbackAsync('onToolCall', async () => await callbacks?.onToolCall?.(call.name, call.id));
-      const result = await executeSingleTool(call, executor, ctx);
-      safeCallback('onToolResult', () => callbacks?.onToolResult?.(call.name, call.id, result));
-      results.set(index, toToolResultBlock(call.id, result));
-    }
-
-    // Clean calls go through parallel path
-    if (cleanCalls.length > 0) {
-      for (const { call } of cleanCalls) {
-        await safeCallbackAsync('onToolCall', async () => await callbacks?.onToolCall?.(call.name, call.id));
-      }
-
-      const batch = cleanCalls.map(({ call }) => {
-        const { async: _asyncMode, ...toolArgs } = call.input as Record<string, unknown>;
-        return {
-          toolName: call.name,
-          args: toolArgs,
-        };
-      });
-
-      const parallelResults = await executor.executeParallel(batch, ctx);
-
-      for (let i = 0; i < cleanCalls.length; i++) {
-        const { call, index } = cleanCalls[i];
-        const result = parallelResults[i];
-        safeCallback('onToolResult', () => callbacks?.onToolResult?.(call.name, call.id, result));
-        results.set(index, toToolResultBlock(call.id, result));
-      }
-    }
-  }
-
-  // Execute write tools sequentially
-  for (const { call, index } of writeCalls) {
-    if (ctx.signal?.aborted) throwAbortError(ctx.signal);
-    await safeCallbackAsync('onToolCall', async () => await callbacks?.onToolCall?.(call.name, call.id));
-    const result = await executeSingleTool(call, executor, ctx);
-    safeCallback('onToolResult', () => callbacks?.onToolResult?.(call.name, call.id, result));
-    results.set(index, toToolResultBlock(call.id, result));
-  }
-
-  // Assemble results in original order
   return toolCalls.map((_, i) => {
     const r = results.get(i);
     if (!r) throw new Error(`[step-executor] Missing result for tool call at index ${i}`);

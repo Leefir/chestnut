@@ -11,7 +11,14 @@ import type { LLMCallInfo } from '../../src/core/react/step-executor.js';
 import type { LLMService } from '../../src/foundation/llm/index.js';
 import type { StreamChunk } from '../../src/foundation/llm/types.js';
 import type { LLMResponse, Message } from '../../src/types/message.js';
-import type { IToolExecutor, ExecContext, ToolRegistry, ToolResult } from '../../src/core/tools/executor.js';
+import type { IToolExecutor, ExecContext, ToolRegistry, ToolResult, Tool } from '../../src/core/tools/executor.js';
+import { ExecContextImpl } from '../../src/core/tools/context.js';
+import { ToolRegistryImpl } from '../../src/core/tools/registry.js';
+import { ToolExecutorImpl } from '../../src/core/tools/executor.js';
+import { NodeFileSystem } from '../../src/foundation/fs/index.js';
+import * as os from 'os';
+import * as path from 'path';
+import * as fs from 'fs/promises';
 
 // ── Mock factories ──────────────────────────────────────────────────────────
 
@@ -109,6 +116,41 @@ function makeMalformedToolInputLLM(toolUseId: string, toolName: string, rawInput
     getProviderInfo: vi.fn(() => ({ name: 'mock', model: 'mock-model', isFallback: false })),
     close: vi.fn(),
   } as unknown as LLMService;
+}
+
+// ── Real fixture factories (fidelity) ───────────────────────────────────────
+
+async function makeRealCtx(opts: { signal?: AbortSignal } = {}): Promise<ExecContext> {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'step-exec-'));
+  const nodeFs = new NodeFileSystem({ baseDir: tmpDir, enforcePermissions: false });
+  return new ExecContextImpl({
+    clawId: 'test-claw',
+    clawDir: tmpDir,
+    profile: 'full',
+    fs: nodeFs,
+    signal: opts.signal,
+  });
+}
+
+function makeStreamLLM(chunks: StreamChunk[]): LLMService {
+  return {
+    call: vi.fn(),
+    stream: vi.fn(() => (async function* () { for (const c of chunks) yield c; })()),
+    healthCheck: vi.fn(async () => true),
+    getProviderInfo: vi.fn(() => ({ name: 'mock', model: 'mock-model', isFallback: false })),
+    close: vi.fn(),
+  } as unknown as LLMService;
+}
+
+function makeTool(name: string, fn: (args: Record<string, unknown>, ctx: ExecContext) => Promise<ToolResult>, readonly = false): Tool {
+  return {
+    name,
+    description: 'test tool',
+    schema: { type: 'object', properties: {} },
+    readonly,
+    idempotent: true,
+    execute: fn,
+  };
 }
 
 // ── Tests ───────────────────────────────────────────────────────────────────
@@ -357,5 +399,602 @@ describe('StepExecutor', () => {
     })).rejects.toThrow(IdleTimeoutSignal);
 
     expect(toolExecuted).toBe(true);
+  });
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // A. executeStep boundary coverage
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  it('empty response triggers onEmptyResponse callback', async () => {
+    const llm = makeStreamLLM([{ type: 'done', stopReason: 'end_turn' }]);
+    const emptyReasons: string[] = [];
+    const result = await executeStep({
+      messages: [], systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
+      callbacks: { onEmptyResponse: (reason) => emptyReasons.push(reason) },
+    });
+    expect(result.kind).toBe('final');
+    expect(emptyReasons).toEqual(['end_turn']);
+  });
+
+  it('empty response without callback falls back to console.warn', async () => {
+    const llm = makeStreamLLM([{ type: 'done', stopReason: 'end_turn' }]);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await executeStep({
+      messages: [], systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
+    });
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('empty response'));
+    warnSpy.mockRestore();
+  });
+
+  it('max_tokens with tool_calls returns max_tokens_tool_use meta', async () => {
+    const llm = makeStreamLLM([
+      { type: 'tool_use_start', toolUse: { id: 'tu1', name: 'foo', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{"a":1}' } },
+      { type: 'done', stopReason: 'max_tokens' },
+    ]);
+    const messages: Message[] = [];
+    const result = await executeStep({
+      messages, systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({}), registry: makeRegistry({ foo: { readonly: false } }), ctx: makeCtx(),
+    });
+    expect(result.kind).toBe('max_tokens_tool_use');
+    if (result.kind === 'max_tokens_tool_use') {
+      expect(result.meta.toolCallCount).toBe(1);
+      expect(result.meta.parseErrorCount).toBe(0);
+    }
+    expect(messages).toHaveLength(2);
+    const toolResults = messages[1].content as Array<{ type: string; content?: string }>;
+    expect(toolResults[0].content).toContain('[TRUNCATED]');
+  });
+
+  it('max_tokens text-only returns final with truncation suffix', async () => {
+    const llm = makeStreamLLM([
+      { type: 'text_delta', delta: 'partial' },
+      { type: 'done', stopReason: 'max_tokens' },
+    ]);
+    const messages: Message[] = [];
+    const result = await executeStep({
+      messages, systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
+    });
+    expect(result.kind).toBe('final');
+    if (result.kind === 'final') {
+      expect(result.stopReason).toBe('max_tokens_text');
+      expect(result.finalText).toContain('[Response truncated due to length limit]');
+    }
+  });
+
+  it('context_window_exceeded preserves thinking and text blocks', async () => {
+    const llm = makeStreamLLM([
+      { type: 'thinking_delta', delta: 'deep thought' },
+      { type: 'text_delta', delta: 'conclusion' },
+      { type: 'done', stopReason: 'model_context_window_exceeded' },
+    ]);
+    const messages: Message[] = [];
+    const result = await executeStep({
+      messages, systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
+    });
+    expect(result.kind).toBe('context_window_exceeded');
+    expect(messages).toHaveLength(1);
+    const blocks = messages[0].content as Array<{ type: string }>;
+    expect(blocks.some(b => b.type === 'thinking')).toBe(true);
+    expect(blocks.some(b => b.type === 'text')).toBe(true);
+  });
+
+  it('context_length_exceeded alias behaves identically', async () => {
+    const llm = makeStreamLLM([
+      { type: 'text_delta', delta: 'hi' },
+      { type: 'done', stopReason: 'context_length_exceeded' },
+    ]);
+    const result = await executeStep({
+      messages: [], systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
+    });
+    expect(result.kind).toBe('context_window_exceeded');
+  });
+
+  it('unknown stop_reason triggers onUnknownStopReason callback', async () => {
+    const llm = makeStreamLLM([
+      { type: 'text_delta', delta: 'hello' },
+      { type: 'done', stopReason: 'custom_reason' },
+    ]);
+    const unknownReasons: string[] = [];
+    const result = await executeStep({
+      messages: [], systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
+      callbacks: { onUnknownStopReason: (r) => unknownReasons.push(r) },
+    });
+    expect(result.kind).toBe('final');
+    expect(unknownReasons).toEqual(['custom_reason']);
+  });
+
+  it('unknown stop_reason without callback falls back to console.warn', async () => {
+    const llm = makeStreamLLM([
+      { type: 'text_delta', delta: 'hello' },
+      { type: 'done', stopReason: 'custom_reason' },
+    ]);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await executeStep({
+      messages: [], systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
+    });
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown stop_reason'));
+    warnSpy.mockRestore();
+  });
+
+  it('tool_use with zero parseable calls returns final/no_tool', async () => {
+    const llm = makeStreamLLM([
+      { type: 'done', stopReason: 'tool_use' },
+    ]);
+    const messages: Message[] = [];
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = await executeStep({
+      messages, systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
+    });
+    expect(result.kind).toBe('final');
+    if (result.kind === 'final') {
+      expect(result.stopReason).toBe('no_tool');
+    }
+    warnSpy.mockRestore();
+  });
+
+  it('LLM stream error emits onLLMResult with error and rethrows', async () => {
+    const err = new Error('network failure');
+    const llm = makeStreamLLM([]);
+    llm.stream = vi.fn(() => (async function* () { throw err; })());
+    const infos: LLMCallInfo[] = [];
+    await expect(executeStep({
+      messages: [], systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
+      callbacks: { onLLMResult: (info) => infos.push(info) },
+    })).rejects.toThrow('network failure');
+    expect(infos).toHaveLength(1);
+    expect(infos[0].error).toBe('network failure');
+  });
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // B. collectStreamResponse boundary coverage
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  it('text-only stream produces a single text block', async () => {
+    const llm = makeStreamLLM([
+      { type: 'text_delta', delta: 'hello world' },
+      { type: 'done', stopReason: 'end_turn' },
+    ]);
+    const messages: Message[] = [];
+    const result = await executeStep({
+      messages, systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
+    });
+    expect(result.kind).toBe('final');
+    expect(messages).toHaveLength(1);
+    const blocks = messages[0].content as Array<{ type: string; text?: string }>;
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].type).toBe('text');
+    expect(blocks[0].text).toBe('hello world');
+  });
+
+  it('thinking-only stream produces a single thinking block', async () => {
+    const llm = makeStreamLLM([
+      { type: 'thinking_delta', delta: 'planning...' },
+      { type: 'thinking_signature', signature: 'sig123' },
+      { type: 'done', stopReason: 'end_turn' },
+    ]);
+    const messages: Message[] = [];
+    const result = await executeStep({
+      messages, systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
+    });
+    expect(result.kind).toBe('final');
+    const blocks = messages[0].content as Array<{ type: string; thinking?: string; signature?: string }>;
+    expect(blocks[0].type).toBe('thinking');
+    expect(blocks[0].thinking).toBe('planning...');
+    expect(blocks[0].signature).toBe('sig123');
+  });
+
+  it('thinking followed by text yields two blocks in order', async () => {
+    const llm = makeStreamLLM([
+      { type: 'thinking_delta', delta: 'think' },
+      { type: 'text_delta', delta: 'text' },
+      { type: 'done', stopReason: 'end_turn' },
+    ]);
+    const messages: Message[] = [];
+    await executeStep({
+      messages, systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
+    });
+    const blocks = messages[0].content as Array<{ type: string }>;
+    expect(blocks.map(b => b.type)).toEqual(['thinking', 'text']);
+  });
+
+  it('text interrupted by tool_use triggers onTextEnd callback', async () => {
+    const llm = makeStreamLLM([
+      { type: 'text_delta', delta: 'partial text' },
+      { type: 'tool_use_start', toolUse: { id: 'tu1', name: 'foo', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{"a":1}' } },
+      { type: 'done', stopReason: 'tool_use' },
+    ]);
+    let textEndCount = 0;
+    await executeStep({
+      messages: [], systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({ foo: { success: true, content: 'ok' } }),
+      registry: makeRegistry({ foo: { readonly: false } }), ctx: makeCtx(),
+      callbacks: { onTextEnd: () => textEndCount++ },
+    });
+    expect(textEndCount).toBe(1);
+  });
+
+  it('mid-stream reset clears contentBlocks and triggers onReset callback', async () => {
+    const llm = makeStreamLLM([
+      { type: 'text_delta', delta: 'old' },
+      { type: 'reset', provider: 'openai', timeoutMs: 30000 },
+      { type: 'text_delta', delta: 'new' },
+      { type: 'done', stopReason: 'end_turn' },
+    ]);
+    const resets: Array<{ provider: string; timeoutMs: number }> = [];
+    const messages: Message[] = [];
+    const result = await executeStep({
+      messages, systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
+      callbacks: { onReset: (p, t) => resets.push({ provider: p, timeoutMs: t }) },
+    });
+    expect(result.kind).toBe('final');
+    expect(resets).toHaveLength(1);
+    expect(resets[0].provider).toBe('openai');
+    // old text should be discarded; only new remains
+    const blocks = messages[0].content as Array<{ type: string; text?: string }>;
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].text).toBe('new');
+  });
+
+  it('mid-stream reset isolates subsequent stream from prior state', async () => {
+    const llm = makeStreamLLM([
+      { type: 'thinking_delta', delta: 'old think' },
+      { type: 'reset', provider: 'anthropic', timeoutMs: 15000 },
+      { type: 'thinking_delta', delta: 'new think' },
+      { type: 'done', stopReason: 'end_turn' },
+    ]);
+    const messages: Message[] = [];
+    await executeStep({
+      messages, systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
+    });
+    const blocks = messages[0].content as Array<{ type: string; thinking?: string }>;
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].thinking).toBe('new think');
+  });
+
+  it('provider_failed chunk triggers onProviderFailed callback', async () => {
+    const llm = makeStreamLLM([
+      { type: 'provider_failed', provider: 'openai', model: 'gpt-4', error: 'rate limited' },
+      { type: 'done', stopReason: 'end_turn' },
+    ]);
+    const failures: Array<{ p: string; m: string; e: string }> = [];
+    await executeStep({
+      messages: [], systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
+      callbacks: { onProviderFailed: (p, m, e) => failures.push({ p, m, e }) },
+    });
+    expect(failures).toHaveLength(1);
+    expect(failures[0].p).toBe('openai');
+    expect(failures[0].e).toBe('rate limited');
+  });
+
+  it('tool_use_delta accumulates partial input and parses correctly', async () => {
+    const llm = makeStreamLLM([
+      { type: 'tool_use_start', toolUse: { id: 'tu1', name: 'foo', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{"a"' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: ':1}' } },
+      { type: 'done', stopReason: 'tool_use' },
+    ]);
+    const messages: Message[] = [];
+    const exec = makeExecutor({ foo: { success: true, content: 'ok' } });
+    await executeStep({
+      messages, systemPrompt: '', llm, tools: [],
+      executor: exec, registry: makeRegistry({ foo: { readonly: false } }), ctx: makeCtx(),
+    });
+    expect(exec.execute).toHaveBeenCalledWith(expect.objectContaining({ args: { a: 1 } }));
+  });
+
+  it('malformed tool_use JSON yields __parseError and __raw fields', async () => {
+    const llm = makeStreamLLM([
+      { type: 'tool_use_start', toolUse: { id: 'tu1', name: 'foo', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{bad' } },
+      { type: 'done', stopReason: 'tool_use' },
+    ]);
+    const exec = makeExecutor({ foo: { success: true, content: 'ok' } });
+    await executeStep({
+      messages: [], systemPrompt: '', llm, tools: [],
+      executor: exec, registry: makeRegistry({ foo: { readonly: false } }), ctx: makeCtx(),
+    });
+    // execute should NOT be called because __parseError short-circuits
+    expect(exec.execute).not.toHaveBeenCalled();
+  });
+
+  it('abort during non-tool_use stream throws AbortError immediately', async () => {
+    const abortController = new AbortController();
+    const llm = makeStreamLLM([]);
+    llm.stream = vi.fn(() => (async function* () {
+      yield { type: 'text_delta', delta: 'hello' };
+      abortController.abort();
+      yield { type: 'text_delta', delta: 'world' };
+    })());
+    await expect(executeStep({
+      messages: [], systemPrompt: '', llm, tools: [],
+      executor: makeExecutor({}), registry: makeRegistry({}), ctx: { ...makeCtx(), signal: abortController.signal },
+    })).rejects.toThrow();
+  });
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // C. executeToolCalls grouping coverage (real fixtures)
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  it('no registry falls back to sequential execution', async () => {
+    const ctx = await makeRealCtx();
+    const registry = new ToolRegistryImpl();
+    registry.register(makeTool('echo', async (args) => ({ success: true, content: String(args.msg) })));
+    const executor = new ToolExecutorImpl(registry);
+
+    const llm = makeStreamLLM([
+      { type: 'tool_use_start', toolUse: { id: 'tu1', name: 'echo', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{"msg":"hi"}' } },
+      { type: 'done', stopReason: 'tool_use' },
+    ]);
+    const messages: Message[] = [];
+    const result = await executeStep({
+      messages, systemPrompt: '', llm, tools: [],
+      executor, registry: undefined, ctx,
+    });
+    expect(result.kind).toBe('continue');
+    expect(messages).toHaveLength(2);
+  });
+
+  it('readonly+async tools run sequentially before sync parallel batch', async () => {
+    const ctx = await makeRealCtx();
+    const registry = new ToolRegistryImpl();
+    const order: string[] = [];
+    registry.register(makeTool('asyncA', async () => { order.push('asyncA'); return { success: true, content: 'a' }; }, true));
+    registry.register(makeTool('syncB', async () => { order.push('syncB'); return { success: true, content: 'b' }; }, true));
+
+    const executor = new ToolExecutorImpl(registry);
+    // mock executeParallel to track invocation
+    const origParallel = executor.executeParallel.bind(executor);
+    executor.executeParallel = vi.fn(async (batch, _ctx) => {
+      order.push('parallel-start');
+      const res = await origParallel(batch, _ctx);
+      order.push('parallel-end');
+      return res;
+    });
+
+    const llm = makeStreamLLM([
+      { type: 'tool_use_start', toolUse: { id: 'tu1', name: 'asyncA', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{"async":true}' } },
+      { type: 'tool_use_start', toolUse: { id: 'tu2', name: 'syncB', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{}' } },
+      { type: 'done', stopReason: 'tool_use' },
+    ]);
+    await executeStep({
+      messages: [], systemPrompt: '', llm, tools: [],
+      executor, registry, ctx,
+    });
+    expect(order.indexOf('asyncA')).toBeLessThan(order.indexOf('parallel-start'));
+  });
+
+  it('readonly+sync clean calls go through executeParallel', async () => {
+    const ctx = await makeRealCtx();
+    const registry = new ToolRegistryImpl();
+    registry.register(makeTool('readA', async () => ({ success: true, content: 'a' }), true));
+    registry.register(makeTool('readB', async () => ({ success: true, content: 'b' }), true));
+
+    const executor = new ToolExecutorImpl(registry);
+    const parallelSpy = vi.spyOn(executor, 'executeParallel');
+
+    const llm = makeStreamLLM([
+      { type: 'tool_use_start', toolUse: { id: 'tu1', name: 'readA', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{}' } },
+      { type: 'tool_use_start', toolUse: { id: 'tu2', name: 'readB', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{}' } },
+      { type: 'done', stopReason: 'tool_use' },
+    ]);
+    await executeStep({
+      messages: [], systemPrompt: '', llm, tools: [],
+      executor, registry, ctx,
+    });
+    expect(parallelSpy).toHaveBeenCalledTimes(1);
+    expect(parallelSpy.mock.calls[0][0]).toHaveLength(2);
+  });
+
+  it('readonly+sync parseError calls bypass executeParallel and return error', async () => {
+    const ctx = await makeRealCtx();
+    const registry = new ToolRegistryImpl();
+    registry.register(makeTool('readA', async () => ({ success: true, content: 'a' }), true));
+
+    const executor = new ToolExecutorImpl(registry);
+    const parallelSpy = vi.spyOn(executor, 'executeParallel');
+
+    const llm = makeStreamLLM([
+      { type: 'tool_use_start', toolUse: { id: 'tu1', name: 'readA', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{bad' } },
+      { type: 'done', stopReason: 'tool_use' },
+    ]);
+    const result = await executeStep({
+      messages: [], systemPrompt: '', llm, tools: [],
+      executor, registry, ctx,
+    });
+    expect(parallelSpy).not.toHaveBeenCalled();
+    expect(result.kind).toBe('continue');
+    if (result.kind === 'continue') {
+      expect(result.meta.parseErrorCount).toBe(1);
+      expect(result.meta.allParseErrors).toBe(true);
+    }
+  });
+
+  it('write tools run sequentially', async () => {
+    const ctx = await makeRealCtx();
+    const registry = new ToolRegistryImpl();
+    const order: string[] = [];
+    registry.register(makeTool('writeA', async () => { order.push('writeA'); return { success: true, content: 'a' }; }, false));
+    registry.register(makeTool('writeB', async () => { order.push('writeB'); return { success: true, content: 'b' }; }, false));
+
+    const executor = new ToolExecutorImpl(registry);
+
+    const llm = makeStreamLLM([
+      { type: 'tool_use_start', toolUse: { id: 'tu1', name: 'writeA', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{}' } },
+      { type: 'tool_use_start', toolUse: { id: 'tu2', name: 'writeB', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{}' } },
+      { type: 'done', stopReason: 'tool_use' },
+    ]);
+    await executeStep({
+      messages: [], systemPrompt: '', llm, tools: [],
+      executor, registry, ctx,
+    });
+    expect(order).toEqual(['writeA', 'writeB']);
+  });
+
+  it('mixed three categories execute in order: async → sync → write', async () => {
+    const ctx = await makeRealCtx();
+    const registry = new ToolRegistryImpl();
+    const order: string[] = [];
+    registry.register(makeTool('asyncA', async () => { order.push('asyncA'); return { success: true, content: 'a' }; }, true));
+    registry.register(makeTool('syncB', async () => { order.push('syncB'); return { success: true, content: 'b' }; }, true));
+    registry.register(makeTool('writeC', async () => { order.push('writeC'); return { success: true, content: 'c' }; }, false));
+
+    const executor = new ToolExecutorImpl(registry);
+    const origParallel = executor.executeParallel.bind(executor);
+    executor.executeParallel = vi.fn(async (batch, _ctx) => {
+      order.push('parallel');
+      return origParallel(batch, _ctx);
+    });
+
+    const llm = makeStreamLLM([
+      { type: 'tool_use_start', toolUse: { id: 'tu1', name: 'writeC', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{}' } },
+      { type: 'tool_use_start', toolUse: { id: 'tu2', name: 'asyncA', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{"async":true}' } },
+      { type: 'tool_use_start', toolUse: { id: 'tu3', name: 'syncB', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{}' } },
+      { type: 'done', stopReason: 'tool_use' },
+    ]);
+    await executeStep({
+      messages: [], systemPrompt: '', llm, tools: [],
+      executor, registry, ctx,
+    });
+    // asyncA runs before parallel; parallel runs before writeC
+    expect(order.indexOf('asyncA')).toBeLessThan(order.indexOf('parallel'));
+    expect(order.indexOf('parallel')).toBeLessThan(order.indexOf('writeC'));
+  });
+
+  it('results map preserves original toolCalls index order', async () => {
+    const ctx = await makeRealCtx();
+    const registry = new ToolRegistryImpl();
+    // readB is readonly (executes first via parallel) but placed at index 1
+    // writeA is write (executes last) but placed at index 0
+    registry.register(makeTool('writeA', async () => ({ success: true, content: 'write' }), false));
+    registry.register(makeTool('readB', async () => ({ success: true, content: 'read' }), true));
+
+    const executor = new ToolExecutorImpl(registry);
+
+    const llm = makeStreamLLM([
+      { type: 'tool_use_start', toolUse: { id: 'tu1', name: 'writeA', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{}' } },
+      { type: 'tool_use_start', toolUse: { id: 'tu2', name: 'readB', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{}' } },
+      { type: 'done', stopReason: 'tool_use' },
+    ]);
+    const messages: Message[] = [];
+    await executeStep({
+      messages, systemPrompt: '', llm, tools: [],
+      executor, registry, ctx,
+    });
+    const toolResults = messages[1].content as Array<{ type: string; content?: string }>;
+    // toolCalls order: writeA (index 0), readB (index 1)
+    // execution order: readB (parallel) then writeA (sequential)
+    // assemble must restore original index order
+    expect(toolResults[0].content).toBe('write');
+    expect(toolResults[1].content).toBe('read');
+  });
+
+  it('mid-execution abort throws after prior tools completed', async () => {
+    const abortController = new AbortController();
+    const ctx = await makeRealCtx({ signal: abortController.signal });
+    const registry = new ToolRegistryImpl();
+    registry.register(makeTool('fast', async () => ({ success: true, content: 'fast' }), false));
+    registry.register(makeTool('slow', async () => {
+      abortController.abort();
+      return { success: true, content: 'slow' };
+    }, false));
+
+    const executor = new ToolExecutorImpl(registry);
+
+    const llm = makeStreamLLM([
+      { type: 'tool_use_start', toolUse: { id: 'tu1', name: 'fast', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{}' } },
+      { type: 'tool_use_start', toolUse: { id: 'tu2', name: 'slow', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{}' } },
+      { type: 'done', stopReason: 'tool_use' },
+    ]);
+    await expect(executeStep({
+      messages: [], systemPrompt: '', llm, tools: [],
+      executor, registry, ctx,
+    })).rejects.toThrow();
+  });
+
+  it('onToolCall and onToolResult fire in correct order per tool', async () => {
+    const ctx = await makeRealCtx();
+    const registry = new ToolRegistryImpl();
+    registry.register(makeTool('toolA', async () => ({ success: true, content: 'a' }), false));
+
+    const executor = new ToolExecutorImpl(registry);
+    const events: string[] = [];
+
+    const llm = makeStreamLLM([
+      { type: 'tool_use_start', toolUse: { id: 'tu1', name: 'toolA', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{}' } },
+      { type: 'done', stopReason: 'tool_use' },
+    ]);
+    await executeStep({
+      messages: [], systemPrompt: '', llm, tools: [],
+      executor, registry, ctx,
+      callbacks: {
+        onToolCall: () => events.push('call'),
+        onToolResult: () => events.push('result'),
+      },
+    });
+    expect(events).toEqual(['call', 'result']);
+  });
+
+  it('categorizeToolCalls partitions by readonly and async flag', async () => {
+    // This helper is pure; we test it via the module import by exercising executeStep
+    // with a registry that distinguishes the three paths.
+    const ctx = await makeRealCtx();
+    const registry = new ToolRegistryImpl();
+    registry.register(makeTool('roSync', async () => ({ success: true, content: 's' }), true));
+    registry.register(makeTool('roAsync', async () => ({ success: true, content: 'a' }), true));
+    registry.register(makeTool('write', async () => ({ success: true, content: 'w' }), false));
+
+    const executor = new ToolExecutorImpl(registry);
+    const parallelSpy = vi.spyOn(executor, 'executeParallel');
+
+    const llm = makeStreamLLM([
+      { type: 'tool_use_start', toolUse: { id: 'tu1', name: 'roSync', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{}' } },
+      { type: 'tool_use_start', toolUse: { id: 'tu2', name: 'roAsync', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{"async":true}' } },
+      { type: 'tool_use_start', toolUse: { id: 'tu3', name: 'write', partialInput: '' } },
+      { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{}' } },
+      { type: 'done', stopReason: 'tool_use' },
+    ]);
+    await executeStep({
+      messages: [], systemPrompt: '', llm, tools: [],
+      executor, registry, ctx,
+    });
+    // roSync goes through parallel (1 call with 1 item)
+    expect(parallelSpy).toHaveBeenCalledTimes(1);
+    expect(parallelSpy.mock.calls[0][0]).toHaveLength(1);
   });
 });
