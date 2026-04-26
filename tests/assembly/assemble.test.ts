@@ -105,7 +105,7 @@ vi.mock('../../src/core/memory/index.js', () => ({
   createMemorySystem: vi.fn(() => mockMemorySystem),
 }));
 
-vi.mock('../../src/core/cron/jobs/contract-observer.js', () => ({
+vi.mock('../../src/core/contract/jobs/contract-observer.js', () => ({
   runContractObserver: vi.fn(),
 }));
 
@@ -522,7 +522,7 @@ describe('assemble', () => {
     const { runDiskMonitor } = await import('../../src/core/cron/jobs/disk-monitor.js');
     const { runLlmStats } = await import('../../src/core/cron/jobs/llm-stats.js');
     const { createMemorySystem } = await import('../../src/core/memory/index.js');
-    const { runContractObserver } = await import('../../src/core/cron/jobs/contract-observer.js');
+    const { runContractObserver } = await import('../../src/core/contract/jobs/contract-observer.js');
 
     expect(runDiskMonitor).toHaveBeenCalled();
     expect(runLlmStats).toHaveBeenCalled();

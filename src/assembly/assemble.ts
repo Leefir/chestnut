@@ -39,7 +39,7 @@ import { runDiskMonitor } from '../core/cron/jobs/disk-monitor.js';
 import { runLlmStats } from '../core/cron/jobs/llm-stats.js';
 import { createMemorySystem } from '../core/memory/index.js';
 import type { MemorySystem } from '../core/memory/index.js';
-import { runContractObserver } from '../core/cron/jobs/contract-observer.js';
+import { runContractObserver } from '../core/contract/jobs/contract-observer.js';
 import { buildLLMConfig } from '../cli/config.js';
 import { DEFAULT_MAX_STEPS, DEFAULT_MAX_CONCURRENT_TASKS } from '../constants.js';
 
