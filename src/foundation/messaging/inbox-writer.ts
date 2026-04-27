@@ -8,7 +8,7 @@
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import type { FileSystem } from '../fs/types.js';
-import type { InboxMessage } from '../../types/contract.js';
+import type { InboxMessage } from '../../types/messaging.js';
 import { encodeInbox, parseFrontmatter } from '../message-codec/index.js';
 import type { Audit } from '../audit/index.js';
 import { MESSAGING_AUDIT_EVENTS } from './audit-events.js';

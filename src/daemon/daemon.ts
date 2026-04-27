@@ -13,7 +13,7 @@ import * as fsNative from 'fs';
 import * as fsAsync from 'fs/promises';
 import { createHash } from 'node:crypto';
 import { loadGlobalConfig, loadClawConfig, getClawDir, getMotionDir } from '../foundation/config/index.js';
-import type { InboxMessage } from '../types/contract.js';
+import type { InboxMessage } from '../types/messaging.js';
 import { startDaemonLoop } from './daemon-loop.js';
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import { AuditWriter } from '../foundation/audit/writer.js';

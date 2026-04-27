@@ -18,7 +18,7 @@ import * as path from 'path';
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import type { FileSystem } from '../foundation/fs/types.js';
 import type { ClawRuntime, StreamCallbacks } from '../core/runtime/index.js';
-import type { InboxMessage } from '../types/contract.js';
+import type { InboxMessage } from '../types/messaging.js';
 import type { StreamWriter, StreamLog } from '../foundation/stream/index.js';
 import { createWatcher } from '../foundation/file-watcher/index.js';
 import type { Watcher } from '../foundation/file-watcher/types.js';

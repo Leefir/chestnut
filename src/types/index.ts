@@ -19,13 +19,19 @@ export type {
 // Contract types
 export type {
   ContractStatus,
-  Priority,
   SubTask,
   Contract,
+} from './contract.js';
+
+// Messaging types
+export type {
   InboxMessage,
   OutboxMessage,
   HeartbeatEntry,
-} from './contract.js';
+} from './messaging.js';
+
+// Priority (shared)
+export type { Priority } from './priority.js';
 
 // Config types
 export type { ToolProfile } from './config.js';

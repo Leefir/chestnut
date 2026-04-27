@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import type { InboxMessage } from '../../types/contract.js';
+import type { InboxMessage } from '../../types/messaging.js';
 import { parseFrontmatter } from './frontmatter.js';
 import { validatePriority, validateType } from './validation.js';
 

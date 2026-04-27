@@ -16,7 +16,7 @@ import type { StreamChunk } from '../../src/foundation/llm/types.js';
 import { MaxStepsExceededError } from '../../src/types/errors.js';
 import type { Message } from '../../src/types/message.js';
 import { IdleTimeoutSignal, PriorityInboxInterrupt, UserInterrupt } from '../../src/types/signals.js';
-import type { InboxMessage } from '../../src/types/contract.js';
+import type { InboxMessage } from '../../src/types/messaging.js';
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 
 /**

@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { AuditWriter } from '../../foundation/audit/writer.js';
-import type { InboxMessage } from '../../types/contract.js';
+import type { InboxMessage } from '../../types/messaging.js';
 import { InboxWriter } from '../../foundation/messaging/index.js';
 import { TASK_AUDIT_EVENTS } from './audit-events.js';
 import type { SubAgentTask, ToolTask } from './system.js';

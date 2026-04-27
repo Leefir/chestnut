@@ -10,7 +10,7 @@ import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
 import { InboxWriter } from '../../../src/foundation/messaging/index.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
-import type { InboxMessage } from '../../../src/types/contract.js';
+import type { InboxMessage } from '../../../src/types/messaging.js';
 
 describe('InboxWriter', () => {
   let testDir: string;

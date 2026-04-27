@@ -12,7 +12,7 @@ import { InboxReader } from '../../src/foundation/messaging/index.js';
 import { OutboxWriter } from '../../src/foundation/messaging/index.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import { makeAudit } from '../helpers/audit.js';
-import type { InboxMessage } from '../../src/types/contract.js';
+import type { InboxMessage } from '../../src/types/messaging.js';
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 
 /**

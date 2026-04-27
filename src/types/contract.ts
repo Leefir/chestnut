@@ -3,6 +3,8 @@
  * Phase 0: Interface definitions only
  */
 
+import type { Priority } from './priority.js';
+
 export type ContractStatus =
   | 'pending'    // Waiting to be picked up
   | 'running'    // Currently being executed
@@ -16,18 +18,6 @@ export type SubtaskStatus =
   | 'in_progress'  // Undergoing acceptance verification
   | 'completed'    // Successfully finished
   | 'failed';      // Execution failed
-
-export type Priority = 'low' | 'normal' | 'high' | 'critical';
-
-/**
- * Priority values for sorting (higher = more important)
- */
-export const PRIORITY_VALUES: Record<Priority, number> = {
-  critical: 4,
-  high: 3,
-  normal: 2,
-  low: 1,
-};
 
 export interface SubTask {
   id: string;
@@ -44,7 +34,7 @@ export interface Contract {
   description: string;
   status: ContractStatus;
   priority: Priority;
-  
+
   // Creator
   creator: string;     // Motion ID or Claw ID that created this
 
@@ -54,7 +44,7 @@ export interface Contract {
 
   // Auth level for actions
   auth_level: 'auto' | 'notify' | 'confirm';
-  
+
   // Timestamps
   created_at: string;
   updated_at: string;
@@ -62,36 +52,3 @@ export interface Contract {
   completed_at?: string;
 }
 
-export interface InboxMessage {
-  id: string;
-  type: 'message' | 'user_chat' | 'user_inbox_message' | 'crash_notification' | 'heartbeat' | 'claw_outbox' | string;
-  from: string;        // Sender Claw/Motion ID
-  to: string;          // Recipient Claw ID
-  content: string;
-  priority: Priority;
-  timestamp: string;
-  contract_id?: string;
-  reply_to?: string;   // For threading
-  extraMeta?: Record<string, string>;   // decode 时保存白名单外的字段
-}
-
-export interface OutboxMessage {
-  id: string;
-  type: 'response' | 'contract_update' | 'status_report' | 'report' | 'question' | 'result' | 'error';
-  from: string;        // Sender Claw ID
-  to: string;          // Recipient Claw/Motion ID
-  content: string;
-  timestamp: string;
-  priority: 'critical' | 'high' | 'normal' | 'low';
-  contract_id?: string;
-  in_reply_to?: string;
-}
-
-export interface HeartbeatEntry {
-  claw_id: string;
-  timestamp: string;
-  status: 'idle' | 'working' | 'error';
-  current_contract?: string;
-  message_count: number;
-  memory_usage?: number;
-}

@@ -4,7 +4,7 @@
  */
 
 import type { InboxMessage } from '../../types/index.js';
-import type { Priority } from '../../types/contract.js';
+import type { Priority } from '../../types/priority.js';
 
 export const VALID_PRIORITIES: Priority[] = ['critical', 'high', 'normal', 'low'];
 export const VALID_TYPES = [

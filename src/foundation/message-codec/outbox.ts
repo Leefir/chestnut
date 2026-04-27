@@ -1,4 +1,4 @@
-import type { OutboxMessage } from '../../types/contract.js';
+import type { OutboxMessage } from '../../types/messaging.js';
 
 /**
  * Encode OutboxMessage to markdown string.
