@@ -197,9 +197,13 @@ export class DispatchTool implements Tool {
     const lastMsg = dispatcherMessages[dispatcherMessages.length - 1];
     let dispatchToolUseId: string | undefined;
     if (lastMsg?.role === 'assistant' && Array.isArray(lastMsg.content)) {
-      const lastBlock = lastMsg.content[lastMsg.content.length - 1];
-      if (lastBlock?.type === 'tool_use' && lastBlock.name === DISPATCH_TOOL_NAME) {
-        dispatchToolUseId = (lastBlock as { type: string; id: string; name: string }).id;
+      // 倒序遍历：多 tool_use blocks 并行调用时 dispatch 可能不是最后 block
+      for (let i = lastMsg.content.length - 1; i >= 0; i--) {
+        const block = lastMsg.content[i];
+        if (block?.type === 'tool_use' && block.name === DISPATCH_TOOL_NAME) {
+          dispatchToolUseId = (block as { type: string; id: string; name: string }).id;
+          break;
+        }
       }
     }
     if (dispatchToolUseId) {
