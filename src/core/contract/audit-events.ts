@@ -26,4 +26,5 @@ export const CONTRACT_AUDIT_EVENTS = {
   RETRO_MINING_FAILED: 'contract_retro_mining_failed',
   RETRO_SCHEDULE_FAILED: 'contract_retro_schedule_failed',
   RETRO_CLEANUP_FAILED: 'contract_retro_cleanup_failed',
+  UNEXPECTED_ASYNC_THROW: 'contract_unexpected_async_throw',
 } as const;

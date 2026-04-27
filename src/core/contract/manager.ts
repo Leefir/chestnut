@@ -45,6 +45,14 @@ export interface MotionReviewContext {
   clawsBaseDir: string;
 }
 
+// Programming bug detection (per Coding #5 / phase342 / r40 反向 3 教训)
+// 编程 bug (TypeError 等) vs 业务 throw 区分 / 编程 bug 走 audit 暴露
+const PROGRAMMING_BUG_TYPES = [TypeError, ReferenceError, SyntaxError, RangeError];
+
+function isProgrammingBug(err: unknown): boolean {
+  return PROGRAMMING_BUG_TYPES.some(T => err instanceof T);
+}
+
 
 // Contract default value constants
 const CONTRACT_DEFAULTS = {
@@ -536,6 +544,18 @@ export class ContractManager {
     // Start background acceptance (fire-and-forget)
     this._runAcceptanceInBackground(params, contractYaml, acceptanceConfig)
       .catch(err => {
+        // phase342: 区分编程 bug vs 业务 throw / 编程 bug 暴露 audit (Coding #5)
+        if (isProgrammingBug(err)) {
+          this.audit.write(
+            CONTRACT_AUDIT_EVENTS.UNEXPECTED_ASYNC_THROW,
+            `context=ContractManager.backgroundAcceptance`,
+            `contractId=${contractId}`,
+            `subtaskId=${subtaskId}`,
+            `errorType=${err instanceof Error ? err.constructor.name : typeof err}`,
+            `error=${err instanceof Error ? err.message : String(err)}`,
+            `stack=${err instanceof Error ? err.stack ?? '' : ''}`,
+          );
+        }
         this.audit.write(CONTRACT_AUDIT_EVENTS.ACCEPTANCE_RESET_FAILED, `context=ContractManager.backgroundAcceptance`, `contractId=${contractId}`, `subtaskId=${subtaskId}`, `error=${err instanceof Error ? err.message : String(err)}`);
         return this._writeAcceptanceError(contractId, subtaskId, err);
       });

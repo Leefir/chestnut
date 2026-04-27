@@ -930,4 +930,122 @@ describe('ContractManager — verifier scheduler port', () => {
 
     await cleanupTempDir(rootDir);
   });
+
+  it('catches TypeError in fire-and-forget acceptance and emits UNEXPECTED_ASYNC_THROW audit', async () => {
+    const auditEvents: Array<{ type: string; cols: string[] }> = [];
+    const captureAudit = {
+      write: (type: string, ...cols: string[]) => { auditEvents.push({ type, cols }); },
+    };
+
+    const rootDir = await createTempDir();
+    const clawDir = path.join(rootDir, 'claws', 'test-claw');
+    await fs.mkdir(clawDir, { recursive: true });
+    const nodeFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+    const mockLLM = {
+      call: vi.fn(),
+      stream: vi.fn(),
+    } as unknown as LLMService;
+    const mockRegistry = new ToolRegistryImpl();
+
+    const manager = new ContractManager(
+      clawDir, 'test-claw', nodeFs, captureAudit as any, mockLLM, mockRegistry, undefined,
+    );
+
+    const contractId = 'typeerror-test-contract';
+    const subtaskId = 'task-1';
+    await setupContract(clawDir, contractId, {
+      schema_version: 1,
+      title: 'TypeError Test',
+      goal: 'Test TypeError catch',
+      subtasks: [{ id: subtaskId, description: 'Verify TypeError audit' }],
+      acceptance: [{ subtask_id: subtaskId, type: 'llm', prompt_file: `acceptance/${subtaskId}.prompt.txt` }],
+    }, { [subtaskId]: 'todo' });
+    await fs.mkdir(path.join(clawDir, 'contract', 'active', contractId, 'acceptance'), { recursive: true });
+    await fs.writeFile(
+      path.join(clawDir, 'contract', 'active', contractId, 'acceptance', `${subtaskId}.prompt.txt`),
+      'Evidence: {{evidence}}',
+    );
+
+    // Mock loadContractYaml to return malformed YAML (subtasks missing) after setup.
+    // This causes TypeError in _runAcceptanceInBackground when it calls contractYaml.subtasks.find,
+    // which bubbles to the .catch block on L545.
+    vi.spyOn(manager as any, 'loadContractYaml').mockResolvedValue({
+      schema_version: 1,
+      title: 'TypeError Test',
+      goal: 'Test TypeError catch',
+      acceptance: [{ subtask_id: subtaskId, type: 'llm', prompt_file: `acceptance/${subtaskId}.prompt.txt` }],
+      // subtasks intentionally omitted to trigger TypeError
+    });
+
+    await manager.completeSubtask({ contractId, subtaskId, evidence: 'done' });
+
+    // Wait for background acceptance to settle
+    await new Promise(r => setTimeout(r, 100));
+
+    expect(auditEvents.some(e => e.type === 'contract_unexpected_async_throw')).toBe(true);
+    const throwAudit = auditEvents.find(e => e.type === 'contract_unexpected_async_throw');
+    expect(throwAudit?.cols.some(c => c.startsWith('errorType=TypeError'))).toBe(true);
+    expect(throwAudit?.cols.some(c => c.startsWith('error='))).toBe(true);
+
+    await cleanupTempDir(rootDir);
+  });
+
+  it('does NOT emit UNEXPECTED_ASYNC_THROW for business errors in background acceptance', async () => {
+    const auditEvents: Array<{ type: string; cols: string[] }> = [];
+    const captureAudit = {
+      write: (type: string, ...cols: string[]) => { auditEvents.push({ type, cols }); },
+    };
+
+    const rootDir = await createTempDir();
+    const clawDir = path.join(rootDir, 'claws', 'test-claw');
+    await fs.mkdir(clawDir, { recursive: true });
+    const nodeFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+    const mockLLM = {
+      call: vi.fn(),
+      stream: vi.fn(),
+    } as unknown as LLMService;
+    const mockRegistry = new ToolRegistryImpl();
+
+    const manager = new ContractManager(
+      clawDir, 'test-claw', nodeFs, captureAudit as any, mockLLM, mockRegistry, undefined,
+    );
+
+    const contractId = 'business-error-test-contract';
+    const subtaskId = 'task-1';
+    await setupContract(clawDir, contractId, {
+      schema_version: 1,
+      title: 'Business Error Test',
+      goal: 'Test business error catch',
+      subtasks: [{ id: subtaskId, description: 'Verify business error audit' }],
+      acceptance: [{ subtask_id: subtaskId, type: 'llm', prompt_file: `acceptance/${subtaskId}.prompt.txt` }],
+    }, { [subtaskId]: 'todo' });
+    await fs.mkdir(path.join(clawDir, 'contract', 'active', contractId, 'acceptance'), { recursive: true });
+    await fs.writeFile(
+      path.join(clawDir, 'contract', 'active', contractId, 'acceptance', `${subtaskId}.prompt.txt`),
+      'Evidence: {{evidence}}',
+    );
+
+    // Mock loadContractYaml to return subtasks with a find() that throws plain Error.
+    // This causes a business Error in _runAcceptanceInBackground, which bubbles to .catch
+    // but should NOT trigger UNEXPECTED_ASYNC_THROW (only ACCEPTANCE_RESET_FAILED).
+    vi.spyOn(manager as any, 'loadContractYaml').mockResolvedValue({
+      schema_version: 1,
+      title: 'Business Error Test',
+      goal: 'Test business error catch',
+      acceptance: [{ subtask_id: subtaskId, type: 'llm', prompt_file: `acceptance/${subtaskId}.prompt.txt` }],
+      subtasks: {
+        find() { throw new Error('LLM rate limit exceeded'); },
+      },
+    });
+
+    await manager.completeSubtask({ contractId, subtaskId, evidence: 'done' });
+
+    // Wait for background acceptance to settle
+    await new Promise(r => setTimeout(r, 100));
+
+    expect(auditEvents.some(e => e.type === 'contract_unexpected_async_throw')).toBe(false);
+    expect(auditEvents.some(e => e.type === 'contract_acceptance_reset_failed')).toBe(true);
+
+    await cleanupTempDir(rootDir);
+  });
 });
