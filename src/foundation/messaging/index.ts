@@ -3,7 +3,7 @@
  * Messaging module (L2)
  *
  * Inbox/outbox directory management, message delivery and retrieval.
- * Dependencies: FileSystem, MessageCodec
+ * Dependencies: FileSystem, Frontmatter
  */
 
 export { OutboxWriter } from './outbox-writer.js';

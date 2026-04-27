@@ -42,7 +42,7 @@ export function encodeInbox(
     const reserved = new Set(['id', 'type', 'from', 'to', 'priority', 'timestamp']);
     for (const [k, v] of Object.entries(extraFields)) {
       if (reserved.has(k)) {
-        console.warn(`[MessageCodec] extraFields key "${k}" conflicts with standard field, skipping`);
+        console.warn(`[Messaging] extraFields key "${k}" conflicts with standard field, skipping`);
         continue;
       }
       lines.push(`${k}: ${yamlQuote(v)}`);

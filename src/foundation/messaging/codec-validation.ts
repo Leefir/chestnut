@@ -1,6 +1,6 @@
 /**
  * Inbox message validation utilities
- * Message field validation for MessageCodec
+ * Message field validation for Messaging
  */
 
 import type { InboxMessage } from '../../types/index.js';
