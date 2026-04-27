@@ -1,0 +1,51 @@
+import * as fsNative from 'fs';
+import * as path from 'path';
+import type { ProgressData } from '../manager.js';
+
+export function collectContractEvents(
+  clawDir: string,
+  clawId: string,
+  sinceTs: number,
+): string[] {
+  const events: string[] = [];
+
+  // 1. archive 中新完成
+  const archiveDir = path.join(clawDir, 'contract', 'archive');
+  try {
+    const dirs = fsNative.readdirSync(archiveDir, { withFileTypes: true })
+      .filter(e => e.isDirectory());
+    for (const d of dirs) {
+      const progressPath = path.join(archiveDir, d.name, 'progress.json');
+      try {
+        const raw = fsNative.readFileSync(progressPath, 'utf-8');
+        const progress = JSON.parse(raw) as ProgressData;
+        const completedAfter = Object.values(progress.subtasks)
+          .some(s => s.completed_at && new Date(s.completed_at).getTime() > sinceTs);
+        if (completedAfter && progress.status === 'completed') {
+          events.push(`[contract_completed] claw=${clawId} contract=${d.name}`);
+        }
+      } catch { /* 跳过单 contract */ }
+    }
+  } catch { /* archive 不存在 */ }
+
+  // 2. active 中升级事件
+  const activeDir = path.join(clawDir, 'contract', 'active');
+  try {
+    const dirs = fsNative.readdirSync(activeDir, { withFileTypes: true })
+      .filter(e => e.isDirectory());
+    for (const d of dirs) {
+      const progressPath = path.join(activeDir, d.name, 'progress.json');
+      try {
+        const raw = fsNative.readFileSync(progressPath, 'utf-8');
+        const progress = JSON.parse(raw) as ProgressData;
+        for (const [stId, st] of Object.entries(progress.subtasks)) {
+          if (st.escalated_at && new Date(st.escalated_at).getTime() > sinceTs) {
+            events.push(`[contract_escalation] claw=${clawId} contract=${d.name} subtask=${stId} retry_count=${st.retry_count}`);
+          }
+        }
+      } catch { /* 跳过 */ }
+    }
+  } catch { /* active 不存在 */ }
+
+  return events;
+}

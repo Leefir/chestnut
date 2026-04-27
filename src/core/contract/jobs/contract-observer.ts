@@ -1,9 +1,10 @@
 import * as path from 'path';
 import * as fsNative from 'fs';
-import { execFile } from '../../../foundation/process-exec/index.js';
 import { notifyInbox } from '../../../foundation/messaging/index.js';
 import { NodeFileSystem } from '../../../foundation/fs/node-fs.js';
 import { AuditWriter } from '../../../foundation/audit/index.js';
+import { collectContractEvents } from './event-collector.js';
+import { CONTRACT_AUDIT_EVENTS } from '../audit-events.js';
 
 export interface ContractObserverOptions {
   clawforumDir: string;       // .clawforum/ 目录
@@ -35,25 +36,26 @@ export async function runContractObserver(options: ContractObserverOptions): Pro
   } catch { return; /* claws/ 不存在 */ }
 
   const events: string[] = [];
+  const motionAudit = new AuditWriter(fs, path.join(clawforumDir, 'motion', 'audit.tsv'));
 
   for (const clawId of clawIds) {
     try {
-      const { stdout } = await execFile(
-        'node', [process.argv[1], 'contract', 'events', clawId, '--since', String(lastCheckTs)],
-        { cwd: clawforumDir, timeout: 10000 }
-      );
-      const trimmed = stdout.trim();
-      if (trimmed) {
-        events.push(trimmed);
+      const clawDir = path.join(clawforumDir, 'claws', clawId);
+      const clawEvents = collectContractEvents(clawDir, clawId, lastCheckTs);
+      if (clawEvents.length > 0) {
+        events.push(clawEvents.join('\n'));
       }
-    } catch {
-      // CLI 调用失败，跳过该 claw
+    } catch (e) {
+      motionAudit.write(
+        CONTRACT_AUDIT_EVENTS.OBSERVER_EVENT_FAILED,
+        `claw=${clawId}`,
+        `reason=${e instanceof Error ? e.message : String(e)}`
+      );
     }
   }
 
   // 有事件时写 motion inbox
   if (events.length > 0) {
-    const motionAudit = new AuditWriter(fs, path.join(clawforumDir, 'motion', 'audit.tsv'));
     notifyInbox(fs, {
       inboxDir: motionInboxDir,
       type: 'contract_events',

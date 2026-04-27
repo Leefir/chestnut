@@ -24,7 +24,7 @@ import { createContextInjector, type ContextInjector } from '../core/dialog/inde
 import { ExecContextImpl } from '../core/tools/context.js';
 import { registerBuiltinTools } from '../core/tools/builtins/index.js';
 import { spawnTool } from '../core/task/tools/spawn.js';
-import { createInboxReader, createOutboxWriter } from '../foundation/messaging/index.js';
+import { createInboxReader, createOutboxWriter, notifyInbox } from '../foundation/messaging/index.js';
 import { doneTool } from '../core/tools/builtins/done.js';
 import { statusTool } from '../core/tools/builtins/status.js';
 import { skillTool } from '../core/tools/builtins/skill.js';
@@ -320,9 +320,22 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     throw new Error(`Assembly: StreamWriter construct failed: ${errMsg(e)}`, { cause: e });
   }
 
+  // A.6 motionInboxDir 提前到 callback 定义前（双链路保险 / cron job 注册块同步引用）
+  const motionInboxDir = path.join(clawDir, 'inbox', 'pending');
+
   // contractNotify callback 在 Runtime 构造前形成（注入 deps 而非 setter）
   const contractNotifyCallback = (type: string, data: Record<string, unknown>) => {
     streamWriter.write({ ts: Date.now(), type: 'user_notify', subtype: type, ...data });
+
+    // A.6 双链路：motion inbox 实时收契约事件 (D8 事件驱动 align)
+    notifyInbox(systemFs, {
+      inboxDir: motionInboxDir,
+      type: 'contract_events',
+      source: 'system',
+      priority: 'high',
+      body: `[${type}] claw=${clawId} ${formatNotifyData(data)}`,
+      filenameTag: 'contract_events',
+    }, auditWriter);
   };
 
   const dependencies: RuntimeDependencies = {
@@ -456,7 +469,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
           schedule: parseSchedule(diskScheduleStr, auditWriter),
           handler: () => runDiskMonitor({
             clawforumDir,
-            motionInboxDir: path.join(clawDir, 'inbox', 'pending'),
+            motionInboxDir,
             limitMB: diskLimitMB,
             fs: clawforumFs,
             audit: auditWriter,
@@ -487,7 +500,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
           schedule: parseSchedule(globalConfig.cron?.jobs?.contract_observer?.schedule ?? 'interval:1m', auditWriter),
           handler: () => runContractObserver({
             clawforumDir,
-            motionInboxDir: path.join(clawDir, 'inbox', 'pending'),
+            motionInboxDir,
           }),
         },
       ], auditWriter);
@@ -519,6 +532,12 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     heartbeat,
     gateway,
   };
+}
+
+function formatNotifyData(data: Record<string, unknown>): string {
+  return Object.entries(data)
+    .map(([k, v]) => `${k}=${typeof v === 'string' ? v : JSON.stringify(v)}`)
+    .join(' ');
 }
 
 function errMsg(e: unknown): string {
