@@ -12,4 +12,5 @@ export const WATCHDOG_AUDIT_EVENTS = {
   CLAW_CRASH_DETECTED: 'claw_crash_detected',
   CLAW_CRASH_NOTIFY_DROPPED: 'claw_crash_notify_dropped',
   STATE_LOAD_FAILED: 'watchdog_state_load_failed',
+  STOP: 'watchdog_stop',
 } as const;

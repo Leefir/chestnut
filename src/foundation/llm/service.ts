@@ -88,16 +88,21 @@ class CircuitBreaker {
   private state: 'closed' | 'open' | 'half-open' = 'closed';
   private failures = 0;
   private openedAt?: number;
+  private onTransition?: (transition: 'breaker_half_open' | 'breaker_closed') => void;
 
   constructor(
     private readonly threshold: number,
     private readonly resetTimeoutMs: number,
-  ) {}
+    onTransition?: (transition: 'breaker_half_open' | 'breaker_closed') => void,
+  ) {
+    this.onTransition = onTransition;
+  }
 
   isOpen(): boolean {
     if (this.state === 'open') {
       if (Date.now() - this.openedAt! >= this.resetTimeoutMs) {
         this.state = 'half-open';
+        this.onTransition?.('breaker_half_open');
         return false; // 允许一次探测
       }
       return true; // 仍在冷却
@@ -106,8 +111,12 @@ class CircuitBreaker {
   }
 
   onSuccess(): void {
+    const was = this.state;
     this.failures = 0;
     this.state = 'closed';
+    if (was !== 'closed') {
+      this.onTransition?.('breaker_closed');
+    }
   }
 
   onFailure(): void {
@@ -142,8 +151,13 @@ export class LLMServiceImpl implements LLMService {
     
     // Initialize circuit breakers if configured
     const cb = config.circuitBreaker;
+    const allProviders = [this.primary, ...this.fallbacks];
     this.breakers = cb
-      ? [this.primary, ...this.fallbacks].map(() => new CircuitBreaker(cb.failureThreshold, cb.resetTimeoutMs))
+      ? allProviders.map((p) => new CircuitBreaker(
+          cb.failureThreshold,
+          cb.resetTimeoutMs,
+          (transition) => this.events.emit({ type: transition, provider: p.name }),
+        ))
       : [];
 
     // Wire onStreamParseError for A.4 (Step 5 calls this)

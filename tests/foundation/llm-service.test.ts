@@ -492,6 +492,88 @@ describe('LLMServiceImpl - circuit breaker', () => {
     expect(info.isFallback).toBe(false);
   }, 2000);
 
+  it('should emit breaker_half_open event when transitioning open → half-open', async () => {
+    const events: any[] = [];
+    const eventSink = { emit: (e: any) => events.push(e) };
+
+    let callCount = 0;
+    const failingPrimary: ProviderAdapter = {
+      name: 'primary',
+      model: 'x',
+      async call() { callCount++; throw new Error('down'); },
+      async *stream() { throw new Error('down'); },
+    };
+    const goodFallback = createMockProvider('fb');
+
+    const service = new LLMServiceImpl({
+      primary: { name: 'p', apiKey: 'x', model: 'x' },
+      fallbacks: [{ name: 'fb', apiKey: 'x', model: 'x' }],
+      maxAttempts: 1,
+      retryDelayMs: 0,
+      circuitBreaker: { failureThreshold: 2, resetTimeoutMs: 50 },
+      events: eventSink,
+    });
+    (service as any).primary = failingPrimary;
+    (service as any).fallbacks = [goodFallback];
+
+    // Open the breaker
+    await service.call({ messages: [] });
+    await service.call({ messages: [] });
+
+    // Wait past resetTimeoutMs
+    await new Promise(r => setTimeout(r, 60));
+
+    // Next call triggers isOpen() → half-open transition
+    await service.call({ messages: [] });
+
+    const halfOpenEvents = events.filter(e => e.type === 'breaker_half_open');
+    expect(halfOpenEvents.length).toBe(1);
+    expect(halfOpenEvents[0].provider).toBe('p');
+  }, 2000);
+
+  it('should emit breaker_closed event when probe succeeds in half-open state', async () => {
+    const events: any[] = [];
+    const eventSink = { emit: (e: any) => events.push(e) };
+
+    let primaryShouldFail = true;
+    const probePrimary: ProviderAdapter = {
+      name: 'primary',
+      model: 'x',
+      async call() {
+        if (primaryShouldFail) throw new Error('down');
+        return { content: [{ type: 'text' as const, text: 'ok' }], stop_reason: 'end_turn' as const };
+      },
+      async *stream() { yield { type: 'done' as const }; },
+    };
+    const goodFallback = createMockProvider('fb');
+
+    const service = new LLMServiceImpl({
+      primary: { name: 'p', apiKey: 'x', model: 'x' },
+      fallbacks: [{ name: 'fb', apiKey: 'x', model: 'x' }],
+      maxAttempts: 1,
+      retryDelayMs: 0,
+      circuitBreaker: { failureThreshold: 2, resetTimeoutMs: 50 },
+      events: eventSink,
+    });
+    (service as any).primary = probePrimary;
+    (service as any).fallbacks = [goodFallback];
+
+    // Open the breaker
+    await service.call({ messages: [] });
+    await service.call({ messages: [] });
+
+    // Wait past resetTimeoutMs → half-open
+    await new Promise(r => setTimeout(r, 60));
+    primaryShouldFail = false;
+
+    // Probe succeeds → half-open → closed
+    await service.call({ messages: [] });
+
+    const closedEvents = events.filter(e => e.type === 'breaker_closed');
+    expect(closedEvents.length).toBe(1);
+    expect(closedEvents[0].provider).toBe('p');
+  }, 2000);
+
   it('should throw LLMAllProvidersFailedError when all providers fail', async () => {
     const badPrimary: ProviderAdapter = {
       name: 'p1', model: 'x',

@@ -93,9 +93,9 @@ export function shutdownWatchdog(
   }
   removeWatchdogPid();
   if (saveFailed) {
-    auditWriter.write('watchdog_stop', `signal=${signal}`, `save_failed=${saveFailed.slice(0, 200)}`);
+    auditWriter.write(WATCHDOG_AUDIT_EVENTS.STOP, `signal=${signal}`, `save_failed=${saveFailed.slice(0, 200)}`);
   } else {
-    auditWriter.write('watchdog_stop', `signal=${signal}`);
+    auditWriter.write(WATCHDOG_AUDIT_EVENTS.STOP, `signal=${signal}`);
   }
   process.exit(saveFailed ? 1 : 0);
 }
