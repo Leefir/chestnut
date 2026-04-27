@@ -25,7 +25,7 @@ import { ExecContextImpl } from '../core/tools/context.js';
 import { registerBuiltinTools } from '../core/tools/builtins/index.js';
 import { spawnTool } from '../core/task/tools/spawn.js';
 import { createInboxReader, createOutboxWriter, notifyInbox } from '../foundation/messaging/index.js';
-import { doneTool } from '../core/tools/builtins/done.js';
+import { doneTool } from '../core/contract/index.js';
 import { statusTool } from '../core/tools/builtins/status.js';
 import { skillTool } from '../core/tools/builtins/skill.js';
 import { sendTool } from '../core/tools/builtins/send.js';
@@ -252,6 +252,8 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   }
 
   // 注入工具属性（避免通过 ExecContext 传业务依赖）
+  // done 注册：phase360 后 done 业务归 ContractSystem / 不再经 registerBuiltinTools / Assembly 显式注册
+  toolRegistry.register(doneTool);
   doneTool.contractManager = contractManager;
   statusTool.contractManager = contractManager;
   skillTool.skillRegistry = skillRegistry;

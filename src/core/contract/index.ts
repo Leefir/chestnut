@@ -16,6 +16,8 @@ export {
   type AcceptanceResult,
 } from './manager.js';
 
+export { doneTool, DONE_TOOL_NAME } from './builtins/done.js';
+
 /**
  * ContractManager 工厂 —— 严格对齐 ctor 7 参数
  *
