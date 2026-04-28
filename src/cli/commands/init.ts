@@ -9,6 +9,7 @@ import { saveGlobalConfig, isInitialized, FORMAT_MAP, getWorkspaceRoot } from '.
 import { CliError } from '../errors.js';
 import { PRESETS } from '../../foundation/llm/presets.js';
 import { DEFAULT_MAX_STEPS } from '../../constants.js';
+import { LOGS_DIR } from '../../types/paths.js';
 
 // Known providers shown in "Select provider" list (excludes generic custom-* entries)
 const PROVIDER_LIST = [
@@ -309,7 +310,7 @@ export async function initCommand(silent = false): Promise<void> {
     saveGlobalConfig(config);
 
     // Create logs directory
-    const logsDir = path.join(getWorkspaceRoot(), '.clawforum', 'logs');
+    const logsDir = path.join(getWorkspaceRoot(), '.clawforum', LOGS_DIR);
     fs.mkdirSync(logsDir, { recursive: true });
 
     console.log('\n✓ Initialized successfully!');

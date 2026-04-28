@@ -12,5 +12,8 @@
 /** per-agent 自身 skills 目录默认值（motion 自有 + 各 claw 各自 skills） */
 export const SKILLS_DIR_DEFAULT = 'skills' as const;
 
+/** 源码树 bundled skills 资源目录名（非运行期 agent subdir） */
+export const BUNDLED_SKILLS_DIR_NAME = 'skills' as const;
+
 /** dispatch-skills 路径（应然归 ContractRetro / B.p344-skill-disp 待 r52+ ContractRetro 落地） */
 export const DISPATCH_SKILLS_DIR = 'clawspace/dispatch-skills' as const;

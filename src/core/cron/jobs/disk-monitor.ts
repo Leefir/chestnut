@@ -4,6 +4,7 @@ import type { Audit } from '../../../foundation/audit/index.js';
 import { CRON_AUDIT_EVENTS } from '../audit-events.js';
 import { InboxWriter } from '../../../foundation/messaging/index.js';
 import { createAuditWriter } from '../../../foundation/audit/index.js';
+import { CLAWSPACE_DIR } from '../../../types/paths.js';
 
 /** 递归计算目录大小（bytes） */
 function getDirSize(dir: string, fs: FileSystem): number {
@@ -32,7 +33,7 @@ export async function runDiskMonitor(opts: DiskMonitorOptions): Promise<void> {
 
   let totalSize = 0;
   for (const clawId of opts.fs.listSync(clawsDir, { includeDirs: true }).map(e => e.name)) {
-    const clawspaceDir = path.join(clawsDir, clawId, 'clawspace');
+    const clawspaceDir = path.join(clawsDir, clawId, CLAWSPACE_DIR);
     if (opts.fs.existsSync(clawspaceDir)) {
       totalSize += getDirSize(clawspaceDir, opts.fs);
     }

@@ -28,6 +28,7 @@ import { MOTION_CLAW_ID } from '../../constants.js';
 import { PROCESS_SPAWN_CONFIRM_MS } from '../../foundation/process-manager/index.js';
 import { CliError } from '../errors.js';
 import { createWatchdogPort } from '../../foundation/config/factories.js';
+import { LOGS_DIR } from '../../types/paths.js';
 
 export function buildOnboardingSubtasks(language: string): Array<{ id: string; description: string }> {
   let langInstruction: string;
@@ -358,7 +359,7 @@ async function _start(): Promise<void> {
   const motionSpawnOptions = {
     command: 'node' as const,
     args: [daemonEntryPath, 'motion'],
-    logFile: path.join(motionDir, 'logs', 'daemon.log'),
+    logFile: path.join(motionDir, LOGS_DIR, 'daemon.log'),
     env: { ...process.env, CLAWFORUM_ROOT: process.env.CLAWFORUM_ROOT ?? process.cwd() } as Record<string, string | undefined>,
   };
   if (!fs.existsSync(path.join(motionDir, 'AGENTS.md'))) {

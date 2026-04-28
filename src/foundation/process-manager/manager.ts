@@ -12,6 +12,7 @@ import type { FileSystem } from '../fs/types.js';
 import type { Audit } from '../audit/index.js';
 import { ProcessListUnavailable } from './errors.js';
 import { PROCESS_MANAGER_AUDIT_EVENTS } from './audit-events.js';
+import { STATUS_SUBDIR } from '../../types/paths.js';
 
 export const PROCESS_SPAWN_CONFIRM_MS = 3000;
 export const SIGTERM_GRACE_MS = 5000;
@@ -59,7 +60,7 @@ export class ProcessManager {
    * Get the status directory path for a claw
    */
   private getStatusDir(clawId: string): string {
-    return path.join(this.resolveDir(clawId), 'status');
+    return path.join(this.resolveDir(clawId), STATUS_SUBDIR);
   }
 
   /**

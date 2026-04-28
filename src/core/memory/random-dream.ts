@@ -9,6 +9,7 @@ import { TOOL_PROFILES } from '../tools/profiles.js';
 import { InboxWriter } from '../../foundation/messaging/index.js';
 import { createSystemAudit } from '../../foundation/audit/index.js';
 import { DEFAULT_LLM_IDLE_TIMEOUT_MS } from '../../constants.js';
+import { CONTRACT_DIR } from '../../types/paths.js';
 import {
   RANDOM_DREAM_SYSTEM_PROMPT,
   buildRandomDreamPrompt,
@@ -138,7 +139,7 @@ function discoverWeightedContracts(
   const contracts: WeightedContract[] = [];
 
   for (const clawId of fs.readdirSync(clawsDir)) {
-    const archiveDir = path.join(clawsDir, clawId, 'contract', 'archive');
+    const archiveDir = path.join(clawsDir, clawId, CONTRACT_DIR, 'archive');
     if (!fs.existsSync(archiveDir)) continue;
 
     for (const contractId of fs.readdirSync(archiveDir)) {

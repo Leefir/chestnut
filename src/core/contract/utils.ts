@@ -10,13 +10,14 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { CONTRACT_DIR } from '../../types/paths.js';
 
 /** 返回当前活跃/暂停契约的创建时间（毫秒），无契约时返回 null */
 export function getContractCreatedMs(clawDir: string): number | null {
   for (const sub of ['active', 'paused']) {
     try {
       const entries = fs.readdirSync(
-        path.join(clawDir, 'contract', sub),
+        path.join(clawDir, CONTRACT_DIR, sub),
         { withFileTypes: true },
       );
       for (const e of entries) {

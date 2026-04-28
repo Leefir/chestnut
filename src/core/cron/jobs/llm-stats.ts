@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { Audit } from '../../../foundation/audit/index.js';
 import { CRON_AUDIT_EVENTS } from '../audit-events.js';
+import { LOGS_DIR } from '../../../types/paths.js';
 
 interface ParsedLlmRow {
   ts: string;        // ISO timestamp（audit.tsv col 0）
@@ -61,7 +62,7 @@ export async function runLlmStats(opts: LlmStatsOptions): Promise<void> {
   const summary = aggregate(entries, targetDate);
 
   // 追加到 .clawforum/logs/llm-stats.jsonl
-  const logsDir = path.join(opts.clawforumDir, 'logs');
+  const logsDir = path.join(opts.clawforumDir, LOGS_DIR);
   fs.mkdirSync(logsDir, { recursive: true });
   const statsFile = path.join(logsDir, 'llm-stats.jsonl');
   fs.appendFileSync(statsFile, JSON.stringify(summary) + '\n', 'utf-8');

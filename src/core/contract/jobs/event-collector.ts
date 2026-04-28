@@ -1,6 +1,7 @@
 import * as fsNative from 'fs';
 import * as path from 'path';
 import type { ProgressData } from '../manager.js';
+import { CONTRACT_DIR } from '../../../types/paths.js';
 
 export function collectContractEvents(
   clawDir: string,
@@ -10,7 +11,7 @@ export function collectContractEvents(
   const events: string[] = [];
 
   // 1. archive 中新完成
-  const archiveDir = path.join(clawDir, 'contract', 'archive');
+  const archiveDir = path.join(clawDir, CONTRACT_DIR, 'archive');
   try {
     const dirs = fsNative.readdirSync(archiveDir, { withFileTypes: true })
       .filter(e => e.isDirectory());
@@ -29,7 +30,7 @@ export function collectContractEvents(
   } catch { /* archive 不存在 */ }
 
   // 2. active 中升级事件
-  const activeDir = path.join(clawDir, 'contract', 'active');
+  const activeDir = path.join(clawDir, CONTRACT_DIR, 'active');
   try {
     const dirs = fsNative.readdirSync(activeDir, { withFileTypes: true })
       .filter(e => e.isDirectory());

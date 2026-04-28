@@ -26,6 +26,7 @@ import { type ClawActivityInfo, getClawActivityInfo, clawHasContract, type ClawS
 import { LLM_OUTPUT_EVENTS } from '../foundation/stream/types.js';
 import { getContractCreatedMs } from '../core/contract/utils.js';
 import { WATCHDOG_AUDIT_EVENTS } from './audit-events.js';
+import { LOGS_DIR } from '../types/paths.js';
 
 // Get the .clawforum/ directory (CLAWFORUM_ROOT takes priority)
 function getClawforumDir(): string {
@@ -135,7 +136,7 @@ function log(message: string): void {
   console.log(logLine.trim());
 
   try {
-    const logDir = path.join(getClawforumDir(), 'logs');
+    const logDir = path.join(getClawforumDir(), LOGS_DIR);
     fs.mkdirSync(logDir, { recursive: true });
     fs.appendFileSync(path.join(logDir, 'watchdog.log'), logLine, 'utf-8');
   } catch {
@@ -467,7 +468,7 @@ export async function runWatchdogLoop(): Promise<void> {
         const pid = await pm.spawn('motion', {
           command: 'node',
           args: [daemonEntryPath, 'motion'],
-          logFile: path.join(getMotionDir(), 'logs', 'daemon.log'),
+          logFile: path.join(getMotionDir(), LOGS_DIR, 'daemon.log'),
           env: { ...process.env, CLAWFORUM_ROOT: path.dirname(clawforumDir) } as Record<string, string | undefined>,
         });
         log(`[watchdog] motion restarted (PID=${pid})`);

@@ -24,6 +24,7 @@ import { VIEWPORT_AUDIT_EVENTS } from './viewport-audit-events.js';
 import { createStreamReader, STREAM_FILE } from '../../foundation/stream/index.js';
 import { createViewportObservability } from './chat-viewport-observability.js';
 import type { StreamReader, StreamEvent } from '../../foundation/stream/index.js';
+import { LOGS_DIR } from '../../types/paths.js';
 
 export interface ChatViewportOptions {
   agentDir: string;   // motion dir 或 claw dir
@@ -1160,7 +1161,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
   tui.setFocus(editor);
 
   // 防御层：任何未捕获异常先还原终端，防止 terminal emulator 因 raw mode 未还原而闪退
-  const crashLogPath = path.join(options.agentDir, 'logs', 'chat-crash.log');
+  const crashLogPath = path.join(options.agentDir, LOGS_DIR, 'chat-crash.log');
   const uncaughtHandler = (err: unknown) => {
     // 写入崩溃日志文件（terminal 关闭后仍可读）
     try {

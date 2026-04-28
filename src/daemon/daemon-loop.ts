@@ -39,6 +39,7 @@ import {
 } from '../constants.js';
 import { notifyInbox } from '../foundation/messaging/index.js';
 import { IdleTimeoutSignal, PriorityInboxInterrupt, UserInterrupt } from '../types/signals.js';
+import { STATUS_SUBDIR, CONTRACT_DIR } from '../types/paths.js';
 
 /**
  * 创建 StreamCallbacks 实现，将业务事件转为 StreamEvent 写入 StreamLog。
@@ -207,12 +208,12 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
   let llmRetryPending = false; // set by catch, consumed by next iteration's try
 
   // 状态文件路径
-  const llmRetryStateFile = path.join(agentDir, 'status', 'llm-retry-state.json');
+  const llmRetryStateFile = path.join(agentDir, STATUS_SUBDIR, 'llm-retry-state.json');
 
   // 内联辅助：保存当前 retry 状态
   const saveLlmRetryState = () => {
     try {
-      fsNative.mkdirSync(path.join(agentDir, 'status'), { recursive: true });
+      fsNative.mkdirSync(path.join(agentDir, STATUS_SUBDIR), { recursive: true });
       fsNative.writeFileSync(llmRetryStateFile, JSON.stringify({
         llmRetryCount,
         llmRetryDelayMs,
@@ -257,7 +258,7 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
         })();
         const hasActive = (() => {
           try {
-            return fsNative.readdirSync(path.join(agentDir, 'contract', 'active'), { withFileTypes: true }).some(e => e.isDirectory());
+            return fsNative.readdirSync(path.join(agentDir, CONTRACT_DIR, 'active'), { withFileTypes: true }).some(e => e.isDirectory());
           } catch { /* Ignore: contract check failure, assume no active contracts */ return false; }
         })();
         if (inboxEmpty && hasActive) {
@@ -268,14 +269,14 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
             } catch { /* Ignore: pending check failure, assume no pending startup_check */ return false; }
           })();
           // Cooldown: prevent spam from rapid daemon restarts
-          const startupCheckTsFile = path.join(agentDir, 'status', 'startup_check_ts');
+          const startupCheckTsFile = path.join(agentDir, STATUS_SUBDIR, 'startup_check_ts');
           const lastStartupCheckTs = (() => {
             try { return parseInt(fsNative.readFileSync(startupCheckTsFile, 'utf-8').trim(), 10); } catch { /* Ignore: timestamp read failure, use 0 (no cooldown) */ return 0; }
           })();
           const startupCheckCooledDown = Date.now() - lastStartupCheckTs >= STARTUP_CHECK_COOLDOWN_MS;
 
           if (!alreadyPending && startupCheckCooledDown) {
-            fsNative.mkdirSync(path.join(agentDir, 'status'), { recursive: true });
+            fsNative.mkdirSync(path.join(agentDir, STATUS_SUBDIR), { recursive: true });
             fsNative.writeFileSync(startupCheckTsFile, String(Date.now()));
             notifyInbox(loopFs, {
               inboxDir: inboxPendingDir,

@@ -54,6 +54,7 @@ import { createGateway } from '../core/gateway/gateway.js';
 import type { Gateway } from '../core/gateway/types.js';
 import { createAskUserTool } from '../core/gateway/ask-user-tool.js';
 import { createStreamReader, STREAM_FILE } from '../foundation/stream/index.js';
+import { DIALOG_DIR } from '../types/paths.js';
 
 // 内部 helper（从 daemon.ts L42-75 搬入）
 function detectUncleanExit(auditDir: string, auditWriter: AuditWriter): void {
@@ -278,7 +279,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   // --- L2: sessionManager + inboxReader + outboxWriter ---
   let sessionManager: SessionManager;
   try {
-    sessionManager = createSessionManager(systemFs, 'dialog', auditWriter, clawId);
+    sessionManager = createSessionManager(systemFs, DIALOG_DIR, auditWriter, clawId);
   } catch (e) {
     auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=session_manager`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: SessionManager construct failed: ${errMsg(e)}`, { cause: e });

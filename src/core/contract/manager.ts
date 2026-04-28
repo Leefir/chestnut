@@ -26,6 +26,7 @@ import type { Message } from '../../types/message.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import { CONTRACT_AUDIT_EVENTS } from './audit-events.js';
 import { RETRO_AUDIT_EVENTS } from './retro-audit-events.js';
+import { CLAWSPACE_DIR } from '../../types/paths.js';)
 
 
 /**
@@ -1252,7 +1253,7 @@ export class ContractManager {
     // Part 1: by-contract 索引解析（daemon.ts:124-158 等价迁移）
     const byContractPath = path.join(
       ctx.motionBaseDir,
-      'clawspace', 'pending-retrospective', 'by-contract',
+      CLAWSPACE_DIR, 'pending-retrospective', 'by-contract',
       `${contractId}.json`,
     );
 

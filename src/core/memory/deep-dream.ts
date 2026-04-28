@@ -8,6 +8,7 @@ import type { LLMServiceConfig } from '../../foundation/llm/types.js';
 import type { Message, ContentBlock, TextBlock, LLMResponse } from '../../types/message.js';
 import { InboxWriter } from '../../foundation/messaging/index.js';
 import { createSystemAudit } from '../../foundation/audit/index.js';
+import { DIALOG_DIR } from '../../types/paths.js';
 import {
   DEEP_DREAM_SYSTEM_PROMPT,
   buildDreamInput,
@@ -96,7 +97,7 @@ function discoverUnprocessed(clawDir: string, state: DreamStateData, today: stri
   const files: SessionFile[] = [];
 
   // archive 文件（文件名: {tsMs}_{uuid8}.json）
-  const archiveDir = path.join(clawDir, 'dialog', 'archive');
+  const archiveDir = path.join(clawDir, DIALOG_DIR, 'archive');
   if (fs.existsSync(archiveDir)) {
     for (const name of fs.readdirSync(archiveDir)) {
       if (!name.endsWith('.json')) continue;
@@ -108,7 +109,7 @@ function discoverUnprocessed(clawDir: string, state: DreamStateData, today: stri
   }
 
   // current.json（当日未处理）
-  const currentPath = path.join(clawDir, 'dialog', 'current.json');
+  const currentPath = path.join(clawDir, DIALOG_DIR, 'current.json');
   if (
     fs.existsSync(currentPath) &&
     state.currentSessionDreamedDate !== today

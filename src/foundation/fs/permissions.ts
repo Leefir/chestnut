@@ -14,13 +14,15 @@ import {
   WriteOperationForbiddenError,
 } from '../../types/errors.js';
 import { TASKS_RUNNING_DIR, TASKS_DONE_DIR } from '../../types/paths.js';
+import { LOGS_DIR, CONTRACT_DIR, DIALOG_DIR, CLAWSPACE_DIR } from '../../types/paths.js';
+import { SKILLS_DIR_DEFAULT } from '../../core/skill/skill-paths.js';
 
 /**
  * System directories/files that are read-only for claws
  */
 const SYSTEM_PATHS = [
   'AGENTS.md',
-  'dialog',
+  DIALOG_DIR,
   'config.yaml',
   '.clawforum',
   'system',
@@ -35,23 +37,23 @@ const WRITABLE_PATHS = [
   'USER.md',
   'IDENTITY.md',
   'SOUL.md',
-  'clawspace',
+  CLAWSPACE_DIR,
   'prompts',
-  'skills',
+  SKILLS_DIR_DEFAULT,
   'inbox',
   'outbox',
   'tasks/pending',
   TASKS_RUNNING_DIR,
   TASKS_DONE_DIR,
   'tasks/failed',
-  'logs',
+  LOGS_DIR,
 ];
 
 /**
  * Directories where claws can read (includes writable)
  * Note: WRITABLE_PATHS is implicitly readable
  */
-// const READABLE_PATHS = [...WRITABLE_PATHS, 'contract', 'tasks/results'];
+// const READABLE_PATHS = [...WRITABLE_PATHS, CONTRACT_DIR, 'tasks/results'];
 
 export interface PermissionOptions {
   /** Base directory for the claw */
@@ -85,7 +87,7 @@ function matchesPathPatterns(
     }
     
     // Is or is within the pattern directory
-    // e.g., pattern "dialog" matches "dialog/file.txt"
+    // e.g., pattern DIALOG_DIR matches "dialog/file.txt"
     if (parts.length >= patternParts.length) {
       const matchParts = parts.slice(0, patternParts.length);
       if (matchParts.join('/') === normalizedPattern) {

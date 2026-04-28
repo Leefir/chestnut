@@ -62,6 +62,7 @@ import { createSystemAudit } from '../../foundation/audit/index.js';
 import { randomUUID } from 'crypto';
 import { fileURLToPath } from 'url';
 import { PROCESS_SPAWN_CONFIRM_MS } from '../../foundation/process-manager/index.js';
+import { LOGS_DIR, CONTRACT_DIR, DIALOG_DIR } from '../../types/paths.js';
 
 export async function createCommand(name: string): Promise<void> {
   // Load global config (ensures initialized)
@@ -122,7 +123,7 @@ export async function chatCommand(name: string): Promise<void> {
         const pid = await pm.spawn(name, {
           command: 'node',
           args: [daemonEntryPath, name],
-          logFile: path.join(clawDir, 'logs', 'daemon.log'),
+          logFile: path.join(clawDir, LOGS_DIR, 'daemon.log'),
           env: { ...process.env, CLAWFORUM_ROOT: process.env.CLAWFORUM_ROOT ?? process.cwd() } as Record<string, string | undefined>,
         });
         console.log(`Started (PID: ${pid})`);
@@ -190,7 +191,7 @@ export async function listCommand(): Promise<void> {
   function getContractStatus(clawPath: string): string {
     for (const sub of ['active', 'paused']) {
       try {
-        const entries = fs.readdirSync(path.join(clawPath, 'contract', sub), { withFileTypes: true });
+        const entries = fs.readdirSync(path.join(clawPath, CONTRACT_DIR, sub), { withFileTypes: true });
         if (entries.some(e => e.isDirectory())) return sub;
       } catch { /* skip */ }
     }
@@ -221,7 +222,7 @@ export async function listCommand(): Promise<void> {
   function getLatestContractTitle(clawPath: string): string {
     for (const sub of ['active', 'paused']) {
       try {
-        const dirs = fs.readdirSync(path.join(clawPath, 'contract', sub));
+        const dirs = fs.readdirSync(path.join(clawPath, CONTRACT_DIR, sub));
         for (const dir of dirs) {
           const yamlPath = path.join(clawPath, 'contract', sub, dir, 'contract.yaml');
           if (fs.existsSync(yamlPath)) {
@@ -233,7 +234,7 @@ export async function listCommand(): Promise<void> {
       } catch { /* skip */ }
     }
     try {
-      const archiveDir = path.join(clawPath, 'contract', 'archive');
+      const archiveDir = path.join(clawPath, CONTRACT_DIR, 'archive');
       const dirs = fs.readdirSync(archiveDir);
       let latest = { mtime: 0, title: '' };
       for (const dir of dirs) {
@@ -355,7 +356,7 @@ export async function healthCommand(name: string): Promise<void> {
   for (const sub of ['active', 'paused']) {
     try {
       const entries = fs.readdirSync(
-        path.join(clawDir, 'contract', sub), { withFileTypes: true }
+        path.join(clawDir, CONTRACT_DIR, sub), { withFileTypes: true }
       );
       if (entries.some(e => e.isDirectory())) {
         contractStatus = sub;
@@ -574,8 +575,8 @@ export async function clawTraceCommand(
  */
 async function readContractStartedAt(clawDir: string, contractId: string): Promise<string | null> {
   // 先尝试 archive
-  const archivePath = path.join(clawDir, 'contract', 'archive', contractId, 'progress.json');
-  const activePath = path.join(clawDir, 'contract', 'active', contractId, 'progress.json');
+  const archivePath = path.join(clawDir, CONTRACT_DIR, 'archive', contractId, 'progress.json');
+  const activePath = path.join(clawDir, CONTRACT_DIR, 'active', contractId, 'progress.json');
 
   for (const p of [archivePath, activePath]) {
     try {
@@ -592,8 +593,8 @@ async function readContractStartedAt(clawDir: string, contractId: string): Promi
  */
 async function readContractTitle(clawDir: string, contractId: string): Promise<string | undefined> {
   // 从 progress.json 读取
-  const archivePath = path.join(clawDir, 'contract', 'archive', contractId, 'progress.json');
-  const activePath = path.join(clawDir, 'contract', 'active', contractId, 'progress.json');
+  const archivePath = path.join(clawDir, CONTRACT_DIR, 'archive', contractId, 'progress.json');
+  const activePath = path.join(clawDir, CONTRACT_DIR, 'active', contractId, 'progress.json');
 
   for (const p of [archivePath, activePath]) {
     try {
@@ -604,8 +605,8 @@ async function readContractTitle(clawDir: string, contractId: string): Promise<s
   }
 
   // 从 contract.yaml 读取
-  const yamlPath = path.join(clawDir, 'contract', 'archive', contractId, 'contract.yaml');
-  const activeYamlPath = path.join(clawDir, 'contract', 'active', contractId, 'contract.yaml');
+  const yamlPath = path.join(clawDir, CONTRACT_DIR, 'archive', contractId, 'contract.yaml');
+  const activeYamlPath = path.join(clawDir, CONTRACT_DIR, 'active', contractId, 'contract.yaml');
 
   for (const p of [yamlPath, activeYamlPath]) {
     try {
@@ -781,7 +782,7 @@ async function showStepDetail(
   }
 
   // 读取 dialog/current.json + 所有 archive/*.json，按 mtime 升序合并
-  const dialogDir = path.join(clawDir, 'dialog');
+  const dialogDir = path.join(clawDir, DIALOG_DIR);
   const archiveDir = path.join(dialogDir, 'archive');
   let messages: DialogMessage[] = [];
 

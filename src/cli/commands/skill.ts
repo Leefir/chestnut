@@ -8,6 +8,8 @@
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as fsNative from 'fs';
+import { CLAWSPACE_DIR } from '../../types/paths.js';
+import { SKILLS_DIR_DEFAULT } from '../../core/skill/skill-paths.js';
 
 /**
  * Copy directory recursively
@@ -45,14 +47,14 @@ export async function skillInstallUserCommand(sourcePath: string): Promise<void>
   }
 
   // 1. Copy to root level skills/{skillName}/
-  const destUser = path.join(root, 'skills', skillName);
+  const destUser = path.join(root, SKILLS_DIR_DEFAULT, skillName);
   const userExists = fsNative.existsSync(destUser);
   await copyDir(absSource, destUser);
   console.log(`${userExists ? 'Updated' : 'Installed'} skills/${skillName}`);
 
   // 2. Sync to motion/clawspace/dispatch-skills/{skillName}/
   const motionDir = path.join(root, '.clawforum', 'motion');
-  const destDispatch = path.join(motionDir, 'clawspace', 'dispatch-skills', skillName);
+  const destDispatch = path.join(motionDir, CLAWSPACE_DIR, 'dispatch-skills', skillName);
   const dispatchExists = fsNative.existsSync(destDispatch);
   await copyDir(absSource, destDispatch);
   console.log(`${dispatchExists ? 'Updated' : 'Synced'} dispatch-skills/${skillName}`);
@@ -66,9 +68,9 @@ export async function skillInstallUserCommand(sourcePath: string): Promise<void>
 export async function skillInstallClawCommand(clawId: string, skillName: string): Promise<void> {
   const root = process.env.CLAWFORUM_ROOT ?? process.cwd();
   const motionDir = path.join(root, '.clawforum', 'motion');
-  const source = path.join(motionDir, 'clawspace', 'dispatch-skills', skillName);
+  const source = path.join(motionDir, CLAWSPACE_DIR, 'dispatch-skills', skillName);
   const clawDir = path.join(root, '.clawforum', 'claws', clawId);
-  const dest = path.join(clawDir, 'skills', skillName);
+  const dest = path.join(clawDir, SKILLS_DIR_DEFAULT, skillName);
 
   if (!fsNative.existsSync(source)) {
     throw new Error(`dispatch-skill "${skillName}" not found`);

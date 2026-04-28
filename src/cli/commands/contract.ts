@@ -16,6 +16,7 @@ import { notifySystem } from '../../foundation/messaging/index.js';
 import { STREAM_AUDIT_EVENTS } from '../../foundation/stream/audit-events.js';
 import { createSystemAudit } from '../../foundation/audit/index.js';
 import { STREAM_FILE } from '../../foundation/stream/index.js';
+import { CONTRACT_DIR } from '../../types/paths.js';
 
 
 function parseAndValidateContractYaml(yamlContent: string): ContractYaml {
@@ -107,7 +108,7 @@ export async function contractCreateFromDirCommand(clawId: string, dirPath: stri
   // Copy acceptance/ 目录（若存在）
   const srcAcceptance = path.join(absDir, 'acceptance');
   if (fsNative.existsSync(srcAcceptance)) {
-    const destAcceptance = path.join(clawDir, 'contract', 'active', contractId, 'acceptance');
+    const destAcceptance = path.join(clawDir, CONTRACT_DIR, 'active', contractId, 'acceptance');
     await fs.mkdir(destAcceptance, { recursive: true });
     const entries = await fs.readdir(srcAcceptance);
     for (const entry of entries) {

@@ -21,6 +21,8 @@ import { CliError } from '../errors.js';
 import { Snapshot } from '../../foundation/snapshot/index.js';
 import { createDirContext, createProcessManagerForCLI } from '../../foundation/config/factories.js';
 import { SNAPSHOT_IGNORE_PATTERNS } from '../../foundation/snapshot/index.js';
+import { LOGS_DIR, STATUS_SUBDIR } from '../../types/paths.js';
+import { SKILLS_DIR_DEFAULT, BUNDLED_SKILLS_DIR_NAME } from '../../core/skill/skill-paths.js';
 
 // Get current file directory (ESM compatible)
 const __filename = fileURLToPath(import.meta.url);
@@ -67,11 +69,11 @@ async function copyDir(src: string, dest: string): Promise<void> {
  */
 async function installBuiltinSkills(motionDir: string): Promise<void> {
   // Try dist path first, fall back to src
-  let skillsSource = path.join(__dirname, '..', 'skills');
+  let skillsSource = path.join(__dirname, '..', BUNDLED_SKILLS_DIR_NAME);
   try {
     await fs.access(skillsSource);
   } catch {
-    skillsSource = path.join(__dirname, '..', '..', '..', '..', 'src', 'skills');
+    skillsSource = path.join(__dirname, '..', '..', '..', '..', 'src', BUNDLED_SKILLS_DIR_NAME);
   }
 
   let skillNames: string[];
@@ -82,7 +84,7 @@ async function installBuiltinSkills(motionDir: string): Promise<void> {
     return; // no skills directory, skip
   }
 
-  const skillsDest = path.join(motionDir, 'skills');
+  const skillsDest = path.join(motionDir, SKILLS_DIR_DEFAULT);
   for (const name of skillNames) {
     const src = path.join(skillsSource, name);
     const dest = path.join(skillsDest, name);
@@ -128,8 +130,8 @@ export async function initCommand(silent = false): Promise<void> {
   
   // Create directory structure
   await ensureDir(motionDir);
-  await ensureDir(path.join(motionDir, 'logs'));
-  await ensureDir(path.join(motionDir, 'status'));
+  await ensureDir(path.join(motionDir, LOGS_DIR));
+  await ensureDir(path.join(motionDir, STATUS_SUBDIR));
   await ensureDir(path.join(motionConfigDir, 'claws'));
   
   // Read and write template files
@@ -205,7 +207,7 @@ export async function chatCommand(): Promise<void> {
         const pid = await pm.spawn('motion', {
           command: 'node',
           args: [daemonEntryPath, 'motion'],
-          logFile: path.join(motionDir, 'logs', 'daemon.log'),
+          logFile: path.join(motionDir, LOGS_DIR, 'daemon.log'),
           env: { ...process.env, CLAWFORUM_ROOT: process.env.CLAWFORUM_ROOT ?? process.cwd() } as Record<string, string | undefined>,
         });
         console.log(`Started (PID: ${pid})`);

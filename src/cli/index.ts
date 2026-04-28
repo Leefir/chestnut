@@ -36,6 +36,7 @@ import { createWatchdogPort } from '../foundation/config/factories.js';
 import { configCommand } from './commands/config.js';
 import { stopAllCommand } from './commands/stop.js';
 import { statusCommand } from './commands/status.js';
+import { LOGS_DIR } from '../types/paths.js';
 
 const watchdogPort = createWatchdogPort();
 
@@ -237,7 +238,7 @@ clawCmd
       const pid = await pm.spawn(name, {
         command: 'node',
         args: [daemonEntryPath, name],
-        logFile: path.join(clawDir, 'logs', 'daemon.log'),
+        logFile: path.join(clawDir, LOGS_DIR, 'daemon.log'),
         env: { ...process.env, CLAWFORUM_ROOT: process.env.CLAWFORUM_ROOT ?? process.cwd() } as Record<string, string | undefined>,
       });
       console.log(`Started Claw "${name}" (PID: ${pid})`);
@@ -323,7 +324,7 @@ motionCmd
       const pid = await pm.spawn('motion', {
         command: 'node',
         args: [daemonEntryPath, 'motion'],
-        logFile: path.join(motionDir, 'logs', 'daemon.log'),
+        logFile: path.join(motionDir, LOGS_DIR, 'daemon.log'),
         env: { ...process.env, CLAWFORUM_ROOT: process.env.CLAWFORUM_ROOT ?? process.cwd() } as Record<string, string | undefined>,
       });
       console.log(`Started Motion daemon (PID: ${pid})`);

@@ -18,6 +18,7 @@ import type { FileSystem } from '../foundation/fs/types.js';
 import type { Audit } from '../foundation/audit/index.js';
 import { readAll, STREAM_FILE } from '../foundation/stream/index.js';
 import { LLM_OUTPUT_EVENTS } from '../foundation/stream/types.js';
+import { CONTRACT_DIR } from '../types/paths.js';
 
 // Parse stream.jsonl, return the timestamp of the last event and the last error message
 export interface ClawActivityInfo {
@@ -66,7 +67,7 @@ export async function getClawActivityInfo(
 export function clawHasContract(clawDir: string): boolean {
   for (const sub of ['active', 'paused']) {
     try {
-      const entries = fs.readdirSync(path.join(clawDir, 'contract', sub), { withFileTypes: true });
+      const entries = fs.readdirSync(path.join(clawDir, CONTRACT_DIR, sub), { withFileTypes: true });
       if (entries.some(e => e.isDirectory())) return true;
     } catch { /* skip */ }
   }
@@ -93,7 +94,7 @@ export function gatherClawSnapshot(clawDir: string, pm: ProcessLiveness, clawId:
   let contract = 'none';
   for (const sub of ['active', 'paused']) {
     try {
-      const entries = fs.readdirSync(path.join(clawDir, 'contract', sub), { withFileTypes: true });
+      const entries = fs.readdirSync(path.join(clawDir, CONTRACT_DIR, sub), { withFileTypes: true });
       const dir = entries.find(e => e.isDirectory());
       if (dir) { contract = `${sub}:${dir.name}`; break; }
     } catch { /* skip */ }

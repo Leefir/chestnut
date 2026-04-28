@@ -90,7 +90,7 @@ async function getStorageStatus(ctx: ExecContext): Promise<string[]> {
   
   try {
     // clawspace file count (ENOENT/FS_NOT_FOUND = 目录不存在，正常返回空)
-    const entries = await ctx.fs.list('clawspace', { recursive: true, includeDirs: false }).catch((err: any) => {
+    const entries = await ctx.fs.list(CLAWSPACE_DIR, { recursive: true, includeDirs: false }).catch((err: any) => {
       if (err?.code === 'ENOENT' || err?.code === 'FS_NOT_FOUND') return [];
       throw err;
     });
@@ -103,6 +103,7 @@ async function getStorageStatus(ctx: ExecContext): Promise<string[]> {
 }
 
 import { STATUS_TOOL_NAME } from '../tool-names.js';
+import { CLAWSPACE_DIR } from '../../../types/paths.js';
 export { STATUS_TOOL_NAME };
 
 export const statusTool: Tool & { contractStatus?: ContractStatusPort } = {
