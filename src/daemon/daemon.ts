@@ -22,6 +22,7 @@ import { createAgentProcessManager } from '../cli/commands/process-manager-facto
 import { ContractManager, type MotionReviewContext } from '../core/contract/manager.js';
 import { CliError } from '../cli/errors.js';
 import { assemble, disassemble, LockConflictError } from '../assembly/index.js';
+import { ASSEMBLY_AUDIT_EVENTS } from '../assembly/audit-events.js';
 import type { Instances } from '../assembly/index.js';
 
 
@@ -61,11 +62,11 @@ export async function daemonCommand(name: string): Promise<void> {
   } catch (e) {
     const reason = e instanceof Error ? e.message : String(e);
     if (e instanceof LockConflictError) {
-      preAssembleAudit.write('assemble_failed', 'module=lockfile', 'phase=preconstruct', `reason=${reason}`);
+      preAssembleAudit.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, 'module=lockfile', 'phase=preconstruct', `reason=${reason}`);
       console.error(`[daemon] ${e.message}`);
       process.exit(1);
     }
-    preAssembleAudit.write('assemble_failed', 'module=pre_assemble', 'phase=preconstruct', `reason=${reason}`);
+    preAssembleAudit.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, 'module=pre_assemble', 'phase=preconstruct', `reason=${reason}`);
     console.error('[daemon] assemble failed:', reason);
     process.exit(1);
   }
@@ -78,7 +79,7 @@ export async function daemonCommand(name: string): Promise<void> {
   } catch (e) {
     // 兜底：Runtime 侧若已精确 audit（如 inboxReader.init / sessionManager.save）此行幂等重复；
     // Runtime 侧漏网的失败由此行唯一覆盖，postmortem 信号"需补精确 audit"
-    auditWriter.write('assemble_failed', `module=runtime`, `phase=post_assemble_init`, `reason=${errMsg(e)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=runtime`, `phase=post_assemble_init`, `reason=${errMsg(e)}`);
     console.error('[daemon] runtime init failed:', errMsg(e));
     process.exit(1);
   }
@@ -104,7 +105,7 @@ export async function daemonCommand(name: string): Promise<void> {
     const agentsContent = fsNative.readFileSync(path.join(dir, 'AGENTS.md'), 'utf-8');
     promptHash = createHash('sha256').update(agentsContent).digest('hex').slice(0, 6);
   } catch { /* AGENTS.md 不存在时跳过 */ }
-  auditWriter.write('daemon_start', `sha256:${promptHash}`);
+  auditWriter.write(ASSEMBLY_AUDIT_EVENTS.DAEMON_START, `sha256:${promptHash}`);
 
   // daemon-start commit（不阻塞启动）
   snapshot.commit(`daemon-start ${new Date().toISOString()}`).then((result) => {
@@ -150,7 +151,7 @@ export async function daemonCommand(name: string): Promise<void> {
     const msg = reason instanceof Error
       ? `${reason.message}\n${reason.stack ?? ''}`
       : String(reason);
-    auditWriter.write('daemon_crash', `err=${msg}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.DAEMON_CRASH, `err=${msg}`);
   };
 
   process.on('uncaughtException', (err) => {

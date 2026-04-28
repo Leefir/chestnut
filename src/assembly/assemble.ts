@@ -13,6 +13,7 @@ import { type ClawRuntime, type RuntimeDependencies } from '../core/runtime/inde
 import { createRuntime } from '../core/runtime/index.js';
 import { createLLMService, type LLMServiceImpl } from '../foundation/llm/index.js';
 import { createLLMAuditSink } from './llm-audit-sink.js';
+import { ASSEMBLY_AUDIT_EVENTS } from './audit-events.js';
 import { createToolRegistry, type ToolRegistryImpl } from '../core/tools/index.js';
 import { createToolExecutor, type ToolExecutorImpl } from '../core/tools/index.js';
 import { createSkillRegistry, SkillRegistry } from '../core/skill/index.js';
@@ -75,7 +76,7 @@ function detectUncleanExit(auditDir: string, auditWriter: AuditWriter): void {
         type === 'daemon_crash'
       ) return;
       const lastTs = lastLine.split('\t')[0] ?? new Date().toISOString();
-      auditWriter.write('daemon_unclean_exit', `last_ts=${lastTs}`);
+      auditWriter.write(ASSEMBLY_AUDIT_EVENTS.DAEMON_UNCLEAN_EXIT, `last_ts=${lastTs}`);
     } finally {
       fsNative.closeSync(fd);
     }
@@ -111,14 +112,14 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   try {
     processManager = createAgentProcessManager(auditWriter);
   } catch (e) {
-    auditWriter.write('assemble_failed', `module=process_manager`, `phase=construct`, `reason=${errMsg(e)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=process_manager`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: ProcessManager construct failed: ${errMsg(e)}`, { cause: e });
   }
 
   try {
     processManager.acquireLock(clawId);
   } catch (e) {
-    auditWriter.write('assemble_lock_conflict', `clawId=${clawId}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_LOCK_CONFLICT, `clawId=${clawId}`);
     throw new LockConflictError(clawId, errMsg(e));
   }
 
@@ -129,7 +130,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       ? buildLLMConfig(globalConfig)
       : buildLLMConfig(globalConfig, clawConfig!);
   } catch (e) {
-    auditWriter.write('assemble_failed', `module=llm_config`, `phase=construct`, `reason=${errMsg(e)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=llm_config`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: buildLLMConfig failed: ${errMsg(e)}`, { cause: e });
   }
 
@@ -153,7 +154,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   try {
     llm = createLLMService({ ...llmConfig, events: createLLMAuditSink(auditWriter) });
   } catch (e) {
-    auditWriter.write('assemble_failed', `module=llm`, `phase=construct`, `reason=${errMsg(e)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=llm`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: LLMService construct failed: ${errMsg(e)}`, { cause: e });
   }
 
@@ -164,7 +165,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     registerBuiltinTools(toolRegistry);
     toolRegistry.register(spawnTool);
   } catch (e) {
-    auditWriter.write('assemble_failed', `module=tool_registry`, `phase=construct`, `reason=${errMsg(e)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=tool_registry`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: ToolRegistry construct failed: ${errMsg(e)}`, { cause: e });
   }
 
@@ -173,13 +174,13 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   try {
     skillRegistry = createSkillRegistry(systemFs, SKILLS_DIR_DEFAULT, auditWriter);
   } catch (e) {
-    auditWriter.write('assemble_failed', `module=skill_registry`, `phase=construct`, `reason=${errMsg(e)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=skill_registry`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: SkillRegistry construct failed: ${errMsg(e)}`, { cause: e });
   }
   try {
     await skillRegistry.loadAll();
   } catch (e) {
-    auditWriter.write('assemble_failed', `module=skill_registry`, `phase=init`, `reason=${errMsg(e)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=skill_registry`, `phase=init`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: SkillRegistry.loadAll failed: ${errMsg(e)}`, { cause: e });
   }
 
@@ -191,7 +192,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       createSubAgentVerifierScheduler(),
     );
   } catch (e) {
-    auditWriter.write('assemble_failed', `module=contract_manager`, `phase=construct`, `reason=${errMsg(e)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=contract_manager`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: ContractManager construct failed: ${errMsg(e)}`, { cause: e });
   }
 
@@ -200,7 +201,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   try {
     outboxWriter = createOutboxWriter(clawId, clawDir, systemFs, auditWriter);
   } catch (e) {
-    auditWriter.write('assemble_failed', `module=outbox_writer`, `phase=construct`, `reason=${errMsg(e)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=outbox_writer`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: OutboxWriter construct failed: ${errMsg(e)}`, { cause: e });
   }
 
@@ -215,7 +216,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       outboxWriter,
     });
   } catch (e) {
-    auditWriter.write('assemble_failed', `module=task_system`, `phase=construct`, `reason=${errMsg(e)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=task_system`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: TaskSystem construct failed: ${errMsg(e)}`, { cause: e });
   }
   // NOTE: taskSystem.initialize() / startDispatch() 属 TaskSystem 业务语义，由 Runtime.initialize() 调用
@@ -226,7 +227,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   try {
     contextInjector = createContextInjector({ fs: systemFs, skillRegistry, contractManager });
   } catch (e) {
-    auditWriter.write('assemble_failed', `module=context_injector`, `phase=construct`, `reason=${errMsg(e)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=context_injector`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: ContextInjector construct failed: ${errMsg(e)}`, { cause: e });
   }
 
@@ -245,7 +246,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       auditWriter,
     });
   } catch (e) {
-    auditWriter.write('assemble_failed', `module=exec_context`, `phase=construct`, `reason=${errMsg(e)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=exec_context`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: ExecContextImpl construct failed: ${errMsg(e)}`, { cause: e });
   }
 
@@ -262,7 +263,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   try {
     toolExecutor = createToolExecutor(toolRegistry, toolTimeoutMs);
   } catch (e) {
-    auditWriter.write('assemble_failed', `module=tool_executor`, `phase=construct`, `reason=${errMsg(e)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=tool_executor`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: ToolExecutorImpl construct failed: ${errMsg(e)}`, { cause: e });
   }
 
@@ -274,7 +275,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   try {
     sessionManager = createSessionManager(systemFs, 'dialog', auditWriter, clawId);
   } catch (e) {
-    auditWriter.write('assemble_failed', `module=session_manager`, `phase=construct`, `reason=${errMsg(e)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=session_manager`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: SessionManager construct failed: ${errMsg(e)}`, { cause: e });
   }
 
@@ -282,7 +283,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   try {
     inboxReader = createInboxReader(systemFs, auditWriter, 'inbox');
   } catch (e) {
-    auditWriter.write('assemble_failed', `module=inbox_reader`, `phase=construct`, `reason=${errMsg(e)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=inbox_reader`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: InboxReader construct failed: ${errMsg(e)}`, { cause: e });
   }
 
@@ -291,19 +292,19 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   try {
     snapshot = createSnapshot(clawDir, systemFs, auditWriter, SNAPSHOT_IGNORE_PATTERNS);
   } catch (e) {
-    auditWriter.write('assemble_failed', `module=snapshot`, `phase=construct`, `reason=${errMsg(e)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=snapshot`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: Snapshot construct failed: ${errMsg(e)}`, { cause: e });
   }
 
   const initResult = await snapshot.init();
   if (!initResult.ok) {
-    auditWriter.write('assemble_failed', `module=snapshot`, `phase=init`, `reason=${initResult.error.kind}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=snapshot`, `phase=init`, `reason=${initResult.error.kind}`);
     throw new Error(`Assembly: Snapshot.init failed: ${initResult.error.kind}`);
   }
 
   const recoveryResult = await snapshot.commit('recovery-snapshot');
   if (!recoveryResult.ok) {
-    auditWriter.write('assemble_failed', `module=snapshot`, `phase=recovery-commit`, `reason=${recoveryResult.error.kind}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=snapshot`, `phase=recovery-commit`, `reason=${recoveryResult.error.kind}`);
   }
 
   // --- StreamWriter 前置（phase182 B.p166-5 升档：setter 双阶段消除） ---
@@ -315,7 +316,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     });
     streamWriter.open();
   } catch (e) {
-    auditWriter.write('assemble_failed', `module=stream_writer`, `phase=construct`, `reason=${errMsg(e)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=stream_writer`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: StreamWriter construct failed: ${errMsg(e)}`, { cause: e });
   }
 
@@ -359,7 +360,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
 
   // 孤儿临时文件清理（从 Runtime.initialize 搬来；Assembly 负责一次性的启动清理）
   systemFs.cleanupTempFiles().catch((err: unknown) => {
-    auditWriter.write('cleanup_temp_files_failed', `reason=${err instanceof Error ? err.message : String(err)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.CLEANUP_TEMP_FILES_FAILED, `reason=${err instanceof Error ? err.message : String(err)}`);
   });
 
   // --- Runtime 构造（deps 注入） ---
@@ -379,7 +380,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       dependencies,
     });
   } catch (e) {
-    auditWriter.write('assemble_failed', `module=runtime`, `phase=construct`, `reason=${errMsg(e)}`);
+    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=runtime`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: Runtime construct failed: ${errMsg(e)}`, { cause: e });
   }
 
@@ -394,7 +395,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
         audit: auditWriter,
       });
     } catch (e) {
-      auditWriter.write('assemble_failed', `module=gateway`, `phase=construct`, `reason=${errMsg(e)}`);
+      auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=gateway`, `phase=construct`, `reason=${errMsg(e)}`);
       throw new Error(`Assembly: Gateway construct failed: ${errMsg(e)}`, { cause: e });
     }
     // ask_user 工具：motion 启 / claw 不启（决策 #25：用户 ↔ motion ↔ claw 中介）
@@ -416,7 +417,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
           audit: auditWriter,
         });
       } catch (e) {
-        auditWriter.write('assemble_failed', `module=heartbeat`, `phase=construct`, `reason=${errMsg(e)}`);
+        auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=heartbeat`, `phase=construct`, `reason=${errMsg(e)}`);
         throw new Error(`Assembly: Heartbeat construct failed: ${errMsg(e)}`, { cause: e });
       }
     }
@@ -436,7 +437,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     try {
       clawforumFs = new NodeFileSystem({ baseDir: clawforumDir, enforcePermissions: false });
     } catch (e) {
-      auditWriter.write('assemble_failed', `module=cron_runner`, `phase=fs_construct`, `reason=${errMsg(e)}`);
+      auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=cron_runner`, `phase=fs_construct`, `reason=${errMsg(e)}`);
       throw new Error(`Assembly: clawforumFs construct failed: ${errMsg(e)}`, { cause: e });
     }
 
@@ -455,7 +456,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
           maxCompressionTokens: globalConfig.cron?.jobs?.dream_trigger?.max_compression_tokens,
         });
       } catch (e) {
-        auditWriter.write('assemble_failed', `module=memory_system`, `phase=construct`, `reason=${errMsg(e)}`);
+        auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=memory_system`, `phase=construct`, `reason=${errMsg(e)}`);
         throw new Error(`Assembly: MemorySystem construct failed: ${errMsg(e)}`, { cause: e });
       }
     }
@@ -504,20 +505,20 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
         },
       ], auditWriter);
     } catch (e) {
-      auditWriter.write('assemble_failed', `module=cron_runner`, `phase=construct`, `reason=${errMsg(e)}`);
+      auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=cron_runner`, `phase=construct`, `reason=${errMsg(e)}`);
       throw new Error(`Assembly: CronRunner construct failed: ${errMsg(e)}`, { cause: e });
     }
 
     try {
       cronRunner.start(tickMs);
     } catch (e) {
-      auditWriter.write('assemble_failed', `module=cron_runner`, `phase=start`, `reason=${errMsg(e)}`);
+      auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=cron_runner`, `phase=start`, `reason=${errMsg(e)}`);
       throw new Error(`Assembly: CronRunner start failed: ${errMsg(e)}`, { cause: e });
     }
   }
 
   // --- 8. 契约 §4 audit daemon_started ---
-  auditWriter.write('daemon_started', `clawId=${clawId}`, `pid=${process.pid}`);
+  auditWriter.write(ASSEMBLY_AUDIT_EVENTS.DAEMON_STARTED, `clawId=${clawId}`, `pid=${process.pid}`);
   streamWriter.write({ ts: Date.now(), type: 'daemon_started', clawId, pid: process.pid });
 
   return {

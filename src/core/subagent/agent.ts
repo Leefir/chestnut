@@ -20,7 +20,7 @@ import { DEFAULT_SUBAGENT_SYSTEM_PROMPT } from '../../prompts/index.js';
 import type { TaskScheduler } from '../tools/task-scheduler.js';
 import type { Message } from '../../types/message.js';
 import type { Audit } from '../../foundation/audit/index.js';
-import { SUBAGENT_AUDIT_EVENTS } from './audit-events.js';
+import { SUBAGENT_AUDIT_EVENTS, REACT_LOOP_AUDIT_EVENTS } from './audit-events.js';
 import type { StreamLog } from '../../foundation/stream/types.js';
 import type { CallerType } from '../tools/caller-type.js';
 import { callerTypeToProfile } from '../tools/caller-type.js';
@@ -137,7 +137,7 @@ export class SubAgent {
 
     // Turn start: written before any potentially-throwing init so catch always pairs it
     sw.write({ ts: Date.now(), type: 'turn_start' });
-    this.auditWriter.write('turn_start');
+    this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_START);
 
     try {
       const callerType = this.callerType ?? 'subagent';
@@ -258,9 +258,9 @@ export class SubAgent {
           tools,                    // Enable native tool_use
           onLLMResult: (info) => {
             if (info.error) {
-              this.auditWriter.write('llm_error', info.model, `err=${info.error}`, `ms=${info.latencyMs}`);
+              this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.LLM_ERROR, info.model, `err=${info.error}`, `ms=${info.latencyMs}`);
             } else {
-              this.auditWriter.write('llm_call', info.model, `in=${info.inputTokens}`, `out=${info.outputTokens}`, `ms=${info.latencyMs}`);
+              this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.LLM_CALL, info.model, `in=${info.inputTokens}`, `out=${info.outputTokens}`, `ms=${info.latencyMs}`);
             }
           },
           onBeforeLLMCall: streamCallbacks.onBeforeLLMCall,
@@ -326,7 +326,7 @@ export class SubAgent {
       }
 
       sw.write({ ts: Date.now(), type: 'turn_end' });
-      this.auditWriter.write('turn_end');
+      this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_END);
       turnEnded = true;
 
       // Extract final text result
@@ -338,27 +338,27 @@ export class SubAgent {
 
       if (error instanceof ToolTimeoutError) {
         sw.write({ ts: Date.now(), type: 'turn_interrupted', message: `Timeout after ${this.timeoutMs}ms` });
-        this.auditWriter.write('turn_interrupted', 'cause=turn_timeout', `ms=${this.timeoutMs}`);
+        this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_INTERRUPTED, 'cause=turn_timeout', `ms=${this.timeoutMs}`);
       } else if (error instanceof IdleTimeoutSignal) {
         sw.write({ ts: Date.now(), type: 'turn_interrupted', message: `Idle timeout after ${error.timeoutMs}ms` });
-        this.auditWriter.write('turn_interrupted', 'cause=idle_timeout', `ms=${error.timeoutMs}`);
+        this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_INTERRUPTED, 'cause=idle_timeout', `ms=${error.timeoutMs}`);
       } else if (error instanceof UserInterrupt) {
         sw.write({ ts: Date.now(), type: 'turn_interrupted', message: 'User interrupt' });
-        this.auditWriter.write('turn_interrupted', 'cause=user_interrupt');
+        this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_INTERRUPTED, 'cause=user_interrupt');
       } else if (error instanceof PriorityInboxInterrupt) {
         sw.write({ ts: Date.now(), type: 'turn_interrupted', message: 'Priority inbox' });
-        this.auditWriter.write('turn_interrupted', 'cause=priority_inbox');
+        this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_INTERRUPTED, 'cause=priority_inbox');
       } else if ((error as Error)?.name === 'AbortError') {
         const cause = (error as Error & { cause?: AbortReason }).cause;
         sw.write({ ts: Date.now(), type: 'turn_interrupted', message: errMsg });
         this.auditWriter.write(
-          'turn_interrupted',
+          REACT_LOOP_AUDIT_EVENTS.TURN_INTERRUPTED,
           'cause=external',
           ...(cause ? [`type=${cause.type}`] : []),
         );
       } else {
         sw.write({ ts: Date.now(), type: 'turn_error', error: errMsg });
-        this.auditWriter.write('turn_error', `err=${errMsg}`);
+        this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_ERROR, `err=${errMsg}`);
       }
       turnEnded = true;
 
@@ -370,7 +370,7 @@ export class SubAgent {
       // Safety net: write turn_end only if no specific turn end event was already written
       if (!turnEnded) {
         sw.write({ ts: Date.now(), type: 'turn_end' });
-        this.auditWriter.write('turn_end');
+        this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_END);
       }
     }
   }

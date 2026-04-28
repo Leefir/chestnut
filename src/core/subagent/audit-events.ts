@@ -9,3 +9,18 @@ export const SUBAGENT_AUDIT_EVENTS = {
   PERSIST_FAILED: 'subagent_persist_failed',
   LOG_APPEND_FAILED: 'subagent_log_append_failed',
 } as const;
+
+/**
+ * React loop audit events (γ 同源复制 / phase375 裁决 2)
+ *
+ * 字符串值与 src/core/runtime/runtime-audit-events.ts 的 REACT_LOOP_AUDIT_EVENTS 等价 / 0 漂移。
+ * 不抽共享层文件（避免新增模块层级 / M#5 反向）。
+ */
+export const REACT_LOOP_AUDIT_EVENTS = {
+  TURN_START: 'turn_start',
+  TURN_END: 'turn_end',
+  TURN_INTERRUPTED: 'turn_interrupted',
+  TURN_ERROR: 'turn_error',
+  LLM_CALL: 'llm_call',
+  LLM_ERROR: 'llm_error',
+} as const;

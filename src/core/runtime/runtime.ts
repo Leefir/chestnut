@@ -25,7 +25,8 @@ import { runReact } from '../react/loop.js';
 import { summarizeLastExit } from './last-exit-summary.js';
 import { IdleTimeoutSignal, PriorityInboxInterrupt, UserInterrupt } from '../../types/signals.js';
 import type { ToolResult } from '../tools/executor.js';
-import { RUNTIME_AUDIT_EVENTS } from './runtime-audit-events.js';
+import { RUNTIME_AUDIT_EVENTS, REACT_LOOP_AUDIT_EVENTS } from './runtime-audit-events.js';
+import { ASSEMBLY_AUDIT_EVENTS } from '../../assembly/audit-events.js';
 import { CLAW_SUBDIRS } from '../../types/paths.js';
 import { oneLine } from '../../types/utils.js';
 import { MaxStepsExceededError } from '../../types/errors.js';
@@ -201,7 +202,7 @@ export class ClawRuntime {
     try {
       await this.inboxReader.init();
     } catch (e) {
-      this.auditWriter.write('assemble_failed', `module=inbox_reader`, `phase=init`, `reason=${e instanceof Error ? e.message : String(e)}`);
+      this.auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=inbox_reader`, `phase=init`, `reason=${e instanceof Error ? e.message : String(e)}`);
       throw e;
     }
     this.outboxWriter = deps.outboxWriter;
@@ -216,7 +217,7 @@ export class ClawRuntime {
     // 3. 归档上一次 session（first-run ENOENT 允许）
     await this.sessionManager.archive().catch((err: any) => {
       if (err?.code !== 'ENOENT' && err?.code !== 'FS_NOT_FOUND') {
-        this.auditWriter.write('session_archive_failed', `reason=${err?.message}`);
+        this.auditWriter.write(RUNTIME_AUDIT_EVENTS.SESSION_ARCHIVE_FAILED, `reason=${err?.message}`);
         console.warn('[runtime] Failed to archive session on startup:', err?.message);
       }
     });
@@ -228,13 +229,13 @@ export class ClawRuntime {
     try {
       await this.taskSystem.initialize();
     } catch (e) {
-      this.auditWriter.write('task_system_init_failed', `reason=${e instanceof Error ? e.message : String(e)}`);
+      this.auditWriter.write(RUNTIME_AUDIT_EVENTS.TASK_SYSTEM_INIT_FAILED, `reason=${e instanceof Error ? e.message : String(e)}`);
       throw new Error(`Runtime: TaskSystem.initialize failed: ${e instanceof Error ? e.message : String(e)}`, { cause: e });
     }
     try {
       this.taskSystem.startDispatch();
     } catch (e) {
-      this.auditWriter.write('task_system_start_dispatch_failed', `reason=${e instanceof Error ? e.message : String(e)}`);
+      this.auditWriter.write(RUNTIME_AUDIT_EVENTS.TASK_SYSTEM_START_DISPATCH_FAILED, `reason=${e instanceof Error ? e.message : String(e)}`);
       throw new Error(`Runtime: TaskSystem.startDispatch failed: ${e instanceof Error ? e.message : String(e)}`, { cause: e });
     }
 
@@ -265,7 +266,7 @@ export class ClawRuntime {
     const { session, source } = loadResult;
     const auditAbsPath = this.systemFs.resolve('audit.tsv');
     const interruptionMessage = summarizeLastExit(auditAbsPath);
-    this.auditWriter.write('session_loaded', `source=${source}`);
+    this.auditWriter.write(RUNTIME_AUDIT_EVENTS.SESSION_LOADED, `source=${source}`);
     const { repaired, toolCount } = SessionManager.repair(
       session.messages,
       interruptionMessage ? { interruptionMessage } : undefined,
@@ -274,16 +275,16 @@ export class ClawRuntime {
       try {
         await this.sessionManager.save(repaired);
       } catch (e) {
-        this.auditWriter.write('assemble_failed', `module=session_manager`, `phase=session_repair_save`, `reason=${e instanceof Error ? e.message : String(e)}`);
+        this.auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=session_manager`, `phase=session_repair_save`, `reason=${e instanceof Error ? e.message : String(e)}`);
         throw e;
       }
-      this.auditWriter.write('session_repaired', `tools=${toolCount}`);
+      this.auditWriter.write(RUNTIME_AUDIT_EVENTS.SESSION_REPAIRED, `tools=${toolCount}`);
       const result = await this.snapshot.commit(`session-repair tools=${toolCount}`).catch((err: unknown): null => {
-        this.auditWriter.write('snapshot_commit_failed', `context=session-repair`, `reason=${err instanceof Error ? err.message : String(err)}`);
+        this.auditWriter.write(RUNTIME_AUDIT_EVENTS.SNAPSHOT_COMMIT_FAILED, `context=session-repair`, `reason=${err instanceof Error ? err.message : String(err)}`);
         return null;
       });
       if (result && !result.ok && result.error.kind === 'uncategorized') {
-        this.auditWriter.write('snapshot_commit_uncategorized', `context=session-repair`, `exitCode=${result.error.exitCode}`);
+        this.auditWriter.write(RUNTIME_AUDIT_EVENTS.SNAPSHOT_COMMIT_UNCATEGORIZED, `context=session-repair`, `exitCode=${result.error.exitCode}`);
       }
     }
   }
@@ -391,7 +392,7 @@ export class ClawRuntime {
 
     for (const { message, filePath } of addressed) {
       this.auditWriter.write(
-        'inbox_inject',
+        RUNTIME_AUDIT_EVENTS.INBOX_INJECT,
         `file=${path.basename(filePath)}`,
         `type=${message.extraMeta?.__original_type ?? message.type}`,
         `from=${message.from}`,
@@ -401,7 +402,7 @@ export class ClawRuntime {
     }
     for (const { message, filePath } of unaddressed) {
       this.auditWriter.write(
-        'inbox_unaddressed',
+        RUNTIME_AUDIT_EVENTS.INBOX_UNADDRESSED,
         `file=${path.basename(filePath)}`,
         `type=${message.extraMeta?.__original_type ?? message.type}`,
         `from=${message.from}`,
@@ -483,7 +484,7 @@ export class ClawRuntime {
       result: ToolResult, step: number, maxSteps: number
     ) => {
       this.auditWriter.write(
-        'tool_result', name, toolUseId,
+        RUNTIME_AUDIT_EVENTS.TOOL_RESULT, name, toolUseId,
         result.success ? 'ok' : 'err',
         `summary=${oneLine(result.content ?? '')}`,
       );
@@ -502,9 +503,9 @@ export class ClawRuntime {
         idleTimeoutMs: this.options.idleTimeoutMs ?? DEFAULT_LLM_IDLE_TIMEOUT_MS,
         onLLMResult: (info) => {
           if (info.error) {
-            this.auditWriter.write('llm_error', info.model, `err=${info.error}`, `ms=${info.latencyMs}`);
+            this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.LLM_ERROR, info.model, `err=${info.error}`, `ms=${info.latencyMs}`);
           } else {
-            this.auditWriter.write('llm_call', info.model, `in=${info.inputTokens}`, `out=${info.outputTokens}`, `ms=${info.latencyMs}`);
+            this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.LLM_CALL, info.model, `in=${info.inputTokens}`, `out=${info.outputTokens}`, `ms=${info.latencyMs}`);
           }
         },
         onStepComplete: async () => {
@@ -540,11 +541,11 @@ export class ClawRuntime {
     this.turnCount++;
     const commitResult = await this.snapshot.commit(`turn-${this.turnCount} ${new Date().toISOString()}`).catch((err: unknown): null => {
       // 不可预期失败：audit 已在 snapshot 内写；此处仅暴露给诊断
-      this.auditWriter.write('snapshot_commit_failed', `context=turn-${this.turnCount}`, `reason=${err instanceof Error ? err.message : String(err)}`);
+      this.auditWriter.write(RUNTIME_AUDIT_EVENTS.SNAPSHOT_COMMIT_FAILED, `context=turn-${this.turnCount}`, `reason=${err instanceof Error ? err.message : String(err)}`);
       return null;
     });
     if (commitResult && !commitResult.ok && commitResult.error.kind === 'uncategorized') {
-      this.auditWriter.write('snapshot_commit_uncategorized', `context=turn-${this.turnCount}`, `exitCode=${commitResult.error.exitCode}`);
+      this.auditWriter.write(RUNTIME_AUDIT_EVENTS.SNAPSHOT_COMMIT_UNCATEGORIZED, `context=turn-${this.turnCount}`, `exitCode=${commitResult.error.exitCode}`);
     }
   }
 
@@ -566,7 +567,7 @@ export class ClawRuntime {
         await callbacks.onInboxMessages(infos);
       } catch (e) {
         const reason = e instanceof Error ? e.message : String(e);
-        this.auditWriter.write('inbox_handler_failed', 'handler=onInboxMessages', `reason=${reason}`);
+        this.auditWriter.write(RUNTIME_AUDIT_EVENTS.INBOX_HANDLER_FAILED, 'handler=onInboxMessages', `reason=${reason}`);
         console.warn('[runtime] onInboxMessages handler failed:', reason);
       }
     }
@@ -579,7 +580,7 @@ export class ClawRuntime {
 
     // Turn start: inbox drained and persisted, processing about to begin
     callbacks?.onTurnStart?.(sources);
-    this.auditWriter.write('turn_start');
+    this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_START);
 
     // AbortController support (same as chat() mode)
     const abortController = new AbortController();
@@ -590,7 +591,7 @@ export class ClawRuntime {
 
       // Turn completed normally
       callbacks?.onTurnEnd?.();
-      this.auditWriter.write('turn_end');
+      this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_END);
 
       return count;
     } catch (err) {
@@ -645,14 +646,14 @@ export class ClawRuntime {
     const messages = [...session.messages, msg];
     await this.sessionManager.save(messages);
     callbacks?.onTurnStart?.([]);
-    this.auditWriter.write('turn_start');
+    this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_START);
 
     const abortController = new AbortController();
     this.currentAbortController = abortController;
     this.execContext.signal = abortController.signal;
     try {
       await this._runReact(messages, callbacks);
-      this.auditWriter.write('turn_end');
+      this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_END);
     } catch (err) {
       // Note: do NOT save messages here - see processBatch catch block for explanation
       this._handleTurnInterrupt(err, callbacks);
@@ -693,7 +694,7 @@ export class ClawRuntime {
 
     // Retry is also a turn (tag it so stream consumers know it's a retry)
     callbacks?.onTurnStart?.([{ text: 'LLM retry', type: 'system_retry' }]);
-    this.auditWriter.write('turn_start');
+    this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_START);
 
     const abortController = new AbortController();
     this.currentAbortController = abortController;
@@ -701,7 +702,7 @@ export class ClawRuntime {
     try {
       await this._runReact(retryMessages, callbacks);
       callbacks?.onTurnEnd?.();
-      this.auditWriter.write('turn_end');
+      this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_END);
     } catch (err) {
       this._handleTurnInterrupt(err, callbacks);
       throw err;
@@ -769,9 +770,9 @@ export class ClawRuntime {
         maxSteps: this.options.maxSteps,
         onLLMResult: (info) => {
           if (info.error) {
-            this.auditWriter.write('llm_error', info.model, `err=${info.error}`, `ms=${info.latencyMs}`);
+            this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.LLM_ERROR, info.model, `err=${info.error}`, `ms=${info.latencyMs}`);
           } else {
-            this.auditWriter.write('llm_call', info.model, `in=${info.inputTokens}`, `out=${info.outputTokens}`, `ms=${info.latencyMs}`);
+            this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.LLM_CALL, info.model, `in=${info.inputTokens}`, `out=${info.outputTokens}`, `ms=${info.latencyMs}`);
           }
         },
         onToolCall: options?.onToolCall,
@@ -810,17 +811,17 @@ export class ClawRuntime {
     if (err instanceof IdleTimeoutSignal) {
       const msg = `Interrupted (idle timeout: ${Math.round(err.timeoutMs / 1000)}s)`;
       callbacks?.onTurnInterrupted?.('idle_timeout', msg);
-      this.auditWriter.write('turn_interrupted', 'cause=idle_timeout', `ms=${err.timeoutMs}`);
+      this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_INTERRUPTED, 'cause=idle_timeout', `ms=${err.timeoutMs}`);
     } else if (err instanceof PriorityInboxInterrupt) {
       callbacks?.onTurnInterrupted?.('priority_inbox', 'Interrupted (priority inbox)');
-      this.auditWriter.write('turn_interrupted', 'cause=priority_inbox');
+      this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_INTERRUPTED, 'cause=priority_inbox');
     } else if (err instanceof UserInterrupt) {
       callbacks?.onTurnInterrupted?.('user_interrupt');  // 不传 message，让 viewport 自行决定显示
-      this.auditWriter.write('turn_interrupted', 'cause=user_interrupt');
+      this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_INTERRUPTED, 'cause=user_interrupt');
     } else {
       const errorMsg = err instanceof Error ? err.message : String(err);
       callbacks?.onTurnError?.(errorMsg);
-      this.auditWriter.write('turn_error', `err=${errorMsg}`);
+      this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_ERROR, `err=${errorMsg}`);
     }
   }
 
@@ -843,7 +844,7 @@ export class ClawRuntime {
     }).catch(e => {
       const reason = e instanceof Error ? e.message : String(e);
       this.auditWriter.write(
-        'outbox_write_failed',
+        RUNTIME_AUDIT_EVENTS.OUTBOX_WRITE_FAILED,
         'context=error_response',
         `scenario=${scenario}`,
         `reason=${reason}`,
@@ -866,7 +867,7 @@ export class ClawRuntime {
     for (const file of files) {
       const result = InboxWriter.readMeta(this.systemFs, path.join(pendingDir, file));
       if (!result.ok) {
-        this.auditWriter.write('inbox_meta_failed', `file=${file}`, `kind=${result.error.kind}`);
+        this.auditWriter.write(RUNTIME_AUDIT_EVENTS.INBOX_META_FAILED, `file=${file}`, `kind=${result.error.kind}`);
         continue;
       }
       const meta = result.value;

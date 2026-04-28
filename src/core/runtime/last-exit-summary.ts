@@ -13,6 +13,7 @@
  */
 
 import * as fs from 'fs';
+import { ASSEMBLY_AUDIT_EVENTS } from '../../assembly/audit-events.js';
 
 const TAIL_BYTES = 4096;
 
@@ -84,11 +85,11 @@ export function summarizeLastExit(auditPath: string): string | null {
   const colsText = ev.cols.length > 0 ? ` (${ev.cols.join(', ')})` : '';
 
   switch (ev.type) {
-    case 'daemon_stop':
+    case ASSEMBLY_AUDIT_EVENTS.DAEMON_STOP:
       return `Last process stopped normally at ${ev.ts}${colsText}.`;
-    case 'daemon_crash':
+    case ASSEMBLY_AUDIT_EVENTS.DAEMON_CRASH:
       return `Last process crashed at ${ev.ts}${colsText}.`;
-    case 'daemon_unclean_exit':
+    case ASSEMBLY_AUDIT_EVENTS.DAEMON_UNCLEAN_EXIT:
       return `Last process exited uncleanly at ${ev.ts} (likely SIGKILL / OOM / power loss; no graceful shutdown).${
         ev.cols.length > 0 ? ` Last activity timestamp: ${ev.cols.join(', ')}.` : ''
       }`;

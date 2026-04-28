@@ -1,4 +1,5 @@
 import type { Instances } from './index.js';
+import { ASSEMBLY_AUDIT_EVENTS } from './audit-events.js';
 
 export async function disassemble(instances: Instances, signal: string): Promise<void> {
   const { gateway, runtime, streamWriter, processManager, auditWriter, cronRunner, clawId } = instances;
@@ -9,7 +10,7 @@ export async function disassemble(instances: Instances, signal: string): Promise
       await gateway.stop();
     } catch (e) {
       auditWriter.write(
-        'disassemble_step_failed',
+        ASSEMBLY_AUDIT_EVENTS.DISASSEMBLE_STEP_FAILED,
         `step=gateway_stop`,
         `reason=${_reason(e)}`,
       );
@@ -22,7 +23,7 @@ export async function disassemble(instances: Instances, signal: string): Promise
       cronRunner.stop();
     } catch (e) {
       auditWriter.write(
-        'disassemble_step_failed',
+        ASSEMBLY_AUDIT_EVENTS.DISASSEMBLE_STEP_FAILED,
         `step=cron_stop`,
         `reason=${_reason(e)}`,
       );
@@ -63,7 +64,7 @@ export async function disassemble(instances: Instances, signal: string): Promise
   }
 
   // Step 6: audit daemon_stop（最后）
-  auditWriter.write('daemon_stop', `signal=${signal.toLowerCase()}`);
+  auditWriter.write(ASSEMBLY_AUDIT_EVENTS.DAEMON_STOP, `signal=${signal.toLowerCase()}`);
 }
 
 function _reason(e: unknown): string {
