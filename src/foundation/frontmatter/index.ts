@@ -1,15 +1,15 @@
 /**
- * @module L1.Frontmatter
- * Frontmatter module (L1)
+ * Frontmatter parser — 应然外通用 parser（不构成正式模块）
  *
- * Pure YAML frontmatter parser utility. No I/O, no side effects.
- * No runtime dependencies. No type dependencies on higher layers.
+ * 纯 YAML frontmatter 字符串解析 / 无 I/O / 无副作用 / 无 runtime 依赖 / 无对上层类型依赖。
  *
- * Originally extracted from L1.MessageCodec (phase 361) to dissolve the
- * L1→L2 reverse predict violation: message-codec/inbox.ts imported
- * InboxMessage (L2 business type), forcing the entire module to span
- * pure parsing (L1 OK) and business encoding (L2). Inbox/outbox codec
- * relocated to L2 Messaging; this module retains only the pure parser.
+ * 历史：phase 361 从 L2 Messaging（message-codec/inbox.ts）抽出 / 当时同时治理
+ * inbox/outbox 编解码与 InboxMessage（L2 业务类型）/ 编解码部分留 L2 Messaging /
+ * 此纯解析器抽出避免双 caller（SkillSystem L2 + Tools L3 builtins/memory_search）复制。
+ *
+ * 应然定位：不算正式模块（L1 = OS/external 抽象 / 此物纯字符串解析不符）/
+ * 不在 modules.md 模块清单（L1 5 模块固定）/ 仅作跨模块复用避复制 utility。
+ * 详见 design/modules.md L1 节末「应然外通用 parser」节。
  */
 
 export function parseFrontmatter(raw: string): { meta: Record<string, string>; body: string } {
