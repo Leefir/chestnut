@@ -16,6 +16,7 @@ import { createLLMAuditSink } from './llm-audit-sink.js';
 import { createToolRegistry, type ToolRegistryImpl } from '../core/tools/index.js';
 import { createToolExecutor, type ToolExecutorImpl } from '../core/tools/index.js';
 import { createSkillRegistry, SkillRegistry } from '../core/skill/index.js';
+import { SKILLS_DIR_DEFAULT } from '../core/skill/skill-paths.js';
 import { ContractManager, createContractManager } from '../core/contract/index.js';
 import { createSubAgentVerifierScheduler } from '../core/contract/verifier-scheduler.js';
 import { createTaskSystem } from '../core/task/index.js';
@@ -169,7 +170,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   // --- L3-L5: skillRegistry + loadAll ---
   let skillRegistry: SkillRegistry;
   try {
-    skillRegistry = createSkillRegistry(systemFs, 'skills', auditWriter);
+    skillRegistry = createSkillRegistry(systemFs, SKILLS_DIR_DEFAULT, auditWriter);
   } catch (e) {
     auditWriter.write('assemble_failed', `module=skill_registry`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: SkillRegistry construct failed: ${errMsg(e)}`, { cause: e });

@@ -11,6 +11,7 @@
 import { buildRetroPrompt } from '../../prompts/retrospective.js';
 import { writePendingSubagentTaskFile } from '../task/tools/_pending-task-writer.js';
 import { createSkillRegistry } from '../skill/index.js';
+import { DISPATCH_SKILLS_DIR } from '../skill/skill-paths.js';
 import { DEFAULT_MAX_STEPS, DEFAULT_LLM_IDLE_TIMEOUT_MS } from '../../constants.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { Audit } from '../../foundation/audit/index.js';
@@ -38,7 +39,7 @@ export function createDefaultRetroScheduler(): ContractRetroScheduler {
       // 加载 dispatch-skills（A.5 / best-effort）
       let skillsSummary = '';
       try {
-        const reg = createSkillRegistry(config.motionFs, 'clawspace/dispatch-skills');
+        const reg = createSkillRegistry(config.motionFs, DISPATCH_SKILLS_DIR);
         await reg.loadAll();
         const formatted = reg.formatForContext();
         if (!formatted.includes('No skills loaded')) {

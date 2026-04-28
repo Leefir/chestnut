@@ -25,7 +25,7 @@ export class SkillRegistry {
   private metaMap: Map<string, SkillMeta> = new Map();
   private audit?: Audit;
 
-  constructor(fs: FileSystem, skillsDir: string = 'skills', audit?: Audit) {
+  constructor(fs: FileSystem, skillsDir: string, audit?: Audit) {
     this.fs = fs;
     this.skillsDir = skillsDir;
     this.audit = audit;

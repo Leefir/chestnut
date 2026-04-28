@@ -2,6 +2,7 @@ import type { Tool, ToolResult, ExecContext } from '../../tools/executor.js';
 import type { TaskLifecyclePort } from '../../runtime/runtime-ports.js';
 import type { Message, ToolDefinition } from '../../../types/message.js';
 import { createSkillRegistry } from '../../skill/index.js';
+import { DISPATCH_SKILLS_DIR } from '../../skill/skill-paths.js';
 import { ToolRegistryImpl } from '../../tools/registry.js';
 import { DEFAULT_LLM_IDLE_TIMEOUT_MS, DEFAULT_MAX_STEPS } from '../../../constants.js';
 import { buildDescribingUserMessage, buildMinerSystemPrompt, buildMiningUserMessage } from '../../../prompts/index.js';
@@ -68,7 +69,7 @@ export class DispatchTool implements Tool {
     // 扫描 clawspace/dispatch-skills/ 生成简介（结构同普通 skill：子目录 + SKILL.md）
     let skillsSummary = '';
     try {
-      const dispatchSkillRegistry = createSkillRegistry(ctx.fs, 'clawspace/dispatch-skills');
+      const dispatchSkillRegistry = createSkillRegistry(ctx.fs, DISPATCH_SKILLS_DIR);
       await dispatchSkillRegistry.loadAll();
       const formatted = dispatchSkillRegistry.formatForContext();
       if (!formatted.includes('No skills loaded')) {
