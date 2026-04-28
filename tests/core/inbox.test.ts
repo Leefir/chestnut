@@ -23,7 +23,7 @@ describe('InboxReader', () => {
     testDir = path.join(tmpdir(), `clawforum-inbox-${randomUUID()}`);
     await fs.rm(testDir, { recursive: true, force: true }).catch(() => {});
     await fs.mkdir(testDir, { recursive: true });
-    nfs = new NodeFileSystem({ baseDir: testDir, enforcePermissions: false });
+    nfs = new NodeFileSystem({ baseDir: testDir });
     reader = new InboxReader(INBOX_PENDING_DIR, INBOX_DONE_DIR, INBOX_FAILED_DIR, nfs, makeAudit().audit);
     await reader.init();
   });

@@ -141,7 +141,7 @@ describe('Task System + SubAgent', () => {
 
   beforeEach(async () => {
     tempDir = await createTempDir();
-    mockFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
+    mockFs = new NodeFileSystem({ baseDir: tempDir });
     await mockFs.ensureDir('tasks');
     
     taskSystem = createTestTaskSystem(tempDir, mockFs, makeAudit().audit);
@@ -421,7 +421,7 @@ describe('Task System + SubAgent', () => {
     it('should write fallback inbox message when main sendResult fails', async () => {
       // 第一次对 inbox/pending 的写入失败，第二次（fallback）成功
       let inboxWriteAttempts = 0;
-      const patchedFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
+      const patchedFs = new NodeFileSystem({ baseDir: tempDir });
       const originalWriteAtomic = patchedFs.writeAtomic.bind(patchedFs);
       patchedFs.writeAtomic = async (filePath: string, content: string) => {
         if (filePath.startsWith('inbox/pending/') && inboxWriteAttempts++ === 0) {
@@ -465,7 +465,7 @@ describe('Task System + SubAgent', () => {
     });
 
     it('should write fallback inbox message when movePendingToRunning fails', async () => {
-      const patchedFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
+      const patchedFs = new NodeFileSystem({ baseDir: tempDir });
       const originalMove = patchedFs.move.bind(patchedFs);
       patchedFs.move = async (from: string, to: string) => {
         if (from.startsWith('tasks/pending/') && to.startsWith('tasks/running/')) {

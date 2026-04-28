@@ -13,11 +13,8 @@ import type {
   FileSystemOptions,
   FileEntry,
 } from './index.js';
+import { createNullPermissionChecker } from './permissions.js';
 import type { PermissionChecker } from './permissions.js';
-import {
-  createPermissionChecker,
-  type PermissionOptions,
-} from './permissions.js';
 import {
   readFile,
   writeAtomic,
@@ -41,17 +38,14 @@ import {
  */
 export class NodeFileSystem implements FileSystem {
   private readonly permissionChecker: PermissionChecker;
-  private readonly enforcePermissions: boolean;
-  
-  constructor(private readonly options: FileSystemOptions) {
-    this.enforcePermissions = options.enforcePermissions ?? true;
-    
-    const permOptions: PermissionOptions = {
-      clawDir: options.baseDir,
-      strict: this.enforcePermissions,
-    };
-    
-    this.permissionChecker = createPermissionChecker(permOptions);
+  private readonly hasInjectedChecker: boolean;
+
+  constructor(
+    private readonly options: FileSystemOptions,
+    permissionChecker?: PermissionChecker,
+  ) {
+    this.hasInjectedChecker = permissionChecker !== undefined;
+    this.permissionChecker = permissionChecker ?? createNullPermissionChecker(options.baseDir);
   }
   
   // ========================================================================
@@ -78,7 +72,7 @@ export class NodeFileSystem implements FileSystem {
     const absolute = path.resolve(this.options.baseDir, normalized);
 
     // Resolve symlinks to prevent traversal via symlinks
-    if (this.enforcePermissions) {
+    if (this.hasInjectedChecker) {
       const realBase = (() => {
         try { return realpathSync(this.options.baseDir); } catch { return this.options.baseDir; }
       })();

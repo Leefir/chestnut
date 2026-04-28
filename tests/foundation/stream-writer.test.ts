@@ -15,7 +15,7 @@ describe('StreamWriter', () => {
 
   beforeEach(async () => {
     tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'sw-test-'));
-    fs = new NodeFileSystem({ baseDir: tmpDir, enforcePermissions: false });
+    fs = new NodeFileSystem({ baseDir: tmpDir });
   });
 
   afterEach(async () => {

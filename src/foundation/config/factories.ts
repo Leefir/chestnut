@@ -43,7 +43,7 @@ import { getClawforumRoot } from './index.js';
  *
  * 边界：
  *   - 不 acquireLock；不写 audit；不校验目录存在性
- *   - enforcePermissions 固定 false（CLI 查询场景不做权限裁剪）
+ *   - OS-only（不传 PermissionChecker / CLI 查询场景不做权限裁剪）
  *
  * 失败：
  *   - 构造失败（NodeFileSystem / createSystemAudit / createAgentProcessManager 任一抛错）→ 原样上抛
@@ -51,7 +51,7 @@ import { getClawforumRoot } from './index.js';
  */
 export function createProcessManagerForCLI(): ProcessManager {
   const baseDir = getClawforumRoot();
-  const fs = new NodeFileSystem({ baseDir, enforcePermissions: false });
+  const fs = new NodeFileSystem({ baseDir });
   const systemAudit = createSystemAudit(fs, baseDir);
   return createAgentProcessManager(systemAudit);
 }
@@ -64,7 +64,7 @@ export function createProcessManagerForCLI(): ProcessManager {
  *
  * 输出：
  *   - { fs, audit } 配对对象；每次调用返回新实例
- *   - fs: NodeFileSystem({ baseDir: dir, enforcePermissions: false })
+ *   - fs: NodeFileSystem({ baseDir: dir })
  *   - audit: new AuditWriter(fs, path.join(dir, AUDIT_FILE))
  *
  * 边界：
@@ -81,7 +81,7 @@ export function createDirContext(dir: string): {
   fs: FileSystem;
   audit: AuditWriter;
 } {
-  const fs = new NodeFileSystem({ baseDir: dir, enforcePermissions: false });
+  const fs = new NodeFileSystem({ baseDir: dir });
   const audit = createSystemAudit(fs, dir);
   return { fs, audit };
 }

@@ -261,7 +261,7 @@ describe('SessionManager unit tests', () => {
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sm-test-'));
-    nodeFs = new NodeFileSystem({ baseDir: tmpDir, enforcePermissions: false });
+    nodeFs = new NodeFileSystem({ baseDir: tmpDir });
     auditMock = { write: vi.fn() };
     sm = new SessionManager(nodeFs, 'dialog', auditMock, 'test-claw');
   });

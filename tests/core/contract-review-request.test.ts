@@ -75,7 +75,7 @@ async function setupFixtures(): Promise<TestFixtures> {
   await fs.writeFile(progressPath, JSON.stringify({ contractId, state: 'active' }));
 
   // 构造 motion 侧 ContractManager + ctx
-  const motionFs = new NodeFileSystem({ baseDir: motionDir, enforcePermissions: false });
+  const motionFs = new NodeFileSystem({ baseDir: motionDir });
   const motionAudit = new AuditWriter(motionFs, 'audit.tsv');
   const mockAudit = { write: vi.fn() };
   const manager = new ContractManager(motionDir, 'motion', motionFs, mockAudit as any);

@@ -25,7 +25,7 @@ describe('ToolExecutor: ctx prototype preservation across spread', () => {
 
   beforeEach(async () => {
     tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'phase332-'));
-    fs = new NodeFileSystem({ baseDir: tmpDir, enforcePermissions: false });
+    fs = new NodeFileSystem({ baseDir: tmpDir });
     registry = new ToolRegistryImpl();
     registry.register(statusTool);
     registry.register(readTool);

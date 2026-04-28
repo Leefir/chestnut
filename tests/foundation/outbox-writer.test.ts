@@ -15,7 +15,7 @@ describe('OutboxWriter', () => {
 
   beforeEach(async () => {
     tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'ob-test-'));
-    fs = new NodeFileSystem({ baseDir: tmpDir, enforcePermissions: false });
+    fs = new NodeFileSystem({ baseDir: tmpDir });
   });
 
   afterEach(async () => {

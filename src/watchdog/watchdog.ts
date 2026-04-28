@@ -280,7 +280,7 @@ export async function maybeCronClawInactivity(pm: ProcessManager, audit: AuditWr
       if (!clawHasContract(clawDir)) continue;
 
       // Parse stream.jsonl to get real progress
-      const clawFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+      const clawFs = new NodeFileSystem({ baseDir: clawDir });
       const { lastEventMs, lastError } = await getClawActivityInfo(clawFs, audit);
 
       // Merge with contract creation time to handle contract recreation scenario
@@ -399,7 +399,7 @@ export async function runWatchdogLoop(): Promise<void> {
   // 先建 auditWriter，让 loadWatchdogState corrupt 路径可写 audit（N1 修复）
   const auditMaxSizeMb = getGlobalConfig().audit?.retention?.max_size_mb ?? null;
   const auditWriter = createAuditWriter(
-    new NodeFileSystem({ baseDir: getClawforumDir(), enforcePermissions: false }),
+    new NodeFileSystem({ baseDir: getClawforumDir() }),
     'audit.tsv',
     auditMaxSizeMb,
   );

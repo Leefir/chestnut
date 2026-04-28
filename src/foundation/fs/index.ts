@@ -18,10 +18,9 @@ export { NodeFileSystem } from './node-fs.js';
 
 // Permission utilities
 export {
-  createPermissionChecker,
+  createNullPermissionChecker,
 } from './permissions.js';
 export type {
-  PermissionOptions,
   PermissionChecker,
 } from './permissions.js';
 

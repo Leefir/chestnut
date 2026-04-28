@@ -197,7 +197,7 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
   const fallbackTimeout = inbox.fallbackTimeoutMs ?? DAEMON_FALLBACK_TIMEOUT_MS;
   const heartbeat = motion?.heartbeat;
   const onInboxMessages = motion?.onInboxMessages;
-  const loopFs = new NodeFileSystem({ baseDir: path.join(agentDir, '..'), enforcePermissions: false });
+  const loopFs = new NodeFileSystem({ baseDir: path.join(agentDir, '..') });
   let stopped = false;
   let startupFired = false;
 

@@ -27,7 +27,7 @@ describe('ToolExecutor', () => {
 
   beforeEach(async () => {
     tempDir = await createTempDir();
-    mockFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
+    mockFs = new NodeFileSystem({ baseDir: tempDir });
     auditWriter = new AuditWriter(mockFs, 'audit.tsv');
     ctx = new ExecContextImpl({
       clawId: 'test-claw',

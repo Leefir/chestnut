@@ -8,6 +8,7 @@ import { createStreamWriter } from '../foundation/stream/index.js';
 import type { StreamWriter } from '../foundation/stream/writer.js';
 import type { ProcessManager } from '../foundation/process-manager/manager.js';
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
+import { createClawPermissionChecker } from '../core/permissions/claw-permissions.js';
 import { createAgentProcessManager } from '../cli/commands/process-manager-factory.js';
 import { type ClawRuntime, type RuntimeDependencies } from '../core/runtime/index.js';
 import { createRuntime } from '../core/runtime/index.js';
@@ -96,10 +97,13 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
 
   // phase155A + B + C 联合约定：system 组件无权限校验；工具层强制权限校验
   // systemFs: used by AuditWriter / Snapshot / SessionManager / Skill/Contract/Outbox/Inbox/Task/Context/Stream
-  const systemFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+  const systemFs = new NodeFileSystem({ baseDir: clawDir });
   // clawFs: used by tools via ExecContextImpl.fs
-  const clawFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: true });
-  const parentFs = new NodeFileSystem({ baseDir: path.join(clawDir, '..'), enforcePermissions: false });
+  const clawFs = new NodeFileSystem(
+    { baseDir: clawDir },
+    createClawPermissionChecker({ clawDir, strict: true }),
+  );
+  const parentFs = new NodeFileSystem({ baseDir: path.join(clawDir, '..') });
 
   // --- 1. AuditWriter (daemon.ts L100-104) ---
   let auditWriter: AuditWriter;
@@ -441,7 +445,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     // 失败语义：与既有模块（Snapshot / StreamWriter）一致 —— audit 写 assemble_failed 后上抛
     let clawforumFs: NodeFileSystem;
     try {
-      clawforumFs = new NodeFileSystem({ baseDir: clawforumDir, enforcePermissions: false });
+      clawforumFs = new NodeFileSystem({ baseDir: clawforumDir });
     } catch (e) {
       auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=cron_runner`, `phase=fs_construct`, `reason=${errMsg(e)}`);
       throw new Error(`Assembly: clawforumFs construct failed: ${errMsg(e)}`, { cause: e });

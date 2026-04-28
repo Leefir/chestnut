@@ -42,7 +42,7 @@ describe('Messaging', () => {
 
     beforeEach(async () => {
       tempDir = await createTempDir();
-      mockFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
+      mockFs = new NodeFileSystem({ baseDir: tempDir });
       await mockFs.ensureDir(INBOX_PENDING_DIR);
       await mockFs.ensureDir(INBOX_DONE_DIR);
       await mockFs.ensureDir(INBOX_FAILED_DIR);
@@ -192,7 +192,7 @@ describe('Messaging', () => {
 
     beforeEach(async () => {
       tempDir = await createTempDir();
-      mockFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
+      mockFs = new NodeFileSystem({ baseDir: tempDir });
       writer = new OutboxWriter('test-claw', tempDir, mockFs, makeAudit().audit);
     });
 

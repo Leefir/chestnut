@@ -80,7 +80,7 @@ export async function contractCreateCommand(clawId: string, filePath: string): P
   const contract = parseAndValidateContractYaml(yamlContent);
 
   const clawDir = getClawDir(clawId);
-  const clawFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+  const clawFs = new NodeFileSystem({ baseDir: clawDir });
   const manager = new ContractManager(clawDir, clawId, clawFs, createSystemAudit(clawFs, clawDir));
 
   const contractId = await manager.create(contract);
@@ -99,7 +99,7 @@ export async function contractCreateFromDirCommand(clawId: string, dirPath: stri
   const contract = parseAndValidateContractYaml(yamlContent);
 
   const clawDir = getClawDir(clawId);
-  const clawFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+  const clawFs = new NodeFileSystem({ baseDir: clawDir });
   const manager = new ContractManager(clawDir, clawId, clawFs, createSystemAudit(clawFs, clawDir));
 
   const contractId = await manager.create(contract);
@@ -139,7 +139,7 @@ export async function contractEventsCommand(clawId: string, sinceTs: number): Pr
 
 export async function contractLogCommand(clawId: string, contractId?: string): Promise<void> {
   const clawDir = getClawDir(clawId);
-  const clawFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+  const clawFs = new NodeFileSystem({ baseDir: clawDir });
   const manager = new ContractManager(clawDir, clawId, clawFs, createSystemAudit(clawFs, clawDir));
 
   // 若未指定 contractId，用 active 契约

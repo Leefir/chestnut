@@ -225,7 +225,7 @@ clawCmd
       }
       const clawDir = getClawDir(name);
       const baseDir = path.dirname(getGlobalConfigPath());
-      const nodeFs = new NodeFileSystem({ baseDir, enforcePermissions: false });
+      const nodeFs = new NodeFileSystem({ baseDir });
       const systemAudit = createSystemAudit(nodeFs, baseDir);
       const pm = createAgentProcessManager(systemAudit);
       if (pm.isAlive(name)) {
@@ -311,7 +311,7 @@ motionCmd
       loadGlobalConfig();
       const motionDir = getMotionDir();
       const baseDir = path.dirname(motionDir);
-      const nodeFs = new NodeFileSystem({ baseDir, enforcePermissions: false });
+      const nodeFs = new NodeFileSystem({ baseDir });
       const systemAudit = createSystemAudit(nodeFs, baseDir);
       const pm = createAgentProcessManager(systemAudit);
       if (pm.isAlive('motion')) {

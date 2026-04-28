@@ -22,7 +22,7 @@ const mockAudit: Audit = { write: () => {} };
 beforeEach(() => {
   tmpDir = path.join(os.tmpdir(), `inbox-writer-test-${randomUUID()}`);
   fs.mkdirSync(tmpDir, { recursive: true });
-  mockFs = new NodeFileSystem({ baseDir: '/', enforcePermissions: false });
+  mockFs = new NodeFileSystem({ baseDir: '/' });
 });
 
 afterEach(() => {

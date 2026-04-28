@@ -34,7 +34,7 @@ describe('ProcessManager', () => {
 
   beforeEach(async () => {
     tempDir = await createTempDir();
-    nodeFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
+    nodeFs = new NodeFileSystem({ baseDir: tempDir });
   });
 
   afterEach(async () => {

@@ -239,7 +239,4 @@ export interface FileSystem {
 export interface FileSystemOptions {
   /** Base directory for all operations */
   baseDir: string;
-  
-  /** Enable permission checks (default: true) */
-  enforcePermissions?: boolean;
 }

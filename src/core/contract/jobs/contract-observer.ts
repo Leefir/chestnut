@@ -16,7 +16,7 @@ const STATE_FILE = 'status/contract-observer-state.json';
 
 export async function runContractObserver(options: ContractObserverOptions): Promise<void> {
   const { clawforumDir, motionInboxDir } = options;
-  const fs = new NodeFileSystem({ baseDir: clawforumDir, enforcePermissions: false });
+  const fs = new NodeFileSystem({ baseDir: clawforumDir });
 
   // 读上次观察时间戳
   const stateFile = path.join(clawforumDir, 'motion', STATE_FILE);

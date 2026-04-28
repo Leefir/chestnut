@@ -22,7 +22,7 @@ describe('skill tool skillsDir parameter', () => {
 
   beforeEach(async () => {
     tempDir = await createTempDir();
-    mockFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
+    mockFs = new NodeFileSystem({ baseDir: tempDir });
   });
 
   afterEach(async () => {

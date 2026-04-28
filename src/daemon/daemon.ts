@@ -38,7 +38,7 @@ export async function daemonCommand(name: string): Promise<void> {
   const dir = isMotion ? getMotionDir() : getClawDir(name);
 
   // pre-assemble audit sink（phase189 §7.A3 清零；assemble 前的失败也需 audit）
-  const preAssembleFs = new NodeFileSystem({ baseDir: dir, enforcePermissions: false });
+  const preAssembleFs = new NodeFileSystem({ baseDir: dir });
   const preAssembleAudit: Audit = createSystemAudit(preAssembleFs, dir);
 
   // ProcessManager 接管 PID 文件
@@ -120,7 +120,7 @@ export async function daemonCommand(name: string): Promise<void> {
   const inboxPendingDir = path.join(dir, 'inbox', 'pending');
 
   // review_request → ContractManager.handleReviewRequest（B.p172-3 迁移完成 phase188）
-  const motionFs = isMotion ? new NodeFileSystem({ baseDir: dir, enforcePermissions: false }) : undefined;
+  const motionFs = isMotion ? new NodeFileSystem({ baseDir: dir }) : undefined;
   const contractManager = isMotion && motionFs ? new ContractManager(dir, 'motion', motionFs, auditWriter) : undefined;
   const clawsBaseDir = isMotion ? path.resolve(dir, '..', 'claws') : undefined;
 

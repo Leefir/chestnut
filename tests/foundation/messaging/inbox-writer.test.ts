@@ -23,7 +23,7 @@ describe('InboxWriter', () => {
     testDir = path.join(tmpdir(), `inbox-writer-${randomUUID()}`);
     await fs.rm(testDir, { recursive: true, force: true }).catch(() => {});
     await fs.mkdir(testDir, { recursive: true });
-    nfs = new NodeFileSystem({ baseDir: testDir, enforcePermissions: false });
+    nfs = new NodeFileSystem({ baseDir: testDir });
     auditCalls = [];
     const audit = {
       write(type: string, ...cols: (string | number)[]) {

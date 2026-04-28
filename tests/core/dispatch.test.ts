@@ -32,7 +32,7 @@ describe('DispatchTool', () => {
 
   beforeEach(async () => {
     tempDir = await createTempDir();
-    mockFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
+    mockFs = new NodeFileSystem({ baseDir: tempDir });
     tool = new DispatchTool(
       async () => 'mock system prompt',
       () => [{ name: 'mock_tool', description: 'Mock tool', input_schema: { type: 'object' } }],

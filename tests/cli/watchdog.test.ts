@@ -171,7 +171,7 @@ describe('logWithAudit — A1 clearance', () => {
     vi.mocked(loadGlobalConfig).mockReturnValue({ watchdog: { claw_inactivity_timeout_ms: 300_000 } } as any);
 
     auditWriter = new AuditWriter(
-      new NodeFileSystem({ baseDir: clawforumDir, enforcePermissions: false }),
+      new NodeFileSystem({ baseDir: clawforumDir }),
       'audit.tsv',
       null,
     );
@@ -241,7 +241,7 @@ describe('shutdownWatchdog — fix 005: save state on signal', () => {
     vi.mocked(loadGlobalConfig).mockReturnValue({ watchdog: { claw_inactivity_timeout_ms: 300_000 } } as any);
 
     auditWriter = new AuditWriter(
-      new NodeFileSystem({ baseDir: clawforumDir, enforcePermissions: false }),
+      new NodeFileSystem({ baseDir: clawforumDir }),
       'audit.tsv',
       null,
     );

@@ -39,7 +39,7 @@ describe('Builtin Tools', () => {
 
   beforeEach(async () => {
     tempDir = await createTempDir();
-    mockFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
+    mockFs = new NodeFileSystem({ baseDir: tempDir });
     outboxWriter = new OutboxWriter('test-claw', tempDir, mockFs, makeAudit().audit);
     ctx = new ExecContextImpl({
       clawId: 'test-claw',
@@ -372,7 +372,7 @@ describe('Builtin Tools', () => {
       await fs.mkdir(motionDir, { recursive: true });
       
       // Create Motion context with motion's clawDir
-      const motionFs = new NodeFileSystem({ baseDir: motionDir, enforcePermissions: false });
+      const motionFs = new NodeFileSystem({ baseDir: motionDir });
       const motionOutboxWriter = new OutboxWriter('motion', motionDir, motionFs, makeAudit().audit);
       const motionCtx = new ExecContextImpl({
         clawId: 'motion',
@@ -415,7 +415,7 @@ describe('Builtin Tools', () => {
     it('should return no results when no claws directory exists (claw: "*")', async () => {
       // Create Motion context with a clawDir whose parent doesn't exist
       const nonExistentDir = path.join(tempDir, 'nonexistent', 'motion');
-      const motionFs = new NodeFileSystem({ baseDir: nonExistentDir, enforcePermissions: false });
+      const motionFs = new NodeFileSystem({ baseDir: nonExistentDir });
       const motionOutboxWriter = new OutboxWriter('motion', nonExistentDir, motionFs);
       const motionCtx = new ExecContextImpl({
         clawId: 'motion',
@@ -438,7 +438,7 @@ describe('Builtin Tools', () => {
       await fs.mkdir(motionDir, { recursive: true });
       
       // Create Motion context with motion's clawDir
-      const motionFs = new NodeFileSystem({ baseDir: motionDir, enforcePermissions: false });
+      const motionFs = new NodeFileSystem({ baseDir: motionDir });
       const motionOutboxWriter = new OutboxWriter('motion', motionDir, motionFs, makeAudit().audit);
       const motionCtx = new ExecContextImpl({
         clawId: 'motion',
@@ -473,7 +473,7 @@ describe('Builtin Tools', () => {
       const motionDir = path.join(tempDir, 'motion');
       await fs.mkdir(motionDir, { recursive: true });
 
-      const motionFs = new NodeFileSystem({ baseDir: motionDir, enforcePermissions: false });
+      const motionFs = new NodeFileSystem({ baseDir: motionDir });
       const motionOutboxWriter = new OutboxWriter('motion', motionDir, motionFs, makeAudit().audit);
       const motionCtx = new ExecContextImpl({
         clawId: 'motion',
@@ -1096,7 +1096,7 @@ describe('Builtin Tools', () => {
       await fs.mkdir(claw1Dir, { recursive: true });
       await fs.writeFile(path.join(claw1Dir, 'test.txt'), 'Hello from claw1');
 
-      const motionFs = new NodeFileSystem({ baseDir: motionDir, enforcePermissions: false });
+      const motionFs = new NodeFileSystem({ baseDir: motionDir });
       const motionCtx = new ExecContextImpl({
         clawId: 'motion',
         clawDir: motionDir,
@@ -1118,7 +1118,7 @@ describe('Builtin Tools', () => {
       await fs.mkdir(claw1Dir, { recursive: true });
       await fs.writeFile(path.join(claw1Dir, 'note.txt'), 'Note from claw1');
 
-      const motionFs = new NodeFileSystem({ baseDir: motionDir, enforcePermissions: false });
+      const motionFs = new NodeFileSystem({ baseDir: motionDir });
       const subagentCtx = new ExecContextImpl({
         clawId: 'task-uuid-123',
         clawDir: motionDir,
@@ -1144,7 +1144,7 @@ describe('Builtin Tools', () => {
     it('should reject invalid claw ID (path traversal)', async () => {
       const motionDir = path.join(tempDir, 'motion');
       await fs.mkdir(motionDir, { recursive: true });
-      const motionFs = new NodeFileSystem({ baseDir: motionDir, enforcePermissions: false });
+      const motionFs = new NodeFileSystem({ baseDir: motionDir });
       const motionCtx = new ExecContextImpl({
         clawId: 'motion',
         clawDir: motionDir,
@@ -1161,7 +1161,7 @@ describe('Builtin Tools', () => {
     it('should reject claw ID with slash', async () => {
       const motionDir = path.join(tempDir, 'motion');
       await fs.mkdir(motionDir, { recursive: true });
-      const motionFs = new NodeFileSystem({ baseDir: motionDir, enforcePermissions: false });
+      const motionFs = new NodeFileSystem({ baseDir: motionDir });
       const motionCtx = new ExecContextImpl({
         clawId: 'motion',
         clawDir: motionDir,
@@ -1185,7 +1185,7 @@ describe('Builtin Tools', () => {
       await fs.writeFile(path.join(claw1Dir, 'file1.txt'), 'content1');
       await fs.writeFile(path.join(claw1Dir, 'file2.txt'), 'content2');
 
-      const motionFs = new NodeFileSystem({ baseDir: motionDir, enforcePermissions: false });
+      const motionFs = new NodeFileSystem({ baseDir: motionDir });
       const motionCtx = new ExecContextImpl({
         clawId: 'motion',
         clawDir: motionDir,
@@ -1206,7 +1206,7 @@ describe('Builtin Tools', () => {
       const claw1Dir = path.join(tempDir, 'claws', 'claw1', 'skills');
       await fs.mkdir(claw1Dir, { recursive: true });
 
-      const motionFs = new NodeFileSystem({ baseDir: motionDir, enforcePermissions: false });
+      const motionFs = new NodeFileSystem({ baseDir: motionDir });
       const subagentCtx = new ExecContextImpl({
         clawId: 'dispatcher-456',
         clawDir: motionDir,
@@ -1237,7 +1237,7 @@ describe('Builtin Tools', () => {
       await fs.mkdir(claw1Dir, { recursive: true });
       await fs.writeFile(path.join(claw1Dir, 'note.txt'), 'Error in claw1: disk full');
 
-      const motionFs = new NodeFileSystem({ baseDir: motionDir, enforcePermissions: false });
+      const motionFs = new NodeFileSystem({ baseDir: motionDir });
       const motionCtx = new ExecContextImpl({
         clawId: 'motion',
         clawDir: motionDir,
@@ -1258,7 +1258,7 @@ describe('Builtin Tools', () => {
       await fs.mkdir(claw1Dir, { recursive: true });
       await fs.writeFile(path.join(claw1Dir, 'log.txt'), 'Warning: timeout');
 
-      const motionFs = new NodeFileSystem({ baseDir: motionDir, enforcePermissions: false });
+      const motionFs = new NodeFileSystem({ baseDir: motionDir });
       const subagentCtx = new ExecContextImpl({
         clawId: 'task-uuid',
         clawDir: motionDir,

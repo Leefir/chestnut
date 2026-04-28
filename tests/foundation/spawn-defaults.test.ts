@@ -24,7 +24,7 @@ describe('ProcessManager - spawn defaults', () => {
 
   beforeEach(async () => {
     tempDir = await createTempDir();
-    nodeFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
+    nodeFs = new NodeFileSystem({ baseDir: tempDir });
 
     // Setup mock process
     mockProc = {

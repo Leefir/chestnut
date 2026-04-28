@@ -17,6 +17,7 @@ import {
   writeAtomic,
   cleanupOrphanedTemp,
 } from '../../src/foundation/fs/index.js';
+import { createClawPermissionChecker } from '../../src/core/permissions/claw-permissions.js';
 import {
   PermissionError,
   PathNotInClawSpaceError,
@@ -111,10 +112,10 @@ describe('FileSystem', () => {
     
     beforeEach(async () => {
       tempDir = await createTempDir();
-      fs = new NodeFileSystem({
-        baseDir: tempDir,
-        enforcePermissions: true,
-      });
+      fs = new NodeFileSystem(
+        { baseDir: tempDir },
+        createClawPermissionChecker({ clawDir: tempDir, strict: true }),
+      );
     });
     
     afterEach(async () => {
@@ -186,10 +187,10 @@ describe('FileSystem', () => {
     
     beforeEach(async () => {
       tempDir = await createTempDir();
-      fs = new NodeFileSystem({
-        baseDir: tempDir,
-        enforcePermissions: true,
-      });
+      fs = new NodeFileSystem(
+        { baseDir: tempDir },
+        createClawPermissionChecker({ clawDir: tempDir, strict: true }),
+      );
       
       // Create directories using native fs (bypass permission checks for setup)
       await nativeFs.mkdir(path.join(tempDir, 'clawspace'), { recursive: true });
@@ -226,10 +227,7 @@ describe('FileSystem', () => {
     });
     
     it('should work with disabled permissions', async () => {
-      const fsNoPerm = new NodeFileSystem({
-        baseDir: tempDir,
-        enforcePermissions: false,
-      });
+      const fsNoPerm = new NodeFileSystem({ baseDir: tempDir });
       
       // Should be able to write anywhere
       await fsNoPerm.writeAtomic('dialog/test.txt', 'test');
@@ -293,7 +291,10 @@ describe('FileSystem', () => {
         path.join(clawDir, 'evil-link.txt')
       );
 
-      const nodeFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: true });
+      const nodeFs = new NodeFileSystem(
+        { baseDir: clawDir },
+        createClawPermissionChecker({ clawDir, strict: true }),
+      );
 
       await expect(nodeFs.read('evil-link.txt')).rejects.toThrow(PermissionError);
     });
@@ -301,7 +302,10 @@ describe('FileSystem', () => {
     it('should allow reads of normal files within clawDir', async () => {
       await nativeFs.writeFile(path.join(clawDir, 'safe.txt'), 'safe content');
 
-      const nodeFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: true });
+      const nodeFs = new NodeFileSystem(
+        { baseDir: clawDir },
+        createClawPermissionChecker({ clawDir, strict: true }),
+      );
 
       const content = await nodeFs.read('safe.txt');
       expect(content).toBe('safe content');
@@ -316,7 +320,10 @@ describe('FileSystem', () => {
         path.join(clawDir, 'link.txt')
       );
 
-      const nodeFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: true });
+      const nodeFs = new NodeFileSystem(
+        { baseDir: clawDir },
+        createClawPermissionChecker({ clawDir, strict: true }),
+      );
 
       const content = await nodeFs.read('link.txt');
       expect(content).toBe('real content');
@@ -331,7 +338,10 @@ describe('FileSystem', () => {
         path.join(clawDir, 'evil-write-link.txt')
       );
 
-      const nodeFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: true });
+      const nodeFs = new NodeFileSystem(
+        { baseDir: clawDir },
+        createClawPermissionChecker({ clawDir, strict: true }),
+      );
 
       await expect(nodeFs.writeAtomic('evil-write-link.txt', 'pwned')).rejects.toThrow(PermissionError);
 
@@ -347,7 +357,7 @@ describe('FileSystem', () => {
 
     beforeEach(async () => {
       clawDir = await createTempDir();
-      fs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+      fs = new NodeFileSystem({ baseDir: clawDir });
     });
 
     afterEach(async () => {

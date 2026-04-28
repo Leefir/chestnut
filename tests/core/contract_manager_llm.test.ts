@@ -189,7 +189,7 @@ describe('ContractManager Acceptance Flow', () => {
     await fs.mkdir(clawDir, { recursive: true });
     tempDir = clawDir;  // 保持后续代码兼容
 
-    const nodeFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+    const nodeFs = new NodeFileSystem({ baseDir: clawDir });
     const logsDir = path.join(clawDir, 'logs');
     await fs.mkdir(logsDir, { recursive: true });
     mockAudit = { write: vi.fn() };
@@ -498,7 +498,7 @@ describe('ContractManager Acceptance Flow', () => {
     it('should return rejection when LLM is not injected in ContractManager', async () => {
       const contractId = 'test-llm-not-injected';
       // manager without llm
-      const nodeFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+      const nodeFs = new NodeFileSystem({ baseDir: clawDir });
       const noLLMManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any);
 
       await setupContract(tempDir, contractId, {
@@ -881,7 +881,7 @@ describe('ContractManager — verifier scheduler port', () => {
     const rootDir = await createTempDir();
     const clawDir = path.join(rootDir, 'claws', 'test-claw');
     await fs.mkdir(clawDir, { recursive: true });
-    const nodeFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+    const nodeFs = new NodeFileSystem({ baseDir: clawDir });
     const mockAudit = { write: vi.fn() };
     const mockLLM = {
       call: vi.fn(),
@@ -931,7 +931,7 @@ describe('ContractManager — verifier scheduler port', () => {
     const rootDir = await createTempDir();
     const clawDir = path.join(rootDir, 'claws', 'test-claw');
     await fs.mkdir(clawDir, { recursive: true });
-    const nodeFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+    const nodeFs = new NodeFileSystem({ baseDir: clawDir });
     const mockLLM = {
       call: vi.fn(),
       stream: vi.fn(),
@@ -988,7 +988,7 @@ describe('ContractManager — verifier scheduler port', () => {
     const rootDir = await createTempDir();
     const clawDir = path.join(rootDir, 'claws', 'test-claw');
     await fs.mkdir(clawDir, { recursive: true });
-    const nodeFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+    const nodeFs = new NodeFileSystem({ baseDir: clawDir });
     const mockLLM = {
       call: vi.fn(),
       stream: vi.fn(),

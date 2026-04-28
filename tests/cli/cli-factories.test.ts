@@ -33,7 +33,7 @@ describe('createProcessManagerForCLI', () => {
     const prevRoot = process.env.CLAWFORUM_ROOT;
     process.env.CLAWFORUM_ROOT = dir;
     // 手动路径
-    const fs = new NodeFileSystem({ baseDir: dir, enforcePermissions: false });
+    const fs = new NodeFileSystem({ baseDir: dir });
     const manual = createAgentProcessManager(createSystemAudit(fs, dir));
     // 工厂路径
     const factory = createProcessManagerForCLI();
@@ -61,7 +61,7 @@ describe('createDirContext', () => {
     const { audit: factoryAudit } = createDirContext(dir);
     factoryAudit.write('equiv_event', 'src=factory');
     // 手动写一条
-    const manualFs = new NodeFileSystem({ baseDir: dir, enforcePermissions: false });
+    const manualFs = new NodeFileSystem({ baseDir: dir });
     const manualAudit = new AuditWriter(manualFs, path.join(dir, AUDIT_FILE));
     manualAudit.write('equiv_event', 'src=manual');
     // 读 tsv，确认两条事件都在且格式一致（列数、分隔符）
@@ -80,7 +80,7 @@ describe('createDirContext', () => {
     expect(a.audit).not.toBe(b.audit);
   });
 
-  it('fs.baseDir === dir 且 enforcePermissions=false（可写任意子路径）', async () => {
+  it('fs.baseDir === dir 且 OS-only（可写任意子路径）', async () => {
     const dir = freshDir();
     const { fs } = createDirContext(dir);
     await fs.writeAtomic('subfile.txt', 'x');

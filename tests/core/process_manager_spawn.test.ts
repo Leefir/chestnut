@@ -41,7 +41,7 @@ let nodeFs: NodeFileSystem;
 beforeEach(async () => {
   tempDir = path.join(tmpdir(), `pm-spawn-p19-${randomUUID()}`);
   await fs.mkdir(tempDir, { recursive: true });
-  nodeFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
+  nodeFs = new NodeFileSystem({ baseDir: tempDir });
   vi.clearAllMocks();
   // Restore default: pgrep no match
   const { spawnSync, spawn } = await import('child_process');

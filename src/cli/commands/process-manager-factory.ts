@@ -12,6 +12,6 @@ import type { Audit } from '../../foundation/audit/index.js';
 
 export function createAgentProcessManager(audit: Audit): ProcessManager {
   const baseDir = getClawforumRoot();
-  const fs = new NodeFileSystem({ baseDir, enforcePermissions: false });
+  const fs = new NodeFileSystem({ baseDir });
   return new ProcessManager(fs, baseDir, audit, resolveAgentDir);
 }

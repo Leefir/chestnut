@@ -1312,7 +1312,7 @@ export class ContractManager {
 
     // 2.1 加载契约 YAML（临时 new ContractManager for target claw，B.p175-2 登记）
     const clawDir = path.join(ctx.clawsBaseDir, targetClaw);
-    const clawFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+    const clawFs = new NodeFileSystem({ baseDir: clawDir });
     const clawContractManager = new ContractManager(clawDir, targetClaw, clawFs, createSystemAudit(clawFs, clawDir));
 
     let contractYaml: string;

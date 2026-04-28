@@ -50,7 +50,7 @@ export class Heartbeat {
    */
   fire(): void {
     try {
-      const fs = this.fs ?? new NodeFileSystem({ baseDir: this.baseDir, enforcePermissions: false });
+      const fs = this.fs ?? new NodeFileSystem({ baseDir: this.baseDir });
       const inboxDir = path.join(this.baseDir, 'motion', 'inbox', 'pending');
       fs.ensureDirSync(inboxDir);
 

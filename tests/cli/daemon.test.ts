@@ -14,7 +14,7 @@ describe('ProcessManager.acquireLock — fix 004: TOCTOU race protection', () =>
   beforeEach(() => {
     tmpDir = path.join(os.tmpdir(), `daemon-fix4-${randomUUID()}`);
     fsNative.mkdirSync(tmpDir, { recursive: true });
-    const fs = new NodeFileSystem({ baseDir: tmpDir, enforcePermissions: false });
+    const fs = new NodeFileSystem({ baseDir: tmpDir });
     const audit = new AuditWriter(fs, 'audit.tsv');
     pm = new ProcessManager(fs, tmpDir, audit);
   });

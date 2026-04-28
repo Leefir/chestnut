@@ -51,7 +51,7 @@ describe('clawHasContract', () => {
 
 describe('getClawActivityInfo', () => {
   function makeFsAudit(dir: string) {
-    const clawFs = new NodeFileSystem({ baseDir: dir, enforcePermissions: false });
+    const clawFs = new NodeFileSystem({ baseDir: dir });
     const audit = new AuditWriter(clawFs, 'audit.tsv');
     return { clawFs, audit };
   }

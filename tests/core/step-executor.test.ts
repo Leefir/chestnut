@@ -122,7 +122,7 @@ function makeMalformedToolInputLLM(toolUseId: string, toolName: string, rawInput
 
 async function makeRealCtx(opts: { signal?: AbortSignal } = {}): Promise<ExecContext> {
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'step-exec-'));
-  const nodeFs = new NodeFileSystem({ baseDir: tmpDir, enforcePermissions: false });
+  const nodeFs = new NodeFileSystem({ baseDir: tmpDir });
   return new ExecContextImpl({
     clawId: 'test-claw',
     clawDir: tmpDir,

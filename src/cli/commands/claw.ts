@@ -207,7 +207,7 @@ export async function listCommand(): Promise<void> {
 
   // Helper: format relative last-active time
   async function formatLastActive(clawPath: string): Promise<string> {
-    const clawFs = new NodeFileSystem({ baseDir: clawPath, enforcePermissions: false });
+    const clawFs = new NodeFileSystem({ baseDir: clawPath });
     const ms = await getLastActiveMs(clawFs, systemAudit);
     if (ms === undefined) return '-';
     const age = Date.now() - ms;
@@ -367,7 +367,7 @@ export async function healthCommand(name: string): Promise<void> {
 
   // Last active time（统一使用 stream.jsonl 指标）
   let lastActive = '-';
-  const clawFs = new NodeFileSystem({ baseDir: clawDir, enforcePermissions: false });
+  const clawFs = new NodeFileSystem({ baseDir: clawDir });
   const lastMs = await getLastActiveMs(clawFs, systemAudit);
   if (lastMs !== undefined) {
     lastActive = formatRelativeTime(Date.now() - lastMs);
@@ -405,7 +405,7 @@ export async function sendCommand(
   const baseDir = path.dirname(globalConfigPath);
   const clawDir = path.join(baseDir, 'claws', name);
   const inboxPending = path.join(clawDir, 'inbox', 'pending');
-  const fs = new NodeFileSystem({ baseDir: '/', enforcePermissions: false });
+  const fs = new NodeFileSystem({ baseDir: '/' });
   const audit = createSystemAudit(fs, clawDir);
 
   await new InboxWriter(fs, inboxPending, audit).write({

@@ -8,7 +8,7 @@ let shimAudit: Audit | null = null;
 try {
   const name = process.argv[2];
   const dir = name === 'motion' ? getMotionDir() : getClawDir(name);
-  const shimFs = new NodeFileSystem({ baseDir: dir, enforcePermissions: false });
+  const shimFs = new NodeFileSystem({ baseDir: dir });
   shimAudit = createSystemAudit(shimFs, dir);
 } catch {
   shimAudit = null;  // audit sink 构造失败 → handler fallback console

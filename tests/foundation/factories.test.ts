@@ -22,7 +22,7 @@ import { AuditWriter } from '../../src/foundation/audit/writer.js';
 
 function mkEnv() {
   const dir = mkdtempSync(path.join(tmpdir(), 'factories-'));
-  const fs = new NodeFileSystem({ baseDir: dir, enforcePermissions: false });
+  const fs = new NodeFileSystem({ baseDir: dir });
   const audit = new AuditWriter(fs, 'audit.tsv', null);
   return { dir, fs, audit };
 }

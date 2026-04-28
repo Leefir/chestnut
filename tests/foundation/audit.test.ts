@@ -13,7 +13,7 @@ describe('AuditWriter', () => {
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-test-'));
-    nodeFs = new NodeFileSystem({ baseDir: tmpDir, enforcePermissions: false });
+    nodeFs = new NodeFileSystem({ baseDir: tmpDir });
     consoleErrorSpy.mockClear();
   });
 

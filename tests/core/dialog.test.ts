@@ -28,7 +28,7 @@ describe('Dialog', () => {
 
     beforeEach(async () => {
       tempDir = await createTempDir();
-      nodeFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
+      nodeFs = new NodeFileSystem({ baseDir: tempDir });
       await nodeFs.ensureDir('dialog');
       sessionManager = new SessionManager(nodeFs, 'dialog', { write: () => {} }, 'test-claw');
     });
@@ -227,7 +227,7 @@ describe('Dialog', () => {
 
     beforeEach(async () => {
       tempDir = await createTempDir();
-      nodeFs = new NodeFileSystem({ baseDir: tempDir, enforcePermissions: false });
+      nodeFs = new NodeFileSystem({ baseDir: tempDir });
       injector = new ContextInjector({ fs: nodeFs });
     });
 
