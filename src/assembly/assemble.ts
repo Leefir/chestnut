@@ -28,6 +28,7 @@ import { ExecContextImpl } from '../core/tools/context.js';
 import { registerBuiltinTools } from '../core/tools/builtins/index.js';
 import { createShellTools } from '../core/shell-tool/index.js';
 import { spawnTool } from '../core/task/tools/spawn.js';
+import { cleanupOrphanedTemp } from './cleanup.js';
 import { createInboxReader, createOutboxWriter, notifyInbox } from '../foundation/messaging/index.js';
 import { doneTool } from '../core/contract/index.js';
 import { createContractStatusPort } from '../core/contract/status-port-impl.js';
@@ -369,7 +370,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   };
 
   // 孤儿临时文件清理（从 Runtime.initialize 搬来；Assembly 负责一次性的启动清理）
-  systemFs.cleanupTempFiles().catch((err: unknown) => {
+  cleanupOrphanedTemp(clawDir).catch((err: unknown) => {
     auditWriter.write(ASSEMBLY_AUDIT_EVENTS.CLEANUP_TEMP_FILES_FAILED, `reason=${err instanceof Error ? err.message : String(err)}`);
   });
 

@@ -36,6 +36,5 @@ export {
   exists,
   stat,
   isDirectory,
-  cleanupOrphanedTemp,
   IGNORE_PATTERN,
 } from './atomic.js';

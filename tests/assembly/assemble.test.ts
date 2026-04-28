@@ -66,7 +66,11 @@ vi.mock('../../src/foundation/stream/index.js', () => ({
 }));
 
 vi.mock('../../src/foundation/fs/node-fs.js', () => ({
-  NodeFileSystem: vi.fn(() => ({ cleanupTempFiles: vi.fn().mockResolvedValue([]) })),
+  NodeFileSystem: vi.fn(() => ({})),
+}));
+
+vi.mock('../../src/assembly/cleanup.js', () => ({
+  cleanupOrphanedTemp: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('../../src/cli/commands/process-manager-factory.js', () => ({

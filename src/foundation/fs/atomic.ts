@@ -142,31 +142,3 @@ export async function isDirectory(filePath: string): Promise<boolean> {
     return false;
   }
 }
-
-/**
- * Clean up orphaned temp files (files matching .tmp_* pattern)
- * Should be called on startup for cleanup after crash
- */
-export async function cleanupOrphanedTemp(dirPath: string): Promise<string[]> {
-  const cleaned: string[] = [];
-  
-  try {
-    const entries = await fs.readdir(dirPath, { withFileTypes: true });
-    
-    for (const entry of entries) {
-      if (!entry.name.startsWith(IGNORE_PATTERN)) continue;
-      if (!entry.isFile()) continue;          // Skip directories and symbolic links
-      const fullPath = path.join(dirPath, entry.name);
-      try {
-        await fs.unlink(fullPath);
-        cleaned.push(fullPath);
-      } catch {
-        // best-effort: caller (assembly) already handles overall failure via .catch(audit)
-      }
-    }
-  } catch {
-    // Directory might not exist
-  }
-  
-  return cleaned;
-}

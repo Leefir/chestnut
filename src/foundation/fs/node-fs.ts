@@ -26,7 +26,6 @@ import {
   exists,
   stat,
   isDirectory,
-  cleanupOrphanedTemp,
 } from './atomic.js';
 import {
   FileNotFoundError,
@@ -456,18 +455,5 @@ export class NodeFileSystem implements FileSystem {
       throw error;
     }
   }
-
-  // ========================================================================
-  // Cleanup
-  // =======================================================================
-  
-  /**
-   * Clean up orphaned temp files (call on startup)
-   */
-  async cleanupTempFiles(dirPath?: string): Promise<string[]> {
-    const targetDir = dirPath ?? '.';
-    const absolute = this.resolveAndCheck(targetDir, 'write');
-    return cleanupOrphanedTemp(absolute);
-  }
-
 }
+

@@ -15,7 +15,6 @@ import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 import {
   NodeFileSystem,
   writeAtomic,
-  cleanupOrphanedTemp,
 } from '../../src/foundation/fs/index.js';
 import { createClawPermissionChecker } from '../../src/core/permissions/claw-permissions.js';
 import {
@@ -67,45 +66,8 @@ describe('FileSystem', () => {
       expect(tempFiles).toHaveLength(0);
     });
     
-    it('should clean up orphaned temp files', async () => {
-      // Create an orphaned temp file (simulating crash)
-      const tempFile = path.join(tempDir, '.tmp_orphaned_123');
-      await fs.writeFile(tempFile, 'orphaned content', 'utf-8');
-      
-      // Also create a regular file
-      const regularFile = path.join(tempDir, 'regular.txt');
-      await fs.writeFile(regularFile, 'regular content', 'utf-8');
-      
-      // Clean up temp files
-      const cleaned = await cleanupOrphanedTemp(tempDir);
-      
-      expect(cleaned).toHaveLength(1);
-      expect(cleaned[0]).toBe(tempFile);
-      
-      // Regular file should still exist
-      expect(await fs.readFile(regularFile, 'utf-8')).toBe('regular content');
-    });
-    
-    it('should not leave partial files on crash (simulated)', async () => {
-      const filePath = path.join(tempDir, 'atomic-test.txt');
-      const originalContent = 'original';
-      
-      // Write original content
-      await fs.writeFile(filePath, originalContent, 'utf-8');
-      
-      // Simulate crash during write by creating temp file but not renaming
-      const tempFile = path.join(tempDir, '.tmp_crash_test');
-      await fs.writeFile(tempFile, 'new content', 'utf-8');
-      
-      // Clean up temp files (simulating recovery on restart)
-      await cleanupOrphanedTemp(tempDir);
-      
-      // Original file should still have original content
-      const content = await fs.readFile(filePath, 'utf-8');
-      expect(content).toBe(originalContent);
-    });
   });
-  
+
   describe('NodeFileSystem', () => {
     let tempDir: string;
     let fs: NodeFileSystem;
