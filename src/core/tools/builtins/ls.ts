@@ -35,7 +35,7 @@ export const lsTool: Tool = {
   },
   readonly: true,
   idempotent: true,
-  supportsAsync: true,
+  supportsAsync: false,
 
   async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
     const path = (args.path as string) ?? '.';

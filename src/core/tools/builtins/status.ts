@@ -122,7 +122,7 @@ export const statusTool: Tool & { contractStatus?: ContractStatusPort } = {
   },
   readonly: true,
   idempotent: true,
-  supportsAsync: true,
+  supportsAsync: false,
 
   async execute(_args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
     const lines = [

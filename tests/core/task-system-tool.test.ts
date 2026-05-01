@@ -857,13 +857,13 @@ describe('TaskSystem Tool Tasks', () => {
   });
 
   describe('readonly tools supportsAsync', () => {
-    it('read tool should have supportsAsync: true', () => {
-      expect(readTool.supportsAsync).toBe(true);
+    it('read tool should have supportsAsync: false', () => {
+      expect(readTool.supportsAsync).toBe(false);
       expect(readTool.schema.properties).toHaveProperty('async');
     });
 
-    it('ls tool should have supportsAsync: true', () => {
-      expect(lsTool.supportsAsync).toBe(true);
+    it('ls tool should have supportsAsync: false', () => {
+      expect(lsTool.supportsAsync).toBe(false);
       expect(lsTool.schema.properties).toHaveProperty('async');
     });
 
@@ -1319,8 +1319,8 @@ describe('ToolExecutor async routing', () => {
     );
   });
 
-  it('should route read tool to TaskSystem when async:true', async () => {
-    // Register real read tool, verify routing with mock taskSystem
+  it('should reject read tool when async:true (supportsAsync:false)', async () => {
+    // Register real read tool, verify rejected because supportsAsync=false
     registry.register(readTool);
 
     const result = await executor.execute({
@@ -1330,14 +1330,9 @@ describe('ToolExecutor async routing', () => {
       async: true,
     });
 
-    expect(result.success).toBe(true);
-    expect(result.content).toContain('Async task queued');
-    expect(mockTaskSystem.scheduleTool).toHaveBeenCalledWith(
-      'read',
-      expect.any(Function),
-      'test-claw',
-      { isIdempotent: true }  // read.idempotent = true
-    );
+    expect(result.success).toBe(false);
+    expect(result.content).toContain('does not support async');
+    expect(mockTaskSystem.scheduleTool).not.toHaveBeenCalled();
   });
 
   it('should execute synchronously when async is false', async () => {
