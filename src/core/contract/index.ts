@@ -15,7 +15,7 @@ export {
   type VerifierResult,
 } from './manager.js';
 
-export { doneTool, DONE_TOOL_NAME } from './builtins/done.js';
+export { doneTool, DONE_TOOL_NAME } from './tools/done.js';
 
 /**
  * ContractSystem 工厂 —— 严格对齐 ctor 7 参数
