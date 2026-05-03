@@ -262,7 +262,7 @@ export class Runtime {
     if (!loadResult) return;
     const { session, source } = loadResult;
     const auditAbsPath = this.systemFs.resolve('audit.tsv');
-    const interruptionMessage = summarizeLastExit(auditAbsPath);
+    const interruptionMessage = summarizeLastExit(this.systemFs, auditAbsPath);
     this.auditWriter.write(RUNTIME_AUDIT_EVENTS.SESSION_LOADED, `source=${source}`);
     const { repaired, toolCount } = DialogStore.repair(
       session.messages,

@@ -3,14 +3,18 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { summarizeLastExit, readLastExitEvent } from '../../src/core/runtime/index.js';
+import { NodeFileSystem } from '../../src/foundation/fs/index.js';
+import type { FileSystem } from '../../src/foundation/fs/index.js';
 
 describe('summarizeLastExit', () => {
   let tmpDir: string;
   let auditPath: string;
+  let testFs: FileSystem;
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'last-exit-test-'));
     auditPath = path.join(tmpDir, 'audit.tsv');
+    testFs = new NodeFileSystem({ baseDir: tmpDir });
   });
 
   afterEach(() => {
@@ -22,17 +26,17 @@ describe('summarizeLastExit', () => {
   }
 
   it('returns null when audit.tsv does not exist', () => {
-    expect(summarizeLastExit(auditPath)).toBeNull();
+    expect(summarizeLastExit(testFs, 'audit.tsv')).toBeNull();
   });
 
   it('returns null when audit.tsv is empty', () => {
     writeAudit([]);
-    expect(summarizeLastExit(auditPath)).toBeNull();
+    expect(summarizeLastExit(testFs, 'audit.tsv')).toBeNull();
   });
 
   it('summarizes daemon_stop with reason col', () => {
     writeAudit(['2026-04-16T10:00:00.000Z\tdaemon_stop\treason=sigterm']);
-    const out = summarizeLastExit(auditPath);
+    const out = summarizeLastExit(testFs, 'audit.tsv');
     expect(out).toContain('stopped normally');
     expect(out).toContain('2026-04-16T10:00:00.000Z');
     expect(out).toContain('reason=sigterm');
@@ -40,14 +44,14 @@ describe('summarizeLastExit', () => {
 
   it('summarizes daemon_crash with err col', () => {
     writeAudit(['2026-04-16T10:00:00.000Z\tdaemon_crash\terr=TypeError: foo']);
-    const out = summarizeLastExit(auditPath);
+    const out = summarizeLastExit(testFs, 'audit.tsv');
     expect(out).toContain('crashed');
     expect(out).toContain('err=TypeError: foo');
   });
 
   it('summarizes daemon_unclean_exit with last_ts col', () => {
     writeAudit(['2026-04-16T10:00:00.000Z\tdaemon_unclean_exit\tlast_ts=2026-04-16T09:55:00.000Z']);
-    const out = summarizeLastExit(auditPath);
+    const out = summarizeLastExit(testFs, 'audit.tsv');
     expect(out).toContain('exited uncleanly');
     expect(out).toContain('SIGKILL');
     expect(out).toContain('last_ts=2026-04-16T09:55:00.000Z');
@@ -58,7 +62,7 @@ describe('summarizeLastExit', () => {
       '2026-04-16T09:00:00.000Z\tturn_start',
       '2026-04-16T09:00:01.000Z\tllm_call\tmodel=foo\tin=10\tout=20',
     ]);
-    const out = summarizeLastExit(auditPath);
+    const out = summarizeLastExit(testFs, 'audit.tsv');
     expect(out).toContain('did not write a shutdown event');
     expect(out).toContain("'llm_call'");
     expect(out).toContain('model=foo');
@@ -66,7 +70,7 @@ describe('summarizeLastExit', () => {
 
   it('handles event with no cols (no parens)', () => {
     writeAudit(['2026-04-16T10:00:00.000Z\tturn_start']);
-    const out = summarizeLastExit(auditPath);
+    const out = summarizeLastExit(testFs, 'audit.tsv');
     expect(out).toContain("'turn_start'");
     expect(out).not.toContain('()');
   });
@@ -76,7 +80,7 @@ describe('summarizeLastExit', () => {
       '2026-04-16T09:00:00.000Z\tdaemon_stop\treason=sigterm',
       'malformed-line-no-tab',
     ]);
-    const out = summarizeLastExit(auditPath);
+    const out = summarizeLastExit(testFs, 'audit.tsv');
     expect(out).toContain('stopped normally');
   });
 
@@ -85,7 +89,7 @@ describe('summarizeLastExit', () => {
       'no-tab-1',
       'no-tab-2',
     ]);
-    expect(summarizeLastExit(auditPath)).toBeNull();
+    expect(summarizeLastExit(testFs, 'audit.tsv')).toBeNull();
   });
 
   it('reads last line correctly when file is much larger than tail buffer', () => {
@@ -99,7 +103,7 @@ describe('summarizeLastExit', () => {
     ];
     writeAudit(lines);
     expect(fs.statSync(auditPath).size).toBeGreaterThan(4096);
-    const out = summarizeLastExit(auditPath);
+    const out = summarizeLastExit(testFs, 'audit.tsv');
     expect(out).toContain('stopped normally');
     expect(out).toContain('2026-04-16T10:00:00.000Z');
   });
@@ -108,14 +112,14 @@ describe('summarizeLastExit', () => {
     // 单行 > 4KB（极端情况）
     const longCol = 'x'.repeat(5000);
     writeAudit([`2026-04-16T10:00:00.000Z\tdaemon_crash\terr=${longCol}`]);
-    const out = summarizeLastExit(auditPath);
+    const out = summarizeLastExit(testFs, 'audit.tsv');
     expect(out).toContain('crashed');
     expect(out).toContain(longCol);
   });
 
   it('summarizes daemon_stop without cols (no parens)', () => {
     writeAudit(['2026-04-16T10:00:00.000Z\tdaemon_stop']);
-    const out = summarizeLastExit(auditPath);
+    const out = summarizeLastExit(testFs, 'audit.tsv');
     expect(out).toContain('stopped normally');
     expect(out).toContain('2026-04-16T10:00:00.000Z.');
     expect(out).not.toContain('(');
@@ -123,7 +127,7 @@ describe('summarizeLastExit', () => {
 
   it('summarizes daemon_unclean_exit without cols (no last activity line)', () => {
     writeAudit(['2026-04-16T10:00:00.000Z\tdaemon_unclean_exit']);
-    const out = summarizeLastExit(auditPath);
+    const out = summarizeLastExit(testFs, 'audit.tsv');
     expect(out).toContain('exited uncleanly');
     expect(out).not.toContain('Last activity timestamp');
   });
@@ -136,8 +140,9 @@ describe('readLastExitEvent', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'last-exit-test-'));
     const auditPath = path.join(tmpDir, 'audit.tsv');
     fs.writeFileSync(auditPath, '2026-04-16T10:00:00.000Z\tdaemon_stop\treason=sigterm\textra=col\n');
+    const innerFs = new NodeFileSystem({ baseDir: tmpDir });
     try {
-      const ev = readLastExitEvent(auditPath);
+      const ev = readLastExitEvent(innerFs, 'audit.tsv');
       expect(ev).not.toBeNull();
       expect(ev!.ts).toBe('2026-04-16T10:00:00.000Z');
       expect(ev!.type).toBe('daemon_stop');

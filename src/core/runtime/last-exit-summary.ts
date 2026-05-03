@@ -7,12 +7,11 @@
  * 模块归属：业务层（src/core）—— 文本解读包含 daemon_stop / daemon_crash /
  * daemon_unclean_exit 等业务事件语义，不归 L2 audit foundation。
  *
- * 设计：直接走 node fs sync API（绕过 FileSystem 抽象）—— 启动时一次性
- * 操作，且"读尾部 N 字节"语义不在 FileSystem 接口范围内。与 daemon.ts
- * detectUncleanExit 同型设计。
+ * 设计：经 L1 FileSystem 抽象 / 用 readBytesSync(start, end) 实现 tail bytes 读 /
+ * 同 phase455 bypass cluster 治理一致 / phase460 cluster 6/6 全闭里程碑。
  */
 
-import * as fs from 'fs';
+import type { FileSystem } from '../../foundation/fs/types.js';
 
 const TAIL_BYTES = 4096;
 
@@ -27,7 +26,7 @@ interface RawEvent {
  *
  * @returns 解析后的 raw event；文件不存在 / 空 / 全部坏行 → null
  */
-export function readLastExitEvent(auditPath: string): RawEvent | null {
+export function readLastExitEvent(fs: FileSystem, auditPath: string): RawEvent | null {
   let lines: string[];
   try {
     if (!fs.existsSync(auditPath)) return null;
@@ -35,24 +34,18 @@ export function readLastExitEvent(auditPath: string): RawEvent | null {
     if (stat.size === 0) return null;
 
     if (stat.size <= TAIL_BYTES) {
-      lines = fs.readFileSync(auditPath, 'utf-8').split('\n').filter(Boolean);
+      lines = fs.readSync(auditPath).split('\n').filter(Boolean);
     } else {
       const offset = stat.size - TAIL_BYTES;
-      const fd = fs.openSync(auditPath, 'r');
-      try {
-        const buf = Buffer.alloc(TAIL_BYTES);
-        fs.readSync(fd, buf, 0, TAIL_BYTES, offset);
-        const chunk = buf.toString('utf-8');
-        // 切掉首段不完整行（offset 落在某行中间的可能）
-        const newlineIdx = chunk.indexOf('\n');
-        const safeChunk = newlineIdx >= 0 ? chunk.slice(newlineIdx + 1) : chunk;
-        lines = safeChunk.split('\n').filter(Boolean);
-        // 极端情况：单行长度 > TAIL_BYTES，safeChunk 拿不到完整行，回退全读
-        if (lines.length === 0) {
-          lines = fs.readFileSync(auditPath, 'utf-8').split('\n').filter(Boolean);
-        }
-      } finally {
-        fs.closeSync(fd);
+      const buf = fs.readBytesSync(auditPath, offset, stat.size);
+      const chunk = buf.toString('utf-8');
+      // 切掉首段不完整行（offset 落在某行中间的可能）
+      const newlineIdx = chunk.indexOf('\n');
+      const safeChunk = newlineIdx >= 0 ? chunk.slice(newlineIdx + 1) : chunk;
+      lines = safeChunk.split('\n').filter(Boolean);
+      // 极端情况：单行长度 > TAIL_BYTES，safeChunk 拿不到完整行，回退全读
+      if (lines.length === 0) {
+        lines = fs.readSync(auditPath).split('\n').filter(Boolean);
       }
     }
   } catch (err: any) {
@@ -79,8 +72,8 @@ export function readLastExitEvent(auditPath: string): RawEvent | null {
  * audit.tsv 的 event 字符串值是跨进程契约（同 phase 393 测试字符串值断言模式）。
  * Assembly side event 字符串值改时 / 本处需同步 / 测试覆盖（last-exit-summary.test.ts）会 fail 暴露。
  */
-export function summarizeLastExit(auditPath: string): string | null {
-  const ev = readLastExitEvent(auditPath);
+export function summarizeLastExit(fs: FileSystem, auditPath: string): string | null {
+  const ev = readLastExitEvent(fs, auditPath);
   if (!ev) return null;
 
   const colsText = ev.cols.length > 0 ? ` (${ev.cols.join(', ')})` : '';
