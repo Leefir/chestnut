@@ -7,7 +7,6 @@ import type { SkillSystem } from '../../foundation/skill-system/index.js';
 import { scheduleRetro } from './retro-scheduler.js';
 import { RETRO_AUDIT_EVENTS } from './retro-audit-events.js';
 import * as path from 'path';
-import * as fsAsync from 'fs/promises';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import { createSystemAudit } from '../../foundation/audit/index.js';
 import { CLAWSPACE_DIR } from '../../types/paths.js';
@@ -74,7 +73,6 @@ export class EvolutionSystem {
   ): Promise<RetroResult> {
     // Part 1: by-contract 索引解析（daemon.ts:124-158 等价迁移）
     const byContractPath = path.join(
-      ctx.motionBaseDir,
       CLAWSPACE_DIR, 'pending-retrospective', 'by-contract',
       `${contractId}.json`,
     );
@@ -83,7 +81,7 @@ export class EvolutionSystem {
     let mode: string | undefined;
     let miningTaskId: string | undefined;
     try {
-      const fileContent = await fsAsync.readFile(byContractPath, 'utf-8');
+      const fileContent = await ctx.motionFs.read(byContractPath);
       let raw: unknown;
       try {
         raw = JSON.parse(fileContent);
@@ -153,9 +151,9 @@ export class EvolutionSystem {
     // 2.3 加载 mining task messages（若 mining 模式，2 best-effort 退化）
     let baseMessages: Message[] = [];
     if (mode === 'mining' && miningTaskId) {
-      const messagesPath = path.join(ctx.motionBaseDir, 'tasks', 'results', miningTaskId, 'messages.json');
+      const messagesPath = path.join('tasks', 'results', miningTaskId, 'messages.json');
       try {
-        const rawMining = await fsAsync.readFile(messagesPath, 'utf-8');
+        const rawMining = await ctx.motionFs.read(messagesPath);
         const parsed = JSON.parse(rawMining);
         if (Array.isArray(parsed)) {
           baseMessages = parsed;
@@ -200,7 +198,7 @@ export class EvolutionSystem {
     }
 
     // 3.3 调度成功后 cleanup by-contract 索引（best-effort）
-    await fsAsync.unlink(byContractPath).catch(e => {
+    await ctx.motionFs.delete(byContractPath).catch(e => {
       // phase384/B.p347-retro-8: 区分编程 bug vs 业务 throw / 编程 bug 暴露 audit
       if (isProgrammingBug(e)) {
         this.deps.audit.write(
