@@ -99,7 +99,7 @@ export class DialogStore {
    *   (e.g. shutdown reason + timeline discovered by the caller). When omitted or
    *   empty, the synthetic message explicitly states "Cause unknown (no context
    *   provided to repair)." — a fail-loud default that reminds callers to pass
-   *   context when available. SessionStore does not guess the interruption cause.
+   *   context when available. DialogStore does not guess the interruption cause.
    * @returns Repaired messages and count of injected synthetic results.
    *   `toolCount` is 0 when the input messages are returned unchanged.
    */

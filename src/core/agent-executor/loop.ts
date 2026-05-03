@@ -93,7 +93,7 @@ export async function runReact(options: ReactOptions): Promise<ReactResult> {
       stepCount = ctx.stepNumber;  // incrementStep 已被 AgentExecutor 执行
       if (onStepComplete) await onStepComplete();
     },
-    // sessionStore 不传：shim 不依赖 SessionStore（由调用方通过 onStepComplete 自己处理）
+    // dialogStore 不传：shim 不依赖 DialogStore（由调用方通过 onStepComplete 自己处理）
   });
 
   return {

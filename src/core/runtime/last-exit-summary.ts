@@ -2,7 +2,7 @@
  * Last-exit summary (Runtime startup helper)
  *
  * 读 audit.tsv 最后一行，把上次进程退出状态翻译成给 LLM 看的人话，
- * 用作 SessionStore.repair 的 interruptionMessage。
+ * 用作 DialogStore.repair 的 interruptionMessage。
  *
  * 模块归属：业务层（src/core）—— 文本解读包含 daemon_stop / daemon_crash /
  * daemon_unclean_exit 等业务事件语义，不归 L2 audit foundation。
