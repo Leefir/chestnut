@@ -4,7 +4,7 @@
  * SubAgent runs with restricted permissions and cannot spawn other agents.
  */
 
-import { runReact } from '../react/loop.js';
+import { runReact } from '../agent-executor/loop.js';
 import { ToolExecutor } from '../../foundation/tools/executor.js';
 import { ToolRegistryImpl } from '../../foundation/tools/registry.js';
 import type { FileSystem } from '../../foundation/fs/types.js';

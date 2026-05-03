@@ -21,7 +21,7 @@ import { InboxListFailed, InboxMoveFailed } from '../../foundation/messaging/ind
 
 import { DialogStore } from '../../foundation/dialog-store/index.js';
 import { DispatchTool } from '../task/tools/dispatch.js';
-import { runReact } from '../react/loop.js';
+import { runReact } from '../agent-executor/loop.js';
 import { summarizeLastExit } from './last-exit-summary.js';
 import { IdleTimeoutSignal, PriorityInboxInterrupt, UserInterrupt } from '../../types/signals.js';
 import type { ToolResult } from '../../foundation/tool-protocol/index.js';

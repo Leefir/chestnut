@@ -11,7 +11,7 @@ import type { ToolRegistryImpl } from '../../src/foundation/tools/registry.js';
 import { SUBAGENT_AUDIT_EVENTS } from '../../src/core/subagent/audit-events.js';
 
 // Mock the entire react loop module so runReact is fully controllable
-vi.mock('../../src/core/react/loop.js', () => ({
+vi.mock('../../src/core/agent-executor/loop.js', () => ({
   runReact: vi.fn(),
 }));
 
@@ -31,7 +31,7 @@ vi.mock('../../src/foundation/tools/executor.js', () => ({
   })),
 }));
 
-import { runReact } from '../../src/core/react/loop.js';
+import { runReact } from '../../src/core/agent-executor/loop.js';
 
 function makeSubAgent(
   overrides: { fs?: Partial<FileSystem> } = {},

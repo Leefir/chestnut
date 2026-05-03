@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { runReact } from '../../src/core/react/loop.js';
+import { runReact } from '../../src/core/agent-executor/loop.js';
 import type { Message, ContentBlock, LLMResponse, ToolDefinition } from '../../src/types/message.js';
 import type { LLMOrchestrator } from '../../src/foundation/llm-orchestrator/index.js';
 import type { StreamChunk } from '../../src/foundation/llm-orchestrator/types.js';

@@ -5,8 +5,8 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { runAgent } from '../../src/core/react/agent-executor.js';
-import type { StepMeta } from '../../src/core/react/step-executor.js';
+import { runAgent } from '../../src/core/agent-executor/agent-executor.js';
+import type { StepMeta } from '../../src/core/step-executor/step-executor.js';
 import { MaxStepsExceededError, ConsecutiveParseErrorsExceededError, ConsecutiveMaxTokensToolUseError } from '../../src/types/errors.js';
 import { MAX_CONSECUTIVE_PARSE_ERRORS, MAX_CONSECUTIVE_MAX_TOKENS_TOOL_USE } from '../../src/constants.js';
 import type { LLMOrchestrator } from '../../src/foundation/llm-orchestrator/index.js';

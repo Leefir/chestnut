@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { runReact } from '../../src/core/react/loop.js';
+import { runReact } from '../../src/core/agent-executor/loop.js';
 import { ToolExecutorImpl } from '../../src/foundation/tools/executor.js';
 import { ToolRegistryImpl } from '../../src/foundation/tools/registry.js';
 import type { Tool, ToolResult, ExecContext } from '../../src/foundation/tool-protocol/index.js';
