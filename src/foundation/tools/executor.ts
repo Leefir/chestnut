@@ -16,7 +16,7 @@ import type { AuditLog } from '../audit/index.js';
 import type { Tool, ToolResult, ExecContext, CallerType } from '../tool-protocol/index.js';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { writePendingToolTaskFile } from '../../core/task/tools/_pending-tool-task-writer.js';
+import type { ScheduleAsyncTool } from './async-dispatch.js';
 import {
   ToolNotFoundError,
   ToolTimeoutError,
@@ -88,7 +88,8 @@ export interface IToolExecutor {
 export class ToolExecutorImpl implements IToolExecutor {
   constructor(
     private registry: ToolRegistry,
-    private defaultTimeoutMs = 60000
+    private defaultTimeoutMs = 60000,
+    private scheduleAsyncTool?: ScheduleAsyncTool,
   ) {}
 
   /**
@@ -119,7 +120,10 @@ export class ToolExecutorImpl implements IToolExecutor {
       if (!tool.supportsAsync) {
         return { success: false, content: `Tool "${toolName}" does not support async mode.` };
       }
-      const taskId = await writePendingToolTaskFile(ctx.fs, ctx.auditWriter, {
+      if (!this.scheduleAsyncTool) {
+        return { success: false, content: 'Async tool dispatch not configured.' };
+      }
+      const taskId = await this.scheduleAsyncTool({
         toolName,
         args,
         parentClawId: ctx.clawId,
@@ -282,6 +286,7 @@ export interface ToolExecutorOptions {
   profile?: ToolProfile;
   subagentMaxSteps?: number;
   auditWriter?: AuditLog;
+  scheduleAsyncTool?: ScheduleAsyncTool;
 }
 
 /**
@@ -297,7 +302,7 @@ export class ToolExecutor extends ToolExecutorImpl {
   private auditWriter?: AuditLog;
 
   constructor(options: ToolExecutorOptions) {
-    super(options.registry);
+    super(options.registry, undefined, options.scheduleAsyncTool);
     this.clawDir = options.clawDir;
     this.fs = options.fs;
     this.llm = options.llm;
@@ -337,6 +342,7 @@ export class ToolExecutor extends ToolExecutorImpl {
 export function createToolExecutor(
   registry: ToolRegistryImpl,
   timeoutMs?: number,
+  scheduleAsyncTool?: ScheduleAsyncTool,
 ): ToolExecutorImpl {
-  return new ToolExecutorImpl(registry, timeoutMs);
+  return new ToolExecutorImpl(registry, timeoutMs, scheduleAsyncTool);
 }

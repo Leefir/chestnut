@@ -1257,12 +1257,11 @@ describe('ToolExecutor async routing', () => {
 
   beforeEach(() => {
     registry = new ToolRegistryImpl();
-    executor = new ToolExecutorImpl(registry);
+    executor = new ToolExecutorImpl(registry, 60000, vi.fn().mockResolvedValue('mock-task-id-123'));
     
     mockTaskSystem = {
       scheduleTool: vi.fn().mockResolvedValue('mock-task-id-123'),
     };
-    (executor as any).taskSystem = mockTaskSystem;
     
     mockCtx = {
       clawId: 'test-claw',

@@ -237,7 +237,7 @@ describe('Tools', () => {
 
     beforeEach(() => {
       registry = new ToolRegistryImpl();
-      executor = new ToolExecutorImpl(registry);
+      executor = new ToolExecutorImpl(registry, 60000, vi.fn().mockResolvedValue('mock-task-id'));
       mockFs = {} as FileSystem;
     });
 

@@ -8,7 +8,7 @@ import { randomUUID } from 'crypto';
 import { TASKS_PENDING_DIR } from '../../../types/paths.js';
 import type { FileSystem } from '../../../foundation/fs/types.js';
 import type { AuditLog } from '../../../foundation/audit/index.js';
-import type { ToolTask } from '../system.js';
+import type { AsyncToolTaskArgs } from '../../../foundation/tools/async-dispatch.js';
 
 /**
  * Write a pending tool task file. Watcher will pick it up.
@@ -17,10 +17,10 @@ import type { ToolTask } from '../system.js';
 export async function writePendingToolTaskFile(
   fs: FileSystem,
   audit: AuditLog | undefined,
-  args: Omit<ToolTask, 'id' | 'createdAt' | 'kind'>,
+  args: AsyncToolTaskArgs,
 ): Promise<string> {
   const taskId = randomUUID();
-  const task: ToolTask = {
+  const task = {
     kind: 'tool',
     id: taskId,
     createdAt: new Date().toISOString(),

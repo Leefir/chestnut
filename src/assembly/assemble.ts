@@ -17,6 +17,7 @@ import { createLLMAuditSink } from './llm-audit-sink.js';
 import { ASSEMBLY_AUDIT_EVENTS } from './audit-events.js';
 import { createToolRegistry, type ToolRegistryImpl } from '../foundation/tools/index.js';
 import { createToolExecutor, type ToolExecutorImpl } from '../foundation/tools/index.js';
+import { writePendingToolTaskFile } from '../core/task/tools/_pending-tool-task-writer.js';
 import { createSkillSystem, SkillSystem } from '../foundation/skill-system/index.js';
 import { SKILLS_DIR_DEFAULT } from '../foundation/skill-system/skill-paths.js';
 import { ContractSystem, createContractSystem } from '../core/contract/index.js';
@@ -321,7 +322,11 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   // --- L3-L5: toolExecutor ---
   let toolExecutor: ToolExecutorImpl;
   try {
-    toolExecutor = createToolExecutor(toolRegistry, toolTimeoutMs);
+    toolExecutor = createToolExecutor(
+      toolRegistry,
+      toolTimeoutMs,
+      (args) => writePendingToolTaskFile(clawFs, auditWriter, args),
+    );
   } catch (e) {
     auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=tool_executor`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: ToolExecutorImpl construct failed: ${errMsg(e)}`, { cause: e });
