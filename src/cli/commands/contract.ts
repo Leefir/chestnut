@@ -7,7 +7,7 @@ import * as fsNative from 'fs';
 import * as path from 'path';
 
 import * as yaml from 'js-yaml';
-import { ContractManager, type ContractYaml, type ProgressData } from '../../core/contract/manager.js';
+import { ContractSystem, type ContractYaml, type ProgressData } from '../../core/contract/manager.js';
 import { collectContractEvents } from '../../core/contract/jobs/event-collector.js';
 import { createDirContext } from '../../foundation/config/factories.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
@@ -81,7 +81,7 @@ export async function contractCreateCommand(clawId: string, filePath: string): P
 
   const clawDir = getClawDir(clawId);
   const clawFs = new NodeFileSystem({ baseDir: clawDir });
-  const manager = new ContractManager(clawDir, clawId, clawFs, createSystemAudit(clawFs, clawDir));
+  const manager = new ContractSystem(clawDir, clawId, clawFs, createSystemAudit(clawFs, clawDir));
 
   const contractId = await manager.create(contract);
   console.log(`Contract created: ${contractId} for claw ${clawId}`);
@@ -100,7 +100,7 @@ export async function contractCreateFromDirCommand(clawId: string, dirPath: stri
 
   const clawDir = getClawDir(clawId);
   const clawFs = new NodeFileSystem({ baseDir: clawDir });
-  const manager = new ContractManager(clawDir, clawId, clawFs, createSystemAudit(clawFs, clawDir));
+  const manager = new ContractSystem(clawDir, clawId, clawFs, createSystemAudit(clawFs, clawDir));
 
   const contractId = await manager.create(contract);
   console.log(`Contract created: ${contractId} for claw ${clawId}`);
@@ -140,7 +140,7 @@ export async function contractEventsCommand(clawId: string, sinceTs: number): Pr
 export async function contractLogCommand(clawId: string, contractId?: string): Promise<void> {
   const clawDir = getClawDir(clawId);
   const clawFs = new NodeFileSystem({ baseDir: clawDir });
-  const manager = new ContractManager(clawDir, clawId, clawFs, createSystemAudit(clawFs, clawDir));
+  const manager = new ContractSystem(clawDir, clawId, clawFs, createSystemAudit(clawFs, clawDir));
 
   // 若未指定 contractId，用 active 契约
   let resolvedId = contractId;

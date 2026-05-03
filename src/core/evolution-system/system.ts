@@ -2,7 +2,7 @@
 import type { AuditLog, AuditWriter } from '../../foundation/audit/index.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { TaskSystem } from '../task/index.js';
-import { ContractManager } from '../contract/manager.js';
+import { ContractSystem } from '../contract/manager.js';
 import type { SkillRegistry } from '../skill/index.js';
 import type { RetroScheduler } from './retro-scheduler.js';
 import { createDefaultRetroScheduler } from './retro-scheduler.js';
@@ -19,7 +19,7 @@ export interface EvolutionSystemDeps {
   fs: FileSystem;
   audit: AuditLog;
   taskSystem: TaskSystem;
-  contractManager: ContractManager;
+  contractManager: ContractSystem;
   skillRegistry?: SkillRegistry;   // for SkillSystem.reload coordination
   retroScheduler?: RetroScheduler;  // optional override / default = createDefaultRetroScheduler
 }
@@ -71,7 +71,7 @@ export class EvolutionSystem {
     // Cleanup hooks
   }
 
-  /** handleReviewRequest 6 步业务（phase411 Step B 物理迁自 ContractManager） */
+  /** handleReviewRequest 6 步业务（phase411 Step B 物理迁自 ContractSystem） */
   async runRetroForContract(
     contractId: string,
     ctx: MotionReviewContext,
@@ -137,10 +137,10 @@ export class EvolutionSystem {
 
     // Part 2: contract YAML + skills + mining messages（daemon.ts:160-213 等价）
 
-    // 2.1 加载契约 YAML（临时 new ContractManager for target claw，B.p175-2 登记）
+    // 2.1 加载契约 YAML（临时 new ContractSystem for target claw，B.p175-2 登记）
     const clawDir = path.join(ctx.clawsBaseDir, targetClaw);
     const clawFs = new NodeFileSystem({ baseDir: clawDir });
-    const clawContractManager = new ContractManager(clawDir, targetClaw, clawFs, createSystemAudit(clawFs, clawDir));
+    const clawContractManager = new ContractSystem(clawDir, targetClaw, clawFs, createSystemAudit(clawFs, clawDir));
 
     let contractYaml: string;
     try {

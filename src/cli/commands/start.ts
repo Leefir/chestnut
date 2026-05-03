@@ -20,7 +20,7 @@ import {
   chatCommand as motionChatCommand,
 } from './motion.js';
 import { createProcessManagerForCLI } from '../../foundation/config/factories.js';
-import { ContractManager } from '../../core/contract/manager.js';
+import { ContractSystem } from '../../core/contract/manager.js';
 import { createDirContext } from '../../foundation/config/factories.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import { InboxWriter } from '../../foundation/messaging/index.js';
@@ -400,7 +400,7 @@ async function _start(): Promise<void> {
     const watchdog = createWatchdogPort();
     if (!watchdog.isWatchdogAlive()) await watchdog.startCommand();
 
-    const manager = new ContractManager(motionDir, MOTION_CLAW_ID, notifyFs, notifyAudit);
+    const manager = new ContractSystem(motionDir, MOTION_CLAW_ID, notifyFs, notifyAudit);
     const contractId = await manager.create({
       title: 'Onboarding',
       goal: 'Get to know the user and establish your identity before anything else. No interrogation — just talk.',
@@ -430,7 +430,7 @@ async function _start(): Promise<void> {
 
     
     if (onboarding.state === 'not_found') {
-      const manager = new ContractManager(motionDir, MOTION_CLAW_ID, notifyFs, notifyAudit);
+      const manager = new ContractSystem(motionDir, MOTION_CLAW_ID, notifyFs, notifyAudit);
       const contractId = await manager.create({
         title: 'Onboarding',
         goal: 'Get to know the user and establish your identity before anything else.',

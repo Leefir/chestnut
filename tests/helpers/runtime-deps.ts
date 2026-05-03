@@ -9,7 +9,7 @@ import { LLMOrchestratorImpl } from '../../src/foundation/llm-orchestrator/orche
 import { ToolRegistryImpl } from '../../src/core/tools/registry.js';
 import { ToolExecutorImpl } from '../../src/core/tools/executor.js';
 import { createSkillRegistry } from '../../src/core/skill/index.js';
-import { ContractManager } from '../../src/core/contract/manager.js';
+import { ContractSystem } from '../../src/core/contract/manager.js';
 import { TaskSystem } from '../../src/core/task/system.js';
 import { ContextInjector } from '../../src/core/dialog/injector.js';
 import { ExecContextImpl } from '../../src/core/tools/context.js';
@@ -51,7 +51,7 @@ export async function makeRuntimeDeps(input: MakeRuntimeDepsInput): Promise<Runt
   const skillRegistry = createSkillRegistry(systemFs, 'skills');
   await skillRegistry.loadAll();
   const verifierRegistry = new ToolRegistryImpl();
-  const contractManager = new ContractManager(
+  const contractManager = new ContractSystem(
     clawDir, clawId, systemFs, auditWriter, llm, verifierRegistry, auditWriter,
   );
   const taskSystem = new TaskSystem(clawDir, systemFs, {

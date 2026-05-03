@@ -1,5 +1,5 @@
 /**
- * ContractManager LLM/Script acceptance integration tests
+ * ContractSystem LLM/Script acceptance integration tests
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -14,7 +14,7 @@ let execFileMockError: any = null;
 let execFileMockStdout = '';
 let execFileMockStderr = '';
 
-// Mock child_process BEFORE importing ContractManager
+// Mock child_process BEFORE importing ContractSystem
 vi.mock('child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('child_process')>();
   return {
@@ -60,7 +60,7 @@ vi.mock('../../src/core/subagent/agent.js', () => ({
 }));
 
 // Now import the modules under test
-import { ContractManager } from '../../src/core/contract/manager.js';
+import { ContractSystem } from '../../src/core/contract/manager.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import type { LLMOrchestrator } from '../../src/foundation/llm-orchestrator/index.js';
 import { ToolRegistryImpl } from '../../src/core/tools/registry.js';
@@ -163,10 +163,10 @@ async function waitForAcceptance(
   throw new Error(`waitForAcceptance timed out after ${timeoutMs}ms`);
 }
 
-describe('ContractManager Acceptance Flow', () => {
+describe('ContractSystem Acceptance Flow', () => {
   let tempDir: string;
   let clawDir: string;
-  let manager: ContractManager;
+  let manager: ContractSystem;
   let mockAudit: { write: ReturnType<typeof vi.fn> };
   let mockLLM: LLMOrchestrator;
   // mockRegistry removed — ToolRegistryImpl internalized in VerifierScheduler (phase364)
@@ -199,7 +199,7 @@ describe('ContractManager Acceptance Flow', () => {
       stream: vi.fn(),
     } as unknown as LLMOrchestrator;
 
-    manager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any, mockLLM);
+    manager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, mockLLM);
   });
 
   afterEach(async () => {
@@ -359,7 +359,7 @@ describe('ContractManager Acceptance Flow', () => {
 
       expect(logSpy).toHaveBeenCalledWith(
         CONTRACT_AUDIT_EVENTS.ACCEPTANCE_RESET_FAILED,
-        expect.stringContaining('context=ContractManager._runAcceptanceInBackground'),
+        expect.stringContaining('context=ContractSystem._runAcceptanceInBackground'),
         expect.anything(),
       );
     });
@@ -495,11 +495,11 @@ describe('ContractManager Acceptance Flow', () => {
       expect(rejections[0].content).toContain('缺少 prompt_file');
     });
 
-    it('should return rejection when LLM is not injected in ContractManager', async () => {
+    it('should return rejection when LLM is not injected in ContractSystem', async () => {
       const contractId = 'test-llm-not-injected';
       // manager without llm
       const nodeFs = new NodeFileSystem({ baseDir: clawDir });
-      const noLLMManager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any);
+      const noLLMManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
 
       await setupContract(tempDir, contractId, {
         schema_version: 1,
@@ -537,7 +537,7 @@ describe('ContractManager Acceptance Flow', () => {
 
       expect(logSpy).toHaveBeenCalledWith(
         CONTRACT_AUDIT_EVENTS.ACCEPTANCE_RESET_FAILED,
-        expect.stringContaining('context=ContractManager._runAcceptanceInBackground'),
+        expect.stringContaining('context=ContractSystem._runAcceptanceInBackground'),
         expect.anything(),
       );
     });
@@ -868,7 +868,7 @@ describe('ContractManager Acceptance Flow', () => {
   });
 });
 
-describe('ContractManager — verifier scheduler port', () => {
+describe('ContractSystem — verifier scheduler port', () => {
   it('delegates verifier execution to ContractVerifierScheduler port', async () => {
     let capturedConfig: VerifierConfig | undefined;
     const mockScheduler: ContractVerifierScheduler = {
@@ -887,7 +887,7 @@ describe('ContractManager — verifier scheduler port', () => {
       call: vi.fn(),
       stream: vi.fn(),
     } as unknown as LLMOrchestrator;
-    const manager = new ContractManager(
+    const manager = new ContractSystem(
       clawDir, 'test-claw', nodeFs, mockAudit as any, mockLLM,
       mockScheduler,
     );
@@ -936,7 +936,7 @@ describe('ContractManager — verifier scheduler port', () => {
       call: vi.fn(),
       stream: vi.fn(),
     } as unknown as LLMOrchestrator;
-    const manager = new ContractManager(
+    const manager = new ContractSystem(
       clawDir, 'test-claw', nodeFs, captureAudit as any, mockLLM,
     );
 
@@ -993,7 +993,7 @@ describe('ContractManager — verifier scheduler port', () => {
       call: vi.fn(),
       stream: vi.fn(),
     } as unknown as LLMOrchestrator;
-    const manager = new ContractManager(
+    const manager = new ContractSystem(
       clawDir, 'test-claw', nodeFs, captureAudit as any, mockLLM,
     );
 

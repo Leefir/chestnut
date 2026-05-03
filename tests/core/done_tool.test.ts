@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { doneTool } from '../../src/core/contract/index.js';
-import { ContractManager } from '../../src/core/contract/manager.js';
+import { ContractSystem } from '../../src/core/contract/manager.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import * as os from 'os';
 
@@ -25,7 +25,7 @@ function makeCtx() {
 }
 
 describe('doneTool', () => {
-  let manager: ContractManager;
+  let manager: ContractSystem;
   let nodeFs: NodeFileSystem;
 
   beforeEach(async () => {
@@ -38,7 +38,7 @@ describe('doneTool', () => {
     await fs.mkdir(clawDir, { recursive: true });
     nodeFs = new NodeFileSystem({ baseDir: clawDir });
     const mockAudit = { write: vi.fn() };
-    manager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any);
+    manager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
     doneTool.contractManager = manager;
   });
 
@@ -101,7 +101,7 @@ describe('doneTool', () => {
   });
 
   it('should return error when no active contract', async () => {
-    // ContractManager exists but no contract created
+    // ContractSystem exists but no contract created
     const ctx = makeCtx();
     const result = await doneTool.execute({ subtask: 't1', evidence: 'done' }, ctx);
     expect(result.success).toBe(false);

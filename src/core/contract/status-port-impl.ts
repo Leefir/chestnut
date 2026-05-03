@@ -1,16 +1,16 @@
 /**
  * @module L4.ContractSystem
- * ContractStatusPort default impl — 包装 ContractManager.loadActive +
+ * ContractStatusPort default impl — 包装 ContractSystem.loadActive +
  * 计算统计视图（业务归属 ContractSystem）。
  */
 
-import type { ContractManager } from './manager.js';
+import type { ContractSystem } from './manager.js';
 import type {
   ContractStatusPort,
   ContractStatusView,
 } from '../tools/builtins/status-port.js';
 
-export function createContractStatusPort(manager: ContractManager): ContractStatusPort {
+export function createContractStatusPort(manager: ContractSystem): ContractStatusPort {
   return {
     async loadStatusView(): Promise<ContractStatusView | null> {
       const contract = await manager.loadActive();

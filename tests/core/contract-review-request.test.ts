@@ -4,7 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 
-import { ContractManager } from '../../src/core/contract/manager.js';
+import { ContractSystem } from '../../src/core/contract/manager.js';
 import { EvolutionSystem } from '../../src/core/evolution-system/system.js';
 import type { MotionReviewContext } from '../../src/core/evolution-system/system.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
@@ -78,7 +78,7 @@ async function setupFixtures(): Promise<TestFixtures> {
   const motionFs = new NodeFileSystem({ baseDir: motionDir });
   const motionAudit = new AuditWriter(motionFs, 'audit.tsv');
   const mockAudit = { write: vi.fn() };
-  const mockContractManager = {} as ContractManager;
+  const mockContractManager = {} as ContractSystem;
   const evolutionSystem = new EvolutionSystem({
     fs: motionFs,
     audit: mockAudit as any,

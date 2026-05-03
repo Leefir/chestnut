@@ -15,7 +15,7 @@ import { ExecContextImpl } from '../../src/core/tools/context.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import { OutboxWriter } from '../../src/foundation/messaging/index.js';
 import { makeAudit } from '../helpers/audit.js';
-import { ContractManager } from '../../src/core/contract/manager.js';
+import { ContractSystem } from '../../src/core/contract/manager.js';
 import { createContractStatusPort } from '../../src/core/contract/status-port-impl.js';
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 import { TASKS_RUNNING_DIR } from '../../src/types/paths.js';
@@ -534,7 +534,7 @@ describe('Builtin Tools', () => {
 
     it('should show "No active contract" when contractManager has no active contract', async () => {
       const mockAudit = { write: vi.fn() };
-      const manager = new ContractManager(tempDir, 'test-claw', mockFs, mockAudit as any);
+      const manager = new ContractSystem(tempDir, 'test-claw', mockFs, mockAudit as any);
       statusTool.contractStatus = createContractStatusPort(manager);
 
       const result = await executeViaExecutor('status', {}, ctx);
@@ -545,7 +545,7 @@ describe('Builtin Tools', () => {
 
     it('should show subtask list with ○ icons when contract is active', async () => {
       const mockAudit = { write: vi.fn() };
-      const manager = new ContractManager(tempDir, 'test-claw', mockFs, mockAudit as any);
+      const manager = new ContractSystem(tempDir, 'test-claw', mockFs, mockAudit as any);
       await manager.create({
         schema_version: 1 as const,
         title: 'Test Contract',
@@ -572,7 +572,7 @@ describe('Builtin Tools', () => {
 
     it('should show ✓ for completed subtask and ○ for todo subtask', async () => {
       const mockAudit = { write: vi.fn() };
-      const manager = new ContractManager(tempDir, 'test-claw', mockFs, mockAudit as any);
+      const manager = new ContractSystem(tempDir, 'test-claw', mockFs, mockAudit as any);
       const contractId = await manager.create({
         schema_version: 1 as const,
         title: 'Mixed Status',
@@ -653,7 +653,7 @@ describe('Builtin Tools', () => {
     // subtask failed 状态显示 ✗
     it('should show ✗ icon for failed subtask', async () => {
       const mockAudit = { write: vi.fn() };
-      const manager = new ContractManager(tempDir, 'test-claw', mockFs, mockAudit as any);
+      const manager = new ContractSystem(tempDir, 'test-claw', mockFs, mockAudit as any);
       const contractId = await manager.create({
         title: 'Fail Test',
         goal: 'test',
@@ -782,7 +782,7 @@ describe('Builtin Tools', () => {
     // Batch 4 新增测试：subtask failed 状态显示 ✗
     it('should show ✗ icon for failed subtask', async () => {
       const mockAudit = { write: vi.fn() };
-      const manager = new ContractManager(tempDir, 'test-claw', mockFs, mockAudit as any);
+      const manager = new ContractSystem(tempDir, 'test-claw', mockFs, mockAudit as any);
       const contractId = await manager.create({
         title: 'Fail Test',
         goal: 'test',

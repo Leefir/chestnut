@@ -3,7 +3,7 @@
  * Contract module exports
  */
 
-import { ContractManager } from './manager.js';
+import { ContractSystem } from './manager.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
 import type { AuditWriter } from '../../foundation/audit/writer.js';
@@ -11,7 +11,7 @@ import type { ContractVerifierScheduler } from './verifier-scheduler.js';
 import type { RetroScheduler } from '../evolution-system/retro-scheduler.js';
 
 export {
-  ContractManager,
+  ContractSystem,
   type ProgressData,
   type AcceptanceResult,
 } from './manager.js';
@@ -19,14 +19,14 @@ export {
 export { doneTool, DONE_TOOL_NAME } from './builtins/done.js';
 
 /**
- * ContractManager 工厂 —— 严格对齐 ctor 7 参数
+ * ContractSystem 工厂 —— 严格对齐 ctor 7 参数
  *
  * 输入：clawDir / clawId / fs 必填；llm / verifierScheduler / retroScheduler 可选
- * 输出：ContractManager 实例
+ * 输出：ContractSystem 实例
  * 边界：可选参数未传时运行期能力降级（见 design/modules/l4_contract_system.md §2.a）
  * 失败：不抛；能力降级延迟到方法调用
  */
-export function createContractManager(
+export function createContractSystem(
   clawDir: string,
   clawId: string,
   fs: FileSystem,
@@ -34,6 +34,6 @@ export function createContractManager(
   llm?: LLMOrchestrator,
   verifierScheduler?: ContractVerifierScheduler,
   retroScheduler?: RetroScheduler,
-): ContractManager {
-  return new ContractManager(clawDir, clawId, fs, audit, llm, verifierScheduler, retroScheduler);
+): ContractSystem {
+  return new ContractSystem(clawDir, clawId, fs, audit, llm, verifierScheduler, retroScheduler);
 }

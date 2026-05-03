@@ -19,7 +19,7 @@ import { createToolRegistry, type ToolRegistryImpl } from '../core/tools/index.j
 import { createToolExecutor, type ToolExecutorImpl } from '../core/tools/index.js';
 import { createSkillRegistry, SkillRegistry } from '../core/skill/index.js';
 import { SKILLS_DIR_DEFAULT } from '../core/skill/skill-paths.js';
-import { ContractManager, createContractManager } from '../core/contract/index.js';
+import { ContractSystem, createContractSystem } from '../core/contract/index.js';
 import { createEvolutionSystem } from '../core/evolution-system/index.js';
 import type { EvolutionSystem } from '../core/evolution-system/index.js';
 import { createSubAgentVerifierScheduler } from '../core/contract/verifier-scheduler.js';
@@ -197,15 +197,15 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   }
 
   // --- L3-L5: contractManager ---
-  let contractManager: ContractManager;
+  let contractManager: ContractSystem;
   try {
-    contractManager = createContractManager(
+    contractManager = createContractSystem(
       clawDir, clawId, systemFs, auditWriter, llm,
       createSubAgentVerifierScheduler(),
     );
   } catch (e) {
     auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=contract_manager`, `phase=construct`, `reason=${errMsg(e)}`);
-    throw new Error(`Assembly: ContractManager construct failed: ${errMsg(e)}`, { cause: e });
+    throw new Error(`Assembly: ContractSystem construct failed: ${errMsg(e)}`, { cause: e });
   }
 
   // --- L2: outboxWriter ---

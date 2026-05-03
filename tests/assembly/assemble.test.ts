@@ -138,7 +138,7 @@ vi.mock('../../src/core/skill/registry.js', () => ({
 }));
 
 vi.mock('../../src/core/contract/manager.js', () => ({
-  ContractManager: trackCtor('ContractManager', () => ({ setOnNotify: vi.fn(), loadPaused: vi.fn(), resume: vi.fn(), onContractCompleted: vi.fn(() => () => {}) })),
+  ContractSystem: trackCtor('ContractSystem', () => ({ setOnNotify: vi.fn(), loadPaused: vi.fn(), resume: vi.fn(), onContractCompleted: vi.fn(() => () => {}) })),
 }));
 
 vi.mock('../../src/core/task/system.js', () => ({
@@ -631,7 +631,7 @@ describe('assemble', () => {
 
       const required = [
         'LLMOrchestratorImpl', 'ToolRegistryImpl',
-        'SkillRegistry', 'ContractManager',
+        'SkillRegistry', 'ContractSystem',
         'TaskSystem', 'ContextInjector', 'ExecContextImpl', 'ToolExecutorImpl',
       ];
       for (const name of required) {
@@ -641,9 +641,9 @@ describe('assemble', () => {
       const idx = (name: string) => callOrder.indexOf(name);
       expect(idx('LLMOrchestratorImpl')).toBeLessThan(idx('TaskSystem'));
       expect(idx('SkillRegistry')).toBeLessThan(idx('TaskSystem'));
-      expect(idx('ContractManager')).toBeLessThan(idx('TaskSystem'));
+      expect(idx('ContractSystem')).toBeLessThan(idx('TaskSystem'));
       expect(idx('ToolRegistryImpl')).toBeLessThan(idx('ToolExecutorImpl'));
-      expect(idx('ContractManager')).toBeLessThan(idx('ContextInjector'));
+      expect(idx('ContractSystem')).toBeLessThan(idx('ContextInjector'));
       expect(idx('SkillRegistry')).toBeLessThan(idx('ContextInjector'));
     });
 
@@ -737,10 +737,10 @@ describe('assemble', () => {
 
     it('contract_manager construct failure → audit module=contract_manager phase=construct + throw', async () => {
       const { events, thrown } = await expectAssembleFailure(
-        '../../src/core/contract/manager.js', 'ContractManager', 'ctor',
+        '../../src/core/contract/manager.js', 'ContractSystem', 'ctor',
       );
       expect(events.some(e => /^assemble_failed\tmodule=contract_manager\tphase=construct\treason=injected/.test(e))).toBe(true);
-      expect(thrown.message).toMatch(/ContractManager construct failed/);
+      expect(thrown.message).toMatch(/ContractSystem construct failed/);
     });
 
     it('task_system construct failure → audit module=task_system phase=construct + throw', async () => {

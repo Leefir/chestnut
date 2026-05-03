@@ -14,7 +14,7 @@ import type { Message } from '../../types/message.js';
 import type { Contract } from '../../types/contract.js';
 import type { SessionData } from '../../foundation/session-store/index.js';
 import type { SkillRegistry } from '../skill/registry.js';
-import type { ContractManager } from '../contract/manager.js';
+import type { ContractSystem } from '../contract/manager.js';
 
 /**
  * Context injector configuration
@@ -25,7 +25,7 @@ export interface ContextInjectorOptions {
   /** Skill registry for skill metadata injection */
   skillRegistry?: SkillRegistry;
   /** Contract manager for active contract injection */
-  contractManager?: ContractManager;
+  contractManager?: ContractSystem;
 }
 
 /**
@@ -55,7 +55,7 @@ function formatContractForPrompt(contract: Contract): string {
 export class ContextInjector {
   private fs: FileSystem;
   private skillRegistry?: SkillRegistry;
-  private contractManager?: ContractManager;
+  private contractManager?: ContractSystem;
 
   constructor(options: ContextInjectorOptions) {
     this.fs = options.fs;

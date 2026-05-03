@@ -19,7 +19,7 @@ import type { CallerType } from '../tools/caller-type.js';
 import type { ToolResult, Tool } from '../tools/executor.js';
 import type { Message, ToolDefinition } from '../../types/message.js';
 import type { OutboxWriter } from '../../foundation/messaging/index.js';
-import type { ContractManager } from '../contract/manager.js';
+import type { ContractSystem } from '../contract/manager.js';
 import { AuditWriter } from '../../foundation/audit/writer.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { TASKS_RUNNING_DIR, TASKS_DONE_DIR } from '../../types/paths.js';
@@ -42,7 +42,7 @@ export interface TaskSystemOptions {
 
   // phase155C 新增（4 个原 setter 合入 ctor）
   llm: LLMOrchestrator;
-  contractManager: ContractManager;
+  contractManager: ContractSystem;
   outboxWriter: OutboxWriter;
 }
 
@@ -88,7 +88,7 @@ export class TaskSystem {
   private maxConcurrent: number;
   private registry: ToolRegistryImpl;
   private readonly llm: LLMOrchestrator;
-  private readonly contractManager: ContractManager;
+  private readonly contractManager: ContractSystem;
   private readonly outboxWriter: OutboxWriter;
   private auditWriter: AuditWriter;
   private parentStreamLog?: StreamLog;

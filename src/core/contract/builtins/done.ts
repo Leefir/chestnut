@@ -6,7 +6,7 @@
  */
 
 import type { Tool, ToolResult, ExecContext } from '../../tools/executor.js';
-import type { ContractManager } from '../manager.js';
+import type { ContractSystem } from '../manager.js';
 
 /**
  * Done tool implementation
@@ -16,7 +16,7 @@ import type { ContractManager } from '../manager.js';
 import { DONE_TOOL_NAME } from '../../tools/tool-names.js';
 export { DONE_TOOL_NAME };
 
-export const doneTool: Tool & { contractManager?: ContractManager } = {
+export const doneTool: Tool & { contractManager?: ContractSystem } = {
   name: DONE_TOOL_NAME,
   description: 'Mark a subtask as complete and submit it for acceptance verification. ' +
     'Acceptance runs asynchronously — the result (pass or reject) will be ' +
@@ -50,7 +50,7 @@ export const doneTool: Tool & { contractManager?: ContractManager } = {
       return {
         success: false,
         content: 'No contract manager configured',
-        error: 'ContractManager not configured',
+        error: 'ContractSystem not configured',
       };
     }
 

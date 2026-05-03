@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import type { LLMOrchestrator } from '../../src/foundation/llm-orchestrator/index.js';
-import type { ContractManager } from '../../src/core/contract/manager.js';
+import type { ContractSystem } from '../../src/core/contract/manager.js';
 import type { OutboxWriter } from '../../src/foundation/messaging/index.js';
 import type { AuditWriter } from '../../src/foundation/audit/writer.js';
 import type { FileSystem } from '../../src/foundation/fs/types.js';
@@ -15,7 +15,7 @@ export function makeTaskSystemDeps(
       loadPaused: vi.fn(),
       resume: vi.fn(),
       setOnNotify: vi.fn(),
-    } as unknown as ContractManager,
+    } as unknown as ContractSystem,
     outboxWriter: {
       write: vi.fn().mockResolvedValue(undefined),
     } as unknown as OutboxWriter,

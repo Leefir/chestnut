@@ -63,7 +63,7 @@ vi.mock('../../src/daemon/daemon-loop.js', () => ({
 }));
 
 vi.mock('../../src/core/contract/manager.js', () => ({
-  ContractManager: vi.fn().mockImplementation(() => ({})),
+  ContractSystem: vi.fn().mockImplementation(() => ({})),
 }));
 
 vi.mock('../../src/foundation/audit/index.js', () => ({

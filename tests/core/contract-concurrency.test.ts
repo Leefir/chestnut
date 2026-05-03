@@ -1,5 +1,5 @@
 /**
- * ContractManager — 并发幂等 + 锁机制测试
+ * ContractSystem — 并发幂等 + 锁机制测试
  *
  * 覆盖：
  * - 并发 completeSubtask() 同一 subtask 的幂等保护
@@ -14,7 +14,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 import { randomUUID } from 'crypto';
-import { ContractManager } from '../../src/core/contract/manager.js';
+import { ContractSystem } from '../../src/core/contract/manager.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { CONTRACT_AUDIT_EVENTS } from '../../src/core/contract/audit-events.js';
 
@@ -31,10 +31,10 @@ const BASE_YAML = {
   auth_level: 'auto' as const,
 };
 
-describe('ContractManager — 并发幂等与锁', () => {
+describe('ContractSystem — 并发幂等与锁', () => {
   let testDir: string;
   let clawDir: string;
-  let manager: ContractManager;
+  let manager: ContractSystem;
   let nodeFs: NodeFileSystem;
 
   beforeEach(async () => {
@@ -43,7 +43,7 @@ describe('ContractManager — 并发幂等与锁', () => {
     await fs.mkdir(clawDir, { recursive: true });
     nodeFs = new NodeFileSystem({ baseDir: clawDir });
     const mockAudit = { write: vi.fn() };
-    manager = new ContractManager(clawDir, 'test-claw', nodeFs, mockAudit as any);
+    manager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
   });
 
   afterEach(async () => {
@@ -182,7 +182,7 @@ describe('ContractManager — 并发幂等与锁', () => {
 
   it('writes CONTRACT_LOCK_CLEARED audit when force clearing stale timeout lock', async () => {
     const mockAudit = { write: vi.fn() };
-    const auditManager = new ContractManager(
+    const auditManager = new ContractSystem(
       clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, undefined, mockAudit as any
     );
 
