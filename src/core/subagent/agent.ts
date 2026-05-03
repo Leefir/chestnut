@@ -17,7 +17,7 @@ import { makeExternalAbortError } from '../../foundation/llm-provider/abort-help
 import { SUBAGENT_TIMEOUT_MS, DEFAULT_MAX_STEPS } from '../../constants.js';
 import { oneLine } from '../../types/utils.js';
 import { DEFAULT_SUBAGENT_SYSTEM_PROMPT } from '../../prompts/index.js';
-import type { TaskScheduler } from '../../foundation/tools/task-scheduler.js';
+
 import type { Message } from '../../types/message.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { SUBAGENT_AUDIT_EVENTS, REACT_LOOP_AUDIT_EVENTS } from './audit-events.js';
@@ -42,7 +42,7 @@ export interface SubAgentOptions {
   maxConsecutiveMaxTokensToolUse?: number;
   systemPrompt?: string;                    // 替换 run() 里硬编码的默认 system prompt
   callerType?: CallerType;  // 默认 'subagent'
-  taskSystem?: TaskScheduler;               // dispatch tool addTaskResultHandler 路径需要；透传至 ToolExecutor / ExecContext。phase163 起不再供调度用途。
+  taskSystem?: unknown;                     // dispatch tool addTaskResultHandler 路径需要；透传至 ToolExecutor / ExecContext。phase163 起不再供调度用途 / phase432 类型放宽（待 phase434 删 field）。
   subagentMaxSteps?: number;                 // 传给子 SubAgent
   messages?: Message[];                      // 若提供，直接用；否则从 prompt 构建
   originClawId?: string;                     // 创建链路源头，传给子 SubAgent
@@ -69,7 +69,7 @@ export class SubAgent {
   private systemPrompt?: string;
   private callerType?: CallerType;
   /** @see SubAgentOptions.taskSystem */
-  private taskSystem?: TaskScheduler;
+  private taskSystem?: unknown;
   private subagentMaxSteps?: number;
   private messages?: Message[];
   private originClawId?: string;

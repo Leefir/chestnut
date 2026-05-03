@@ -25,6 +25,48 @@ import { lsTool } from '../../src/foundation/file-tool/ls.js';
 import { searchTool } from '../../src/foundation/file-tool/search.js';
 import { makeAudit } from '../helpers/audit.js';
 import { makeTaskSystemDeps } from '../helpers/task-system.js';
+import { writePendingToolTaskFile } from '../../src/core/task/tools/_pending-tool-task-writer.js';
+import { TASKS_PENDING_DIR } from '../../src/types/paths.js';
+
+// Test helper: fs-driven async tool scheduling (replaces removed scheduleTool API)
+async function scheduleToolCompat(
+  taskSystem: TaskSystem,
+  toolName: string,
+  executeCallback: () => Promise<ToolResult>,
+  parentClawId: string,
+  options?: { isIdempotent?: boolean; maxRetries?: number; callerType?: CallerType; toolUseId?: string }
+): Promise<string> {
+  const tool: Tool = {
+    name: toolName,
+    description: 'mock',
+    schema: { type: 'object', properties: {} },
+    readonly: false,
+    idempotent: options?.isIdempotent ?? false,
+    supportsAsync: true,
+    execute: async () => executeCallback(),
+  };
+  (taskSystem as any).registry.register(tool);
+
+  const fs = (taskSystem as any).fs;
+  const auditWriter = (taskSystem as any).auditWriter;
+  const clawDir = (taskSystem as any).clawDir;
+
+  const taskId = await writePendingToolTaskFile(fs, auditWriter, {
+    toolName,
+    args: {},
+    parentClawId,
+    parentClawDir: clawDir,
+    isIdempotent: options?.isIdempotent ?? false,
+    maxRetries: options?.isIdempotent ? (options?.maxRetries ?? 2) : 0,
+    retryCount: 0,
+    callerType: options?.callerType,
+    toolUseId: options?.toolUseId,
+  });
+
+  // Manually ingest to trigger dispatch immediately in tests (skip watcher latency)
+  await (taskSystem as any)._ingestPendingFile(`${TASKS_PENDING_DIR}/${taskId}.json`);
+  return taskId;
+}
 
 // Mock tool for testing
 const createMockTool = (supportsAsync: boolean): Tool => ({
@@ -136,7 +178,7 @@ describe('TaskSystem Tool Tasks', () => {
     it('should schedule tool task and return taskId immediately', async () => {
       const executeCallback = vi.fn().mockResolvedValue({ success: true, content: 'ok' });
       
-      const taskId = await taskSystem.scheduleTool('testTool', executeCallback, 'parent-claw');
+      const taskId = await scheduleToolCompat(taskSystem, 'testTool', executeCallback, 'parent-claw');
       
       expect(taskId).toBeDefined();
       expect(typeof taskId).toBe('string');
@@ -145,7 +187,7 @@ describe('TaskSystem Tool Tasks', () => {
     it('should save task to tasks/pending/ or tasks/running/ (atomic move may complete immediately)', async () => {
       const executeCallback = vi.fn().mockResolvedValue({ success: true, content: 'ok' });
 
-      const taskId = await taskSystem.scheduleTool('testTool', executeCallback, 'parent-claw');
+      const taskId = await scheduleToolCompat(taskSystem, 'testTool', executeCallback, 'parent-claw');
 
       // Atomic fs.move() may complete before we read, so check both locations
       let rawFile: string;
@@ -173,7 +215,7 @@ describe('TaskSystem Tool Tasks', () => {
         return { success: true, content: 'slow' };
       };
       
-      const taskId = await taskSystem.scheduleTool('testTool', slowCallback, 'parent-claw');
+      const taskId = await scheduleToolCompat(taskSystem, 'testTool', slowCallback, 'parent-claw');
 
       const runningPath = path.join(testClawDir, 'tasks', 'running', `${taskId}.json`);
       await waitFor(async () => {
@@ -196,7 +238,7 @@ describe('TaskSystem Tool Tasks', () => {
     it('should execute callback and send summary + resultRef to inbox', async () => {
       const executeCallback = vi.fn().mockResolvedValue({ success: true, content: 'async result' });
       
-      const taskId = await taskSystem.scheduleTool('testTool', executeCallback, 'parent-claw');
+      const taskId = await scheduleToolCompat(taskSystem, 'testTool', executeCallback, 'parent-claw');
       
       await waitFor(async () => {
         const files = await fs.readdir(path.join(testClawDir, 'inbox', 'pending')).catch(() => [] as string[]);
@@ -235,7 +277,7 @@ describe('TaskSystem Tool Tasks', () => {
       const longResult = 'x'.repeat(1000); // Long result to test full content
       const executeCallback = vi.fn().mockResolvedValue({ success: true, content: longResult });
       
-      const taskId = await taskSystem.scheduleTool('testTool', executeCallback, 'parent-claw');
+      const taskId = await scheduleToolCompat(taskSystem, 'testTool', executeCallback, 'parent-claw');
       
       await waitFor(async () => {
         try {
@@ -274,7 +316,7 @@ describe('TaskSystem Tool Tasks', () => {
     it('should send error result with summary + resultRef', async () => {
       const executeCallback = vi.fn().mockRejectedValue(new Error('Execution failed'));
       
-      const taskId = await taskSystem.scheduleTool('testTool', executeCallback, 'parent-claw');
+      const taskId = await scheduleToolCompat(taskSystem, 'testTool', executeCallback, 'parent-claw');
       
       await waitFor(async () => {
         const files = await fs.readdir(path.join(testClawDir, 'inbox', 'pending')).catch(() => [] as string[]);
@@ -306,7 +348,7 @@ describe('TaskSystem Tool Tasks', () => {
     it('should move task to done after completion', async () => {
       const executeCallback = vi.fn().mockResolvedValue({ success: true, content: 'ok' });
       
-      const taskId = await taskSystem.scheduleTool('testTool', executeCallback, 'parent-claw');
+      const taskId = await scheduleToolCompat(taskSystem, 'testTool', executeCallback, 'parent-claw');
       
       await waitFor(async () => {
         try {
@@ -363,7 +405,7 @@ describe('TaskSystem Tool Tasks', () => {
       await taskSystem2.initialize();
       taskSystem2.startDispatch();
 
-      const taskId = await taskSystem2.scheduleTool(
+      const taskId = await scheduleToolCompat(taskSystem2, 
         'testTool',
         async () => ({ success: true, content: 'result' }),
         'parent-claw',
@@ -393,7 +435,7 @@ describe('TaskSystem Tool Tasks', () => {
       // Schedule 3 slow tasks
       const taskIds: string[] = [];
       for (let i = 0; i < 3; i++) {
-        const id = await taskSystem.scheduleTool(`slowTool${i}`, slowCallback, 'parent-claw');
+        const id = await scheduleToolCompat(taskSystem, `slowTool${i}`, slowCallback, 'parent-claw');
         taskIds.push(id);
       }
       
@@ -405,7 +447,7 @@ describe('TaskSystem Tool Tasks', () => {
       
       // Schedule a 4th task - should go to pending
       const fastCallback = vi.fn().mockResolvedValue({ success: true, content: 'fast' });
-      const fourthId = await taskSystem.scheduleTool('fourthTool', fastCallback, 'parent-claw');
+      const fourthId = await scheduleToolCompat(taskSystem, 'fourthTool', fastCallback, 'parent-claw');
       
       // Should be in pending, not running
       expect(taskSystem.listPending()).toContain(fourthId);
@@ -440,7 +482,7 @@ describe('TaskSystem Tool Tasks', () => {
       // Schedule all 5 tasks quickly
       const taskIds: string[] = [];
       for (let i = 0; i < 5; i++) {
-        const id = await taskSystem.scheduleTool(`tool${i}`, createCallback(i), 'parent-claw');
+        const id = await scheduleToolCompat(taskSystem, `tool${i}`, createCallback(i), 'parent-claw');
         taskIds.push(id);
       }
       
@@ -510,15 +552,20 @@ describe('TaskSystem Tool Tasks', () => {
       await taskSystem2.shutdown(100).catch(() => {});
     });
 
-    it('should move running/ tool tasks to done/ on initialize (callback lost)', async () => {
-      // Directly write a running file without going through scheduleTool (simulating crash residue)
+    it('should recover running/ tool tasks to pending/ on initialize (fs-driven)', async () => {
+      // phase432: ToolTask 改 fs-driven / 有 args+parentClawDir 可恢复执行
       const taskId = 'crashed-task-id';
-      const task = { 
-        kind: 'tool', 
-        id: taskId, 
-        toolName: 'crashTool', 
-        parentClawId: 'parent', 
-        createdAt: new Date().toISOString() 
+      const task = {
+        kind: 'tool',
+        id: taskId,
+        toolName: 'crashTool',
+        args: {},
+        parentClawDir: testClawDir,
+        parentClawId: 'parent',
+        createdAt: new Date().toISOString(),
+        isIdempotent: false,
+        maxRetries: 0,
+        retryCount: 0,
       };
       await fs.writeFile(
         path.join(testClawDir, 'tasks', 'running', `${taskId}.json`),
@@ -535,7 +582,7 @@ describe('TaskSystem Tool Tasks', () => {
           delete: (p: string) => fs.unlink(path.join(testClawDir, p)),
           move: (from: string, to: string) => fs.rename(path.join(testClawDir, from), path.join(testClawDir, to)),
           exists: (p: string) => fs.access(path.join(testClawDir, p)).then(() => true).catch(() => false),
-          list: (p: string) => fs.readdir(path.join(testClawDir, p), { withFileTypes: true }).then(entries => 
+          list: (p: string) => fs.readdir(path.join(testClawDir, p), { withFileTypes: true }).then(entries =>
             entries.map(e => ({ name: e.name, path: path.join(p, e.name), isDirectory: e.isDirectory() }))
           ),
           ensureDir: (p: string) => fs.mkdir(path.join(testClawDir, p), { recursive: true }),
@@ -549,28 +596,47 @@ describe('TaskSystem Tool Tasks', () => {
         } as any,
         { maxConcurrent: 3, retryBaseDelayMs: 10, auditWriter: makeAudit().audit, ...makeTaskSystemDeps() }
       );
+      // 注册工具使恢复后可执行
+      (taskSystem2 as any).registry.register({
+        name: 'crashTool',
+        description: 'mock',
+        schema: { type: 'object', properties: {} },
+        readonly: false,
+        idempotent: false,
+        supportsAsync: true,
+        execute: async () => ({ success: true, content: 'recovered' }),
+      });
       await taskSystem2.initialize();
       taskSystem2.startDispatch();
 
-      // Tool task should be moved to failed/ (not pending/), callback is lost
-      expect(taskSystem2.listPending()).not.toContain(taskId);
+      // phase432: running tool task 移回 pending，再被 ingest 执行
+      await waitFor(async () => {
+        const doneExists = await fs.access(path.join(testClawDir, 'tasks', 'done', `${taskId}.json`)).then(() => true).catch(() => false);
+        return doneExists;
+      });
+
       const runningExists = await fs.access(path.join(testClawDir, 'tasks', 'running', `${taskId}.json`)).then(() => true).catch(() => false);
       expect(runningExists).toBe(false);
-      const failedExists = await fs.access(path.join(testClawDir, 'tasks', 'failed', `${taskId}.json`)).then(() => true).catch(() => false);
-      expect(failedExists).toBe(true);
+      const doneExists = await fs.access(path.join(testClawDir, 'tasks', 'done', `${taskId}.json`)).then(() => true).catch(() => false);
+      expect(doneExists).toBe(true);
 
       await taskSystem2.shutdown(100).catch(() => {});
     });
 
-    it('should move pending/ tool tasks to done/ on initialize (callback lost)', async () => {
-      // Directly write a pending tool file (simulating daemon restart with pending tool task)
+    it('should recover pending/ tool tasks on initialize (fs-driven)', async () => {
+      // phase432: ToolTask 改 fs-driven / pending 中的 tool task 保留并被 ingest 执行
       const taskId = 'pending-tool-task-id';
-      const task = { 
-        kind: 'tool', 
-        id: taskId, 
-        toolName: 'pendingTool', 
-        parentClawId: 'parent', 
-        createdAt: new Date().toISOString() 
+      const task = {
+        kind: 'tool',
+        id: taskId,
+        toolName: 'pendingTool',
+        args: {},
+        parentClawDir: testClawDir,
+        parentClawId: 'parent',
+        createdAt: new Date().toISOString(),
+        isIdempotent: false,
+        maxRetries: 0,
+        retryCount: 0,
       };
       await fs.writeFile(
         path.join(testClawDir, 'tasks', 'pending', `${taskId}.json`),
@@ -587,7 +653,7 @@ describe('TaskSystem Tool Tasks', () => {
           delete: (p: string) => fs.unlink(path.join(testClawDir, p)),
           move: (from: string, to: string) => fs.rename(path.join(testClawDir, from), path.join(testClawDir, to)),
           exists: (p: string) => fs.access(path.join(testClawDir, p)).then(() => true).catch(() => false),
-          list: (p: string) => fs.readdir(path.join(testClawDir, p), { withFileTypes: true }).then(entries => 
+          list: (p: string) => fs.readdir(path.join(testClawDir, p), { withFileTypes: true }).then(entries =>
             entries.map(e => ({ name: e.name, path: path.join(p, e.name), isDirectory: e.isDirectory() }))
           ),
           ensureDir: (p: string) => fs.mkdir(path.join(testClawDir, p), { recursive: true }),
@@ -601,15 +667,26 @@ describe('TaskSystem Tool Tasks', () => {
         } as any,
         { maxConcurrent: 3, retryBaseDelayMs: 10, auditWriter: makeAudit().audit, ...makeTaskSystemDeps() }
       );
+      (taskSystem2 as any).registry.register({
+        name: 'pendingTool',
+        description: 'mock',
+        schema: { type: 'object', properties: {} },
+        readonly: false,
+        idempotent: false,
+        supportsAsync: true,
+        execute: async () => ({ success: true, content: 'recovered' }),
+      });
       await taskSystem2.initialize();
       taskSystem2.startDispatch();
 
-      // Tool task should be moved to failed/ (not queued), callback is lost
-      expect(taskSystem2.listPending()).not.toContain(taskId);
-      const pendingExists = await fs.access(path.join(testClawDir, 'tasks', 'pending', `${taskId}.json`)).then(() => true).catch(() => false);
-      expect(pendingExists).toBe(false);
-      const failedExists = await fs.access(path.join(testClawDir, 'tasks', 'failed', `${taskId}.json`)).then(() => true).catch(() => false);
-      expect(failedExists).toBe(true);
+      // phase432: pending tool task 被 ingest 并执行
+      await waitFor(async () => {
+        const doneExists = await fs.access(path.join(testClawDir, 'tasks', 'done', `${taskId}.json`)).then(() => true).catch(() => false);
+        return doneExists;
+      });
+
+      const doneExists = await fs.access(path.join(testClawDir, 'tasks', 'done', `${taskId}.json`)).then(() => true).catch(() => false);
+      expect(doneExists).toBe(true);
 
       await taskSystem2.shutdown(100).catch(() => {});
     });
@@ -739,7 +816,7 @@ describe('TaskSystem Tool Tasks', () => {
       const longContent = 'output-' + 'x'.repeat(300);
       const executeCallback = vi.fn().mockResolvedValue({ success: true, content: longContent });
 
-      const taskId = await taskSystem.scheduleTool('testTool', executeCallback, 'parent-claw');
+      const taskId = await scheduleToolCompat(taskSystem, 'testTool', executeCallback, 'parent-claw');
       await waitFor(async () => {
         const files = await fs.readdir(path.join(testClawDir, 'inbox', 'pending')).catch(() => [] as string[]);
         return (files as string[]).some(f => f.endsWith('.md'));
@@ -768,7 +845,7 @@ describe('TaskSystem Tool Tasks', () => {
     it('should NOT call transport.sendInboxMessage (bypass transport)', async () => {
       const executeCallback = vi.fn().mockResolvedValue({ success: true, content: 'direct result' });
 
-      await taskSystem.scheduleTool('testTool', executeCallback, 'parent-claw');
+      await scheduleToolCompat(taskSystem, 'testTool', executeCallback, 'parent-claw');
       await waitFor(async () => {
         const files = await fs.readdir(path.join(testClawDir, 'inbox', 'pending')).catch(() => [] as string[]);
         return (files as string[]).some(f => f.endsWith('.md'));
@@ -811,7 +888,7 @@ describe('TaskSystem Tool Tasks', () => {
       taskSystem2.startDispatch();
 
       const executeCallback = vi.fn().mockResolvedValue({ success: true, content: 'fallback content' });
-      await taskSystem2.scheduleTool('testTool', executeCallback, 'parent-claw');
+      await scheduleToolCompat(taskSystem2, 'testTool', executeCallback, 'parent-claw');
       await waitFor(async () => {
         const files = await fs.readdir(path.join(testClawDir, 'inbox', 'pending')).catch(() => [] as string[]);
         return (files as string[]).some(f => f.endsWith('.md'));
@@ -841,7 +918,7 @@ describe('TaskSystem Tool Tasks', () => {
   describe('cancel', () => {
     it('should not attempt double moveTaskToDone after cancel', async () => {
       const slowCallback = () => new Promise<ToolResult>(r => setTimeout(() => r({ success: true, content: 'slow' }), 1000));
-      const taskId = await taskSystem.scheduleTool('slowTool', slowCallback, 'parent-claw');
+      const taskId = await scheduleToolCompat(taskSystem, 'slowTool', slowCallback, 'parent-claw');
       await waitFor(() => taskSystem.listRunning().includes(taskId));
 
       await taskSystem.cancel(taskId);
@@ -882,7 +959,7 @@ describe('TaskSystem Tool Tasks', () => {
         return { success: true, content: 'recovered' };
       });
 
-      const taskId = await taskSystem.scheduleTool('flakyTool', flakyCallback, 'parent-claw', {
+      const taskId = await scheduleToolCompat(taskSystem, 'flakyTool', flakyCallback, 'parent-claw', {
         isIdempotent: true,
         maxRetries: 2,
       });
@@ -912,7 +989,7 @@ describe('TaskSystem Tool Tasks', () => {
     it('should exhaust retries for idempotent tool and send error', async () => {
       const alwaysFailCallback = vi.fn().mockRejectedValue(new Error('Permanent error'));
 
-      const taskId = await taskSystem.scheduleTool('failTool', alwaysFailCallback, 'parent-claw', {
+      const taskId = await scheduleToolCompat(taskSystem, 'failTool', alwaysFailCallback, 'parent-claw', {
         isIdempotent: true,
         maxRetries: 2,
       });
@@ -952,7 +1029,7 @@ describe('TaskSystem Tool Tasks', () => {
     it('should not retry non-idempotent tool', async () => {
       const failCallback = vi.fn().mockRejectedValue(new Error('Write failed'));
 
-      await taskSystem.scheduleTool('writeTool', failCallback, 'parent-claw', {
+      await scheduleToolCompat(taskSystem, 'writeTool', failCallback, 'parent-claw', {
         isIdempotent: false,
       });
 
@@ -1011,7 +1088,7 @@ describe('TaskSystem Tool Tasks', () => {
       taskSystem2.startDispatch();
 
       const failCallback = vi.fn().mockRejectedValue(new Error('Tool error'));
-      const taskId = await taskSystem2.scheduleTool('tool', failCallback, 'parent', { isIdempotent: false });
+      const taskId = await scheduleToolCompat(taskSystem2, 'tool', failCallback, 'parent', { isIdempotent: false });
 
       await waitFor(async () => {
         return await fs.access(path.join(testClawDir, 'tasks', 'failed', `${taskId}.json`)).then(() => true).catch(() => false);
@@ -1040,7 +1117,7 @@ describe('TaskSystem Tool Tasks', () => {
         // Never resolves - will be aborted
       });
 
-      const taskId = await taskSystem.scheduleTool('slowTool', slowCallback, 'parent-claw');
+      const taskId = await scheduleToolCompat(taskSystem, 'slowTool', slowCallback, 'parent-claw');
       
       // Cancel immediately - should not throw even if task is pending or running
       await taskSystem.cancel(taskId);
@@ -1063,7 +1140,7 @@ describe('TaskSystem Tool Tasks', () => {
 
       const writeSpy = vi.spyOn((taskSystem as any).auditWriter, 'write');
 
-      const taskId = await taskSystem.scheduleTool(
+      const taskId = await scheduleToolCompat(taskSystem, 
         'testTool',
         async () => ({ success: true, content: 'ok' }),
         'parent-claw',
@@ -1079,9 +1156,8 @@ describe('TaskSystem Tool Tasks', () => {
 
   // Phase 17: callback 丢失恢复路径 + shutdown
   describe('Phase 17 untested paths', () => {
-    it('should discard ToolTask on daemon restart and send error to parent', async () => {
-      // Simulate daemon restart: ToolTask written to tasks/pending/ but no callback registered
-      // New behavior: move to failed/ and send error message to parent inbox
+    it('should recover ToolTask on daemon restart (fs-driven)', async () => {
+      // phase432: ToolTask 改 fs-driven / args+parentClawDir 可恢复执行
       const freshDir = path.join(testDir, `callback-loss-${Date.now()}`);
       await fs.mkdir(path.join(freshDir, 'tasks', 'pending'), { recursive: true });
       await fs.mkdir(path.join(freshDir, 'tasks', 'running'), { recursive: true });
@@ -1096,8 +1172,9 @@ describe('TaskSystem Tool Tasks', () => {
         path.join(freshDir, 'tasks', 'pending', `${taskId}.json`),
         JSON.stringify({
           id: taskId, kind: 'tool', toolName: 'testTool',
+          args: {}, parentClawDir: freshDir,
           isIdempotent: false, maxRetries: 0, retryCount: 0,
-          parentClawId: 'test-claw', createdAt: new Date().toISOString(), status: 'pending',
+          parentClawId: 'test-claw', createdAt: new Date().toISOString(),
         }, null, 2),
       );
 
@@ -1125,25 +1202,28 @@ describe('TaskSystem Tool Tasks', () => {
         } as any,
         { maxConcurrent: 3, retryBaseDelayMs: 10, auditWriter: makeAudit().audit, ...makeTaskSystemDeps() },
       );
+      (freshSystem as any).registry.register({
+        name: 'testTool',
+        description: 'mock',
+        schema: { type: 'object', properties: {} },
+        readonly: false,
+        idempotent: false,
+        supportsAsync: true,
+        execute: async () => ({ success: true, content: 'recovered' }),
+      });
 
       await freshSystem.initialize();
       freshSystem.startDispatch();
-      // Tool task should be moved to failed/ during recovery (callback lost), not executed
 
-      // Task should be in failed/, not pending or running
-      const failedExists = await fs.access(path.join(freshDir, 'tasks', 'failed', `${taskId}.json`)).then(() => true).catch(() => false);
-      expect(failedExists).toBe(true);
+      // phase432: Tool task 被恢复执行并最终移到 done/
+      await waitFor(async () => {
+        const doneExists = await fs.access(path.join(freshDir, 'tasks', 'done', `${taskId}.json`)).then(() => true).catch(() => false);
+        return doneExists;
+      });
+
+      const doneExists = await fs.access(path.join(freshDir, 'tasks', 'done', `${taskId}.json`)).then(() => true).catch(() => false);
+      expect(doneExists).toBe(true);
       expect(freshSystem.listPending()).not.toContain(taskId);
-
-      // Error message should be sent to parent inbox
-      const inboxFiles = await fs.readdir(path.join(freshDir, 'inbox', 'pending'));
-      const mdFiles = inboxFiles.filter((f: string) => f.endsWith('.md'));
-      expect(mdFiles.length).toBe(1);
-      
-      // Verify error message content (YAML frontmatter + JSON body)
-      const inboxContent = await fs.readFile(path.join(freshDir, 'inbox', 'pending', mdFiles[0]), 'utf-8');
-      expect(inboxContent).toContain('"is_error":true');
-      expect(inboxContent).toContain('daemon restarted');
 
       await freshSystem.shutdown(500).catch(() => {});
       await fs.rm(freshDir, { recursive: true, force: true }).catch(() => {});
@@ -1158,7 +1238,7 @@ describe('TaskSystem Tool Tasks', () => {
         return { success: true, content: 'done' };
       });
 
-      await taskSystem.scheduleTool('slowTool', slowCb, 'test-claw');
+      await scheduleToolCompat(taskSystem, 'slowTool', slowCb, 'test-claw');
       await waitFor(() => taskSystem.listRunning().length > 0);
 
       // shutdown(50) — task won't finish, Promise.race timeout fires
@@ -1255,8 +1335,8 @@ describe('ToolExecutor async routing', () => {
     expect(mockTaskSystem.scheduleTool).not.toHaveBeenCalled();
   });
 
-  it('should return error when taskSystem is not available', async () => {
-    // Register tool with supportsAsync
+  it('should write pending file when taskSystem is not available (fs-driven)', async () => {
+    // phase432: async tool 不再需要 taskSystem，直接从 ctx.fs 写 pending 文件
     const asyncTool: Tool = {
       name: 'asyncTool',
       description: 'Tool with async support',
@@ -1271,7 +1351,7 @@ describe('ToolExecutor async routing', () => {
     };
     registry.register(asyncTool);
 
-    // executor without taskSystem
+    // executor without taskSystem (no longer required)
     (executor as any).taskSystem = undefined;
 
     const result = await executor.execute({
@@ -1281,11 +1361,14 @@ describe('ToolExecutor async routing', () => {
       async: true,
     });
 
-    expect(result.success).toBe(false);
-    expect(result.content).toContain('TaskSystem (not available)');
+    expect(result.success).toBe(true);
+    expect(result.content).toContain('Async task queued');
+    expect(result.metadata?.taskId).toBeDefined();
+    expect(result.metadata?.async).toBe(true);
   });
 
-  it('should schedule async task when tool supports async and taskSystem available', async () => {
+  it('should write pending file when tool supports async (fs-driven)', async () => {
+    // phase432: async tool 改 fs-driven，不再调 taskSystem.scheduleTool
     const asyncTool: Tool = {
       name: 'asyncTool',
       description: 'Tool with async support',
@@ -1309,14 +1392,9 @@ describe('ToolExecutor async routing', () => {
 
     expect(result.success).toBe(true);
     expect(result.content).toContain('Async task queued');
-    expect(result.content).toContain('mock-task-id-123');
-    expect(result.metadata).toEqual({ taskId: 'mock-task-id-123', async: true });
-    expect(mockTaskSystem.scheduleTool).toHaveBeenCalledWith(
-      'asyncTool',
-      expect.any(Function),
-      'test-claw',
-      { isIdempotent: false }
-    );
+    expect(result.metadata?.taskId).toBeDefined();
+    expect(result.metadata?.async).toBe(true);
+    expect(mockTaskSystem.scheduleTool).not.toHaveBeenCalled();
   });
 
   it('should reject read tool when async:true (supportsAsync:false)', async () => {

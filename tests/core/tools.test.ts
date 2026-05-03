@@ -455,7 +455,7 @@ describe('Tools', () => {
       ).rejects.toThrow(ToolInvalidInputError);
     });
 
-    it('should return error result when async=true but no taskSystem in ctx', async () => {
+    it('should return success when async=true (fs-driven, no taskSystem needed)', async () => {
       registry.register({
         name: 'async-capable',
         description: 'Supports async',
@@ -471,8 +471,11 @@ describe('Tools', () => {
         clawId: 'test',
         clawDir: '/test',
         profile: 'full',
-        fs: mockFs,
-        // no taskSystem
+        fs: {
+          ...mockFs,
+          writeAtomic: vi.fn().mockResolvedValue(undefined),
+        } as unknown as FileSystem,
+        // no taskSystem — phase432 不再需要
       });
 
       const result = await executor.execute({
@@ -482,8 +485,10 @@ describe('Tools', () => {
         async: true,
       });
 
-      expect(result.success).toBe(false);
-      expect(result.content).toContain('TaskSystem');
+      expect(result.success).toBe(true);
+      expect(result.content).toContain('Async task queued');
+      expect(result.metadata?.taskId).toBeDefined();
+      expect(result.metadata?.async).toBe(true);
     });
 
     it('should return error result when async=true but tool does not support async', async () => {
@@ -521,7 +526,7 @@ describe('Tools', () => {
       expect(result.content).toContain('does not support async');
     });
 
-    it('should schedule task and return taskId when async=true with supporting tool and taskSystem', async () => {
+    it('should write pending file and return taskId when async=true with supporting tool', async () => {
       registry.register({
         name: 'long-task',
         description: 'Long running task',
@@ -533,16 +538,14 @@ describe('Tools', () => {
         execute: async () => ({ success: true, content: 'done' }),
       });
 
-      const mockTaskSystem = {
-        scheduleTool: vi.fn().mockResolvedValue('task-abc-123'),
-      } as unknown as import('../../src/core/task/system.js').TaskSystem;
-      (executor as any).taskSystem = mockTaskSystem;
-
       const ctx = new ExecContextImpl({
         clawId: 'test',
         clawDir: '/test',
         profile: 'full',
-        fs: mockFs,
+        fs: {
+          ...mockFs,
+          writeAtomic: vi.fn().mockResolvedValue(undefined),
+        } as unknown as FileSystem,
       });
 
       const result = await executor.execute({
@@ -553,9 +556,9 @@ describe('Tools', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.content).toContain('task-abc-123');
+      expect(result.content).toContain('Async task queued');
+      expect(result.metadata?.taskId).toBeDefined();
       expect(result.metadata?.async).toBe(true);
-      expect(mockTaskSystem.scheduleTool).toHaveBeenCalledTimes(1);
     });
 
     it('should filter non-readonly tools in executeParallel', async () => {

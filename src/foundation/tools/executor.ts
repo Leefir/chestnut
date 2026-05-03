@@ -11,13 +11,13 @@ import type { JSONSchema7 } from '../../types/message.js';
 import type { ToolProfile } from '../../types/config.js';
 import type { FileSystem } from '../fs/types.js';
 import type { LLMOrchestrator } from '../llm-orchestrator/index.js';
-import type { TaskScheduler } from './task-scheduler.js';
 import type { OutboxWriter } from '../messaging/index.js';
 import type { Message } from '../../types/message.js';
 import type { CallerType } from './caller-type.js';
 import type { AuditLog } from '../audit/index.js';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { writePendingToolTaskFile } from '../../core/task/tools/_pending-tool-task-writer.js';
 import {
   ToolNotFoundError,
   ToolTimeoutError,
@@ -141,7 +141,7 @@ export interface IToolExecutor {
  * Tool execution implementation
  */
 export class ToolExecutorImpl implements IToolExecutor {
-  protected taskSystem?: TaskScheduler;
+  protected taskSystem?: unknown;
 
   constructor(
     private registry: ToolRegistry,
@@ -168,25 +168,25 @@ export class ToolExecutorImpl implements IToolExecutor {
     }
 
     // Async path: tool lifecycle owned by TaskSystem, no signal merge here.
-    // 4. Async path: submit to TaskSystem, return immediately
+    // 4. Async path: write fs pending file, watcher will ingest and dispatch
     if (options.async) {
       if (ctx.callerType !== 'claw') {
         return { success: false, content: 'Async mode is not available for subagents.' };
       }
-      const taskSystem = this.taskSystem;
-      if (!taskSystem) {
-        return { success: false, content: 'Async mode requires TaskSystem (not available).' };
-      }
       if (!tool.supportsAsync) {
         return { success: false, content: `Tool "${toolName}" does not support async mode.` };
       }
-      const executeCallback = () => tool.execute(args, ctx);
-      const taskId = await taskSystem.scheduleTool(
+      const taskId = await writePendingToolTaskFile(ctx.fs, ctx.auditWriter, {
         toolName,
-        executeCallback,
-        ctx.clawId,
-        { isIdempotent: tool.idempotent, callerType: ctx.callerType === 'claw' ? undefined : ctx.callerType, toolUseId: options.toolUseId }
-      );
+        args,
+        parentClawId: ctx.clawId,
+        parentClawDir: ctx.clawDir,
+        isIdempotent: tool.idempotent,
+        maxRetries: tool.idempotent ? 2 : 0,
+        retryCount: 0,
+        callerType: ctx.callerType === 'claw' ? undefined : ctx.callerType,
+        toolUseId: options.toolUseId,
+      });
       ctx.auditWriter?.write(
         'tool_async_start',
         toolName,
@@ -336,7 +336,7 @@ export interface ToolExecutorOptions {
   clawDir: string;
   fs: FileSystem;
   llm?: LLMOrchestrator;
-  taskSystem?: TaskScheduler;
+  taskSystem?: unknown;
   profile?: ToolProfile;
   subagentMaxSteps?: number;
   auditWriter?: AuditLog;

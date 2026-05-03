@@ -29,14 +29,11 @@ export async function recoverTasks(deps: RecoveryDeps): Promise<void> {
           const content = await fs.read(entry.path);
           const task = JSON.parse(content) as SubAgentTask | ToolTask;
           if (task.kind === 'tool') {
-            // callback 已丢失，移动到 failed，不重新执行
-            const failedPath = `tasks/failed/${task.id}.json`;
-            await fs.move(entry.path, failedPath);
-            auditWriter?.write(TASK_AUDIT_EVENTS.DISCARDED, task.id, 'kind=tool', 'reason=daemon_restarted');
-            // 通知 parent，避免永久挂起
-            await sendFallbackError(fs, auditWriter, task, 'daemon restarted, tool task discarded').catch((e) => {
-              auditWriter?.write(TASK_AUDIT_EVENTS.RECOVERY_FAILED, task.id, 'context=sendFallbackError', `error=${e instanceof Error ? e.message : JSON.stringify(e)}`);
-            });
+            // phase432: ToolTask 改为 fs-driven / args+parentClawDir 可恢复 / 移回 pending 重新执行
+            const pendingPath = `${TASKS_PENDING_DIR}/${task.id}.json`;
+            await fs.move(entry.path, pendingPath);
+            recoveredFromRunning++;
+            auditWriter?.write(TASK_AUDIT_EVENTS.RECOVERED, task.id, `kind=${task.kind}`, 'from=running', 'to=pending');
           } else {
             // subagent 任务：检测是否已写出结果
             const resultPath  = `tasks/results/${task.id}/result.txt`;
@@ -92,14 +89,7 @@ export async function recoverTasks(deps: RecoveryDeps): Promise<void> {
           const content = await fs.read(entry.path);
           const task = JSON.parse(content) as SubAgentTask | ToolTask;
           if (task.kind === 'tool') {
-            // pending 里的 tool 任务同样 callback 已丢失，移动到 failed
-            const failedPath = `tasks/failed/${task.id}.json`;
-            await fs.move(entry.path, failedPath);
-            auditWriter?.write(TASK_AUDIT_EVENTS.DISCARDED, task.id, 'kind=tool', 'reason=daemon_restarted');
-            // 通知 parent，避免永久挂起
-            await sendFallbackError(fs, auditWriter, task, 'daemon restarted, tool task discarded').catch((e) => {
-              auditWriter?.write(TASK_AUDIT_EVENTS.RECOVERY_FAILED, task.id, 'context=sendFallbackError_pending', `error=${e instanceof Error ? e.message : JSON.stringify(e)}`);
-            });
+            // phase432: ToolTask 保留在 pending/，由 _initialScanPending 统一入队
           } else {
             // subagent 文件保留在 pending/，由 _initialScanPending 统一入队
           }

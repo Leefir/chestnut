@@ -33,6 +33,7 @@ import { executeToolTask } from './tool-executor.js';
 import { createWatcher, type Watcher } from '../../foundation/file-watcher/index.js';
 import { TASK_AUDIT_EVENTS } from './audit-events.js';
 import { writePendingSubagentTaskFile } from './tools/_pending-task-writer.js';
+import { writePendingToolTaskFile } from './tools/_pending-tool-task-writer.js';
 
 export interface TaskSystemOptions {
   maxConcurrent?: number;
@@ -69,6 +70,8 @@ export interface ToolTask {
   kind: 'tool';
   id: string;
   toolName: string;
+  args: Record<string, unknown>;        // fs-persistable / 替代 callback closure
+  parentClawDir: string;                // caller clawDir / ctx 重建用
   parentClawId: string;
   createdAt: string;
   isIdempotent: boolean;  // Determines if retry is allowed
@@ -118,8 +121,6 @@ export class TaskSystem {
   // tool tasks still use this as entry point
   private pendingQueue: Array<SubAgentTask | ToolTask> = [];
 
-  // Store tool callbacks separately (not serializable to disk)
-  private pendingCallbacks: Map<string, () => Promise<ToolResult>> = new Map();
   private retryBaseDelayMs: number;
 
   constructor(
@@ -218,51 +219,7 @@ export class TaskSystem {
     return taskId;
   }
 
-  /**
-   * Schedule a new tool task for async execution
-   * Returns taskId immediately, task enters pending queue and will be dispatched
-   */
-  async scheduleTool(
-    toolName: string,
-    executeCallback: () => Promise<ToolResult>,
-    parentClawId: string,
-    options?: { isIdempotent?: boolean; maxRetries?: number; callerType?: CallerType; toolUseId?: string }
-  ): Promise<string> {
-    const taskId = randomUUID();
-    const isIdempotent = options?.isIdempotent ?? false;
-    const task: ToolTask = {
-      kind: 'tool',
-      id: taskId,
-      toolName,
-      parentClawId,
-      createdAt: new Date().toISOString(),
-      isIdempotent,
-      maxRetries: isIdempotent ? (options?.maxRetries ?? 2) : 0,
-      retryCount: 0,
-      callerType: options?.callerType,
-      toolUseId: options?.toolUseId,
-    };
 
-    // Save to pending directory before registering in memory
-    const taskPath = `${TASKS_PENDING_DIR}/${taskId}.json`;
-    await this.fs.writeAtomic(taskPath, JSON.stringify(task, null, 2));
-
-    // Guard: check queue capacity before registering callback
-    if (this.pendingQueue.length >= TaskSystem.PENDING_QUEUE_MAX) {
-      throw new Error(`pendingQueue full (${TaskSystem.PENDING_QUEUE_MAX} tasks pending)`);
-    }
-
-    // Register callback only after file write succeeds and queue capacity confirmed
-    this.pendingCallbacks.set(taskId, executeCallback);
-    this.pendingQueue.push(task);
-
-    this.auditWriter?.write('task_scheduled', taskId, 'kind=tool', `parent=${parentClawId}`, `tool=${toolName}`, `queue=${this.pendingQueue.length}`);
-
-    // Trigger dispatch
-    this._dispatch();
-
-    return taskId;
-  }
 
   /**
    * Startup scan: ingest all existing pending files through the same path
@@ -291,7 +248,7 @@ export class TaskSystem {
 
       const content = await this.fs.read(filePath);
       const task = JSON.parse(content) as SubAgentTask | ToolTask;
-      if (task.kind !== 'subagent') return;
+      if (task.kind !== 'subagent' && task.kind !== 'tool') return;
 
       // task_started stream event triggered here (covers spawn direct write,
       // scheduleSubAgent, and startup recovery scan uniformly)
@@ -350,11 +307,12 @@ export class TaskSystem {
       
       // Execute the task
       if (task.kind === 'tool') {
-        const callback = this.pendingCallbacks.get(task.id);
-        this.pendingCallbacks.delete(task.id); // Clean up
-        if (!callback) {
-          throw new Error(`Tool task ${task.id} (${(task as ToolTask).toolName}) missing callback — cannot execute`);
+        const tool = this.registry.getAll().find(t => t.name === task.toolName);
+        if (!tool) {
+          throw new Error(`Tool "${task.toolName}" not found in registry`);
         }
+        const reconstructedCtx = this.buildToolTaskExecContext(task, signal);
+        const callback = () => tool.execute(task.args, reconstructedCtx);
         await executeToolTask(task, callback, signal, {
           fs: this.fs,
           auditWriter: this.auditWriter,
@@ -384,8 +342,7 @@ export class TaskSystem {
         this.auditWriter?.write(TASK_AUDIT_EVENTS.START_FAILED, task.id, 'context=sendFallbackError', `error=${e instanceof Error ? e.message : JSON.stringify(e)}`);
       });
       
-      // Clean up callback if present
-      this.pendingCallbacks.delete(task.id);
+
     } finally {
       // Remove from running and trigger next dispatch
       this.runningTasks.delete(task.id);
@@ -490,9 +447,6 @@ export class TaskSystem {
       } catch { /* 无 task 仍可移文件 */ }
     }
 
-    // 清理 tool callback
-    this.pendingCallbacks.delete(taskId);
-
     // 文件：pending → failed
     if (fileExists) {
       await this.fs.move(
@@ -524,6 +478,23 @@ export class TaskSystem {
     return writePendingSubagentTaskFile(this.fs, motionAudit, taskInfo);
   }
 
+  private buildToolTaskExecContext(task: ToolTask, signal: AbortSignal): import('../../foundation/tools/executor.js').ExecContext {
+    return {
+      clawId: task.parentClawId,
+      clawDir: task.parentClawDir,
+      callerType: task.callerType ?? 'claw',
+      fs: this.fs,
+      profile: 'full',
+      stepNumber: 0,
+      maxSteps: 1,
+      signal,
+      isMotionChain: task.parentClawId === 'motion',
+      auditWriter: this.auditWriter,
+      getElapsedMs: () => 0,
+      incrementStep: () => { /* no-op */ },
+    };
+  }
+
   async shutdown(timeoutMs: number = 30000): Promise<void> {
     // 顺序：先关 watcher（避免 shutdown 期间新事件进队）→ 旧 shutdown 流程
     await this.pendingWatcher?.close();
@@ -549,6 +520,5 @@ export class TaskSystem {
 
     this.runningTasks.clear();
     this.pendingQueue = [];
-    this.pendingCallbacks.clear();
   }
 }
