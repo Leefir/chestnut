@@ -1,6 +1,6 @@
 /**
  * @module L4.Permissions
- * Claw permission policy (L4 业务 / 从 L1 foundation/fs/permissions.ts phase377 迁出)
+ * Claw permission policy (L4 业务 / phase377 从 L1 迁出 / phase430 彻底归 L4)
  *
  * Enforces access rules:
  * - System space (read-only): AGENTS.md, dialog/, config.yaml, .clawforum/, system/
@@ -9,8 +9,9 @@
  * - Claw readable space: + contract/, tasks/results/
  * - Outside clawDir: denied (PathNotInClawSpaceError)
  *
- * L1 foundation/fs/permissions.ts 仅留 PermissionChecker interface（OS-neutral）+
- * createNullPermissionChecker（OS-only 默认 fallback）。
+ * Phase430: PermissionChecker interface + createClawPermissionChecker 完全归 L4。
+ * NodeFileSystem (L1) 0 PermissionChecker dep / 0 业务概念。
+ * L4 caller (FileTool 等) 自治调 claw-permissions check 后 call fs。
  */
 
 import * as path from 'path';
@@ -19,7 +20,16 @@ import {
   WriteOperationForbiddenError,
 } from '../../types/errors.js';
 import { TASKS_RUNNING_DIR, TASKS_DONE_DIR } from '../../types/paths.js';
-import type { PermissionChecker } from '../../foundation/fs/permissions.js';
+/**
+ * Permission checker interface (L4-owned / was in L1 foundation/fs/permissions.ts phase377)
+ * Phase430: NodeFileSystem (L1) 0 dep — L4 caller 自治调。
+ */
+export interface PermissionChecker {
+  checkRead(targetPath: string): void;
+  checkWrite(targetPath: string): void;
+  resolveAndCheck(relativePath: string, operation: 'read' | 'write'): string;
+}
+
 
 /**
  * System directories/files that are read-only for claws

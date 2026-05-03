@@ -3,7 +3,8 @@
  * FileSystem module (L1)
  *
  * clawforum 进程内代码的所有文件 I/O 的唯一入口。
- * 原子写、路径守护、权限域配置。
+ * 原子写、路径守护（OS 级 base-dir traversal + symlink）。
+ * 零业务概念 — claw-space boundary 由 L4 caller 自治。
  */
 
 // Types and interfaces
@@ -20,14 +21,6 @@ export { FileNotFoundError } from '../../types/errors.js';
 
 // Implementation classes
 export { NodeFileSystem } from './node-fs.js';
-
-// Permission utilities
-export {
-  createNullPermissionChecker,
-} from './permissions.js';
-export type {
-  PermissionChecker,
-} from './permissions.js';
 
 // Atomic file operations
 export {

@@ -1,7 +1,8 @@
 /**
  * NodeFileSystem - FileSystem implementation using Node.js fs/promises
  *
- * Atomic operations + path guarding + permission domains
+ * Atomic operations + path guarding (OS-level base-dir traversal + symlink)
+ * Zero business policy — claw-space boundary is caller-owned (L4).
  */
 
 import * as path from 'path';
@@ -13,8 +14,6 @@ import type {
   FileSystemOptions,
   FileEntry,
 } from './index.js';
-import { createNullPermissionChecker } from './permissions.js';
-import type { PermissionChecker } from './permissions.js';
 import {
   readFile,
   writeAtomic,
@@ -36,23 +35,16 @@ import {
  * Node.js FileSystem implementation
  */
 export class NodeFileSystem implements FileSystem {
-  private readonly permissionChecker: PermissionChecker;
-  private readonly hasInjectedChecker: boolean;
-
   constructor(
     private readonly options: FileSystemOptions,
-    permissionChecker?: PermissionChecker,
-  ) {
-    this.hasInjectedChecker = permissionChecker !== undefined;
-    this.permissionChecker = permissionChecker ?? createNullPermissionChecker(options.baseDir);
-  }
+  ) {}
   
   // ========================================================================
   // Path utilities
   // ========================================================================
   
   /**
-   * Resolve relative path to absolute, with permission check
+   * Resolve relative path to absolute, with base-dir traversal guard
    */
   private resolveAndCheck(
     relativePath: string, 
@@ -70,43 +62,36 @@ export class NodeFileSystem implements FileSystem {
     
     const absolute = path.resolve(this.options.baseDir, normalized);
 
-    // Resolve symlinks to prevent traversal via symlinks
-    if (this.hasInjectedChecker) {
-      const realBase = (() => {
-        try { return realpathSync(this.options.baseDir); } catch { return this.options.baseDir; }
-      })();
+    // Resolve symlinks to prevent traversal via symlinks (OS-level guard)
+    const realBase = (() => {
+      try { return realpathSync(this.options.baseDir); } catch { return this.options.baseDir; }
+    })();
 
-      let realTarget: string | null = null;
-      try {
-        realTarget = realpathSync(absolute);
-      } catch (err) {
-        if ((err as NodeJS.ErrnoException).code === 'ENOENT' && operation === 'write') {
-          // File doesn't exist yet; check parent directory instead
-          try {
-            realTarget = realpathSync(path.dirname(absolute));
-          } catch {
-            // Parent also doesn't exist (will be created by ensureDir) — accept
-          }
-        }
-        // For read ENOENT: leave realTarget null, let caller handle missing file
-      }
-
-      if (realTarget !== null) {
-        const withinBase =
-          realTarget === realBase ||
-          realTarget.startsWith(realBase + path.sep);
-        if (!withinBase) {
-          throw new PermissionError(
-            `Symlink traversal detected: "${relativePath}" resolves outside base directory`,
-            { path: relativePath }
-          );
+    let realTarget: string | null = null;
+    try {
+      realTarget = realpathSync(absolute);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT' && operation === 'write') {
+        // File doesn't exist yet; check parent directory instead
+        try {
+          realTarget = realpathSync(path.dirname(absolute));
+        } catch {
+          // Parent also doesn't exist (will be created by ensureDir) — accept
         }
       }
+      // For read ENOENT: leave realTarget null, let caller handle missing file
+    }
 
-      if (operation === 'read') {
-        this.permissionChecker.checkRead(absolute);
-      } else {
-        this.permissionChecker.checkWrite(absolute);
+    if (realTarget !== null) {
+      const basePrefix = realBase.endsWith(path.sep) ? realBase : realBase + path.sep;
+      const withinBase =
+        realTarget === realBase ||
+        realTarget.startsWith(basePrefix);
+      if (!withinBase) {
+        throw new PermissionError(
+          `Symlink traversal detected: "${relativePath}" resolves outside base directory`,
+          { path: relativePath }
+        );
       }
     }
 
@@ -456,4 +441,3 @@ export class NodeFileSystem implements FileSystem {
     }
   }
 }
-

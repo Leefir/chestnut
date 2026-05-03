@@ -10,7 +10,18 @@
 
 import * as nodePath from 'path';
 import * as fsNative from 'fs';
-import type { Tool, ToolResult, ExecContext } from '../tools/executor.js';
+import type { Tool, ToolResult, ExecContext } from '../../core/tools/executor.js';
+import { createClawPermissionChecker } from '../../core/permissions/claw-permissions.js';
+import type { PermissionChecker } from '../../core/permissions/claw-permissions.js';
+
+const checkerCache = new Map<string, PermissionChecker>();
+
+function getChecker(clawDir: string): PermissionChecker {
+  if (!checkerCache.has(clawDir)) {
+    checkerCache.set(clawDir, createClawPermissionChecker({ clawDir, strict: true }));
+  }
+  return checkerCache.get(clawDir)!;
+}
 
 // Allowed paths/prefixes for search tool (MVP aligned)
 const SEARCH_ALLOWLIST = [
@@ -104,6 +115,10 @@ export const searchTool: Tool = {
     const searchPath = (args.path as string) ?? 'clawspace/';
     const maxResults = (args.max_results as number) ?? 5;
     const clawParam = args.claw as string | undefined;
+
+    // Phase430: claw-space boundary check — caller autonomy
+    const checker = getChecker(ctx.clawDir);
+    checker.resolveAndCheck(searchPath, 'read');
 
     // Motion-only: search files in another claw
     let baseDir: string;

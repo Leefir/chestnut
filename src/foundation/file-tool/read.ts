@@ -12,6 +12,17 @@ import * as nodePath from 'path';
 import * as fsNative from 'fs';
 import type { Tool, ToolResult, ExecContext } from '../tools/executor.js';
 import { READ_MAX_LINES, READ_MAX_CHARS } from '../../constants.js';
+import { createClawPermissionChecker } from '../../core/permissions/claw-permissions.js';
+import type { PermissionChecker } from '../../core/permissions/claw-permissions.js';
+
+const checkerCache = new Map<string, PermissionChecker>();
+
+function getChecker(clawDir: string): PermissionChecker {
+  if (!checkerCache.has(clawDir)) {
+    checkerCache.set(clawDir, createClawPermissionChecker({ clawDir, strict: true }));
+  }
+  return checkerCache.get(clawDir)!;
+}
 
 // Blocked paths (MVP aligned) - blacklist only
 const READ_BLOCKLIST = [
@@ -75,6 +86,10 @@ export const readTool: Tool = {
         content: `Error: Path traversal not allowed: "${filePath}"`,
       };
     }
+
+    // Phase430: claw-space boundary check — caller autonomy
+    const checker = getChecker(ctx.clawDir);
+    checker.resolveAndCheck(normalized, 'read');
 
     // Motion-only: read from another claw's directory
     let content: string;

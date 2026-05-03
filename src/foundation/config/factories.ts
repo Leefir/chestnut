@@ -43,7 +43,7 @@ import { getClawforumRoot } from './index.js';
  *
  * 边界：
  *   - 不 acquireLock；不写 audit；不校验目录存在性
- *   - OS-only（不传 PermissionChecker / CLI 查询场景不做权限裁剪）
+ *   - OS-only（NodeFileSystem 0 PermissionChecker dep / phase430 caller 自治）
  *
  * 失败：
  *   - 构造失败（NodeFileSystem / createSystemAudit / createAgentProcessManager 任一抛错）→ 原样上抛

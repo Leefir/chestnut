@@ -10,11 +10,11 @@
 
 import { describe, it, expect } from 'vitest';
 import * as path from 'path';
-import { createClawPermissionChecker } from '../../src/core/permissions/claw-permissions.js';
+import { createClawPermissionChecker } from '../../../src/core/permissions/claw-permissions.js';
 import {
   PathNotInClawSpaceError,
   WriteOperationForbiddenError,
-} from '../../src/types/errors.js';
+} from '../../../src/types/errors.js';
 
 const CLAW_DIR = '/tmp/test-claw';
 

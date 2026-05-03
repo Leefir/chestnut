@@ -23,17 +23,14 @@ import { DialogStore } from '../../src/foundation/dialog-store/index.js';
 import { Snapshot } from '../../src/foundation/snapshot/index.js';
 import { SNAPSHOT_IGNORE_PATTERNS } from '../../src/foundation/snapshot/index.js';
 import { InboxReader } from '../../src/foundation/messaging/index.js';
-import { createClawPermissionChecker } from '../../src/core/permissions/claw-permissions.js';
+
 import { OutboxWriter } from '../../src/foundation/messaging/index.js';
 import { INBOX_PENDING_DIR, INBOX_DONE_DIR, INBOX_FAILED_DIR } from '../../src/types/paths.js';
 
 describe('Runtime.initialize() failure audits', () => {
   async function makeDeps(clawDir: string, overrides: { sessionManager?: DialogStore; inboxReader?: InboxReader } = {}) {
     const systemFs = new NodeFileSystem({ baseDir: clawDir });
-    const clawFs = new NodeFileSystem(
-      { baseDir: clawDir },
-      createClawPermissionChecker({ clawDir, strict: true }),
-    );
+    const clawFs = new NodeFileSystem({ baseDir: clawDir });
     const auditWriter = new AuditWriter(systemFs, 'audit.tsv', null);
 
     const snapshot = new Snapshot(clawDir, systemFs, auditWriter, SNAPSHOT_IGNORE_PATTERNS);

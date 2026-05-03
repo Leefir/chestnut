@@ -8,7 +8,7 @@ import { createStreamWriter } from '../foundation/stream/index.js';
 import type { StreamWriter } from '../foundation/stream/writer.js';
 import type { ProcessManager } from '../foundation/process-manager/manager.js';
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
-import { createClawPermissionChecker } from '../core/permissions/claw-permissions.js';
+
 import { createAgentProcessManager } from '../foundation/process-manager/agent-factory.js';
 import { type Runtime, type RuntimeDependencies } from '../core/runtime/index.js';
 import { createRuntime } from '../core/runtime/index.js';
@@ -102,10 +102,9 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   // systemFs: used by AuditWriter / Snapshot / DialogStore / Skill/Contract/Outbox/Inbox/Task/Context/Stream
   const systemFs = new NodeFileSystem({ baseDir: clawDir });
   // clawFs: used by tools via ExecContextImpl.fs
-  const clawFs = new NodeFileSystem(
-    { baseDir: clawDir },
-    createClawPermissionChecker({ clawDir, strict: true }),
-  );
+  // phase430: PermissionChecker removed from NodeFileSystem ctor;
+  // claw-space boundary is enforced by L4 caller (tools) autonomy.
+  const clawFs = new NodeFileSystem({ baseDir: clawDir });
   const parentFs = new NodeFileSystem({ baseDir: path.join(clawDir, '..') });
 
   // --- 1. AuditWriter (daemon.ts L100-104) ---

@@ -11,6 +11,17 @@
 import * as path from 'path';
 import type { Tool, ToolResult, ExecContext } from '../tools/executor.js';
 import { WRITE_SIZE_LIMITS, WRITE_VERSION_RETENTION } from '../../constants.js';
+import { createClawPermissionChecker } from '../../core/permissions/claw-permissions.js';
+import type { PermissionChecker } from '../../core/permissions/claw-permissions.js';
+
+const checkerCache = new Map<string, PermissionChecker>();
+
+function getChecker(clawDir: string): PermissionChecker {
+  if (!checkerCache.has(clawDir)) {
+    checkerCache.set(clawDir, createClawPermissionChecker({ clawDir, strict: true }));
+  }
+  return checkerCache.get(clawDir)!;
+}
 
 function getSizeLimits(filePath: string): [number, number] {
   for (const [prefix, limits] of Object.entries(WRITE_SIZE_LIMITS)) {
@@ -100,6 +111,10 @@ export const writeTool: Tool = {
     const filePath = args.path as string;
     const content = args.content as string;
     const append = args.append === true;
+
+    // Phase430: claw-space boundary check — caller autonomy
+    const checker = getChecker(ctx.clawDir);
+    checker.resolveAndCheck(filePath, 'write');
 
     // Size limits (MVP aligned)
     const [softLimit, hardLimit] = getSizeLimits(filePath);

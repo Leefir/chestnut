@@ -75,10 +75,10 @@ vi.mock('../../src/foundation/audit/index.js', () => ({
 vi.mock('../../src/foundation/config/index.js', () => ({
   loadGlobalConfig: vi.fn(() => ({})),
   loadClawConfig: vi.fn(() => ({})),
-  getClawDir: vi.fn((name: string) => `/tmp/test-${name}`),
-  getMotionDir: vi.fn(() => '/tmp/test-motion'),
   getClawforumRoot: vi.fn(() => '/tmp/test-root'),
-  resolveAgentDir: vi.fn((id: string) => id === 'motion' ? '/tmp/test-motion' : `/tmp/test-${id}`),
+  getClawDir: vi.fn((name: string) => `/tmp/test-root/claws/${name}`),
+  getMotionDir: vi.fn(() => '/tmp/test-root/motion'),
+  resolveAgentDir: vi.fn((id: string) => id === 'motion' ? '/tmp/test-root/motion' : `/tmp/test-root/claws/${id}`),
 }));
 
 // node 内置 mock

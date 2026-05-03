@@ -2,7 +2,7 @@ import * as path from 'path';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { AuditWriter } from '../../src/foundation/audit/writer.js';
 import { Snapshot, SNAPSHOT_IGNORE_PATTERNS } from '../../src/foundation/snapshot/index.js';
-import { createClawPermissionChecker } from '../../src/core/permissions/claw-permissions.js';
+
 import { DialogStore } from '../../src/foundation/dialog-store/index.js';
 import { InboxReader, OutboxWriter } from '../../src/foundation/messaging/index.js';
 import { LLMOrchestratorImpl } from '../../src/foundation/llm-orchestrator/orchestrator.js';
@@ -29,10 +29,7 @@ export interface MakeRuntimeDepsInput {
 export async function makeRuntimeDeps(input: MakeRuntimeDepsInput): Promise<RuntimeDependencies> {
   const { clawDir, clawId = TEST_CLAW_ID } = input;
   const systemFs = new NodeFileSystem({ baseDir: clawDir });
-  const clawFs = new NodeFileSystem(
-    { baseDir: clawDir },
-    createClawPermissionChecker({ clawDir, strict: true }),
-  );
+  const clawFs = new NodeFileSystem({ baseDir: clawDir });
   const auditWriter = new AuditWriter(systemFs, 'audit.tsv', null);
   const snapshot = new Snapshot(clawDir, systemFs, auditWriter, SNAPSHOT_IGNORE_PATTERNS);
   await snapshot.init();

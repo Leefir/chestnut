@@ -61,7 +61,7 @@ describe('runRandomDream', () => {
 
   beforeEach(async () => {
     clawforumDir = await createTempDir();
-    motionDir = await createTempDir();
+    motionDir = path.join(clawforumDir, 'motion');
     await fs.mkdir(path.join(motionDir, 'inbox', 'pending'), { recursive: true });
     mockWritePendingSubAgentTask.mockReset();
     mockWritePendingSubAgentTask.mockResolvedValue(taskId);

@@ -16,11 +16,8 @@ import {
   NodeFileSystem,
   writeAtomic,
 } from '../../src/foundation/fs/index.js';
-import { createClawPermissionChecker } from '../../src/core/permissions/claw-permissions.js';
 import {
   PermissionError,
-  PathNotInClawSpaceError,
-  WriteOperationForbiddenError,
   FileNotFoundError,
 } from '../../src/types/errors.js';
 
@@ -74,10 +71,7 @@ describe('FileSystem', () => {
     
     beforeEach(async () => {
       tempDir = await createTempDir();
-      fs = new NodeFileSystem(
-        { baseDir: tempDir },
-        createClawPermissionChecker({ clawDir: tempDir, strict: true }),
-      );
+      fs = new NodeFileSystem({ baseDir: tempDir });
     });
     
     afterEach(async () => {
@@ -143,68 +137,33 @@ describe('FileSystem', () => {
     });
   });
   
-  describe('permissions', () => {
+  describe('base-dir traversal guard', () => {
     let tempDir: string;
     let fs: NodeFileSystem;
-    
+
     beforeEach(async () => {
       tempDir = await createTempDir();
-      fs = new NodeFileSystem(
-        { baseDir: tempDir },
-        createClawPermissionChecker({ clawDir: tempDir, strict: true }),
-      );
-      
-      // Create directories using native fs (bypass permission checks for setup)
-      await nativeFs.mkdir(path.join(tempDir, 'clawspace'), { recursive: true });
-      // Note: 'dialog' is a system path, so we create it directly with native fs
-      await nativeFs.mkdir(path.join(tempDir, 'dialog'), { recursive: true });
-      await nativeFs.writeFile(path.join(tempDir, 'dialog', '.gitkeep'), '', 'utf-8');
+      fs = new NodeFileSystem({ baseDir: tempDir });
     });
-    
+
     afterEach(async () => {
       await cleanupTempDir(tempDir);
     });
-    
-    it('should allow read within clawDir', async () => {
-      await fs.writeAtomic('clawspace/test.txt', 'test');
-      const content = await fs.read('clawspace/test.txt');
+
+    it('should allow read within baseDir', async () => {
+      await fs.writeAtomic('test.txt', 'test');
+      const content = await fs.read('test.txt');
       expect(content).toBe('test');
     });
-    
-    it('should allow write to writable directories', async () => {
-      await fs.writeAtomic('clawspace/write.txt', 'writable');
-      expect(await fs.read('clawspace/write.txt')).toBe('writable');
-    });
-    
-    it('should throw error for paths outside baseDir', async () => {
-      const outsidePath = path.join(tempDir, '..', 'outside.txt');
-      const relativeOutside = path.relative(tempDir, outsidePath);
-      
-      // Path traversal attempts throw PermissionError (checked before PathNotInClawSpaceError)
-      await expect(fs.read(relativeOutside)).rejects.toThrow(PermissionError);
-    });
-    
-    it('should throw error for path traversal attempts', async () => {
+
+    it('should throw PermissionError for path traversal attempts', async () => {
       await expect(fs.read('../etc/passwd')).rejects.toThrow(PermissionError);
     });
-    
-    it('should work with disabled permissions', async () => {
-      const fsNoPerm = new NodeFileSystem({ baseDir: tempDir });
-      
-      // Should be able to write anywhere
-      await fsNoPerm.writeAtomic('dialog/test.txt', 'test');
-      expect(await fsNoPerm.read('dialog/test.txt')).toBe('test');
-    });
 
-    it('should allow write to USER.md, IDENTITY.md, SOUL.md in clawDir root', async () => {
-      // These files are written by Motion during Bootstrap onboarding
-      await expect(fs.writeAtomic('USER.md', 'user content')).resolves.not.toThrow();
-      await expect(fs.writeAtomic('IDENTITY.md', 'identity content')).resolves.not.toThrow();
-      await expect(fs.writeAtomic('SOUL.md', 'soul content')).resolves.not.toThrow();
-
-      expect(await fs.read('USER.md')).toBe('user content');
-      expect(await fs.read('IDENTITY.md')).toBe('identity content');
-      expect(await fs.read('SOUL.md')).toBe('soul content');
+    it('should throw PermissionError for paths outside baseDir', async () => {
+      const outsidePath = path.join(tempDir, '..', 'outside.txt');
+      const relativeOutside = path.relative(tempDir, outsidePath);
+      await expect(fs.read(relativeOutside)).rejects.toThrow(PermissionError);
     });
   });
   
@@ -243,55 +202,46 @@ describe('FileSystem', () => {
       await cleanupTempDir(outsideDir);
     });
 
-    it('should reject reads via symlink pointing outside clawDir', async () => {
-      // Write a "secret" file outside clawDir
+    it('should reject reads via symlink pointing outside baseDir', async () => {
+      // Write a "secret" file outside baseDir
       await nativeFs.writeFile(path.join(outsideDir, 'secret.txt'), 'top secret');
 
-      // Create a symlink inside clawDir pointing to the outside file
+      // Create a symlink inside baseDir pointing to the outside file
       await nativeFs.symlink(
         path.join(outsideDir, 'secret.txt'),
         path.join(clawDir, 'evil-link.txt')
       );
 
-      const nodeFs = new NodeFileSystem(
-        { baseDir: clawDir },
-        createClawPermissionChecker({ clawDir, strict: true }),
-      );
+      const nodeFs = new NodeFileSystem({ baseDir: clawDir });
 
       await expect(nodeFs.read('evil-link.txt')).rejects.toThrow(PermissionError);
     });
 
-    it('should allow reads of normal files within clawDir', async () => {
+    it('should allow reads of normal files within baseDir', async () => {
       await nativeFs.writeFile(path.join(clawDir, 'safe.txt'), 'safe content');
 
-      const nodeFs = new NodeFileSystem(
-        { baseDir: clawDir },
-        createClawPermissionChecker({ clawDir, strict: true }),
-      );
+      const nodeFs = new NodeFileSystem({ baseDir: clawDir });
 
       const content = await nodeFs.read('safe.txt');
       expect(content).toBe('safe content');
     });
 
-    it('should allow reads via symlink pointing within clawDir', async () => {
-      // Target file inside clawDir
+    it('should allow reads via symlink pointing within baseDir', async () => {
+      // Target file inside baseDir
       await nativeFs.writeFile(path.join(clawDir, 'real.txt'), 'real content');
-      // Symlink also inside clawDir
+      // Symlink also inside baseDir
       await nativeFs.symlink(
         path.join(clawDir, 'real.txt'),
         path.join(clawDir, 'link.txt')
       );
 
-      const nodeFs = new NodeFileSystem(
-        { baseDir: clawDir },
-        createClawPermissionChecker({ clawDir, strict: true }),
-      );
+      const nodeFs = new NodeFileSystem({ baseDir: clawDir });
 
       const content = await nodeFs.read('link.txt');
       expect(content).toBe('real content');
     });
 
-    it('should reject writes via symlink pointing outside clawDir', async () => {
+    it('should reject writes via symlink pointing outside baseDir', async () => {
       const targetFile = path.join(outsideDir, 'target.txt');
       await nativeFs.writeFile(targetFile, 'original');
 
@@ -300,10 +250,7 @@ describe('FileSystem', () => {
         path.join(clawDir, 'evil-write-link.txt')
       );
 
-      const nodeFs = new NodeFileSystem(
-        { baseDir: clawDir },
-        createClawPermissionChecker({ clawDir, strict: true }),
-      );
+      const nodeFs = new NodeFileSystem({ baseDir: clawDir });
 
       await expect(nodeFs.writeAtomic('evil-write-link.txt', 'pwned')).rejects.toThrow(PermissionError);
 
