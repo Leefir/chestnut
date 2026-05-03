@@ -2,7 +2,7 @@ import type { Tool, ToolResult, ExecContext } from '../../tools/executor.js';
 import type { TaskLifecyclePort } from '../../runtime/runtime-ports.js';
 import type { Message, ToolDefinition } from '../../../types/message.js';
 import { createSkillRegistry } from '../../skill/index.js';
-import { DISPATCH_SKILLS_DIR } from '../../skill/skill-paths.js';
+import { DISPATCH_SKILLS_PATH as DISPATCH_SKILLS_DIR } from '../../evolution-system/dispatch-skills-paths.js';
 import { ToolRegistryImpl } from '../../tools/registry.js';
 import { DEFAULT_LLM_IDLE_TIMEOUT_MS, DEFAULT_MAX_STEPS } from '../../../constants.js';
 import { buildDescribingUserMessage, buildMinerSystemPrompt, buildMiningUserMessage } from '../../../prompts/index.js';

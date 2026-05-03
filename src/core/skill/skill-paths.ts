@@ -19,8 +19,4 @@ export const SKILLS_DIR_DEFAULT = 'skills' as const;
 /** 源码树 bundled skills 资源目录名（非运行期 agent subdir） */
 export const BUNDLED_SKILLS_DIR_NAME = 'skills' as const;
 
-/** dispatch-skills 子目录名（路径 segment / 与 CLAWSPACE_DIR 拼接） */
-export const DISPATCH_SKILLS_SUBDIR = 'dispatch-skills' as const;
-
-/** dispatch-skills 完整路径（应然归 ContractRetro / B.p344-skill-disp 待 r52+ ContractRetro 落地） */
-export const DISPATCH_SKILLS_DIR = `${CLAWSPACE_DIR}/${DISPATCH_SKILLS_SUBDIR}` as const;
+// dispatch-skills const 物理迁 evolution-system/dispatch-skills-paths.ts (phase411 / 资源归属 EvolutionSystem)
