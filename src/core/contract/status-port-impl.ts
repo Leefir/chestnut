@@ -8,7 +8,7 @@ import type { ContractSystem } from './manager.js';
 import type {
   ContractStatusPort,
   ContractStatusView,
-} from '../../foundation/tools/builtins/status-port.js';
+} from '../status-service/index.js';
 
 export function createContractStatusPort(manager: ContractSystem): ContractStatusPort {
   return {

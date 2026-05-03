@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ToolExecutor } from '../../src/foundation/tools/executor.js';
 import { ExecContextImpl } from '../../src/foundation/tools/context.js';
-import { statusTool } from '../../src/foundation/tools/builtins/index.js';
+import { statusTool } from '../../src/core/status-service/index.js';
 import { readTool, lsTool, searchTool } from '../../src/foundation/file-tool/index.js';
 import { setPermissionCheckerFactory } from '../../src/foundation/file-tool/permission-context.js';
 import { createClawPermissionChecker } from '../../src/core/permissions/claw-permissions.js';

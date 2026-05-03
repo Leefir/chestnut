@@ -8,7 +8,7 @@ import { promises as fs } from 'fs';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
 
-import { statusTool } from '../../src/foundation/tools/builtins/index.js';
+import { statusTool } from '../../src/core/status-service/index.js';
 import { sendTool } from '../../src/foundation/messaging/tools/send.js';
 import { readTool, writeTool, lsTool, searchTool } from '../../src/foundation/file-tool/index.js';
 import { setPermissionCheckerFactory } from '../../src/foundation/file-tool/permission-context.js';
