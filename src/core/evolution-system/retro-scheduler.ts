@@ -5,12 +5,12 @@
  * 内化 A.3+A.4+A.5（phase364）：
  * - buildRetroPrompt（A.3 / from prompts/retrospective）
  * - writePendingSubagentTaskFile（A.4 / from task/tools/_pending-task-writer）
- * - createSkillRegistry（A.5 / from core/skill）
+ * - createSkillSystem（A.5 / from core/skill）
  */
 
 import { buildRetroPrompt } from '../../prompts/retrospective.js';
 import { writePendingSubagentTaskFile } from '../task/tools/_pending-task-writer.js';
-import { createSkillRegistry } from '../skill/index.js';
+import { createSkillSystem } from '../../foundation/skill-system/index.js';
 import { DISPATCH_SKILLS_PATH as DISPATCH_SKILLS_DIR } from './dispatch-skills-paths.js';
 import { DEFAULT_MAX_STEPS, DEFAULT_LLM_IDLE_TIMEOUT_MS } from '../../constants.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
@@ -39,7 +39,7 @@ export function createDefaultRetroScheduler(): RetroScheduler {
       // 加载 dispatch-skills（A.5 / best-effort）
       let skillsSummary = '';
       try {
-        const reg = createSkillRegistry(config.motionFs, DISPATCH_SKILLS_DIR);
+        const reg = createSkillSystem(config.motionFs, DISPATCH_SKILLS_DIR);
         await reg.loadAll();
         const formatted = reg.formatForContext();
         if (!formatted.includes('No skills loaded')) {

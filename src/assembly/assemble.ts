@@ -17,8 +17,8 @@ import { createLLMAuditSink } from './llm-audit-sink.js';
 import { ASSEMBLY_AUDIT_EVENTS } from './audit-events.js';
 import { createToolRegistry, type ToolRegistryImpl } from '../core/tools/index.js';
 import { createToolExecutor, type ToolExecutorImpl } from '../core/tools/index.js';
-import { createSkillRegistry, SkillRegistry } from '../core/skill/index.js';
-import { SKILLS_DIR_DEFAULT } from '../core/skill/skill-paths.js';
+import { createSkillSystem, SkillSystem } from '../foundation/skill-system/index.js';
+import { SKILLS_DIR_DEFAULT } from '../foundation/skill-system/skill-paths.js';
 import { ContractSystem, createContractSystem } from '../core/contract/index.js';
 import { createEvolutionSystem } from '../core/evolution-system/index.js';
 import type { EvolutionSystem } from '../core/evolution-system/index.js';
@@ -182,18 +182,18 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   }
 
   // --- L3-L5: skillRegistry + loadAll ---
-  let skillRegistry: SkillRegistry;
+  let skillRegistry: SkillSystem;
   try {
-    skillRegistry = createSkillRegistry(systemFs, SKILLS_DIR_DEFAULT, auditWriter);
+    skillRegistry = createSkillSystem(systemFs, SKILLS_DIR_DEFAULT, auditWriter);
   } catch (e) {
     auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=skill_registry`, `phase=construct`, `reason=${errMsg(e)}`);
-    throw new Error(`Assembly: SkillRegistry construct failed: ${errMsg(e)}`, { cause: e });
+    throw new Error(`Assembly: SkillSystem construct failed: ${errMsg(e)}`, { cause: e });
   }
   try {
     await skillRegistry.loadAll();
   } catch (e) {
     auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=skill_registry`, `phase=init`, `reason=${errMsg(e)}`);
-    throw new Error(`Assembly: SkillRegistry.loadAll failed: ${errMsg(e)}`, { cause: e });
+    throw new Error(`Assembly: SkillSystem.loadAll failed: ${errMsg(e)}`, { cause: e });
   }
 
   // --- L3-L5: contractManager ---

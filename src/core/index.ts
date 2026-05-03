@@ -10,5 +10,5 @@ export * from './dialog/index.js';
 export * from './tools/index.js';
 export * from './react/index.js';
 export * from './task/index.js';
-export * from './skill/index.js';
+export * from '../foundation/skill-system/index.js';
 export * from './contract/index.js';

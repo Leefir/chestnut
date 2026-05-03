@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { SkillRegistry } from '../../../src/core/skill/registry.js';
+import { SkillSystem } from '../../../src/foundation/skill-system/registry.js';
 import type { FileSystem } from '../../../src/foundation/fs/types.js';
 import type { AuditLog } from '../../../src/foundation/audit/index.js';
 import { ToolError } from '../../../src/types/errors.js';
-import { SKILLS_DIR_DEFAULT } from '../../../src/core/skill/skill-paths.js';
+import { SKILLS_DIR_DEFAULT } from '../../../src/foundation/skill-system/skill-paths.js';
 
 function createMockFs(partial: Partial<FileSystem> = {}): FileSystem {
   return {
@@ -27,7 +27,7 @@ function makeSkillMd(frontmatter: Record<string, string>): string {
   return lines.join('\n');
 }
 
-describe('SkillRegistry', () => {
+describe('SkillSystem', () => {
   let mockFs: FileSystem;
   let mockAudit: AuditLog & { write: ReturnType<typeof vi.fn> };
 
@@ -39,7 +39,7 @@ describe('SkillRegistry', () => {
   describe('loadAll', () => {
     it('skillsDir 不存在 → 静默 return 不发 audit', async () => {
       (mockFs.exists as any).mockResolvedValue(false);
-      const registry = new SkillRegistry(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
+      const registry = new SkillSystem(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
       await registry.loadAll();
       expect(registry.listMeta()).toHaveLength(0);
       expect(mockAudit.write).not.toHaveBeenCalled();
@@ -48,7 +48,7 @@ describe('SkillRegistry', () => {
     it('skillsDir 存在但空 → 发 skill_registry_loaded count=0', async () => {
       (mockFs.exists as any).mockResolvedValue(true);
       (mockFs.list as any).mockResolvedValue([]);
-      const registry = new SkillRegistry(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
+      const registry = new SkillSystem(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
       await registry.loadAll();
       expect(registry.listMeta()).toHaveLength(0);
       expect(mockAudit.write).toHaveBeenCalledTimes(1);
@@ -71,7 +71,7 @@ describe('SkillRegistry', () => {
         if (p === 'skills/skill-b/SKILL.md') return Promise.resolve(makeSkillMd({ name: 'beta', description: 'Beta desc', version: '2.0.0' }));
         return Promise.reject(new Error('not found'));
       });
-      const registry = new SkillRegistry(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
+      const registry = new SkillSystem(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
       await registry.loadAll();
       expect(registry.listMeta()).toHaveLength(2);
       const types = (mockAudit.write as any).mock.calls.map((c: any[]) => c[0]);
@@ -94,7 +94,7 @@ describe('SkillRegistry', () => {
         if (p === 'skills/skill-b/SKILL.md') return Promise.reject(new Error('disk read error'));
         return Promise.reject(new Error('not found'));
       });
-      const registry = new SkillRegistry(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
+      const registry = new SkillSystem(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
       await registry.loadAll();
       expect(registry.listMeta()).toHaveLength(1);
       expect(registry.getMeta('alpha')).toBeTruthy();
@@ -116,7 +116,7 @@ describe('SkillRegistry', () => {
   describe('register', () => {
     it('正常 → 返回 SkillMeta + 入 metaMap', async () => {
       (mockFs.read as any).mockResolvedValue(makeSkillMd({ name: 'gamma', description: 'Gamma desc', version: '3.0.0' }));
-      const registry = new SkillRegistry(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
+      const registry = new SkillSystem(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
       const meta = await registry.register('skills/gamma');
       expect(meta.name).toBe('gamma');
       expect(meta.description).toBe('Gamma desc');
@@ -128,7 +128,7 @@ describe('SkillRegistry', () => {
     it('duplicate 同名 → skill_duplicate_skipped + console.warn + 返回 existing', async () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       (mockFs.read as any).mockResolvedValue(makeSkillMd({ name: 'delta', description: 'D', version: '1.0' }));
-      const registry = new SkillRegistry(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
+      const registry = new SkillSystem(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
       const first = await registry.register('skills/delta');
       const second = await registry.register('skills/delta-dup');
       expect(second.skillDir).toBe(first.skillDir);
@@ -146,7 +146,7 @@ describe('SkillRegistry', () => {
 
     it('frontmatter 缺字段 → 用默认值 fallback', async () => {
       (mockFs.read as any).mockResolvedValue('---\n\n---\n');
-      const registry = new SkillRegistry(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
+      const registry = new SkillSystem(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
       const meta = await registry.register('skills/epsilon');
       expect(meta.name).toBe('epsilon');
       expect(meta.description).toBe('');
@@ -156,13 +156,13 @@ describe('SkillRegistry', () => {
 
   describe('query', () => {
     it('getMeta 未注册 → undefined', () => {
-      const registry = new SkillRegistry(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
+      const registry = new SkillSystem(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
       expect(registry.getMeta('nonexistent')).toBeUndefined();
     });
 
     it('listMeta 返回全部 SkillMeta', async () => {
       (mockFs.read as any).mockResolvedValue(makeSkillMd({ name: 'zeta', description: 'Z', version: '1.0' }));
-      const registry = new SkillRegistry(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
+      const registry = new SkillSystem(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
       await registry.register('skills/zeta');
       expect(registry.listMeta()).toHaveLength(1);
       expect(registry.listMeta()[0].name).toBe('zeta');
@@ -173,14 +173,14 @@ describe('SkillRegistry', () => {
     it('已注册 → 返回 SKILL.md 完整内容', async () => {
       const fullContent = makeSkillMd({ name: 'eta', description: 'E', version: '1.0' });
       (mockFs.read as any).mockResolvedValue(fullContent);
-      const registry = new SkillRegistry(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
+      const registry = new SkillSystem(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
       await registry.register('skills/eta');
       const result = await registry.loadFull('eta');
       expect(result).toBe(fullContent);
     });
 
     it('未注册 → 抛 ToolError', async () => {
-      const registry = new SkillRegistry(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
+      const registry = new SkillSystem(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
       await expect(registry.loadFull('nope')).rejects.toThrow(ToolError);
       await expect(registry.loadFull('nope')).rejects.toThrow('Skill "nope" not found');
     });
@@ -188,7 +188,7 @@ describe('SkillRegistry', () => {
 
   describe('formatForContext', () => {
     it('空 → 固定提示文本', () => {
-      const registry = new SkillRegistry(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
+      const registry = new SkillSystem(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
       expect(registry.formatForContext()).toBe('## Available Skills\nNo skills loaded.\n');
     });
 
@@ -198,7 +198,7 @@ describe('SkillRegistry', () => {
         if (p.includes('skill-y')) return Promise.resolve(makeSkillMd({ name: 'skill-y', description: 'desc-y', version: '2.0' }));
         return Promise.reject(new Error('not found'));
       });
-      const registry = new SkillRegistry(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
+      const registry = new SkillSystem(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
       await registry.register('skills/skill-x');
       await registry.register('skills/skill-y');
       const formatted = registry.formatForContext();

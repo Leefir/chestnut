@@ -6,7 +6,7 @@
  */
 
 import type { Tool, ToolResult, ExecContext } from '../executor.js';
-import { createSkillRegistry, type SkillRegistry } from '../../skill/index.js';
+import { createSkillSystem, type SkillSystem } from '../../../foundation/skill-system/index.js';
 
 /**
  * Skill tool implementation
@@ -16,7 +16,7 @@ import { createSkillRegistry, type SkillRegistry } from '../../skill/index.js';
 import { SKILL_TOOL_NAME } from '../tool-names.js';
 export { SKILL_TOOL_NAME };
 
-export const skillTool: Tool & { skillRegistry?: SkillRegistry } = {
+export const skillTool: Tool & { skillRegistry?: SkillSystem } = {
   name: SKILL_TOOL_NAME,
   description: 'Load a skill by name. Skills provide domain-specific knowledge and guidelines from SKILL.md files.',
   schema: {
@@ -42,7 +42,7 @@ export const skillTool: Tool & { skillRegistry?: SkillRegistry } = {
     // Load from custom skills directory if specified (e.g., dispatch templates)
     if (args.skillsDir) {
       try {
-        const tempRegistry = createSkillRegistry(ctx.fs, String(args.skillsDir));
+        const tempRegistry = createSkillSystem(ctx.fs, String(args.skillsDir));
         await tempRegistry.loadAll();
         const content = await tempRegistry.loadFull(name);
         return { success: true, content, metadata: { skillName: name } };
@@ -61,8 +61,8 @@ export const skillTool: Tool & { skillRegistry?: SkillRegistry } = {
     if (!skillRegistry) {
       return {
         success: false,
-        content: 'SkillRegistry not available. Skill tool requires SkillRegistry to be injected.',
-        error: 'SkillRegistry not configured',
+        content: 'SkillSystem not available. Skill tool requires SkillSystem to be injected.',
+        error: 'SkillSystem not configured',
       };
     }
 

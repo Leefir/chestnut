@@ -8,7 +8,7 @@ import { InboxReader, OutboxWriter } from '../../src/foundation/messaging/index.
 import { LLMOrchestratorImpl } from '../../src/foundation/llm-orchestrator/orchestrator.js';
 import { ToolRegistryImpl } from '../../src/core/tools/registry.js';
 import { ToolExecutorImpl } from '../../src/core/tools/executor.js';
-import { createSkillRegistry } from '../../src/core/skill/index.js';
+import { createSkillSystem } from '../../src/foundation/skill-system/index.js';
 import { ContractSystem } from '../../src/core/contract/manager.js';
 import { TaskSystem } from '../../src/core/task/system.js';
 import { ContextInjector } from '../../src/core/dialog/injector.js';
@@ -48,7 +48,7 @@ export async function makeRuntimeDeps(input: MakeRuntimeDepsInput): Promise<Runt
   });
   const toolRegistry = new ToolRegistryImpl();
   registerBuiltinTools(toolRegistry);
-  const skillRegistry = createSkillRegistry(systemFs, 'skills');
+  const skillRegistry = createSkillSystem(systemFs, 'skills');
   await skillRegistry.loadAll();
   const verifierRegistry = new ToolRegistryImpl();
   const contractManager = new ContractSystem(

@@ -1,5 +1,5 @@
 /**
- * SkillRegistry - 技能注册表
+ * SkillSystem - 技能系统
  * 
  * 采用渐进式披露：
  * - 启动时只加载元信息（frontmatter）
@@ -19,7 +19,7 @@ export interface SkillMeta {
   skillDir: string;
 }
 
-export class SkillRegistry {
+export class SkillSystem {
   private fs: FileSystem;
   private skillsDir: string;
   private metaMap: Map<string, SkillMeta> = new Map();

@@ -5,19 +5,19 @@
 
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
-import { SkillRegistry } from './registry.js';
+import { SkillSystem } from './registry.js';
 import { SKILLS_DIR_DEFAULT } from './skill-paths.js';
 
-export { SkillRegistry, type SkillMeta } from './registry.js';
+export { SkillSystem, type SkillMeta } from './registry.js';
 
 /**
- * 构造 SkillRegistry。
+ * 构造 SkillSystem。
  * 调用方必须在使用前显式 `await registry.loadAll()`（契约 §2.1）。
  */
-export function createSkillRegistry(
+export function createSkillSystem(
   fs: FileSystem,
   skillsDir: string = SKILLS_DIR_DEFAULT,
   audit?: AuditLog,
-): SkillRegistry {
-  return new SkillRegistry(fs, skillsDir, audit);
+): SkillSystem {
+  return new SkillSystem(fs, skillsDir, audit);
 }

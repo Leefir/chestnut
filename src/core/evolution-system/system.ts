@@ -3,7 +3,7 @@ import type { AuditLog, AuditWriter } from '../../foundation/audit/index.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { TaskSystem } from '../task/index.js';
 import { ContractSystem } from '../contract/manager.js';
-import type { SkillRegistry } from '../skill/index.js';
+import type { SkillSystem } from '../../foundation/skill-system/index.js';
 import type { RetroScheduler } from './retro-scheduler.js';
 import { createDefaultRetroScheduler } from './retro-scheduler.js';
 import { RETRO_AUDIT_EVENTS } from './retro-audit-events.js';
@@ -20,7 +20,7 @@ export interface EvolutionSystemDeps {
   audit: AuditLog;
   taskSystem: TaskSystem;
   contractManager: ContractSystem;
-  skillRegistry?: SkillRegistry;   // for SkillSystem.reload coordination
+  skillRegistry?: SkillSystem;   // for SkillSystem.reload coordination
   retroScheduler?: RetroScheduler;  // optional override / default = createDefaultRetroScheduler
 }
 

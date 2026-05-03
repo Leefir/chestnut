@@ -134,8 +134,8 @@ vi.mock('../../src/core/tools/executor.js', () => {
   };
 });
 
-vi.mock('../../src/core/skill/registry.js', () => ({
-  SkillRegistry: trackCtor('SkillRegistry', () => ({ loadAll: vi.fn().mockResolvedValue(undefined), getSkills: vi.fn(() => []) })),
+vi.mock('../../src/foundation/skill-system/registry.js', () => ({
+  SkillSystem: trackCtor('SkillSystem', () => ({ loadAll: vi.fn().mockResolvedValue(undefined), getSkills: vi.fn(() => []) })),
 }));
 
 vi.mock('../../src/core/contract/manager.js', () => ({
@@ -632,7 +632,7 @@ describe('assemble', () => {
 
       const required = [
         'LLMOrchestratorImpl', 'ToolRegistryImpl',
-        'SkillRegistry', 'ContractSystem',
+        'SkillSystem', 'ContractSystem',
         'TaskSystem', 'ContextInjector', 'ExecContextImpl', 'ToolExecutorImpl',
       ];
       for (const name of required) {
@@ -641,11 +641,11 @@ describe('assemble', () => {
 
       const idx = (name: string) => callOrder.indexOf(name);
       expect(idx('LLMOrchestratorImpl')).toBeLessThan(idx('TaskSystem'));
-      expect(idx('SkillRegistry')).toBeLessThan(idx('TaskSystem'));
+      expect(idx('SkillSystem')).toBeLessThan(idx('TaskSystem'));
       expect(idx('ContractSystem')).toBeLessThan(idx('TaskSystem'));
       expect(idx('ToolRegistryImpl')).toBeLessThan(idx('ToolExecutorImpl'));
       expect(idx('ContractSystem')).toBeLessThan(idx('ContextInjector'));
-      expect(idx('SkillRegistry')).toBeLessThan(idx('ContextInjector'));
+      expect(idx('SkillSystem')).toBeLessThan(idx('ContextInjector'));
     });
 
     it('construction order is deterministic across runs', async () => {
@@ -722,18 +722,18 @@ describe('assemble', () => {
 
     it('skill_registry construct failure → audit module=skill_registry phase=construct + throw', async () => {
       const { events, thrown } = await expectAssembleFailure(
-        '../../src/core/skill/registry.js', 'SkillRegistry', 'ctor',
+        '../../src/foundation/skill-system/registry.js', 'SkillSystem', 'ctor',
       );
       expect(events.some(e => /^assemble_failed\tmodule=skill_registry\tphase=construct\treason=injected/.test(e))).toBe(true);
-      expect(thrown.message).toMatch(/SkillRegistry construct failed/);
+      expect(thrown.message).toMatch(/SkillSystem construct failed/);
     });
 
     it('skill_registry loadAll failure → audit module=skill_registry phase=init + throw', async () => {
       const { events, thrown } = await expectAssembleFailure(
-        '../../src/core/skill/registry.js', 'SkillRegistry', 'loadAll', { getSkills: vi.fn(() => []) },
+        '../../src/foundation/skill-system/registry.js', 'SkillSystem', 'loadAll', { getSkills: vi.fn(() => []) },
       );
       expect(events.some(e => /^assemble_failed\tmodule=skill_registry\tphase=init\treason=injected/.test(e))).toBe(true);
-      expect(thrown.message).toMatch(/SkillRegistry\.loadAll failed/);
+      expect(thrown.message).toMatch(/SkillSystem\.loadAll failed/);
     });
 
     it('contract_manager construct failure → audit module=contract_manager phase=construct + throw', async () => {

@@ -13,7 +13,7 @@ import type { FileSystem } from '../../foundation/fs/types.js';
 import type { Message } from '../../types/message.js';
 import type { Contract } from '../../types/contract.js';
 import type { SessionData } from '../../foundation/session-store/index.js';
-import type { SkillRegistry } from '../skill/registry.js';
+import type { SkillSystem } from '../../foundation/skill-system/registry.js';
 import type { ContractSystem } from '../contract/manager.js';
 
 /**
@@ -23,7 +23,7 @@ export interface ContextInjectorOptions {
   /** File system instance */
   fs: FileSystem;
   /** Skill registry for skill metadata injection */
-  skillRegistry?: SkillRegistry;
+  skillRegistry?: SkillSystem;
   /** Contract manager for active contract injection */
   contractManager?: ContractSystem;
 }
@@ -54,7 +54,7 @@ function formatContractForPrompt(contract: Contract): string {
  */
 export class ContextInjector {
   private fs: FileSystem;
-  private skillRegistry?: SkillRegistry;
+  private skillRegistry?: SkillSystem;
   private contractManager?: ContractSystem;
 
   constructor(options: ContextInjectorOptions) {

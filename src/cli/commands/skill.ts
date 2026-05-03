@@ -9,7 +9,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as fsNative from 'fs';
 import { CLAWSPACE_DIR } from '../../types/paths.js';
-import { SKILLS_DIR_DEFAULT } from '../../core/skill/skill-paths.js';
+import { SKILLS_DIR_DEFAULT } from '../../foundation/skill-system/skill-paths.js';
 import { DISPATCH_SKILLS_SUBDIR } from '../../core/evolution-system/dispatch-skills-paths.js';
 
 /**

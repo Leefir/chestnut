@@ -12,15 +12,15 @@ import { AuditWriter } from '../../src/foundation/audit/writer.js';
 import { RETRO_AUDIT_EVENTS } from '../../src/core/evolution-system/retro-audit-events.js';
 
 // ============================================================================
-// Mock: SkillRegistry（D4 C 方案：窄 mock 避免建真 skills/ 目录）
+// Mock: SkillSystem（D4 C 方案：窄 mock 避免建真 skills/ 目录）
 // ============================================================================
 const { mockSkillRegistryLoadAll, mockSkillRegistryFormatForContext } = vi.hoisted(() => ({
   mockSkillRegistryLoadAll: vi.fn().mockResolvedValue(undefined),
   mockSkillRegistryFormatForContext: vi.fn().mockReturnValue('No skills loaded'),
 }));
 
-vi.mock('../../src/core/skill/registry.js', () => ({
-  SkillRegistry: vi.fn().mockImplementation(() => ({
+vi.mock('../../src/foundation/skill-system/registry.js', () => ({
+  SkillSystem: vi.fn().mockImplementation(() => ({
     loadAll: mockSkillRegistryLoadAll,
     formatForContext: mockSkillRegistryFormatForContext,
   })),
@@ -256,7 +256,7 @@ describe('EvolutionSystem.runRetroForContract - best-effort branches', () => {
   it('dispatch-skills load failure → degrade to empty skillsSummary', async () => {
     const { contractId, ctx, evolutionSystem } = fixtures;
 
-    // mock SkillRegistry loadAll 抛错
+    // mock SkillSystem loadAll 抛错
     mockSkillRegistryLoadAll.mockRejectedValueOnce(new Error('mock skills crash'));
 
     const result = await evolutionSystem.runRetroForContract(contractId, ctx);
