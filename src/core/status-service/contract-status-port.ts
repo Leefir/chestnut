@@ -1,5 +1,5 @@
 /**
- * @module L2.Tools
+ * @module L5.StatusService
  * ContractStatusPort — statusTool 消费 contract 状态视图的 port interface。
  * 消费方 own / 已计算 view（doneCount 等统计在 impl 端 / statusTool 不知细节）。
  */

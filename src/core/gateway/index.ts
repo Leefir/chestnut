@@ -1,6 +1,6 @@
 /**
- * @module L3.Gateway
- * Gateway module (L3)
+ * @module L5.Gateway
+ * Gateway module (L5)
  *
  * 外部客户端 ↔ 内部系统 的实时交互门面。
  * 依赖：Transport (L1) + Stream (L2)

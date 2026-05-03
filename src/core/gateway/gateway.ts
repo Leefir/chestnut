@@ -1,5 +1,5 @@
 /**
- * Gateway (L3): 外部客户端 ↔ 内部系统 的实时交互门面。
+ * Gateway (L5): 外部客户端 ↔ 内部系统 的实时交互门面。
  *
  * 不可消除耦合（显式）：
  * 1. Gateway → Daemon interrupt 回调（反向控制流；回调由 Daemon 注入）

@@ -1,7 +1,7 @@
 /**
  * @module L6.Daemon
  * @layer L6 进程边界（Daemon 后台进程入口）
- * @depends L1.FileSystem, L2.AuditLog, L4.Contract, L6.CLI, L6.Assembly
+ * @depends L1.FileSystem, L2.AuditLog, L4.ContractSystem, L6.CLI, L6.Assembly
  * @consumers L6.CLI（spawn）
  * @contract design/modules/l6_daemon.md
  *
