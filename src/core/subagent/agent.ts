@@ -42,7 +42,6 @@ export interface SubAgentOptions {
   maxConsecutiveMaxTokensToolUse?: number;
   systemPrompt?: string;                    // 替换 run() 里硬编码的默认 system prompt
   callerType?: CallerType;  // 默认 'subagent'
-  taskSystem?: unknown;                     // dispatch tool addTaskResultHandler 路径需要；透传至 ToolExecutor / ExecContext。phase163 起不再供调度用途 / phase432 类型放宽（待 phase434 删 field）。
   subagentMaxSteps?: number;                 // 传给子 SubAgent
   messages?: Message[];                      // 若提供，直接用；否则从 prompt 构建
   originClawId?: string;                     // 创建链路源头，传给子 SubAgent
@@ -68,8 +67,6 @@ export class SubAgent {
   private onIdleTimeout?: () => void;
   private systemPrompt?: string;
   private callerType?: CallerType;
-  /** @see SubAgentOptions.taskSystem */
-  private taskSystem?: unknown;
   private subagentMaxSteps?: number;
   private messages?: Message[];
   private originClawId?: string;
@@ -94,7 +91,6 @@ export class SubAgent {
     this.onIdleTimeout = options.onIdleTimeout;
     this.systemPrompt = options.systemPrompt;
     this.callerType = options.callerType;
-    this.taskSystem = options.taskSystem;
     this.subagentMaxSteps = options.subagentMaxSteps;
     this.messages = options.messages;
     this.originClawId = options.originClawId;
@@ -153,7 +149,6 @@ export class SubAgent {
         clawDir: this.clawDir,
         fs: this.fs,
         llm: this.llm,
-        taskSystem: this.taskSystem,
         subagentMaxSteps: this.subagentMaxSteps ?? this.maxSteps,
         profile: executorProfile,
         auditWriter: this.auditWriter,

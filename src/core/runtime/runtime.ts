@@ -249,7 +249,6 @@ export class Runtime {
         this.toolRegistry.getForProfile(profile as import('../../types/config.js').ToolProfile),
       ),
     );
-    dispatchTool.taskSystem = this.taskSystem;
     this.toolRegistry.register(dispatchTool);
 
     if (this.options.identityToolFilter) {

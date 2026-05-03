@@ -557,6 +557,122 @@ describe('Task System + SubAgent', () => {
       // Should not throw even with null auditWriter
       await expect(taskSystem.shutdown(1)).resolves.not.toThrow();
     });
+
+    describe('addPostProcessor / postProcessor field', () => {
+      it('should throw when registering duplicate name', () => {
+        const mockProcessor = vi.fn();
+        taskSystem.addPostProcessor('test-proc', mockProcessor as any);
+        expect(() => taskSystem.addPostProcessor('test-proc', mockProcessor as any)).toThrow(
+          'PostProcessor "test-proc" already registered',
+        );
+      });
+
+      it('should call postProcessor on success path', async () => {
+        await taskSystem.shutdown(100);
+        const { audit, events } = makeAudit();
+        const mockProcessor = vi.fn().mockResolvedValue('transformed-result');
+        taskSystem = createTestTaskSystem(tempDir, mockFs, audit, createMockLLM([{
+          content: [{ type: 'text', text: 'raw result' }],
+          stop_reason: 'end_turn',
+        }]));
+        taskSystem.addPostProcessor('test-proc', mockProcessor as any);
+        await taskSystem.initialize();
+        taskSystem.startDispatch();
+
+        const taskId = await taskSystem.scheduleSubAgent({
+          kind: 'subagent',
+          prompt: 'Test postProcessor',
+          tools: [],
+          timeout: 60,
+          maxSteps: 5,
+          parentClawId: 'motion',
+          postProcessor: 'test-proc',
+        });
+
+        // Wait for inbox file (task completion signal)
+        const inboxDir = path.join(tempDir, 'inbox', 'pending');
+        await waitFor(async () => {
+          const files = await fs.readdir(inboxDir).catch(() => [] as string[]);
+          return (files as string[]).some(f => f.endsWith('.md'));
+        });
+
+        expect(mockProcessor).toHaveBeenCalledTimes(1);
+        const callArgs = mockProcessor.mock.calls[0];
+        expect(callArgs[0]).toBe('raw result');
+        expect(callArgs[2]).toBe(false); // isError
+        expect(callArgs[3]).toBe(mockFs); // fs
+        expect(callArgs[4]).toBe(audit); // audit
+
+        // Inbox should contain transformed result
+        const inboxFiles = await fs.readdir(inboxDir).catch(() => [] as string[]);
+        const mdFiles = (inboxFiles as string[]).filter(f => f.endsWith('.md'));
+        const content = await fs.readFile(path.join(inboxDir, mdFiles[0]), 'utf-8');
+        expect(content).toContain('transformed-result');
+      });
+
+      it('should call postProcessor on error path with isError=true', async () => {
+        await taskSystem.shutdown(100);
+        const { audit, events } = makeAudit();
+        const mockProcessor = vi.fn().mockResolvedValue('error-transformed');
+        // Use empty-object LLM so subagent.run() throws immediately (call is undefined)
+        taskSystem = createTestTaskSystem(tempDir, mockFs, audit);
+        taskSystem.addPostProcessor('test-proc-err', mockProcessor as any);
+        await taskSystem.initialize();
+        taskSystem.startDispatch();
+
+        const taskId = await taskSystem.scheduleSubAgent({
+          kind: 'subagent',
+          prompt: 'Test error path',
+          tools: [],
+          timeout: 60,
+          maxSteps: 5,
+          parentClawId: 'motion',
+          postProcessor: 'test-proc-err',
+        });
+
+        // Wait for task to enter running then complete
+        await waitFor(() => taskSystem.listRunning().includes(taskId), 5000);
+        await waitFor(() => !taskSystem.listRunning().includes(taskId), 5000);
+
+        expect(mockProcessor).toHaveBeenCalledTimes(1);
+        const callArgs = mockProcessor.mock.calls[0];
+        expect(callArgs[2]).toBe(true); // isError
+      });
+
+      it('should audit when postProcessor name not found in registry', async () => {
+        await taskSystem.shutdown(100);
+        const { audit, events } = makeAudit();
+        taskSystem = createTestTaskSystem(tempDir, mockFs, audit, createMockLLM([{
+          content: [{ type: 'text', text: 'raw result' }],
+          stop_reason: 'end_turn',
+        }]));
+        await taskSystem.initialize();
+        taskSystem.startDispatch();
+
+        const taskId = await taskSystem.scheduleSubAgent({
+          kind: 'subagent',
+          prompt: 'Test missing postProcessor',
+          tools: [],
+          timeout: 60,
+          maxSteps: 5,
+          parentClawId: 'motion',
+          postProcessor: 'non-existent-proc',
+        });
+
+        // Wait for inbox file
+        const inboxDir = path.join(tempDir, 'inbox', 'pending');
+        await waitFor(async () => {
+          const files = await fs.readdir(inboxDir).catch(() => [] as string[]);
+          return (files as string[]).some(f => f.endsWith('.md'));
+        });
+
+        expect(events).toEqual(
+          expect.arrayContaining([
+            expect.arrayContaining([TASK_AUDIT_EVENTS.HANDLER_FAILED, 'context=postProcessor_not_found']),
+          ]),
+        );
+      });
+    });
   });
 
   describe('SubAgent', () => {

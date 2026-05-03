@@ -143,7 +143,7 @@ vi.mock('../../src/core/contract/manager.js', () => ({
 }));
 
 vi.mock('../../src/core/task/system.js', () => ({
-  TaskSystem: trackCtor('TaskSystem', () => ({ initialize: vi.fn().mockResolvedValue(undefined), startDispatch: vi.fn(), shutdown: vi.fn() })),
+  TaskSystem: trackCtor('TaskSystem', () => ({ initialize: vi.fn().mockResolvedValue(undefined), startDispatch: vi.fn(), shutdown: vi.fn(), addPostProcessor: vi.fn() })),
 }));
 
 vi.mock('../../src/core/dialog/injector.js', () => {

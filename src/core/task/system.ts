@@ -34,6 +34,7 @@ import { createWatcher, type Watcher } from '../../foundation/file-watcher/index
 import { TASK_AUDIT_EVENTS } from './audit-events.js';
 import { writePendingSubagentTaskFile } from './tools/_pending-task-writer.js';
 import { writePendingToolTaskFile } from './tools/_pending-tool-task-writer.js';
+import type { PostProcessor } from './post-processors/types.js';
 
 export interface TaskSystemOptions {
   maxConcurrent?: number;
@@ -64,6 +65,7 @@ export interface SubAgentTask {
   originClawId?: string;                   // 创建链路源头，传给子 SubAgent
   toolsForLLM?: ToolDefinition[];          // 若提供，直接用；否则从 registry 计算
   extraTools?: Tool[];                    // per-task 额外工具，不污染全局 registry
+  postProcessor?: string;            // phase438: 声明式 post-processor 名称（registry lookup）
 }
 
 export interface ToolTask {
@@ -97,24 +99,17 @@ export class TaskSystem {
   private parentStreamLog?: StreamLog;
   private pendingWatcher?: Watcher;
 
-  // Task result handlers (array for concurrent dispatch support)
-  private _taskResultHandlers: Array<
-    (taskId: string, callerType: CallerType | undefined, result: string, isError: boolean) => Promise<string>
-  > = [];
+  private postProcessors: Map<string, PostProcessor> = new Map();
 
   /**
-   * Register a result handler. Returns a cleanup function to deregister.
-   * Handlers are called in registration order; each receives the result
-   * returned by the previous handler (pipeline pattern).
+   * 装配期注册 PostProcessor / phase438
+   * 应然：name 唯一 / handler 是 standalone function / 0 closure / 0 跨 task state
    */
-  addTaskResultHandler(
-    handler: (taskId: string, callerType: CallerType | undefined, result: string, isError: boolean) => Promise<string>,
-  ): () => void {
-    this._taskResultHandlers.push(handler);
-    return () => {
-      const idx = this._taskResultHandlers.indexOf(handler);
-      if (idx >= 0) this._taskResultHandlers.splice(idx, 1);
-    };
+  addPostProcessor(name: string, handler: PostProcessor): void {
+    if (this.postProcessors.has(name)) {
+      throw new Error(`PostProcessor "${name}" already registered`);
+    }
+    this.postProcessors.set(name, handler);
   }
   
   // Transient dispatch buffer; subagent file persistence is authoritative,
@@ -328,10 +323,9 @@ export class TaskSystem {
           registry: this.registry,
           clawDir: this.clawDir,
           parentStreamLog: this.parentStreamLog,
-          taskResultHandlers: this._taskResultHandlers,
+          postProcessors: this.postProcessors,
           moveTaskToDone: this.moveTaskToDone.bind(this),
           moveTaskToFailed: this.moveTaskToFailed.bind(this),
-          taskSystem: this,
         });
       }
     } catch (error) {

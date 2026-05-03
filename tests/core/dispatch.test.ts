@@ -7,6 +7,7 @@ import { promises as fs } from 'fs';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
 import { DispatchTool } from '../../src/core/task/tools/dispatch.js';
+import { dispatchContractExtractPostProcessor } from '../../src/core/task/post-processors/dispatch-contract-extract.js';
 import { ExecContextImpl } from '../../src/foundation/tools/context.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import type { Message } from '../../src/types/message.js';
@@ -49,10 +50,6 @@ describe('DispatchTool', () => {
   });
 
   function makeCtx(callerType: 'claw' | 'subagent' | 'dispatcher', options?: { originClawId?: string; clawId?: string; dialogMessages?: Message[] }) {
-    const taskSystem = {
-      addTaskResultHandler: vi.fn().mockReturnValue(() => {}),
-    };
-    tool.taskSystem = taskSystem as any;
     return new ExecContextImpl({
       clawId: options?.clawId ?? 'test-claw',
       clawDir: tempDir,
@@ -73,6 +70,15 @@ describe('DispatchTool', () => {
     expect(result.success).toBe(true);
     expect(result.content).toContain('task-123');
     expect(mockWriteFile).toHaveBeenCalled();
+  });
+
+  it('should pass postProcessor field to scheduleSubAgent', async () => {
+    mockWriteFile.mockResolvedValue('task-pp');
+    const ctx = makeCtx('claw');
+    await tool.execute({ goal: 'test postProcessor' }, ctx);
+
+    const call = mockWriteFile.mock.calls[0][2];
+    expect(call.postProcessor).toBe('dispatch-contract-extract');
   });
 
   it('should succeed when dispatch-skills directory exists', async () => {
@@ -256,76 +262,57 @@ Content.
     });
   });
 
-  describe('CONTRACT_DONE handler', () => {
-    function makeCtxWithAuditWriter(options?: { dialogMessages?: Message[] }) {
-      mockWriteFile.mockResolvedValue('task-handler-test');
-      let capturedHandler: ((taskId: string, callerType: string, result: string, isError: boolean) => Promise<string>) | null = null;
-      const taskSystem = {
-        addTaskResultHandler: vi.fn().mockImplementation((handler: any) => {
-          capturedHandler = handler;
-          return () => {};
-        }),
-      };
-      tool.taskSystem = taskSystem as any;
-      const auditWriter = { write: vi.fn() };
-      const ctx = new ExecContextImpl({
-        clawId: 'test-claw',
-        clawDir: tempDir,
-        profile: 'full',
-        callerType: 'claw',
-        fs: mockFs,
-        llm: {} as any,
-        auditWriter: auditWriter as any,
-        dialogMessages: options?.dialogMessages ?? [{ role: 'user' as const, content: 'test' }],
-      });
-      return { ctx, taskSystem, auditWriter, getHandler: () => capturedHandler };
+  describe('dispatch-contract-extract postProcessor', () => {
+    function makeAuditWriter() {
+      return { write: vi.fn() };
     }
 
     it('should audit when dispatcher finishes without [CONTRACT_DONE] block', async () => {
-      const { ctx, auditWriter, getHandler } = makeCtxWithAuditWriter();
-
-      await tool.execute({ goal: 'test task' }, ctx);
-
-      const handler = getHandler();
-      expect(handler).not.toBeNull();
-
-      await handler!('task-handler-test', 'dispatcher', 'Dispatcher finished with no marker.', false);
+      const auditWriter = makeAuditWriter();
+      const result = await dispatchContractExtractPostProcessor(
+        'Dispatcher finished with no marker.',
+        { id: 'task-pp-test', callerType: 'miner' } as any,
+        false,
+        mockFs,
+        auditWriter as any,
+      );
 
       expect(auditWriter.write).toHaveBeenCalledWith(
         'dispatch_contract_done_not_found',
-        'taskId=task-handler-test',
+        'taskId=task-pp-test',
       );
+      expect(result).toBe('Dispatcher finished with no marker.');
     });
 
     it('should audit when [CONTRACT_DONE] parsed but fields missing', async () => {
-      const { ctx, auditWriter, getHandler } = makeCtxWithAuditWriter();
-
-      await tool.execute({ goal: 'test task' }, ctx);
-
-      const handler = getHandler();
-      await handler!(
-        'task-handler-test',
-        'dispatcher',
+      const auditWriter = makeAuditWriter();
+      const result = await dispatchContractExtractPostProcessor(
         'Done.\n[CONTRACT_DONE]{"targetClaw":"my-claw"}[/CONTRACT_DONE]',
+        { id: 'task-pp-test', callerType: 'describer' } as any,
         false,
+        mockFs,
+        auditWriter as any,
       );
 
       expect(auditWriter.write).toHaveBeenCalledWith(
         'dispatch_contract_done_missing_fields',
-        'taskId=task-handler-test',
+        'taskId=task-pp-test',
         'contractId=missing',
         'targetClaw=my-claw',
       );
+      expect(result).toContain('[CONTRACT_DONE]');
     });
 
     it('should write by-contract file and return summary on valid [CONTRACT_DONE]', async () => {
-      const { ctx, auditWriter, getHandler } = makeCtxWithAuditWriter({ dialogMessages: [{ role: 'user' as const, content: 'test' }] });
-
-      await tool.execute({ goal: 'test task' }, ctx);
-
-      const handler = getHandler();
+      const auditWriter = makeAuditWriter();
       const resultText = 'Work done.\n[CONTRACT_DONE]{"contractId":"c-001","targetClaw":"my-claw"}[/CONTRACT_DONE]';
-      const summary = await handler!('task-handler-test', 'dispatcher', resultText, false);
+      const summary = await dispatchContractExtractPostProcessor(
+        resultText,
+        { id: 'task-pp-test', callerType: 'miner' } as any,
+        false,
+        mockFs,
+        auditWriter as any,
+      );
 
       // by-contract 文件写入
       const byContractPath = path.join(
@@ -335,7 +322,7 @@ Content.
       expect(raw.contractId).toBe('c-001');
       expect(raw.targetClaw).toBe('my-claw');
       expect(raw.mode).toBe('mining');
-      expect(raw.miningTaskId).toBe('task-handler-test');
+      expect(raw.miningTaskId).toBe('task-pp-test');
 
       // 摘要不含 CONTRACT_DONE 块
       expect(summary).not.toContain('[CONTRACT_DONE]');
@@ -348,17 +335,34 @@ Content.
       expect(dispatchCalls).toHaveLength(0);
     });
 
-    it('should audit when [CONTRACT_DONE] JSON parse fails', async () => {
-      const { ctx, auditWriter, getHandler } = makeCtxWithAuditWriter({ dialogMessages: [{ role: 'user' as const, content: 'test' }] });
-
-      await tool.execute({ goal: 'test task' }, ctx);
-
-      const handler = getHandler();
-      await handler!(
-        'task-handler-test',
-        'dispatcher',
-        'Done.\n[CONTRACT_DONE]{invalid json}[/CONTRACT_DONE]',
+    it('should derive mode=describing from callerType=describer', async () => {
+      const auditWriter = makeAuditWriter();
+      const resultText = '[CONTRACT_DONE]{"contractId":"c-desc","targetClaw":"claw-b"}[/CONTRACT_DONE]';
+      await dispatchContractExtractPostProcessor(
+        resultText,
+        { id: 'task-desc', callerType: 'describer' } as any,
         false,
+        mockFs,
+        auditWriter as any,
+      );
+
+      const byContractPath = path.join(
+        tempDir, 'clawspace', 'pending-retrospective', 'by-contract', 'c-desc.json',
+      );
+      const raw = JSON.parse(await fs.readFile(byContractPath, 'utf-8'));
+      expect(raw.mode).toBe('describing');
+      expect(raw.describingTaskId).toBe('task-desc');
+      expect(raw.miningTaskId).toBeUndefined();
+    });
+
+    it('should audit when [CONTRACT_DONE] JSON parse fails', async () => {
+      const auditWriter = makeAuditWriter();
+      await dispatchContractExtractPostProcessor(
+        'Done.\n[CONTRACT_DONE]{invalid json}[/CONTRACT_DONE]',
+        { id: 'task-pp-test', callerType: 'miner' } as any,
+        false,
+        mockFs,
+        auditWriter as any,
       );
 
       expect(auditWriter.write).toHaveBeenCalledWith(
@@ -368,19 +372,15 @@ Content.
     });
 
     it('should audit when writeByContract fails', async () => {
-      const { ctx, auditWriter, getHandler } = makeCtxWithAuditWriter();
-
-      // Mock fs.writeAtomic to throw
+      const auditWriter = makeAuditWriter();
       const writeSpy = vi.spyOn(mockFs, 'writeAtomic').mockRejectedValue(new Error('disk full'));
 
-      await tool.execute({ goal: 'test task' }, ctx);
-
-      const handler = getHandler();
-      await handler!(
-        'task-handler-test',
-        'dispatcher',
+      await dispatchContractExtractPostProcessor(
         '[CONTRACT_DONE]{"contractId":"c-002","targetClaw":"my-claw"}[/CONTRACT_DONE]',
+        { id: 'task-pp-test', callerType: 'miner' } as any,
         false,
+        mockFs,
+        auditWriter as any,
       );
 
       expect(auditWriter.write).toHaveBeenCalledWith(
@@ -392,12 +392,24 @@ Content.
       writeSpy.mockRestore();
     });
 
+    it('should return result unchanged on error path (isError=true)', async () => {
+      const auditWriter = makeAuditWriter();
+      const result = await dispatchContractExtractPostProcessor(
+        'some error result',
+        { id: 'task-err', callerType: 'miner' } as any,
+        true,
+        mockFs,
+        auditWriter as any,
+      );
+
+      expect(result).toBe('some error result');
+      expect(auditWriter.write).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('audit events', () => {
     it('should audit when loadSkills fails with non-ENOENT error', async () => {
       const auditWriter = { write: vi.fn() };
-      const taskSystem = {
-        addTaskResultHandler: vi.fn().mockReturnValue(() => {}),
-      };
-      tool.taskSystem = taskSystem as any;
       const existsSpy = vi.spyOn(mockFs, 'exists').mockRejectedValue(
         Object.assign(new Error('permission denied'), { code: 'EACCES' }),
       );
@@ -425,10 +437,6 @@ Content.
 
     it('should audit when dialogMessages is empty', async () => {
       const auditWriter = { write: vi.fn() };
-      const taskSystem = {
-        addTaskResultHandler: vi.fn().mockReturnValue(() => {}),
-      };
-      tool.taskSystem = taskSystem as any;
       const ctx = new ExecContextImpl({
         clawId: 'test-claw',
         clawDir: tempDir,

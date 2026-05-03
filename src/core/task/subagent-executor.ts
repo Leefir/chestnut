@@ -13,8 +13,8 @@ import { DEFAULT_LLM_IDLE_TIMEOUT_MS } from '../../constants.js';
 import { TASK_AUDIT_EVENTS } from './audit-events.js';
 import { sendResult, sendFallbackError } from './result-delivery.js';
 
+import type { PostProcessor } from './post-processors/types.js';
 import type { SubAgentTask } from './system.js';
-import type { TaskSystem } from './system.js';
 
 
 /** M9: 闭包 ≥ 6 依赖 → deps interface */
@@ -25,12 +25,9 @@ export interface SubAgentExecutionDeps {
   registry: ToolRegistryImpl;
   clawDir: string;
   parentStreamLog?: StreamLog;
-  taskResultHandlers: Array<
-    (taskId: string, callerType: CallerType | undefined, result: string, isError: boolean) => Promise<string>
-  >;
+  postProcessors: Map<string, PostProcessor>;
   moveTaskToDone: (taskId: string) => Promise<void>;
   moveTaskToFailed: (taskId: string) => Promise<void>;
-  taskSystem: TaskSystem;
 }
 
 /**
@@ -41,7 +38,7 @@ export async function executeSubAgentTask(
   signal: AbortSignal,
   deps: SubAgentExecutionDeps,
 ): Promise<void> {
-  const { fs, auditWriter, llm, registry, clawDir, parentStreamLog, taskResultHandlers, moveTaskToDone, moveTaskToFailed, taskSystem } = deps;
+  const { fs, auditWriter, llm, registry, clawDir, parentStreamLog, postProcessors, moveTaskToDone, moveTaskToFailed } = deps;
   const taskStartTime = Date.now();
   let taskFailed = false;
 
@@ -115,21 +112,25 @@ export async function executeSubAgentTask(
       idleTimeoutMs: task.idleTimeoutMs ?? DEFAULT_LLM_IDLE_TIMEOUT_MS,
       messages: task.messages,
       originClawId: task.originClawId,
-      taskSystem,   // dispatcher 的 spawn 工具需要
+
       taskStreamWriter: { write: writeTaskEvent },
       auditWriter: taskAuditWriter,
     });
 
     const result = await subAgent.run();
 
-    // Send success result to parent inbox (with onTaskResult handlers)
+    // Phase438: 单 postProcessor lookup + execute（替代 pipeline）
     let inboxResult = result;
-    for (const handler of [...taskResultHandlers]) {
-      try {
-        inboxResult = await handler(task.id, task.callerType, inboxResult, false);
-      } catch (handlerErr) {
-        auditWriter?.write(TASK_AUDIT_EVENTS.HANDLER_FAILED, task.id, 'context=handler_threw', `error=${handlerErr instanceof Error ? handlerErr.message : JSON.stringify(handlerErr)}`);
-        // inboxResult 保持上一个 handler 的输出，继续后续 handler
+    if (task.postProcessor) {
+      const handler = postProcessors.get(task.postProcessor);
+      if (handler) {
+        try {
+          inboxResult = await handler(inboxResult, task, false, fs, auditWriter);
+        } catch (handlerErr) {
+          auditWriter?.write(TASK_AUDIT_EVENTS.HANDLER_FAILED, task.id, 'context=postProcessor_threw', `error=${handlerErr instanceof Error ? handlerErr.message : JSON.stringify(handlerErr)}`);
+        }
+      } else {
+        auditWriter?.write(TASK_AUDIT_EVENTS.HANDLER_FAILED, task.id, 'context=postProcessor_not_found', `name=${task.postProcessor}`);
       }
     }
     await sendResult(fs, auditWriter, task, inboxResult, false);
@@ -139,14 +140,16 @@ export async function executeSubAgentTask(
     taskFailed = true;
     const errorMsg = error instanceof Error ? error.message : String(error);
 
-    // error path 也必须走 handler 循环，确保 removeHandler 等清理逻辑被触发
+    // Phase438: error path 同型替换
     let inboxResult = errorMsg;
-    for (const handler of [...taskResultHandlers]) {
-      try {
-        inboxResult = await handler(task.id, task.callerType, inboxResult, true);
-      } catch (handlerErr) {
-        // handler 本身抛异常不影响清理链，继续执行后续 handler
-        auditWriter?.write(TASK_AUDIT_EVENTS.HANDLER_FAILED, task.id, 'context=handler_threw_error_path', `error=${handlerErr instanceof Error ? handlerErr.message : JSON.stringify(handlerErr)}`);
+    if (task.postProcessor) {
+      const handler = postProcessors.get(task.postProcessor);
+      if (handler) {
+        try {
+          inboxResult = await handler(errorMsg, task, true, fs, auditWriter);
+        } catch (handlerErr) {
+          auditWriter?.write(TASK_AUDIT_EVENTS.HANDLER_FAILED, task.id, 'context=postProcessor_threw_error_path', `error=${handlerErr instanceof Error ? handlerErr.message : JSON.stringify(handlerErr)}`);
+        }
       }
     }
 

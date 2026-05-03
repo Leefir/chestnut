@@ -86,8 +86,6 @@ export interface IToolExecutor {
  * Tool execution implementation
  */
 export class ToolExecutorImpl implements IToolExecutor {
-  protected taskSystem?: unknown;
-
   constructor(
     private registry: ToolRegistry,
     private defaultTimeoutMs = 60000
@@ -281,7 +279,6 @@ export interface ToolExecutorOptions {
   clawDir: string;
   fs: FileSystem;
   llm?: LLMOrchestrator;
-  taskSystem?: unknown;
   profile?: ToolProfile;
   subagentMaxSteps?: number;
   auditWriter?: AuditLog;
@@ -304,7 +301,6 @@ export class ToolExecutor extends ToolExecutorImpl {
     this.clawDir = options.clawDir;
     this.fs = options.fs;
     this.llm = options.llm;
-    this.taskSystem = options.taskSystem;
     this.profile = options.profile ?? 'full';
     this.subagentMaxSteps = options.subagentMaxSteps;
     this.auditWriter = options.auditWriter;

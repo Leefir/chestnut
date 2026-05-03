@@ -25,6 +25,7 @@ import type { EvolutionSystem } from '../core/evolution-system/index.js';
 
 import { createTaskSystem } from '../core/task/index.js';
 import type { TaskSystem } from '../core/task/system.js';
+import { dispatchContractExtractPostProcessor } from '../core/task/post-processors/dispatch-contract-extract.js';
 import { createContextInjector, type ContextInjector } from '../core/dialog/index.js';
 import { ExecContextImpl } from '../foundation/tools/context.js';
 import { registerBuiltinTools } from '../foundation/tools/builtins/index.js';
@@ -236,6 +237,9 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=task_system`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: TaskSystem construct failed: ${errMsg(e)}`, { cause: e });
   }
+  // phase438: 注册 PostProcessors（装配期）
+  taskSystem.addPostProcessor('dispatch-contract-extract', dispatchContractExtractPostProcessor);
+
   // NOTE: taskSystem.initialize() / startDispatch() 属 TaskSystem 业务语义，由 Runtime.initialize() 调用
   //       参见 接口冻结.md §4 "业务动作归属" + 原则 #2
 
