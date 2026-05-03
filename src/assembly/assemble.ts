@@ -20,6 +20,8 @@ import { createToolExecutor, type ToolExecutorImpl } from '../core/tools/index.j
 import { createSkillRegistry, SkillRegistry } from '../core/skill/index.js';
 import { SKILLS_DIR_DEFAULT } from '../core/skill/skill-paths.js';
 import { ContractManager, createContractManager } from '../core/contract/index.js';
+import { createEvolutionSystem } from '../core/evolution-system/index.js';
+import type { EvolutionSystem } from '../core/evolution-system/index.js';
 import { createSubAgentVerifierScheduler } from '../core/contract/verifier-scheduler.js';
 import { createTaskSystem } from '../core/task/index.js';
 import type { TaskSystem } from '../core/task/system.js';
@@ -231,6 +233,34 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   }
   // NOTE: taskSystem.initialize() / startDispatch() 属 TaskSystem 业务语义，由 Runtime.initialize() 调用
   //       参见 接口冻结.md §4 "业务动作归属" + 原则 #2
+
+  // --- L3-L5: EvolutionSystem (motion only / phase411 Step B) ---
+  let evolutionSystem: EvolutionSystem | undefined;
+  if (isMotion) {
+    try {
+      evolutionSystem = createEvolutionSystem({
+        fs: systemFs,
+        audit: auditWriter,
+        taskSystem,
+        contractManager,
+        skillRegistry,
+      });
+    } catch (e) {
+      auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=evolution_system`, `phase=construct`, `reason=${errMsg(e)}`);
+      throw new Error(`Assembly: EvolutionSystem construct failed: ${errMsg(e)}`, { cause: e });
+    }
+
+    // Wire ContractSystem.contract_completed → EvolutionSystem.runRetroForContract
+    const motionReviewContext = {
+      motionFs: systemFs,
+      motionBaseDir: clawDir,
+      motionAudit: auditWriter,
+      clawsBaseDir: path.resolve(clawDir, '..', 'claws'),
+    };
+    contractManager.onContractCompleted(async (contractId) => {
+      await evolutionSystem!.runRetroForContract(contractId, motionReviewContext);
+    });
+  }
 
   // --- L3-L5: contextInjector ---
   let contextInjector: ContextInjector;
@@ -541,6 +571,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     cronRunner,
     heartbeat,
     gateway,
+    evolutionSystem,
   };
 }
 

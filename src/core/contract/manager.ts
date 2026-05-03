@@ -8,7 +8,6 @@ import * as yaml from 'js-yaml';
 import { randomUUID } from 'crypto';
 import * as path from 'path';
 import * as fsNative from 'fs';
-import * as fsAsync from 'fs/promises';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { LLMService } from '../../foundation/llm/index.js';
 import type { Contract, SubTask, ContractStatus, SubtaskStatus } from '../../types/contract.js';
@@ -21,28 +20,10 @@ import type { ContractVerifierScheduler } from './verifier-scheduler.js';
 import { createSubAgentVerifierScheduler } from './verifier-scheduler.js';
 import type { RetroScheduler } from '../evolution-system/retro-scheduler.js';
 import { createDefaultRetroScheduler } from '../evolution-system/retro-scheduler.js';
-import { AuditWriter, createSystemAudit } from '../../foundation/audit/index.js';
+import { AuditWriter } from '../../foundation/audit/index.js';
 import type { Message } from '../../types/message.js';
-import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import { CONTRACT_AUDIT_EVENTS } from './audit-events.js';
-import { RETRO_AUDIT_EVENTS } from '../evolution-system/retro-audit-events.js';
-import { CLAWSPACE_DIR } from '../../types/paths.js';
 
-
-/**
- * Motion 侧资源上下文（review_request 整合专用）。
- * 由 Daemon 调用 handleReviewRequest 时注入；ContractManager 不管 motion 上下文生命周期。
- */
-export interface MotionReviewContext {
-  /** Motion agent 根目录的 FileSystem（clawspace/pending-retrospective/by-contract/ 等资源的访问 fs） */
-  motionFs: FileSystem;
-  /** Motion agent 根目录绝对路径（NodeFileSystem.options.baseDir 同义，供 path.join 使用） */
-  motionBaseDir: string;
-  /** Motion audit sink（writePendingSubagentTaskFile 调用需要）*/
-  motionAudit: AuditWriter;
-  /** Claws 基础目录（解析目标 claw 路径：`path.resolve(clawsBaseDir, targetClaw)`）*/
-  clawsBaseDir: string;
-}
 
 // Programming bug detection (per Coding #5 / phase342 / r40 反向 3 教训)
 // 编程 bug (TypeError 等) vs 业务 throw 区分 / 编程 bug 走 audit 暴露
@@ -664,6 +645,7 @@ export class ContractManager {
           `title=${title}`,
           `claw=${this.clawId}`,
         );
+        await this._emitContractCompleted(contractId);
       } catch (err) {
         this.audit.write(
           CONTRACT_AUDIT_EVENTS.MOVE_ARCHIVE_FAILED,
@@ -777,6 +759,7 @@ export class ContractManager {
               `title=${contractYaml.title}`,
               `claw=${this.clawId}`,
             );
+            await this._emitContractCompleted(contractId);
           } catch (err) {
             this.audit.write(
               CONTRACT_AUDIT_EVENTS.MOVE_ARCHIVE_FAILED,
@@ -1230,169 +1213,26 @@ export class ContractManager {
     }
   }
 
-  /**
-   * 处理单条 review_request（contract 完成后的 retro 整合动作，motion 独有）。
-   *
-   * 应然语义（Step 3-5 填充）：
-   *   1. 读 motion fs 的 by-contract/<id>.json 索引（best-effort skip 4 分支）
-   *   2. 加载 target claw 的 contract YAML（best-effort skip 1 分支）
-   *   3. 扫 motion fs 的 dispatch-skills（best-effort 退化 1 分支）
-   *   4. 加载 mining task messages（若 mining 模式，best-effort 退化 2 分支）
-   *   5. 构造 retro prompt + 派发 retro subagent（writePending 失败 continue 不清 by-contract）
-   *   6. cleanup by-contract 索引（best-effort 1 分支）
-   *
-   * 完整行为契约见 `design/modules/l4_contract_system.md` §2.b.1。
-   *
-   * 空壳（phase175 Step 2）：不执行任何动作，仅占位使调用方可 import。
-   * 完整实现：phase175 Step 3-5。
-   */
-  async handleReviewRequest(
-    contractId: string,
-    ctx: MotionReviewContext,
-  ): Promise<void> {
-    // Part 1: by-contract 索引解析（daemon.ts:124-158 等价迁移）
-    const byContractPath = path.join(
-      ctx.motionBaseDir,
-      CLAWSPACE_DIR, 'pending-retrospective', 'by-contract',
-      `${contractId}.json`,
-    );
+  // --- contract_completed callback (phase411 Step B) ---
+  private contractCompletedCallbacks: Set<(contractId: string) => Promise<void>> = new Set();
 
-    let targetClaw: string | null = null;
-    let mode: string | undefined;
-    let miningTaskId: string | undefined;
-    try {
-      const fileContent = await fsAsync.readFile(byContractPath, 'utf-8');
-      let raw: unknown;
+  onContractCompleted(cb: (contractId: string) => Promise<void>): () => void {
+    this.contractCompletedCallbacks.add(cb);
+    return () => this.contractCompletedCallbacks.delete(cb);
+  }
+
+  private async _emitContractCompleted(contractId: string): Promise<void> {
+    for (const cb of this.contractCompletedCallbacks) {
       try {
-        raw = JSON.parse(fileContent);
-      } catch {
+        await cb(contractId);
+      } catch (e) {
         this.audit.write(
-          RETRO_AUDIT_EVENTS.INDEX_FAILED,
-          `contractId=${contractId}`,
-          'reason=invalid_json',
-        );
-        return;
-      }
-      if (typeof raw !== 'object' || raw === null) {
-        this.audit.write(
-          RETRO_AUDIT_EVENTS.INDEX_FAILED,
-          `contractId=${contractId}`,
-          'reason=unexpected_format',
-        );
-        return;
-      }
-      const r = raw as Record<string, unknown>;
-      const rawTarget = typeof r.targetClaw === 'string' ? r.targetClaw : null;
-      if (!rawTarget || !/^[a-z0-9-]+$/.test(rawTarget)) {
-        this.audit.write(
-          RETRO_AUDIT_EVENTS.INDEX_FAILED,
-          `contractId=${contractId}`,
-          `reason=invalid_targetClaw`,
-          `rawTarget=${rawTarget ?? 'null'}`,
-        );
-        return;
-      }
-      targetClaw = rawTarget;
-      // Part 1 回填：mode / miningTaskId（Step 3 预留，Step 4 回填）
-      mode = typeof r.mode === 'string' ? r.mode : undefined;
-      miningTaskId = typeof r.miningTaskId === 'string' ? r.miningTaskId : undefined;
-    } catch (e) {
-      const code = (e as NodeJS.ErrnoException).code;
-      if (code !== 'ENOENT') {
-        this.audit.write(
-          RETRO_AUDIT_EVENTS.INDEX_FAILED,
+          CONTRACT_AUDIT_EVENTS.CONTRACT_COMPLETED_HANDLER_FAILED,
           `contractId=${contractId}`,
           `err=${e instanceof Error ? e.message : String(e)}`,
         );
       }
-      return;
     }
-
-    // Part 2: contract YAML + skills + mining messages（daemon.ts:160-213 等价）
-
-    // 2.1 加载契约 YAML（临时 new ContractManager for target claw，B.p175-2 登记）
-    const clawDir = path.join(ctx.clawsBaseDir, targetClaw);
-    const clawFs = new NodeFileSystem({ baseDir: clawDir });
-    const clawContractManager = new ContractManager(clawDir, targetClaw, clawFs, createSystemAudit(clawFs, clawDir));
-
-    let contractYaml: string;
-    try {
-      contractYaml = await clawContractManager.readContractYamlRaw(contractId);
-    } catch (e) {
-      this.audit.write(
-        RETRO_AUDIT_EVENTS.YAML_FAILED,
-        `contractId=${contractId}`,
-        `err=${e instanceof Error ? e.message : String(e)}`,
-      );
-      return;
-    }
-
-    // 2.3 加载 mining task messages（若 mining 模式，2 best-effort 退化）
-    let baseMessages: Message[] = [];
-    if (mode === 'mining' && miningTaskId) {
-      const messagesPath = path.join(ctx.motionBaseDir, 'tasks', 'results', miningTaskId, 'messages.json');
-      try {
-        const rawMining = await fsAsync.readFile(messagesPath, 'utf-8');
-        const parsed = JSON.parse(rawMining);
-        if (Array.isArray(parsed)) {
-          baseMessages = parsed;
-        }
-      } catch (e) {
-        const code = (e as NodeJS.ErrnoException).code;
-        if (code === 'ENOENT') {
-          this.audit.write(
-            RETRO_AUDIT_EVENTS.MINING_FAILED,
-            `taskId=${miningTaskId}`,
-            'reason=ENOENT',
-          );
-        } else {
-          this.audit.write(
-            RETRO_AUDIT_EVENTS.MINING_FAILED,
-            `taskId=${miningTaskId}`,
-            `err=${e instanceof Error ? e.message : String(e)}`,
-          );
-        }
-        // best-effort：加载失败退化为空上下文
-      }
-    }
-
-    // Part 3: retro scheduling via RetroScheduler port（A.3+A.4+A.5 / phase364）
-    try {
-      await this.retroScheduler.schedule({
-        targetClaw,
-        contractId,
-        contractYaml,
-        motionFs: ctx.motionFs,
-        motionAudit: ctx.motionAudit,
-        motionBaseDir: ctx.motionBaseDir,
-        baseMessages,
-        audit: this.audit,
-      });
-    } catch (e) {
-      this.audit.write(
-        RETRO_AUDIT_EVENTS.SCHEDULE_FAILED,
-        `err=${e instanceof Error ? e.message : String(e)}`,
-      );
-      return;  // 不清 by-contract，留待下次 daemon 重启重试
-    }
-
-    // 3.3 调度成功后 cleanup by-contract 索引（best-effort）
-    await fsAsync.unlink(byContractPath).catch(e => {
-      // phase384/B.p347-retro-8: 区分编程 bug vs 业务 throw / 编程 bug 暴露 audit (Coding #5 / phase342 模式推广)
-      if (isProgrammingBug(e)) {
-        this.audit.write(
-          CONTRACT_AUDIT_EVENTS.UNEXPECTED_ASYNC_THROW,
-          `context=ContractManager.retroIndexCleanup`,
-          `errorType=${e instanceof Error ? e.constructor.name : typeof e}`,
-          `error=${e instanceof Error ? e.message : String(e)}`,
-          `stack=${e instanceof Error ? e.stack ?? '' : ''}`,
-        );
-      }
-      this.audit.write(
-        RETRO_AUDIT_EVENTS.CLEANUP_FAILED,
-        `err=${e instanceof Error ? e.message : String(e)}`,
-      );
-    });
   }
 
 }

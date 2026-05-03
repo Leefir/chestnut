@@ -5,10 +5,10 @@ import * as path from 'path';
 import { randomUUID } from 'crypto';
 
 import { ContractManager } from '../../src/core/contract/manager.js';
-import type { MotionReviewContext } from '../../src/core/contract/manager.js';
+import { EvolutionSystem } from '../../src/core/evolution-system/system.js';
+import type { MotionReviewContext } from '../../src/core/evolution-system/system.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { AuditWriter } from '../../src/foundation/audit/writer.js';
-import { CONTRACT_AUDIT_EVENTS } from '../../src/core/contract/audit-events.js';
 import { RETRO_AUDIT_EVENTS } from '../../src/core/evolution-system/retro-audit-events.js';
 
 // ============================================================================
@@ -46,12 +46,12 @@ interface TestFixtures {
   targetClawDir: string;
   contractId: string;
   ctx: MotionReviewContext;
-  manager: ContractManager;
+  evolutionSystem: EvolutionSystem;
   mockAudit: { write: ReturnType<typeof vi.fn> };
 }
 
 async function setupFixtures(): Promise<TestFixtures> {
-  const tmpBase = path.join(os.tmpdir(), `phase175-${randomUUID()}`);
+  const tmpBase = path.join(os.tmpdir(), `phase411-${randomUUID()}`);
   const motionDir = path.join(tmpBase, 'motion');
   const clawsBaseDir = path.join(tmpBase, 'claws');
   const targetClaw = 'claw-a';
@@ -74,11 +74,17 @@ async function setupFixtures(): Promise<TestFixtures> {
   const progressPath = path.join(targetClawDir, 'contract', 'active', contractId, 'progress.json');
   await fs.writeFile(progressPath, JSON.stringify({ contractId, state: 'active' }));
 
-  // 构造 motion 侧 ContractManager + ctx
+  // 构造 motion 侧 EvolutionSystem + ctx
   const motionFs = new NodeFileSystem({ baseDir: motionDir });
   const motionAudit = new AuditWriter(motionFs, 'audit.tsv');
   const mockAudit = { write: vi.fn() };
-  const manager = new ContractManager(motionDir, 'motion', motionFs, mockAudit as any);
+  const mockContractManager = {} as ContractManager;
+  const evolutionSystem = new EvolutionSystem({
+    fs: motionFs,
+    audit: mockAudit as any,
+    taskSystem: {} as any,
+    contractManager: mockContractManager,
+  });
   const ctx: MotionReviewContext = {
     motionFs,
     motionBaseDir: motionDir,
@@ -86,7 +92,7 @@ async function setupFixtures(): Promise<TestFixtures> {
     clawsBaseDir,
   };
 
-  return { motionDir, clawsBaseDir, targetClawDir, contractId, ctx, manager, mockAudit };
+  return { motionDir, clawsBaseDir, targetClawDir, contractId, ctx, evolutionSystem, mockAudit };
 }
 
 async function cleanupFixtures(tmpBase: string) {
@@ -96,7 +102,7 @@ async function cleanupFixtures(tmpBase: string) {
 // ============================================================================
 // Tests
 // ============================================================================
-describe('ContractManager.handleReviewRequest - happy path', () => {
+describe('EvolutionSystem.runRetroForContract - happy path', () => {
   let fixtures: TestFixtures;
 
   beforeEach(async () => {
@@ -109,9 +115,11 @@ describe('ContractManager.handleReviewRequest - happy path', () => {
   });
 
   it('happy path: all fields valid → writePending called + by-contract cleaned', async () => {
-    const { contractId, ctx, manager, motionDir } = fixtures;
+    const { contractId, ctx, evolutionSystem, motionDir } = fixtures;
 
-    await manager.handleReviewRequest(contractId, ctx);
+    const result = await evolutionSystem.runRetroForContract(contractId, ctx);
+
+    expect(result.status).toBe('finished');
 
     // writePending 被调用（含关键 payload 字段）
     expect(mockWritePending).toHaveBeenCalledWith(
@@ -137,7 +145,7 @@ describe('ContractManager.handleReviewRequest - happy path', () => {
 });
 
 
-describe('ContractManager.handleReviewRequest - best-effort branches', () => {
+describe('EvolutionSystem.runRetroForContract - best-effort branches', () => {
   let fixtures: TestFixtures;
   let auditSpy: ReturnType<typeof vi.spyOn>;
 
@@ -156,14 +164,15 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
   // it 1: by-contract 无效（参数化 3 子用例）
   // ============================================================================
   it('by-contract invalid → skip with warn (3 sub-cases)', async () => {
-    const { contractId, ctx, manager, motionDir } = fixtures;
+    const { contractId, ctx, evolutionSystem, motionDir } = fixtures;
     const byContractPath = path.join(
       motionDir, 'clawspace', 'pending-retrospective', 'by-contract', `${contractId}.json`
     );
 
     // sub-case A: 非 JSON
     await fs.writeFile(byContractPath, 'not-json{{{');
-    await manager.handleReviewRequest(contractId, ctx);
+    let result = await evolutionSystem.runRetroForContract(contractId, ctx);
+    expect(result.status).toBe('error');
     expect(auditSpy).toHaveBeenCalledWith(
       RETRO_AUDIT_EVENTS.INDEX_FAILED,
       expect.stringContaining('contractId='),
@@ -175,7 +184,8 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
     vi.clearAllMocks();
     auditSpy.mockClear();
     await fs.writeFile(byContractPath, '"just a string"');
-    await manager.handleReviewRequest(contractId, ctx);
+    result = await evolutionSystem.runRetroForContract(contractId, ctx);
+    expect(result.status).toBe('error');
     expect(auditSpy).toHaveBeenCalledWith(
       RETRO_AUDIT_EVENTS.INDEX_FAILED,
       expect.stringContaining('contractId='),
@@ -186,7 +196,8 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
     vi.clearAllMocks();
     auditSpy.mockClear();
     await fs.writeFile(byContractPath, JSON.stringify({ targetClaw: 'INVALID_UPPERCASE' }));
-    await manager.handleReviewRequest(contractId, ctx);
+    result = await evolutionSystem.runRetroForContract(contractId, ctx);
+    expect(result.status).toBe('error');
     expect(auditSpy).toHaveBeenCalledWith(
       RETRO_AUDIT_EVENTS.INDEX_FAILED,
       expect.stringContaining('contractId='),
@@ -199,7 +210,7 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
   // it 2: by-contract 非 ENOENT 读错（目录当文件读触发 EISDIR）
   // ============================================================================
   it('by-contract non-ENOENT read error → skip with warn', async () => {
-    const { contractId, ctx, manager, motionDir } = fixtures;
+    const { contractId, ctx, evolutionSystem, motionDir } = fixtures;
     const byContractPath = path.join(
       motionDir, 'clawspace', 'pending-retrospective', 'by-contract', `${contractId}.json`
     );
@@ -208,7 +219,8 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
     await fs.rm(byContractPath);
     await fs.mkdir(byContractPath);
 
-    await manager.handleReviewRequest(contractId, ctx);
+    const result = await evolutionSystem.runRetroForContract(contractId, ctx);
+    expect(result.status).toBe('error');
 
     expect(auditSpy).toHaveBeenCalledWith(
       RETRO_AUDIT_EVENTS.INDEX_FAILED,
@@ -222,12 +234,13 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
   // it 3: contract YAML 读失败 → skip
   // ============================================================================
   it('contract YAML load failure → skip with warn', async () => {
-    const { contractId, ctx, manager, targetClawDir } = fixtures;
+    const { contractId, ctx, evolutionSystem, targetClawDir } = fixtures;
 
     // 删除 target claw 的 contract 目录（contractId 变无效）
     await fs.rm(path.join(targetClawDir, 'contract'), { recursive: true, force: true });
 
-    await manager.handleReviewRequest(contractId, ctx);
+    const result = await evolutionSystem.runRetroForContract(contractId, ctx);
+    expect(result.status).toBe('error');
 
     expect(auditSpy).toHaveBeenCalledWith(
       RETRO_AUDIT_EVENTS.YAML_FAILED,
@@ -241,12 +254,13 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
   // it 4: dispatch-skills 读失败退化
   // ============================================================================
   it('dispatch-skills load failure → degrade to empty skillsSummary', async () => {
-    const { contractId, ctx, manager } = fixtures;
+    const { contractId, ctx, evolutionSystem } = fixtures;
 
     // mock SkillRegistry loadAll 抛错
     mockSkillRegistryLoadAll.mockRejectedValueOnce(new Error('mock skills crash'));
 
-    await manager.handleReviewRequest(contractId, ctx);
+    const result = await evolutionSystem.runRetroForContract(contractId, ctx);
+    expect(result.status).toBe('finished');
 
     expect(auditSpy).toHaveBeenCalledWith(
       RETRO_AUDIT_EVENTS.SKILL_FAILED,
@@ -254,15 +268,13 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
     );
     // writePending 仍被调（退化继续，不 skip）
     expect(mockWritePending).toHaveBeenCalled();
-    // writePending 被调说明退化继续（不 skip）
-    expect(mockWritePending).toHaveBeenCalled();
   });
 
   // ============================================================================
   // it 5: mining messages 缺失退化（ENOENT + 非 ENOENT 2 子）
   // ============================================================================
   it('mining messages missing → degrade to empty baseMessages (2 sub-cases)', async () => {
-    const { contractId, ctx, manager, motionDir } = fixtures;
+    const { contractId, ctx, evolutionSystem, motionDir } = fixtures;
     const byContractPath = path.join(
       motionDir, 'clawspace', 'pending-retrospective', 'by-contract', `${contractId}.json`
     );
@@ -275,7 +287,8 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
     }));
 
     // sub-case A: ENOENT
-    await manager.handleReviewRequest(contractId, ctx);
+    let result = await evolutionSystem.runRetroForContract(contractId, ctx);
+    expect(result.status).toBe('finished');
     expect(auditSpy).toHaveBeenCalledWith(
       RETRO_AUDIT_EVENTS.MINING_FAILED,
       expect.stringContaining('taskId='),
@@ -295,7 +308,8 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
     // 建目录结构：tasks/results/mining-123/messages.json 是一个目录
     await fs.mkdir(path.join(motionDir, 'tasks', 'results', 'mining-123', 'messages.json'), { recursive: true });
 
-    await manager.handleReviewRequest(contractId, ctx);
+    result = await evolutionSystem.runRetroForContract(contractId, ctx);
+    expect(result.status).toBe('finished');
     expect(auditSpy).toHaveBeenCalledWith(
       RETRO_AUDIT_EVENTS.MINING_FAILED,
       expect.stringContaining('taskId='),
@@ -307,14 +321,15 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
   // it 6: writePending 失败（不清 by-contract）+ cleanup 失败
   // ============================================================================
   it('writePending failure → keep by-contract for retry (no cleanup)', async () => {
-    const { contractId, ctx, manager, motionDir } = fixtures;
+    const { contractId, ctx, evolutionSystem, motionDir } = fixtures;
     const byContractPath = path.join(
       motionDir, 'clawspace', 'pending-retrospective', 'by-contract', `${contractId}.json`
     );
 
     mockWritePending.mockRejectedValueOnce(new Error('mock dispatch crash'));
 
-    await manager.handleReviewRequest(contractId, ctx);
+    const result = await evolutionSystem.runRetroForContract(contractId, ctx);
+    expect(result.status).toBe('error');
 
     expect(auditSpy).toHaveBeenCalledWith(
       RETRO_AUDIT_EVENTS.SCHEDULE_FAILED,
@@ -325,7 +340,7 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
   });
 
   it('cleanup by-contract failure → warn but no throw', async () => {
-    const { contractId, ctx, manager, motionDir } = fixtures;
+    const { contractId, ctx, evolutionSystem, motionDir } = fixtures;
     const byContractPath = path.join(
       motionDir, 'clawspace', 'pending-retrospective', 'by-contract', `${contractId}.json`
     );
@@ -336,7 +351,8 @@ describe('ContractManager.handleReviewRequest - best-effort branches', () => {
       return 'mock-task-id';
     });
 
-    await expect(manager.handleReviewRequest(contractId, ctx)).resolves.toBeUndefined();
+    const result = await evolutionSystem.runRetroForContract(contractId, ctx);
+    expect(result.status).toBe('finished');
 
     expect(auditSpy).toHaveBeenCalledWith(
       RETRO_AUDIT_EVENTS.CLEANUP_FAILED,

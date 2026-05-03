@@ -31,4 +31,5 @@ export const CONTRACT_AUDIT_EVENTS = {
   RESUMED: 'contract_resumed',
   // phase350: A.8 observer 错误暴露
   OBSERVER_EVENT_FAILED: 'contract_observer_event_failed',
+  CONTRACT_COMPLETED_HANDLER_FAILED: 'contract_completed_handler_failed',
 } as const;

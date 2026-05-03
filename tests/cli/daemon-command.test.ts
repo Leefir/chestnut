@@ -42,9 +42,7 @@ const mockState = vi.hoisted(() => {
   };
 });
 
-const mockContractManagerState = vi.hoisted(() => ({
-  handleReviewRequest: vi.fn().mockResolvedValue(undefined),
-}));
+
 
 // ============================================================================
 // Module mocks（Step 1 D3 6 层映射）
@@ -65,9 +63,7 @@ vi.mock('../../src/daemon/daemon-loop.js', () => ({
 }));
 
 vi.mock('../../src/core/contract/manager.js', () => ({
-  ContractManager: vi.fn().mockImplementation(() => ({
-    handleReviewRequest: mockContractManagerState.handleReviewRequest,
-  })),
+  ContractManager: vi.fn().mockImplementation(() => ({})),
 }));
 
 vi.mock('../../src/foundation/audit/index.js', () => ({
@@ -180,7 +176,7 @@ describe('daemonCommand - A4a startup success', () => {
     expect(mockState.mockSnapshotCommit).toHaveBeenCalled();
   });
 
-  it('motion: assemble 成功 + identity=motion + onInboxMessages 注入', async () => {
+  it('motion: assemble 成功 + identity=motion + onInboxMessages undefined (phase411)', async () => {
     mockState.mockAssemble.mockResolvedValue(makeMockInstances({ clawId: 'motion' }));
 
     const cmdPromise = daemonCommand('motion');
@@ -194,10 +190,10 @@ describe('daemonCommand - A4a startup success', () => {
       identity: 'motion',
     }));
 
-    // L116 onInboxMessages 注入（startDaemonLoop 收到）
+    // phase411: onInboxMessages 已移除（review_request 由 ContractSystem.contract_completed 事件驱动）
     expect(mockState.mockStartDaemonLoop).toHaveBeenCalledWith(expect.objectContaining({
       label: '[motion daemon]',
-      motion: expect.objectContaining({ onInboxMessages: expect.any(Function) }),
+      motion: expect.objectContaining({ onInboxMessages: undefined }),
     }));
   });
 });
@@ -425,56 +421,12 @@ describe('daemonCommand - review_request dispatch (phase184)', () => {
     mockState.stopFn = null;
   });
 
-  it('review_request 消息触发 handleReviewRequest 一次 (happy path)', async () => {
+  it('phase411: onInboxMessages 始终 undefined（review_request 已由 ContractSystem 事件驱动）', async () => {
     const cmdPromise = daemonCommand('motion');
     await flushMicrotasks();
 
     const options = mockState.mockStartDaemonLoop.mock.calls[0][0];
-    expect(options.motion?.onInboxMessages).toBeDefined();
-
-    await options.motion?.onInboxMessages([{ type: 'review_request', contract_id: 'abc-123' }]);
-
-    expect(mockContractManagerState.handleReviewRequest).toHaveBeenCalledTimes(1);
-    expect(mockContractManagerState.handleReviewRequest).toHaveBeenCalledWith(
-      'abc-123',
-      expect.objectContaining({
-        motionFs: expect.any(Object),
-        motionBaseDir: expect.any(String),
-        motionAudit: expect.any(Object),
-        clawsBaseDir: expect.any(String),
-      }),
-    );
-
-    if (mockState.stopFn) mockState.stopFn();
-    await cmdPromise.catch(() => {});
-  });
-
-  it('非 review_request 消息不触发 handleReviewRequest', async () => {
-    const cmdPromise = daemonCommand('motion');
-    await flushMicrotasks();
-
-    const options = mockState.mockStartDaemonLoop.mock.calls[0][0];
-    await options.motion?.onInboxMessages([{ type: 'user_chat', contract_id: 'xyz' }]);
-
-    expect(mockContractManagerState.handleReviewRequest).not.toHaveBeenCalled();
-
-    if (mockState.stopFn) mockState.stopFn();
-    await cmdPromise.catch(() => {});
-  });
-
-  it('多条 review_request 各触发一次', async () => {
-    const cmdPromise = daemonCommand('motion');
-    await flushMicrotasks();
-
-    const options = mockState.mockStartDaemonLoop.mock.calls[0][0];
-    await options.motion?.onInboxMessages([
-      { type: 'review_request', contract_id: 'a' },
-      { type: 'review_request', contract_id: 'b' },
-    ]);
-
-    expect(mockContractManagerState.handleReviewRequest).toHaveBeenCalledTimes(2);
-    expect(mockContractManagerState.handleReviewRequest).toHaveBeenNthCalledWith(1, 'a', expect.any(Object));
-    expect(mockContractManagerState.handleReviewRequest).toHaveBeenNthCalledWith(2, 'b', expect.any(Object));
+    expect(options.motion?.onInboxMessages).toBeUndefined();
 
     if (mockState.stopFn) mockState.stopFn();
     await cmdPromise.catch(() => {});

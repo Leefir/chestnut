@@ -13,13 +13,13 @@ import * as fsNative from 'fs';
 import * as fsAsync from 'fs/promises';
 import { createHash } from 'node:crypto';
 import { loadGlobalConfig, loadClawConfig, getClawDir, getMotionDir } from '../foundation/config/index.js';
-import type { InboxMessage } from '../types/messaging.js';
+
 import { startDaemonLoop } from './daemon-loop.js';
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import { AuditWriter } from '../foundation/audit/writer.js';
 import { createSystemAudit, type Audit } from '../foundation/audit/index.js';
 import { createAgentProcessManager } from '../cli/commands/process-manager-factory.js';
-import { ContractManager, type MotionReviewContext } from '../core/contract/manager.js';
+
 import { CliError } from '../cli/errors.js';
 import { assemble, disassemble } from '../assembly/index.js';
 import { LockConflictError } from '../foundation/process-manager/index.js';
@@ -121,32 +121,9 @@ export async function daemonCommand(name: string): Promise<void> {
 
   const inboxPendingDir = path.join(dir, 'inbox', 'pending');
 
-  // review_request → ContractManager.handleReviewRequest（B.p172-3 迁移完成 phase188）
-  const motionFs = isMotion ? new NodeFileSystem({ baseDir: dir }) : undefined;
-  const contractManager = isMotion && motionFs ? new ContractManager(dir, 'motion', motionFs, auditWriter) : undefined;
-  const clawsBaseDir = isMotion ? path.resolve(dir, '..', 'claws') : undefined;
-
-  const reviewCtx: MotionReviewContext | undefined = isMotion && motionFs && clawsBaseDir
-    ? { motionFs, motionBaseDir: dir, motionAudit: auditWriter, clawsBaseDir }
-    : undefined;
-
-  // 注册 review_request 处理器（仅 motion）
-  const onInboxMessages = isMotion
-    ? async (messages: InboxMessage[]) => {
-        for (const message of messages) {
-          if (message.type !== 'review_request') continue;
-          const contractId = message.contract_id;
-          if (!contractId) continue;
-
-          // phase184 新路径：委托 ContractManager.handleReviewRequest
-          if (contractManager && reviewCtx) {
-            await contractManager.handleReviewRequest(contractId, reviewCtx);
-            continue;
-          }
-
-        }
-      }
-    : undefined;
+  // phase411: review_request 处理已由 ContractSystem.contract_completed → EvolutionSystem.runRetroForContract 接管
+  // onInboxMessages 不再需要（原 review_request 处理器已移除）
+  const onInboxMessages = undefined;
 
   // 注册 uncaughtException / unhandledRejection 处理程序
   const writeCrash = (reason: unknown): void => {

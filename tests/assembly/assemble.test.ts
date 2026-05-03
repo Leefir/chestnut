@@ -138,7 +138,7 @@ vi.mock('../../src/core/skill/registry.js', () => ({
 }));
 
 vi.mock('../../src/core/contract/manager.js', () => ({
-  ContractManager: trackCtor('ContractManager', () => ({ setOnNotify: vi.fn(), loadPaused: vi.fn(), resume: vi.fn() })),
+  ContractManager: trackCtor('ContractManager', () => ({ setOnNotify: vi.fn(), loadPaused: vi.fn(), resume: vi.fn(), onContractCompleted: vi.fn(() => () => {}) })),
 }));
 
 vi.mock('../../src/core/task/system.js', () => ({
