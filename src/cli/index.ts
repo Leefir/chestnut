@@ -32,7 +32,7 @@ import {
 import { contractCreateCommand, contractCreateFromDirCommand, contractLogCommand, contractEventsCommand } from './commands/contract.js';
 import { skillInstallUserCommand, skillInstallClawCommand } from './commands/skill.js';
 import { runWatchdogLoop } from '../watchdog/watchdog.js';
-import { createWatchdogPort } from '../foundation/config/factories.js';
+import { createWatchdogPort } from '../watchdog/watchdog-port-factory.js';
 import { configCommand } from './commands/config.js';
 import { stopAllCommand } from './commands/stop.js';
 import { statusCommand } from './commands/status.js';
