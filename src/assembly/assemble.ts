@@ -29,7 +29,7 @@ import { createContextInjector, type ContextInjector } from '../core/dialog/inde
 import { ExecContextImpl } from '../foundation/tools/context.js';
 import { registerBuiltinTools } from '../foundation/tools/builtins/index.js';
 import { createFileTools } from '../foundation/file-tool/index.js';
-import { createCommandTools } from '../core/command-tool/index.js';
+import { createCommandTools } from '../foundation/command-tool/index.js';
 import { spawnTool } from '../core/task/tools/spawn.js';
 import { cleanupOrphanedTemp } from './cleanup.js';
 import { createInboxReader, createOutboxWriter, notifyInbox } from '../foundation/messaging/index.js';

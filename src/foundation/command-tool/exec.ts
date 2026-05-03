@@ -5,21 +5,21 @@
  * Responsible for: argument extraction, context injection, output truncation, ToolResult formatting.
  */
 
-import type { Tool, ToolResult, ExecContext } from '../../foundation/tools/executor.js';
+import type { Tool, ToolResult, ExecContext } from '../tools/executor.js';
 import {
   EXEC_MAX_STDOUT,
   EXEC_MAX_STDERR,
 } from '../../constants.js';
-import { exec } from '../../foundation/process-exec/index.js';
-import { ProcessExecError } from '../../foundation/process-exec/index.js';
-import { PROCESS_EXEC_DEFAULT_TIMEOUT_MS } from '../../foundation/process-exec/index.js';
+import { exec } from '../process-exec/index.js';
+import { ProcessExecError } from '../process-exec/index.js';
+import { PROCESS_EXEC_DEFAULT_TIMEOUT_MS } from '../process-exec/index.js';
 
 function truncate(str: string, maxLen: number): string {
   if (!str || str.length <= maxLen) return str || '';
   return str.slice(0, maxLen) + '\n[truncated]';
 }
 
-import { EXEC_TOOL_NAME } from '../../foundation/tools/tool-names.js';
+import { EXEC_TOOL_NAME } from '../tools/tool-names.js';
 export { EXEC_TOOL_NAME };
 
 export const execTool: Tool = {
