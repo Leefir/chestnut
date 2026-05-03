@@ -149,6 +149,6 @@ export interface ProviderAdapter {
    */
   stream?(options: LLMCallOptions): AsyncIterableIterator<StreamChunk>;
 
-  /** Set by LLMServiceImpl; providers call this for SSE parse errors (A.4) */
+  /** Set by LLMOrchestratorImpl; providers call this for SSE parse errors (A.4) */
   onStreamParseError?: (event: { provider: string; raw: string; error: string }) => void;
 }

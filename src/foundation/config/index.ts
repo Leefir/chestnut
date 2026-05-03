@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { z } from 'zod';
-import type { LLMOrchestratorConfig } from '../llm/index.js';
+import type { LLMOrchestratorConfig } from '../llm-orchestrator/types.js';
 import type { ProviderConfig } from '../llm-provider/types.js';
 import { resolvePreset } from '../llm-provider/presets.js';
 

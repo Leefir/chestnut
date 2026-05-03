@@ -188,7 +188,7 @@ export class SubAgent {
       // Run ReAct loop，用 Promise.race 强制超时退出
       // Tool 层超时通过 timeoutController.signal 传到 ctx.signal；LLM stream
       // (collectStreamResponse) 也消费 ctx.signal，fetch/SDK 会实际取消请求
-      // (见 src/foundation/llm/abort-helper.ts)。race 保留为最外层保险：若某
+      // (见 src/foundation/llm-provider/abort-helper.ts)。race 保留为最外层保险：若某
       // provider 未正确响应 signal，timeoutController 胜出时本 Promise 立即抛
       // ToolTimeoutError，不等 LLM 自然结束。
       const timeoutPromise = new Promise<never>((_, reject) => {

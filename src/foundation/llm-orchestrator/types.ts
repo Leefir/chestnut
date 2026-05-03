@@ -176,12 +176,12 @@ export interface ProviderAdapter {
    */
   stream?(options: LLMCallOptions): AsyncIterableIterator<StreamChunk>;
 
-  /** Set by LLMServiceImpl; providers call this for SSE parse errors (A.4) */
+  /** Set by LLMOrchestratorImpl; providers call this for SSE parse errors (A.4) */
   onStreamParseError?: (event: { provider: string; raw: string; error: string }) => void;
 }
 
 /**
- * LLM event payload union — emitted by LLMService, consumed by fan-out adapter
+ * LLM event payload union — emitted by LLMOrchestrator, consumed by fan-out adapter
  */
 export type LLMEvent =
   | { type: 'provider_attempt_failed'; provider: string; attempt: number; error: string }

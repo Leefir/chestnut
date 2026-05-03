@@ -1,7 +1,7 @@
 /**
  * LLM Service - Main implementation with failover and retry
  * 
- * Implements LLMService interface
+ * Implements LLMOrchestrator interface
  * - Retry with exponential backoff
  * - Failover to fallback provider
  */
