@@ -40,6 +40,7 @@ function makeOpts(clawforumDir: string, motionDir: string): RandomDreamOptions {
     motionDir,
     taskSystem: makeMockTaskSystem(),
     fs: new NodeFileSystem({ baseDir: clawforumDir }),
+    motionFs: new NodeFileSystem({ baseDir: motionDir }),
     audit: mockAudit as any,
   };
 }

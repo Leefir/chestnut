@@ -12,6 +12,7 @@ import { createSystemAudit } from '../../foundation/audit/index.js';
 import { CLAWSPACE_DIR } from '../../types/paths.js';
 import { CONTRACT_AUDIT_EVENTS } from '../contract/audit-events.js';
 import type { Message } from '../../types/message.js';
+import { FileNotFoundError } from '../../types/errors.js';
 
 export interface EvolutionSystemDeps {
   fs: FileSystem;
@@ -117,14 +118,16 @@ export class EvolutionSystem {
       mode = typeof r.mode === 'string' ? r.mode : undefined;
       miningTaskId = typeof r.miningTaskId === 'string' ? r.miningTaskId : undefined;
     } catch (e) {
-      const code = (e as NodeJS.ErrnoException).code;
-      if (code !== 'ENOENT') {
+      const isMissing =
+        (e as NodeJS.ErrnoException).code === 'ENOENT' ||
+        e instanceof FileNotFoundError;
+      if (!isMissing) {
         this.deps.audit.write(
           RETRO_AUDIT_EVENTS.INDEX_FAILED,
           `contractId=${contractId}`,
           `err=${e instanceof Error ? e.message : String(e)}`,
         );
-        return { status: 'error', detail: code };
+        return { status: 'error', detail: (e as NodeJS.ErrnoException).code };
       }
       return { status: 'skipped_duplicate', detail: 'ENOENT' };
     }
@@ -159,8 +162,10 @@ export class EvolutionSystem {
           baseMessages = parsed;
         }
       } catch (e) {
-        const code = (e as NodeJS.ErrnoException).code;
-        if (code === 'ENOENT') {
+        const isMissing =
+          (e as NodeJS.ErrnoException).code === 'ENOENT' ||
+          e instanceof FileNotFoundError;
+        if (isMissing) {
           this.deps.audit.write(
             RETRO_AUDIT_EVENTS.MINING_FAILED,
             `taskId=${miningTaskId}`,
