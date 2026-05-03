@@ -6,14 +6,14 @@
  * - buildSystemPrompt() 包含 SOUL.md/REVIEW.md 内容
  * - 缺少模板文件时的降级行为
  *
- * phase266 重构：MotionRuntime subclass 消除，改为 ClawRuntime + motion options 构造
+ * phase266 重构：MotionRuntime subclass 消除，改为 Runtime + motion options 构造
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
-import { ClawRuntime, buildMotionSystemPrompt } from '../../src/core/runtime/index.js';
+import { Runtime, buildMotionSystemPrompt } from '../../src/core/runtime/index.js';
 import type { LLMOrchestratorConfig } from '../../src/foundation/llm-orchestrator/types.js';
 import { makeRuntimeDeps } from '../helpers/runtime-deps.js';
 
@@ -47,7 +47,7 @@ async function cleanupDir(clawDir: string): Promise<void> {
 
 async function createMotionRuntime(options: { clawId: string; clawDir: string; llmConfig: LLMOrchestratorConfig }) {
   const deps = await makeRuntimeDeps({ clawDir: options.clawDir, clawId: options.clawId, llmConfig: options.llmConfig });
-  return new ClawRuntime({
+  return new Runtime({
     ...options,
     dependencies: deps,
     systemPromptBuilder: buildMotionSystemPrompt,
@@ -57,7 +57,7 @@ async function createMotionRuntime(options: { clawId: string; clawDir: string; l
 
 describe('MotionRuntime', () => {
   let tempDir: string;
-  let runtime: ClawRuntime;
+  let runtime: Runtime;
 
   beforeEach(async () => {
     tempDir = await createTempDir();
@@ -217,7 +217,7 @@ describe('MotionRuntime', () => {
   });
 
   describe('inheritance', () => {
-    it('should extend ClawRuntime correctly', async () => {
+    it('should extend Runtime correctly', async () => {
       // Arrange
       await fs.mkdir(path.join(tempDir, 'dialog'), { recursive: true });
       await fs.writeFile(path.join(tempDir, 'AGENTS.md'), 'Test');
@@ -233,7 +233,7 @@ describe('MotionRuntime', () => {
 
       // Act & Assert
       await runtime.initialize();
-      expect(runtime).toBeInstanceOf(ClawRuntime);
+      expect(runtime).toBeInstanceOf(Runtime);
 
       // 验证继承的方法可用
       const status = runtime.getStatus();

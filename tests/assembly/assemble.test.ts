@@ -80,7 +80,7 @@ vi.mock('../../src/cli/commands/process-manager-factory.js', () => ({
 vi.mock('../../src/core/runtime/index.js', () => {
   const HeartbeatCtor = vi.fn(() => mockHeartbeat);
   return {
-    ClawRuntime: vi.fn(() => mockRuntime),
+    Runtime: vi.fn(() => mockRuntime),
     createRuntime: vi.fn(() => mockRuntime),
     Heartbeat: HeartbeatCtor,
     createHeartbeat: vi.fn((...args: any[]) => new (HeartbeatCtor as any)(...args)),

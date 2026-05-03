@@ -1,10 +1,10 @@
 /**
  * @module L5.Runtime
- * ClawRuntime — 核心运行时编排器。
+ * Runtime — 核心运行时编排器。
  */
 
-export { ClawRuntime } from './runtime.js';
-export type { ClawRuntimeOptions, RuntimeDependencies, StreamCallbacks } from './runtime.js';
+export { Runtime } from './runtime.js';
+export type { RuntimeOptions, RuntimeDependencies, StreamCallbacks } from './runtime.js';
 export { createRuntime, buildMotionSystemPrompt } from './create-runtime.js';
 export type { CreateRuntimeOptions } from './create-runtime.js';
 export { Heartbeat, createHeartbeat } from './heartbeat.js';

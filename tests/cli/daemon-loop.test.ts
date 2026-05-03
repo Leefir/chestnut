@@ -8,7 +8,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fsNative from 'fs';
 import { waitForInbox, startDaemonLoop } from '../../src/daemon/daemon-loop.js';
-import type { ClawRuntime } from '../../src/core/runtime/index.js';
+import type { Runtime } from '../../src/core/runtime/index.js';
 import type { AuditLog } from '../../src/foundation/audit/index.js';
 import type { Watcher } from '../../src/foundation/file-watcher/types.js';
 import type { FileSystem } from '../../src/foundation/fs/types.js';
@@ -58,7 +58,7 @@ describe('startDaemonLoop interrupt poller circuit breaker', () => {
       processBatch,
       abort: vi.fn(),
       retryLastTurn: vi.fn(),
-    } as unknown as ClawRuntime;
+    } as unknown as Runtime;
 
     const { stop } = startDaemonLoop({
       runtime: mockRuntime,
@@ -123,7 +123,7 @@ describe('startDaemonLoop - LLM retry', () => {
       .mockRejectedValueOnce(new Error('All providers failed: network unreachable'))
       .mockResolvedValue(0);
 
-    const mockRuntime = { processBatch, retryLastTurn, abort: vi.fn() } as unknown as ClawRuntime;
+    const mockRuntime = { processBatch, retryLastTurn, abort: vi.fn() } as unknown as Runtime;
 
     const { stop } = startDaemonLoop({
       runtime: mockRuntime,
@@ -169,7 +169,7 @@ describe('startDaemonLoop - LLM retry', () => {
     // processBatch throws once; retryLastTurn always throws → 3 retries → max exceeded
     const processBatch  = vi.fn().mockRejectedValueOnce(new Error('All providers failed'));
     const retryLastTurn = vi.fn().mockRejectedValue(new Error('All providers failed on retry'));
-    const mockRuntime = { processBatch, retryLastTurn, abort: vi.fn() } as unknown as ClawRuntime;
+    const mockRuntime = { processBatch, retryLastTurn, abort: vi.fn() } as unknown as Runtime;
 
     const { stop } = startDaemonLoop({
       runtime: mockRuntime,
@@ -242,7 +242,7 @@ describe('startDaemonLoop - LLM retry', () => {
     const processBatch  = vi.fn()
       .mockRejectedValueOnce(new Error('Unexpected disk I/O failure'))
       .mockResolvedValue(0);
-    const mockRuntime = { processBatch, retryLastTurn, abort: vi.fn() } as unknown as ClawRuntime;
+    const mockRuntime = { processBatch, retryLastTurn, abort: vi.fn() } as unknown as Runtime;
 
     const { stop } = startDaemonLoop({
       runtime: mockRuntime,
@@ -290,7 +290,7 @@ describe('startDaemonLoop - interrupt audit', () => {
     const mockAudit = { write: vi.fn() };
     const processBatch = vi.fn().mockRejectedValueOnce(new IdleTimeoutSignal(1000));
 
-    const mockRuntime = { processBatch, retryLastTurn: vi.fn(), abort: vi.fn() } as unknown as ClawRuntime;
+    const mockRuntime = { processBatch, retryLastTurn: vi.fn(), abort: vi.fn() } as unknown as Runtime;
 
     const { stop } = startDaemonLoop({
       runtime: mockRuntime,
@@ -321,7 +321,7 @@ describe('startDaemonLoop - interrupt audit', () => {
     const mockAudit = { write: vi.fn() };
     const processBatch = vi.fn().mockRejectedValueOnce(new UserInterrupt());
 
-    const mockRuntime = { processBatch, retryLastTurn: vi.fn(), abort: vi.fn() } as unknown as ClawRuntime;
+    const mockRuntime = { processBatch, retryLastTurn: vi.fn(), abort: vi.fn() } as unknown as Runtime;
 
     const { stop } = startDaemonLoop({
       runtime: mockRuntime,
@@ -352,7 +352,7 @@ describe('startDaemonLoop - interrupt audit', () => {
     const mockAudit = { write: vi.fn() };
     const processBatch = vi.fn().mockRejectedValueOnce(new PriorityInboxInterrupt());
 
-    const mockRuntime = { processBatch, retryLastTurn: vi.fn(), abort: vi.fn() } as unknown as ClawRuntime;
+    const mockRuntime = { processBatch, retryLastTurn: vi.fn(), abort: vi.fn() } as unknown as Runtime;
 
     const { stop } = startDaemonLoop({
       runtime: mockRuntime,
@@ -389,7 +389,7 @@ describe('startDaemonLoop - iteration audit', () => {
       .mockResolvedValueOnce(1)
       .mockResolvedValueOnce(0);
 
-    const mockRuntime = { processBatch, retryLastTurn: vi.fn(), abort: vi.fn() } as unknown as ClawRuntime;
+    const mockRuntime = { processBatch, retryLastTurn: vi.fn(), abort: vi.fn() } as unknown as Runtime;
 
     const { stop } = startDaemonLoop({
       runtime: mockRuntime,

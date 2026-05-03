@@ -1,5 +1,5 @@
 /**
- * ClawRuntime - assembles all modules into a runnable Claw instance
+ * Runtime - assembles all modules into a runnable Claw instance
  *
  * This is the final assembly layer for Phase 1, integrating the following modules into a unified runtime:
  * - Foundation: NodeFileSystem, LLMOrchestrator
@@ -47,7 +47,7 @@ import type {
 } from './runtime-ports.js';
 
 /**
- * ClawRuntime constructor options
+ * Runtime constructor options
  */
 export interface RuntimeDependencies {
   // === L1 ===
@@ -76,7 +76,7 @@ export interface RuntimeDependencies {
   readonly contractNotifyCallback?: (type: string, data: Record<string, unknown>) => void;
 }
 
-export interface ClawRuntimeOptions {
+export interface RuntimeOptions {
   clawId: string;
   clawDir: string;
   llmConfig: LLMOrchestratorConfig;
@@ -98,6 +98,7 @@ export interface ClawRuntimeOptions {
   }) => Promise<string>;
   identityToolFilter?: (registry: ToolRegistryPort) => void;
 }
+
 
 /**
  * ReAct 循环的流式事件回调
@@ -127,10 +128,10 @@ export interface DaemonStreamCallbacks extends StreamCallbacks {
 }
 
 /**
- * ClawRuntime - fully assembled Claw runtime instance
+ * Runtime - fully assembled Claw runtime instance
  */
-export class ClawRuntime {
-  protected options: ClawRuntimeOptions;
+export class Runtime {
+  protected options: RuntimeOptions;
   protected initialized = false;
   private currentAbortController: AbortController | null = null;
   private turnCount = 0;
@@ -162,7 +163,7 @@ export class ClawRuntime {
   private outboxWriter!: OutboxPort;
   private snapshot!: SnapshotPort;
 
-  constructor(options: ClawRuntimeOptions) {
+  constructor(options: RuntimeOptions) {
     this.options = {
       maxSteps: DEFAULT_MAX_STEPS,
       toolProfile: 'full',
@@ -926,3 +927,4 @@ export class ClawRuntime {
   }
 
 }
+

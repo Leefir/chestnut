@@ -1,22 +1,22 @@
 /**
  * createRuntime — Runtime 装配工厂
  *
- * 依据 identity 分支构造 ClawRuntime，把 motion/claw 身份判定收敛到
+ * 依据 identity 分支构造 Runtime，把 motion/claw 身份判定收敛到
  * 工厂入口；调用方（Assembly）不再直接 new。
  *
- * 输入：ClawRuntimeOptions + identity 字段（intersection type）
- * 输出：ClawRuntime
+ * 输入：RuntimeOptions + identity 字段（intersection type）
+ * 输出：Runtime
  * 边界：identity='motion' 时 clawId 由调用方传 MOTION_CLAW_ID（工厂不覆盖）
- * 失败：构造期同步抛出 ClawRuntime 构造器抛出的任何错
+ * 失败：构造期同步抛出 Runtime 构造器抛出的任何错
  *
  * 见 design/modules/l5_runtime.md §2.1
  */
 
-import { ClawRuntime, type ClawRuntimeOptions } from './runtime.js';
+import { Runtime, type RuntimeOptions } from './runtime.js';
 import type { ContextInjectorPort } from './runtime-ports.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 
-export type CreateRuntimeOptions = ClawRuntimeOptions & {
+export type CreateRuntimeOptions = RuntimeOptions & {
   identity: 'motion' | 'claw';
 };
 
@@ -82,14 +82,14 @@ export { buildMotionSystemPrompt };
 
 export function createRuntime(
   options: CreateRuntimeOptions
-): ClawRuntime {
+): Runtime {
   const { identity, ...runtimeOptions } = options;
   if (identity === 'motion') {
-    return new ClawRuntime({
+    return new Runtime({
       ...runtimeOptions,
       systemPromptBuilder: buildMotionSystemPrompt,
       identityToolFilter: (registry) => registry.unregister('send'),
     });
   }
-  return new ClawRuntime(runtimeOptions);
+  return new Runtime(runtimeOptions);
 }

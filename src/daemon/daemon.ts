@@ -5,7 +5,7 @@
  * @consumers L6b.CLI（spawn）
  * @contract design/modules/l6_daemon.md
  *
- * Daemon 主入口 — 启动 ClawRuntime 并保持运行至 SIGTERM。
+ * Daemon 主入口 — 启动 Runtime 并保持运行至 SIGTERM。
  */
 
 import * as path from 'path';

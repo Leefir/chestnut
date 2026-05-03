@@ -17,7 +17,7 @@ import * as fsNative from 'fs';
 import * as path from 'path';
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import type { FileSystem } from '../foundation/fs/types.js';
-import type { ClawRuntime, StreamCallbacks } from '../core/runtime/index.js';
+import type { Runtime, StreamCallbacks } from '../core/runtime/index.js';
 import type { InboxMessage } from '../types/messaging.js';
 import type { StreamWriter, StreamLog } from '../foundation/stream/index.js';
 import { createWatcher } from '../foundation/file-watcher/index.js';
@@ -118,7 +118,7 @@ export interface DaemonMotionExtensions {
 
 export interface DaemonLoopOptions {
   // 核心驱动（5 必填）
-  runtime: ClawRuntime;
+  runtime: Runtime;
   agentDir: string;          // agent root directory (listens for interrupt signals)
   clawId: string;            // agent identifier (kebab-case)
   label: string;             // log prefix, e.g. '[motion daemon]' or '[daemon]'

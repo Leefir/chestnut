@@ -1,5 +1,5 @@
 /**
- * ClawRuntime integration tests
+ * Runtime integration tests
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -7,7 +7,7 @@ import * as path from 'path';
 import { promises as fs } from 'fs';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
-import { ClawRuntime } from '../../src/core/runtime/index.js';
+import { Runtime } from '../../src/core/runtime/index.js';
 import { DIALOG_ARCHIVE_DIR, INBOX_PENDING_DIR, OUTBOX_PENDING_DIR } from '../../src/types/paths.js';
 import { makeRuntimeDeps } from '../helpers/runtime-deps.js';
 import { writeSessionWithIncompleteToolUse } from '../helpers/session-fixtures.js';
@@ -44,7 +44,7 @@ async function* responseToStreamChunks(response: LLMResponse): AsyncIterableIter
 
 async function createTestRuntime(options: { clawId: string; clawDir: string; llmConfig: LLMOrchestratorConfig; maxSteps?: number; toolProfile?: string; toolTimeoutMs?: number; maxConcurrentTasks?: number }) {
   const deps = await makeRuntimeDeps({ clawDir: options.clawDir, clawId: options.clawId, llmConfig: options.llmConfig });
-  return new ClawRuntime({ ...options, dependencies: deps });
+  return new Runtime({ ...options, dependencies: deps });
 }
 
 function createMockLLMConfig(): LLMOrchestratorConfig {
@@ -88,12 +88,12 @@ function createMockLLM(responses: LLMResponse[]) {
   };
 }
 
-describe('ClawRuntime', () => {
+describe('Runtime', () => {
   let tempDir: string;
   let clawDir: string;
-  const runtimesToStop: ClawRuntime[] = [];
+  const runtimesToStop: Runtime[] = [];
 
-  function trackRuntime(r: ClawRuntime): ClawRuntime {
+  function trackRuntime(r: Runtime): Runtime {
     runtimesToStop.push(r);
     return r;
   }
@@ -154,7 +154,7 @@ describe('ClawRuntime', () => {
 
     it('sessionManager.archive() 非 ENOENT 失败 → audit session_archive_failed', async () => {
       const deps = await makeRuntimeDeps({ clawDir, clawId: 'test-claw' });
-      const runtime = trackRuntime(new ClawRuntime({
+      const runtime = trackRuntime(new Runtime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
@@ -173,7 +173,7 @@ describe('ClawRuntime', () => {
 
     it('sessionManager.archive() ENOENT → 不发 audit（first-run 合法）', async () => {
       const deps = await makeRuntimeDeps({ clawDir, clawId: 'test-claw' });
-      const runtime = trackRuntime(new ClawRuntime({
+      const runtime = trackRuntime(new Runtime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
@@ -195,7 +195,7 @@ describe('ClawRuntime', () => {
       const spy = vi.spyOn(deps.taskSystem, 'setParentStreamLog');
       const mockStreamLog = { write: vi.fn() } as any;
       (deps as any).parentStreamLog = mockStreamLog;
-      const runtime = trackRuntime(new ClawRuntime({
+      const runtime = trackRuntime(new Runtime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
@@ -209,7 +209,7 @@ describe('ClawRuntime', () => {
       const spy = vi.spyOn(deps.contractManager, 'setOnNotify');
       const cb = vi.fn();
       (deps as any).contractNotifyCallback = cb;
-      const runtime = trackRuntime(new ClawRuntime({
+      const runtime = trackRuntime(new Runtime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
@@ -222,7 +222,7 @@ describe('ClawRuntime', () => {
   describe('Runtime TaskSystem business actions (phase155C)', () => {
     it('taskSystem.initialize() 失败 → audit task_system_init_failed + throw', async () => {
       const deps = await makeRuntimeDeps({ clawDir, clawId: 'test-claw' });
-      const runtime = trackRuntime(new ClawRuntime({
+      const runtime = trackRuntime(new Runtime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
@@ -240,7 +240,7 @@ describe('ClawRuntime', () => {
 
     it('taskSystem.startDispatch() 失败 → audit task_system_start_dispatch_failed + throw', async () => {
       const deps = await makeRuntimeDeps({ clawDir, clawId: 'test-claw' });
-      const runtime = trackRuntime(new ClawRuntime({
+      const runtime = trackRuntime(new Runtime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
@@ -260,7 +260,7 @@ describe('ClawRuntime', () => {
 
     it('顺序门控：initialize() 抛错时 startDispatch() 不被调用', async () => {
       const deps = await makeRuntimeDeps({ clawDir, clawId: 'test-claw' });
-      const runtime = trackRuntime(new ClawRuntime({
+      const runtime = trackRuntime(new Runtime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
@@ -275,7 +275,7 @@ describe('ClawRuntime', () => {
 
     it('Runtime 调序：taskSystem.initialize() 先于 startDispatch()', async () => {
       const deps = await makeRuntimeDeps({ clawDir, clawId: 'test-claw' });
-      const runtime = trackRuntime(new ClawRuntime({
+      const runtime = trackRuntime(new Runtime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
@@ -295,7 +295,7 @@ describe('ClawRuntime', () => {
 
     it('audit 写发生在 throw 之前（时机契约）', async () => {
       const deps = await makeRuntimeDeps({ clawDir, clawId: 'test-claw' });
-      const runtime = trackRuntime(new ClawRuntime({
+      const runtime = trackRuntime(new Runtime({
         clawId: 'test-claw',
         clawDir,
         llmConfig: createMockLLMConfig(),
@@ -889,7 +889,7 @@ Test message`;
     // UserInterrupt should NOT notify sender (user aborted, not a real error)
     it('should NOT notify sender on UserInterrupt', async () => {
       // Use a subclass to inject UserInterrupt without going through real LLM+loop
-      class UserInterruptRuntime extends ClawRuntime {
+      class UserInterruptRuntime extends Runtime {
         protected override async _drainOwnInbox() {
           return {
             injected: [{ role: 'user' as const, content: [{ type: 'text' as const, text: 'hi' }] }],
@@ -1142,7 +1142,7 @@ Test message`;
      * 子类覆盖 _drainOwnInbox 和 _runReact，
      * 绕过真实 LLM / FS 调用，专注测试 catch 块行为。
      */
-    class TestRuntime extends ClawRuntime {
+    class TestRuntime extends Runtime {
       public drainResult: {
         injected: Message[];
         sources: Array<{ text: string; type: string }>;
@@ -1162,7 +1162,7 @@ Test message`;
 
     let testClawDir: string;
     let testTempDir: string;
-    const edgeRuntimes: ClawRuntime[] = [];
+    const edgeRuntimes: Runtime[] = [];
 
     beforeEach(async () => {
       testTempDir = path.join(tmpdir(), `clawforum-runtime-edge-${randomUUID()}`);
@@ -1327,7 +1327,7 @@ Test message`;
   // ─── _handleTurnInterrupt dispatch ───────────────────────────────────────────
 
   describe('_handleTurnInterrupt()', () => {
-    let runtime: ClawRuntime;
+    let runtime: Runtime;
     let interruptTempDir: string;
     let interruptClawDir: string;
 
@@ -1402,7 +1402,7 @@ Test message`;
   // ─── processBatch outbox exclusion for signal interrupts ─────────────────────
 
   describe('processBatch() — signal interrupts do not send outbox notifications', () => {
-    class SignalTestRuntime extends ClawRuntime {
+    class SignalTestRuntime extends Runtime {
       public drainResult: {
         injected: Message[];
         sources: Array<{ text: string; type: string }>;
@@ -1422,7 +1422,7 @@ Test message`;
 
     let tempDir2: string;
     let clawDir2: string;
-    const signalRuntimes: ClawRuntime[] = [];
+    const signalRuntimes: Runtime[] = [];
 
     beforeEach(async () => {
       tempDir2 = path.join(tmpdir(), `clawforum-signal-test-${randomUUID()}`);
@@ -1504,7 +1504,7 @@ Test message`;
   describe('onProviderInfo', () => {
     let piTempDir: string;
     let piClawDir: string;
-    const piRuntimes: ClawRuntime[] = [];
+    const piRuntimes: Runtime[] = [];
 
     beforeEach(async () => {
       piTempDir = path.join(tmpdir(), `clawforum-pi-test-${randomUUID()}`);
@@ -1670,7 +1670,7 @@ Test message`;
       });
       vi.spyOn(deps.snapshot, 'commit').mockRejectedValue(new Error('injected fs error'));
 
-      const runtime = new ClawRuntime({
+      const runtime = new Runtime({
         clawId: 'repair-claw',
         clawDir: clawSubDir,
         llmConfig: createMockLLMConfig(),
@@ -1705,7 +1705,7 @@ Test message`;
         error: { kind: 'uncategorized', exitCode: 127 },
       } as any);
 
-      const runtime = new ClawRuntime({
+      const runtime = new Runtime({
         clawId: 'repair-claw',
         clawDir: clawSubDir,
         llmConfig: createMockLLMConfig(),

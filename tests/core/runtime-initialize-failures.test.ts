@@ -16,7 +16,7 @@ import * as path from 'path';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
-import { ClawRuntime } from '../../src/core/runtime/index.js';
+import { Runtime } from '../../src/core/runtime/index.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { AuditWriter } from '../../src/foundation/audit/writer.js';
 import { SessionManager } from '../../src/foundation/session-store/index.js';
@@ -95,7 +95,7 @@ describe('Runtime.initialize() failure audits', () => {
     vi.spyOn(deps.sessionManager, 'save').mockRejectedValue(saveError);
 
     const mocks = minimalMocks();
-    const runtime = new ClawRuntime({
+    const runtime = new Runtime({
       clawId: 'test-claw',
       clawDir,
       llmConfig: { primary: { name: 'mock', apiKey: 'k', model: 'm', maxTokens: 1, temperature: 0, timeoutMs: 1, apiFormat: 'anthropic' }, maxAttempts: 1, retryDelayMs: 0 },
@@ -126,7 +126,7 @@ describe('Runtime.initialize() failure audits', () => {
     vi.spyOn(deps.inboxReader, 'init').mockRejectedValue(initError);
 
     const mocks = minimalMocks();
-    const runtime = new ClawRuntime({
+    const runtime = new Runtime({
       clawId: 'test-claw',
       clawDir,
       llmConfig: { primary: { name: 'mock', apiKey: 'k', model: 'm', maxTokens: 1, temperature: 0, timeoutMs: 1, apiFormat: 'anthropic' }, maxAttempts: 1, retryDelayMs: 0 },
@@ -170,7 +170,7 @@ describe('Runtime.initialize() failure audits', () => {
     vi.spyOn(deps.snapshot, 'commit').mockRejectedValue(commitError);
 
     const mocks = minimalMocks();
-    const runtime = new ClawRuntime({
+    const runtime = new Runtime({
       clawId: 'test-claw',
       clawDir,
       llmConfig: { primary: { name: 'mock', apiKey: 'k', model: 'm', maxTokens: 1, temperature: 0, timeoutMs: 1, apiFormat: 'anthropic' }, maxAttempts: 1, retryDelayMs: 0 },
