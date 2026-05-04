@@ -50,7 +50,7 @@ export async function makeRuntimeDeps(input: MakeRuntimeDepsInput): Promise<Runt
     clawDir, clawId, systemFs, auditWriter, llm, verifierRegistry, auditWriter,
   );
   const taskSystem = new TaskSystem(clawDir, systemFs, {
-    auditWriter, llm, contractManager, outboxWriter,
+    auditWriter, llm, contractManager, outboxWriter, registry: toolRegistry,
   });
   await taskSystem.initialize();
   taskSystem.startDispatch();
