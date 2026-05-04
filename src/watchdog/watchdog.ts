@@ -65,18 +65,32 @@ function getMotionContext(): { fs: FileSystem; audit: AuditWriter } {
   }
   return _motionCtx;
 }
+
+// clawforum FileSystem lazy singleton（mirror getMotionContext 模式）
+// 增加 baseDir 缓存校验，使测试环境在 getClawforumDir() 变化时自动重建实例
+let _clawforumFs: NodeFileSystem | null = null;
+let _clawforumFsBaseDir: string | null = null;
+function getClawforumFs(): NodeFileSystem {
+  const baseDir = getClawforumDir();
+  if (!_clawforumFs || _clawforumFsBaseDir !== baseDir) {
+    _clawforumFs = new NodeFileSystem({ baseDir });
+    _clawforumFsBaseDir = baseDir;
+  }
+  return _clawforumFs;
+}
+
 // 注：clawforum auditWriter（L334-338）不使用此 helper，它是 watchdog 进程自身事件的归属
 
 // Watchdog PID management
 function writeWatchdogPid(pid: number): void {
   const root = process.env.CLAWFORUM_ROOT ?? process.cwd();
-  const fs = new NodeFileSystem({ baseDir: getClawforumDir() });
+  const fs = getClawforumFs();
   fs.writeAtomicSync('watchdog.pid', JSON.stringify({ pid, root }));
 }
 
 function removeWatchdogPid(): void {
   try {
-    const fs = new NodeFileSystem({ baseDir: getClawforumDir() });
+    const fs = getClawforumFs();
     fs.deleteSync('watchdog.pid');
   } catch {
     // ignore
@@ -106,7 +120,7 @@ export function shutdownWatchdog(
 
 export function getWatchdogPid(): number | null {
   try {
-    const fs = new NodeFileSystem({ baseDir: getClawforumDir() });
+    const fs = getClawforumFs();
     const content = fs.readSync('watchdog.pid');
     const parsed = JSON.parse(content);
     return typeof parsed.pid === 'number' ? parsed.pid : null;
@@ -117,7 +131,7 @@ export function getWatchdogPid(): number | null {
 
 export function isWatchdogAlive(): boolean {
   try {
-    const fs = new NodeFileSystem({ baseDir: getClawforumDir() });
+    const fs = getClawforumFs();
     const content = fs.readSync('watchdog.pid');
     const { pid, root } = JSON.parse(content);
     if (typeof pid !== 'number') return false;
@@ -141,7 +155,7 @@ function log(message: string): void {
   console.log(logLine.trim());
 
   try {
-    const fs = new NodeFileSystem({ baseDir: getClawforumDir() });
+    const fs = getClawforumFs();
     fs.ensureDirSync(LOGS_DIR);
     fs.appendSync(path.join(LOGS_DIR, 'watchdog.log'), logLine);
   } catch {
@@ -193,7 +207,7 @@ function getWatchdogStateFile(): string {
 
 export function loadWatchdogState(): void {
   try {
-    const fs = new NodeFileSystem({ baseDir: getClawforumDir() });
+    const fs = getClawforumFs();
     const raw = fs.readSync('watchdog-state.json');
     const state = JSON.parse(raw) as WatchdogState;
     // version ?? 0 — 旧文件无 version 字段，视为 v0，兼容加载
@@ -209,7 +223,7 @@ export function loadWatchdogState(): void {
       return;
     }
     // 文件损坏（SyntaxError / 字段类型错等）
-    const fs = new NodeFileSystem({ baseDir: getClawforumDir() });
+    const fs = getClawforumFs();
     const backupPath = `watchdog-state.json.corrupt-${Date.now()}`;
     try {
       fs.moveSync('watchdog-state.json', backupPath);
@@ -229,7 +243,7 @@ export function saveWatchdogState(): void {
     lastInactivityNotified: Object.fromEntries(lastInactivityNotified),
     inactivityNotifyCount: Object.fromEntries(inactivityNotifyCount),
   };
-  const fs = new NodeFileSystem({ baseDir: getClawforumDir() });
+  const fs = getClawforumFs();
   fs.writeAtomicSync('watchdog-state.json', JSON.stringify(state, null, 2));
 }
 
@@ -256,7 +270,7 @@ export function writeWatchdogCrash(err: Error): void {
 // Check for claws with an active contract but no progress for a long time, and send a reminder
 export async function maybeCronClawInactivity(pm: ProcessManager, audit: AuditWriter): Promise<void> {
   const timeoutMs = getGlobalConfig().watchdog?.claw_inactivity_timeout_ms ?? 300000;
-  const fs = new NodeFileSystem({ baseDir: getClawforumDir() });
+  const fs = getClawforumFs();
   if (!fs.existsSync('claws')) return;
 
   // 清理已不存在的 claw 的 Map 条目
@@ -334,7 +348,7 @@ export async function maybeCronClawInactivity(pm: ProcessManager, audit: AuditWr
 
 // Detect claw process crashes and notify motion
 export function maybeCronClawCrash(pm: ProcessManager, audit: AuditWriter): void {
-  const fs = new NodeFileSystem({ baseDir: getClawforumDir() });
+  const fs = getClawforumFs();
   if (!fs.existsSync('claws')) return;
 
   // 清理已不存在的 claw 的 Map 条目
@@ -393,7 +407,7 @@ export async function runWatchdogLoop(): Promise<void> {
   // 先建 auditWriter，让 loadWatchdogState corrupt 路径可写 audit（N1 修复）
   const auditMaxSizeMb = getGlobalConfig().audit?.retention?.max_size_mb ?? null;
   const auditWriter = createAuditWriter(
-    new NodeFileSystem({ baseDir: getClawforumDir() }),
+    getClawforumFs(),
     'audit.tsv',
     auditMaxSizeMb,
   );
@@ -430,7 +444,7 @@ export async function runWatchdogLoop(): Promise<void> {
     const aliveIds: string[] = [];
     const presentClawIds: string[] = [];
     if (status.alive) aliveIds.push('motion');
-    const fs = new NodeFileSystem({ baseDir: getClawforumDir() });
+    const fs = getClawforumFs();
     if (fs.existsSync('claws')) {
       for (const entry of fs.listSync('claws', { includeDirs: true })) {
         if (entry.isDirectory) {
