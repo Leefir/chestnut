@@ -29,7 +29,6 @@ import type { TaskSystem } from '../core/task/system.js';
 import { dispatchContractExtractPostProcessor } from '../core/task/post-processors/dispatch-contract-extract.js';
 import { createContextInjector, type ContextInjector } from '../core/dialog/index.js';
 import { ExecContextImpl } from '../foundation/tools/context.js';
-import { registerBuiltinTools } from '../foundation/tools/builtins/index.js';
 import { createFileTools } from '../foundation/file-tool/index.js';
 import { createCommandTools } from '../foundation/command-tool/index.js';
 import { createClawPermissionChecker } from '../core/permissions/claw-permissions.js';
@@ -181,7 +180,6 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       toolRegistry.register(tool);
     }
 
-    registerBuiltinTools(toolRegistry);
     toolRegistry.register(spawnTool);
 
     // phase378 后 exec 业务归 CommandTool L2 / 不再经 registerBuiltinTools / Assembly 显式注册

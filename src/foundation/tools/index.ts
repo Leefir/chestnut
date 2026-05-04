@@ -33,5 +33,4 @@ export type { ToolRegistry, IToolExecutor, ExecuteOptions } from './executor.js'
 
 export type { ExecContextImplOptions } from './context.js';
 
-// Builtin tools
-export { registerBuiltinTools } from './builtins/index.js';
+

@@ -14,7 +14,6 @@ import { NoopStreamWriter, NoopAuditWriter } from '../../src/core/subagent/noop-
 import { createDialogStore } from '../../src/foundation/dialog-store/index.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import { ToolRegistryImpl } from '../../src/foundation/tools/registry.js';
-import { registerBuiltinTools } from '../../src/foundation/tools/builtins/index.js';
 import type { LLMResponse } from '../../src/types/message.js';
 import type { LLMOrchestrator } from '../../src/foundation/llm-orchestrator/index.js';
 import type { StreamChunk } from '../../src/foundation/llm-orchestrator/types.js';
@@ -150,7 +149,6 @@ describe('Task System + SubAgent', () => {
     taskSystem.startDispatch();
 
     registry = new ToolRegistryImpl();
-    registerBuiltinTools(registry);
   });
 
   afterEach(async () => {

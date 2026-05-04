@@ -13,7 +13,6 @@ import { ContractSystem } from '../../src/core/contract/manager.js';
 import { TaskSystem } from '../../src/core/task/system.js';
 import { ContextInjector } from '../../src/core/dialog/injector.js';
 import { ExecContextImpl } from '../../src/foundation/tools/context.js';
-import { registerBuiltinTools } from '../../src/foundation/tools/builtins/index.js';
 import type { RuntimeDependencies } from '../../src/core/runtime/index.js';
 import type { LLMOrchestratorConfig } from '../../src/foundation/llm-orchestrator/types.js';
 import { INBOX_PENDING_DIR, INBOX_DONE_DIR, INBOX_FAILED_DIR } from '../../src/types/paths.js';
@@ -44,7 +43,6 @@ export async function makeRuntimeDeps(input: MakeRuntimeDepsInput): Promise<Runt
     events: { emit: () => {} },
   });
   const toolRegistry = new ToolRegistryImpl();
-  registerBuiltinTools(toolRegistry);
   const skillRegistry = createSkillSystem(systemFs, 'skills');
   await skillRegistry.loadAll();
   const verifierRegistry = new ToolRegistryImpl();

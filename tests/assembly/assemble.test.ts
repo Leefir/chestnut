@@ -159,9 +159,7 @@ vi.mock('../../src/foundation/tools/context.js', () => ({
   ExecContextImpl: trackCtor('ExecContextImpl', () => ({ signal: undefined, dialogMessages: [] })),
 }));
 
-vi.mock('../../src/foundation/tools/builtins/index.js', () => ({
-  registerBuiltinTools: vi.fn(),
-}));
+
 
 vi.mock('../../src/foundation/messaging/index.js', () => {
   const MockInboxWriter = vi.fn().mockImplementation(() => ({
