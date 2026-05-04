@@ -239,14 +239,11 @@ export async function runRandomDream(opts: RandomDreamOptions): Promise<void> {
   const motionAudit = createSystemAudit(opts.fs, opts.motionDir);
   const taskId = await opts.taskSystem.writePendingSubAgentTask(motionAudit, {
     kind: 'subagent',
-    prompt: buildRandomDreamPrompt(weightedContracts),
-    tools: TOOL_PROFILES['dream'],
-    timeout: 3600,
+    intent: buildRandomDreamPrompt(weightedContracts),
+    timeoutMs: 3600 * 1000,
     maxSteps: 200,
-    idleTimeoutMs: DEFAULT_LLM_IDLE_TIMEOUT_MS,
     parentClawId: 'motion',
     originClawId: 'motion',
-    systemPrompt: RANDOM_DREAM_SYSTEM_PROMPT,
   });
 
   opts.audit.write(MEMORY_AUDIT_EVENTS.RANDOM_DREAM_JOB, `step=subagent_started`, `taskId=${taskId}`);

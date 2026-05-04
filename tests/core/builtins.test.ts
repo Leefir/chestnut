@@ -1060,37 +1060,13 @@ describe('Builtin Tools', () => {
       });
 
       const result = await spawnTool.execute({
-        prompt: 'test task',
+        intent: 'test task',
       }, ctxWithMaxSteps);
 
       expect(result.success).toBe(true);
       expect(mockWriteFile).toHaveBeenCalled();
       expect(mockWriteFile.mock.calls[0][2].maxSteps).toBe(42);
-      expect(mockWriteFile.mock.calls[0][2].prompt).toBe('test task');
-    });
-
-    it('messages 非数组时忽略，正常调度', async () => {
-      const result = await spawnTool.execute({ prompt: 'test', messages: 'not-an-array' as any }, ctx);
-      // 不应是 Invalid messages 错误
-      expect(result.content).not.toContain('Invalid messages');
-    });
-
-    it('messages 含无效元素时返回 Invalid messages 错误', async () => {
-      const result = await spawnTool.execute({
-        prompt: 'test',
-        messages: [null] as any,
-      }, ctx);
-      expect(result.success).toBe(false);
-      expect(result.content).toContain('Invalid messages');
-    });
-
-    it('messages 含无 role 字段的对象时返回 Invalid messages 错误', async () => {
-      const result = await spawnTool.execute({
-        prompt: 'test',
-        messages: [{ role: 42, content: 'hello' }] as any,
-      }, ctx);
-      expect(result.success).toBe(false);
-      expect(result.content).toContain('Invalid messages');
+      expect(mockWriteFile.mock.calls[0][2].intent).toBe('test task');
     });
   });
 

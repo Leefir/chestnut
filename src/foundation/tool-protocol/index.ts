@@ -14,6 +14,7 @@ import type { LLMOrchestrator } from '../llm-orchestrator/index.js';
 import type { Message } from '../../types/message.js';
 import type { CallerType } from './caller-type.js';
 import type { AuditLog } from '../audit/index.js';
+import type { DialogStore } from '../dialog-store/index.js';
 
 export type { JSONSchema7, ToolProfile, CallerType };
 
@@ -58,6 +59,12 @@ export interface ExecContext {
   incrementStep(): void;
   /** AuditLog writer for tool events */
   auditWriter?: AuditLog;
+  /** Main dialog store (subagent profile only / ask_caller read-only ref) */
+  mainDialogStore?: DialogStore;
+  /** Marker for restoring main context prefix via DialogStore.restorePrefix */
+  mainContextSnapshot?: { clawId: string; toolUseId: string };
+  /** Current tool_use block id (set by ToolExecutor before tool.execute) */
+  currentToolUseId?: string;
 }
 
 /**

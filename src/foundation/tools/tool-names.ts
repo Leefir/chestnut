@@ -17,4 +17,5 @@ export const STATUS_TOOL_NAME = 'status' as const;
 export const MEMORY_SEARCH_TOOL_NAME = 'memory_search' as const;
 export const SPAWN_TOOL_NAME = 'spawn' as const;
 export const ASK_MOTION_TOOL_NAME = 'ask_motion' as const;
+export const ASK_CALLER_TOOL_NAME = 'ask_caller' as const;
 export const DISPATCH_TOOL_NAME = 'dispatch' as const;

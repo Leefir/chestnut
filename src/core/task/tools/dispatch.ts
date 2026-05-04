@@ -166,25 +166,24 @@ export class DispatchTool implements Tool {
         ]
       : this.getToolsForLLM();
 
+    // 装配 mainContextSnapshot from ctx.currentToolUseId
+    const mainContextSnapshot = ctx.clawId && ctx.currentToolUseId
+      ? { clawId: ctx.clawId, toolUseId: ctx.currentToolUseId }
+      : undefined;
+
     // 调度 dispatcher（声明式 postProcessor 替代 closure 注册）
     try {
       const taskId = await writePendingSubagentTaskFile(ctx.fs, ctx.auditWriter, {
         kind: 'subagent',
-        messages: isMining
-          ? [{ role: 'user' as const, content: userMessage }]  // miner 从空白开始，历史通过 AskMotionTool 查询
-          : dispatcherMessages,                                 // describer 含完整对话上下文
-        prompt: (!isMining && !dispatchToolUseId) ? userMessage : '',  // describing 模式未注入时 fallback
-        tools: [],                     // 空 = 使用 registry 全部工具
-        timeout: 3600,                 // 总超时 1 小时
+        intent: userMessage,
+        timeoutMs: 3600 * 1000,        // 总超时 1 小时
         maxSteps: (args.maxSteps as number) ?? ctx.subagentMaxSteps ?? ctx.maxSteps ?? DEFAULT_MAX_STEPS,
         parentClawId: ctx.clawId,
-        systemPrompt,
-        idleTimeoutMs,
         originClawId: ctx.originClawId ?? ctx.clawId,
-        toolsForLLM,
         callerType,                    // 'describer' 或 'miner'
         extraTools: askMotionInstance ? [askMotionInstance] : undefined,
         postProcessor: 'dispatch-contract-extract',  // phase438: 声明式 post-processor
+        mainContextSnapshot,
       });
 
       return {

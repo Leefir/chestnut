@@ -16,8 +16,6 @@ import type { AbortReason } from '../../foundation/llm-provider/abort-helper.js'
 import { makeExternalAbortError } from '../../foundation/llm-provider/abort-helper.js';
 import { SUBAGENT_TIMEOUT_MS, DEFAULT_MAX_STEPS } from '../../constants.js';
 import { oneLine } from '../../types/utils.js';
-import { DEFAULT_SUBAGENT_SYSTEM_PROMPT } from '../../prompts/index.js';
-
 import type { Message } from '../../types/message.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { SUBAGENT_AUDIT_EVENTS, REACT_LOOP_AUDIT_EVENTS } from './audit-events.js';
@@ -25,6 +23,7 @@ import type { StreamLog } from '../../foundation/stream/types.js';
 import type { CallerType } from '../../foundation/tool-protocol/caller-type.js';
 import type { DialogStore } from '../../foundation/dialog-store/index.js';
 import { callerTypeToProfile } from '../../foundation/tool-protocol/caller-type.js';
+import { DEFAULT_SUBAGENT_SYSTEM_PROMPT } from '../../prompts/index.js';
 
 export interface SubAgentOptions {
   agentId: string;
@@ -50,6 +49,8 @@ export interface SubAgentOptions {
   originClawId?: string;                     // 创建链路源头，传给子 SubAgent
   taskStreamWriter: StreamLog;
   auditWriter: AuditLog;          // tasks/results/{id}/audit.tsv，step 11+ 写事件
+  mainDialogStore?: DialogStore;                                // NEW: subagent profile only / ask_caller 用 read-only ref
+  mainContextSnapshot?: { clawId: string; toolUseId: string };   // NEW: passthrough from SubAgentTask
 }
 
 export class SubAgent {
@@ -77,6 +78,8 @@ export class SubAgent {
   private originClawId?: string;
   private taskStreamWriter: StreamLog;
   private auditWriter: AuditLog;
+  private mainDialogStore?: DialogStore;
+  private mainContextSnapshot?: { clawId: string; toolUseId: string };
 
   constructor(options: SubAgentOptions) {
     this.agentId = options.agentId;
@@ -103,6 +106,8 @@ export class SubAgent {
     this.originClawId = options.originClawId;
     this.taskStreamWriter = options.taskStreamWriter;
     this.auditWriter = options.auditWriter;
+    this.mainDialogStore = options.mainDialogStore;
+    this.mainContextSnapshot = options.mainContextSnapshot;
   }
 
   /**
@@ -159,6 +164,8 @@ export class SubAgent {
         subagentMaxSteps: this.subagentMaxSteps ?? this.maxSteps,
         profile: executorProfile,
         auditWriter: this.auditWriter,
+        mainDialogStore: this.mainDialogStore,
+        mainContextSnapshot: this.mainContextSnapshot,
       });
 
       // Setup messages（若传入 messages 则直接使用，否则从 prompt 构建）

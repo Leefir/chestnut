@@ -14,6 +14,7 @@ import { sendResult, sendFallbackError } from './result-delivery.js';
 
 import type { PostProcessor } from './post-processors/types.js';
 import type { SubAgentTask } from './system.js';
+import type { DialogStore } from '../../foundation/dialog-store/index.js';
 
 
 /** M9: 闭包 ≥ 6 依赖 → deps interface */
@@ -25,6 +26,7 @@ export interface SubAgentExecutionDeps {
   clawDir: string;
   parentStreamLog?: StreamLog;
   postProcessors: Map<string, PostProcessor>;
+  mainDialogStore?: DialogStore;
   moveTaskToDone: (taskId: string) => Promise<void>;
   moveTaskToFailed: (taskId: string) => Promise<void>;
 }
@@ -37,7 +39,7 @@ export async function executeSubAgentTask(
   signal: AbortSignal,
   deps: SubAgentExecutionDeps,
 ): Promise<void> {
-  const { fs, auditWriter, llm, registry, clawDir, parentStreamLog, postProcessors, moveTaskToDone, moveTaskToFailed } = deps;
+  const { fs, auditWriter, llm, registry, clawDir, parentStreamLog, postProcessors, mainDialogStore, moveTaskToDone, moveTaskToFailed } = deps;
   const taskStartTime = Date.now();
   let taskFailed = false;
 
@@ -61,14 +63,6 @@ export async function executeSubAgentTask(
   try {
     // LLM is guaranteed by constructor (readonly non-null field)
 
-    // Filter tools based on task.tools whitelist
-    const allowedTools = task.tools.length > 0
-      ? registry.getAll().filter(t => task.tools.includes(t.name))
-      : registry.getAll();
-    const toolsForLLM = (task.toolsForLLM && task.toolsForLLM.length > 0)
-      ? task.toolsForLLM
-      : registry.formatForLLM(allowedTools);
-
     // Build per-task registry filtered by caller profile + extraTools
     const subagentProfile = callerTypeToProfile(task.callerType ?? 'subagent');
     const effectiveRegistry = (() => {
@@ -78,6 +72,8 @@ export async function executeSubAgentTask(
       return r;
     })();
 
+    const toolsForLLM = registry.formatForLLM(effectiveRegistry.getAll());
+
     const subAgent = createSubAgent({
       agentId: task.id,
       resultDir: `tasks/results/${task.id}`,                      // phase443: TaskSystem own 字符串约定
@@ -86,22 +82,21 @@ export async function executeSubAgentTask(
         `tasks/results/${task.id}`,             // baseDir = resultDir
         taskAuditWriter,                         // per-task audit writer
         'messages.json',                         // filename 必填
-        task.systemPrompt ?? '',                 // phase 466: SubAgent 已有 system / pass through
+        '',                                      // phase 470: systemPrompt 由 SubAgent 内部 DEFAULT_SUBAGENT_SYSTEM_PROMPT 提供
       ),
-      prompt: task.prompt,
+      prompt: task.intent,
       clawDir,
       llm,
       registry: effectiveRegistry,
       fs,
       maxSteps: task.maxSteps,
-      timeoutMs: task.timeout * 1000,
+      timeoutMs: task.timeoutMs,
       signal,
       toolsForLLM,
-      systemPrompt: task.systemPrompt,
       callerType: task.callerType,
-      idleTimeoutMs: task.idleTimeoutMs ?? DEFAULT_LLM_IDLE_TIMEOUT_MS,
-      messages: task.messages,
       originClawId: task.originClawId,
+      mainDialogStore,
+      mainContextSnapshot: task.mainContextSnapshot,
 
       taskStreamWriter: { write: writeTaskEvent },
       auditWriter: taskAuditWriter,

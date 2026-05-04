@@ -212,8 +212,8 @@ Prompt: ...
 
     // 捕获传给 sub-agent 的 prompt
     let capturedPrompt = '';
-    mockWritePendingSubAgentTask.mockImplementation(async (_audit: unknown, opts: { prompt: string }) => {
-      capturedPrompt = opts.prompt;
+    mockWritePendingSubAgentTask.mockImplementation(async (_audit: unknown, opts: { intent: string }) => {
+      capturedPrompt = opts.intent;
       return taskId;
     });
 
@@ -257,8 +257,8 @@ Prompt: ...
     );
 
     let capturedPrompt = '';
-    mockWritePendingSubAgentTask.mockImplementation(async (_audit: unknown, opts: { prompt: string }) => {
-      capturedPrompt = opts.prompt;
+    mockWritePendingSubAgentTask.mockImplementation(async (_audit: unknown, opts: { intent: string }) => {
+      capturedPrompt = opts.intent;
       return taskId;
     });
 
@@ -299,8 +299,8 @@ Prompt: ...
     }), 'utf-8');
 
     let capturedPrompt = '';
-    mockWritePendingSubAgentTask.mockImplementation(async (_audit: unknown, opts: { prompt: string }) => {
-      capturedPrompt = opts.prompt;
+    mockWritePendingSubAgentTask.mockImplementation(async (_audit: unknown, opts: { intent: string }) => {
+      capturedPrompt = opts.intent;
       return taskId;
     });
     await writeTaskCompletion(motionDir, taskId, '=== started ===');
@@ -330,8 +330,8 @@ Prompt: ...
     await fs.mkdir(normalDir, { recursive: true });
 
     let capturedPrompt = '';
-    mockWritePendingSubAgentTask.mockImplementation(async (_audit: unknown, opts: { prompt: string }) => {
-      capturedPrompt = opts.prompt;
+    mockWritePendingSubAgentTask.mockImplementation(async (_audit: unknown, opts: { intent: string }) => {
+      capturedPrompt = opts.intent;
       return taskId;
     });
     await writeTaskCompletion(motionDir, taskId, '=== started ===');

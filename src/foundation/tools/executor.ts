@@ -24,6 +24,7 @@ import {
 import { ExecContextImpl, cloneExecContext } from './context.js';
 import { DEFAULT_MAX_STEPS } from '../../constants.js';
 import type { ToolRegistryImpl } from './registry.js';
+import type { DialogStore } from '../dialog-store/index.js';
 // Note: ToolRegistry type imported via ToolRegistry interface
 
 function escapeForLog(s: string): string {
@@ -167,7 +168,7 @@ export class ToolExecutorImpl implements IToolExecutor {
     timeoutPromise.catch(() => {});  // race 胜出后的孤立 rejection fallback
 
     // 用 mergedSignal 覆盖 ctx.signal（保留 prototype chain）
-    const ctxWithSignal = cloneExecContext(ctx, { signal: mergedSignal });
+    const ctxWithSignal = cloneExecContext(ctx, { signal: mergedSignal, currentToolUseId: options.toolUseId });
     const executionPromise = tool.execute(args, ctxWithSignal);
     executionPromise.catch(() => {});  // 对不响应 signal 的 tool 保底
 
@@ -286,6 +287,8 @@ export interface ToolExecutorOptions {
   subagentMaxSteps?: number;
   auditWriter?: AuditLog;
   scheduleAsyncTool?: ScheduleAsyncTool;
+  mainDialogStore?: DialogStore;
+  mainContextSnapshot?: { clawId: string; toolUseId: string };
 }
 
 /**
@@ -299,6 +302,8 @@ export class ToolExecutor extends ToolExecutorImpl {
   private profile: ToolProfile;
   private subagentMaxSteps?: number;
   private auditWriter?: AuditLog;
+  private mainDialogStore?: DialogStore;
+  private mainContextSnapshot?: { clawId: string; toolUseId: string };
 
   constructor(options: ToolExecutorOptions) {
     super(options.registry, undefined, options.scheduleAsyncTool);
@@ -308,6 +313,8 @@ export class ToolExecutor extends ToolExecutorImpl {
     this.profile = options.profile ?? 'full';
     this.subagentMaxSteps = options.subagentMaxSteps;
     this.auditWriter = options.auditWriter;
+    this.mainDialogStore = options.mainDialogStore;
+    this.mainContextSnapshot = options.mainContextSnapshot;
   }
 
   /**
@@ -329,6 +336,8 @@ export class ToolExecutor extends ToolExecutorImpl {
       subagentMaxSteps: this.subagentMaxSteps,
       originClawId: options.originClawId,
       auditWriter: this.auditWriter,
+      mainDialogStore: this.mainDialogStore,
+      mainContextSnapshot: this.mainContextSnapshot,
     });
   }
 }

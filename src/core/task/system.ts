@@ -24,6 +24,7 @@ import { AuditWriter } from '../../foundation/audit/writer.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { TASKS_RUNNING_DIR, TASKS_DONE_DIR } from '../../types/paths.js';
 import type { StreamLog } from '../../foundation/stream/types.js';
+import type { DialogStore } from '../../foundation/dialog-store/index.js';
 
 import { TASKS_PENDING_DIR } from '../../types/paths.js';
 import { sendFallbackError } from './result-delivery.js';
@@ -46,26 +47,24 @@ export interface TaskSystemOptions {
   llm: LLMOrchestrator;
   contractManager: ContractSystem;
   outboxWriter: OutboxWriter;
+  // phase470: main dialog store ref for ask_caller
+  mainDialogStore?: DialogStore;
 }
 
 
 export interface SubAgentTask {
   kind: 'subagent';
   id: string;
-  prompt: string;
-  tools: string[];
-  timeout: number;
+  intent: string;
+  timeoutMs: number;
   maxSteps: number;
   parentClawId: string;
   createdAt: string;
-  systemPrompt?: string;                    // dispatcher 用 Motion 的 system prompt
   callerType?: CallerType;
-  idleTimeoutMs?: number;                  // LLM 静默超时阈值（用户可配置）
-  messages?: Message[];                    // 若提供，SubAgent 直接用；否则从 prompt 构建
   originClawId?: string;                   // 创建链路源头，传给子 SubAgent
-  toolsForLLM?: ToolDefinition[];          // 若提供，直接用；否则从 registry 计算
   extraTools?: Tool[];                    // per-task 额外工具，不污染全局 registry
   postProcessor?: string;            // phase438: 声明式 post-processor 名称（registry lookup）
+  mainContextSnapshot?: { clawId: string; toolUseId: string };  // NEW marker mode
 }
 
 export interface ToolTask {
@@ -98,6 +97,7 @@ export class TaskSystem {
   private auditWriter: AuditWriter;
   private parentStreamLog?: StreamLog;
   private pendingWatcher?: Watcher;
+  private mainDialogStore?: DialogStore;
 
   private postProcessors: Map<string, PostProcessor> = new Map();
 
@@ -110,6 +110,13 @@ export class TaskSystem {
       throw new Error(`PostProcessor "${name}" already registered`);
     }
     this.postProcessors.set(name, handler);
+  }
+
+  /**
+   * phase470: inject mainDialogStore after construction (sessionManager is created later in Assembly)
+   */
+  setMainDialogStore(store: DialogStore): void {
+    this.mainDialogStore = store;
   }
   
   // Transient dispatch buffer; subagent file persistence is authoritative,
@@ -130,6 +137,7 @@ export class TaskSystem {
     this.llm = options.llm;
     this.contractManager = options.contractManager;
     this.outboxWriter = options.outboxWriter;
+    this.mainDialogStore = options.mainDialogStore;
     // Create tool registry for subagents
     this.registry = new ToolRegistryImpl();
     registerBuiltinTools(this.registry);
@@ -324,6 +332,7 @@ export class TaskSystem {
           clawDir: this.clawDir,
           parentStreamLog: this.parentStreamLog,
           postProcessors: this.postProcessors,
+          mainDialogStore: this.mainDialogStore,
           moveTaskToDone: this.moveTaskToDone.bind(this),
           moveTaskToFailed: this.moveTaskToFailed.bind(this),
         });

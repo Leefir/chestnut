@@ -128,15 +128,12 @@ describe('EvolutionSystem.runRetroForContract - happy path', () => {
       expect.objectContaining({
         kind: 'subagent',
         parentClawId: 'motion',
-        tools: ['read', 'write', 'skill', 'exec'],
       }),
     );
 
-    // retroMessages 含 user role retro prompt
+    // intent 包含 contractId
     const args = mockWritePending.mock.calls[0][2];
-    expect(args.messages).toHaveLength(1);
-    expect(args.messages[0]).toMatchObject({ role: 'user' });
-    expect(args.messages[0].content).toContain(contractId);
+    expect(args.intent).toContain(contractId);
 
     // by-contract 索引被删
     const byContractPath = path.join(motionDir, 'clawspace', 'pending-retrospective', 'by-contract', `${contractId}.json`);
@@ -295,9 +292,6 @@ describe('EvolutionSystem.runRetroForContract - best-effort branches', () => {
       'reason=ENOENT',
     );
     expect(mockWritePending).toHaveBeenCalled();
-    const args1 = mockWritePending.mock.calls[0][2];
-    // baseMessages 为空 → retroMessages 只有 1 条 user（retro prompt）
-    expect(args1.messages).toHaveLength(1);
 
     // sub-case B: 非 ENOENT（目录当文件读触发 EISDIR）
     vi.clearAllMocks();

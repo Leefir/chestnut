@@ -7,9 +7,7 @@
 
 import type { Tool, ToolResult, ExecContext } from '../../../foundation/tool-protocol/index.js';
 
-import { SPAWN_DEFAULT_TIMEOUT_S, DEFAULT_LLM_IDLE_TIMEOUT_MS, DEFAULT_MAX_STEPS } from '../../../constants.js';
-import type { Message } from '../../../types/message.js';
-import { TOOL_PROFILES } from '../../../foundation/tools/profiles.js';
+import { SPAWN_DEFAULT_TIMEOUT_S, DEFAULT_MAX_STEPS } from '../../../constants.js';
 import { writePendingSubagentTaskFile } from './_pending-task-writer.js';
 
 /**
@@ -27,90 +25,46 @@ export const spawnTool: Tool = {
   schema: {
     type: 'object',
     properties: {
-      prompt: {
+      intent: {
         type: 'string',
-        description: 'The task description for the subagent',
+        description: 'The user intent / task goal for the subagent (subagent uses ask_caller to fetch main context if needed)',
       },
-
-      tools: {
-        type: 'array',
-        items: { type: 'string' },
-        description: `Tools available to the subagent (default: ${TOOL_PROFILES['subagent'].join(', ')})`,
-      },
-      timeout: {
+      timeoutMs: {
         type: 'number',
-        description: 'Timeout in seconds (default: 300)',
+        description: 'Timeout in milliseconds (default: 300000)',
       },
       maxSteps: {
         type: 'number',
         description: 'Maximum number of ReAct steps the subagent can take (default: 100). Increase for complex multi-file tasks; decrease for simple lookups.',
       },
-      idleTimeoutMs: {
-        type: 'number',
-        description: 'LLM idle timeout in milliseconds (default: 60000). Abort if no token output for this duration.',
-      },
-      messages: {
-        type: 'array',
-        description: 'Prior conversation messages to continue from. prompt will be appended as a new user message.',
-        items: { type: 'object' },
-      },
-      systemPrompt: {
-        type: 'string',
-        description: 'Custom system prompt for the subagent (optional, for internal system use)',
-      },
     },
-    required: ['prompt'],
+    required: ['intent'],
   },
   readonly: false,
   idempotent: false,
 
   async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
-    const prompt = String(args.prompt);
-    const messages = (() => {
-      if (!Array.isArray(args.messages)) return undefined;
-      for (const m of args.messages) {
-        if (
-          m === null ||
-          typeof m !== 'object' ||
-          typeof (m as Record<string, unknown>).role !== 'string' ||
-          (m as Record<string, unknown>).content === undefined
-        ) {
-          return null;  // sentinel: 校验失败
-        }
-      }
-      return args.messages as Message[];
-    })();
-
-    if (messages === null) {
-      return {
-        success: false,
-        content: 'Invalid messages parameter: each element must be an object with string role and content.',
-        error: 'Invalid messages',
-      };
-    }
-
-    const tools = Array.isArray(args.tools) ? (args.tools as string[]) : TOOL_PROFILES['subagent'];
-    const timeout = typeof args.timeout === 'number' ? args.timeout : SPAWN_DEFAULT_TIMEOUT_S;
-    const maxSteps = typeof args.maxSteps === 'number' 
-      ? args.maxSteps 
+    const intent = String(args.intent);
+    const timeoutMs = typeof args.timeoutMs === 'number' ? args.timeoutMs : SPAWN_DEFAULT_TIMEOUT_S * 1000;
+    const maxSteps = typeof args.maxSteps === 'number'
+      ? args.maxSteps
       : (ctx.subagentMaxSteps ?? ctx.maxSteps ?? DEFAULT_MAX_STEPS);
-    const idleTimeoutMs = typeof args.idleTimeoutMs === 'number'
-      ? args.idleTimeoutMs
-      : DEFAULT_LLM_IDLE_TIMEOUT_MS;
+
+    // 装配 mainContextSnapshot from ctx.currentToolUseId
+    const mainContextSnapshot = ctx.clawId && ctx.currentToolUseId
+      ? { clawId: ctx.clawId, toolUseId: ctx.currentToolUseId }
+      : undefined;
 
     try {
       const taskId = await writePendingSubagentTaskFile(ctx.fs, ctx.auditWriter, {
         kind: 'subagent',
-        prompt,
-        messages,
-        tools,
-        timeout,
+        intent,
+        timeoutMs,
         maxSteps,
-        idleTimeoutMs,
         parentClawId: ctx.clawId,
         originClawId: ctx.originClawId ?? ctx.clawId,
-        systemPrompt: typeof args.systemPrompt === 'string' ? args.systemPrompt : undefined,
         callerType: 'subagent',
+        mainContextSnapshot,
       });
 
       return {

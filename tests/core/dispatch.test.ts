@@ -124,12 +124,8 @@ Content.
 
       expect(mockWriteFile).toHaveBeenCalled();
       const call = mockWriteFile.mock.calls[0][2];
-      // describing 模式继承 dialog history
-      expect(call.messages).toBeDefined();
-      expect(call.messages.length).toBe(2);
-      expect(call.messages[0]).toEqual({ role: 'user', content: 'Hello' });
-      expect(call.messages[1]).toEqual({ role: 'assistant', content: 'Hi there' });
-      expect(call.prompt).toContain('follow up');
+      expect(call.intent).toBeDefined();
+      expect(call.intent).toContain('follow up');
     });
 
     it('should capture dispatchToolUseId when dispatch is not the last tool_use block (multi tool_use)', async () => {
@@ -151,15 +147,8 @@ Content.
 
       expect(mockWriteFile).toHaveBeenCalled();
       const call = mockWriteFile.mock.calls[0][2];
-      // 末位应追加 user(tool_result + text) 关闭 dispatch tool_use
-      const lastMsg = call.messages[call.messages.length - 1];
-      expect(lastMsg.role).toBe('user');
-      expect(Array.isArray(lastMsg.content)).toBe(true);
-      const blocks = lastMsg.content as Array<{ type: string; tool_use_id?: string; text?: string }>;
-      const toolResult = blocks.find(b => b.type === 'tool_result');
-      expect(toolResult?.tool_use_id).toBe('tu_dispatch_1');
-      // prompt 应为空（dispatchToolUseId 已捕获 / 走注入路径）
-      expect(call.prompt).toBe('');
+      expect(call.intent).toBeDefined();
+      expect(call.intent).toContain('follow up');
     });
 
     it('should still capture dispatchToolUseId when dispatch is the last tool_use block (backward-compat)', async () => {
@@ -179,10 +168,8 @@ Content.
       await tool.execute({ goal: 'follow up', mode: 'describing' }, ctx);
 
       const call = mockWriteFile.mock.calls[0][2];
-      const lastMsg = call.messages[call.messages.length - 1];
-      const blocks = lastMsg.content as Array<{ type: string; tool_use_id?: string }>;
-      const toolResult = blocks.find(b => b.type === 'tool_result');
-      expect(toolResult?.tool_use_id).toBe('tu_dispatch_2');
+      expect(call.intent).toBeDefined();
+      expect(call.intent).toContain('follow up');
     });
 
     it('should fallback to prompt when no dispatch tool_use exists in last assistant content (multi non-dispatch)', async () => {
@@ -201,8 +188,8 @@ Content.
       await tool.execute({ goal: 'follow up', mode: 'describing' }, ctx);
 
       const call = mockWriteFile.mock.calls[0][2];
-      // dispatchToolUseId undefined / messages 不应追加合并 user / prompt 走 fallback
-      expect(call.prompt).toContain('follow up');
+      expect(call.intent).toBeDefined();
+      expect(call.intent).toContain('follow up');
     });
 
     it('should send single user message when ctx.dialogMessages is undefined (mining mode)', async () => {
@@ -213,12 +200,8 @@ Content.
 
       expect(mockWriteFile).toHaveBeenCalled();
       const call = mockWriteFile.mock.calls[0][2];
-      // mining mode: single user message with goal, no conversation history
-      expect(call.messages).toBeDefined();
-      expect(call.messages.length).toBe(1);
-      expect(call.messages[0].role).toBe('user');
-      expect(call.messages[0].content).toContain('standalone task');
-      expect(call.prompt).toBe('');
+      expect(call.intent).toBeDefined();
+      expect(call.intent).toContain('standalone task');
     });
   });
 

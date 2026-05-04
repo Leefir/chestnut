@@ -18,6 +18,7 @@ import { MOTION_CLAW_ID, DEFAULT_MAX_STEPS } from '../../constants.js';
 import type { Message } from '../../types/message.js';
 import type { AuditLog } from '../audit/index.js';
 import type { CallerType } from '../tool-protocol/caller-type.js';
+import type { DialogStore } from '../dialog-store/index.js';
 
 /**
  * Options for creating execution context
@@ -59,6 +60,12 @@ export interface ExecContextImplOptions {
   originClawId?: string;
   /** AuditLog writer for tool events */
   auditWriter?: AuditLog;
+  /** Main dialog store (subagent profile only / ask_caller read-only ref) */
+  mainDialogStore?: DialogStore;
+  /** Marker for restoring main context prefix via DialogStore.restorePrefix */
+  mainContextSnapshot?: { clawId: string; toolUseId: string };
+  /** Current tool_use block id (set by ToolExecutor before tool.execute) */
+  currentToolUseId?: string;
 }
 
 /**
@@ -98,6 +105,9 @@ export class ExecContextImpl implements ExecContext {
   dialogMessages?: Message[];
   originClawId?: string;
   auditWriter?: AuditLog;
+  mainDialogStore?: DialogStore;
+  mainContextSnapshot?: { clawId: string; toolUseId: string };
+  currentToolUseId?: string;
   
   private startTime: number;
 
@@ -114,6 +124,9 @@ export class ExecContextImpl implements ExecContext {
     this.dialogMessages = options.dialogMessages;
     this.originClawId = options.originClawId;
     this.auditWriter = options.auditWriter;
+    this.mainDialogStore = options.mainDialogStore;
+    this.mainContextSnapshot = options.mainContextSnapshot;
+    this.currentToolUseId = options.currentToolUseId;
     this.stepNumber = 0;
     this.startTime = Date.now();
   }

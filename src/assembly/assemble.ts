@@ -350,6 +350,9 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     throw new Error(`Assembly: DialogStore construct failed: ${errMsg(e)}`, { cause: e });
   }
 
+  // phase470: inject mainDialogStore after sessionManager is available
+  taskSystem.setMainDialogStore(sessionManager);
+
   let inboxReader: InboxReader;
   try {
     inboxReader = createInboxReader(systemFs, auditWriter, 'inbox');

@@ -168,10 +168,8 @@ describe('Task System + SubAgent', () => {
       
       const taskId = await taskSystem.scheduleSubAgent({
         kind: 'subagent',
-        prompt: 'Test task',
-        
-        tools: ['read'],
-        timeout: 60,
+        intent: 'Test task',
+        timeoutMs: 60000,
         maxSteps: 10,
         parentClawId: 'parent-claw',
       });
@@ -194,9 +192,8 @@ describe('Task System + SubAgent', () => {
 
       const taskId = await taskSystem.scheduleSubAgent({
         kind: 'subagent',
-        prompt: 'watcher chain probe',
-        tools: ['read'],
-        timeout: 60,
+        intent: 'watcher chain probe',
+        timeoutMs: 60000,
         maxSteps: 5,
         parentClawId: 'parent-claw',
       });
@@ -229,10 +226,8 @@ describe('Task System + SubAgent', () => {
 
       const taskId = await taskSystem.scheduleSubAgent({
         kind: 'subagent',
-        prompt: 'Simple task',
-        
-        tools: [],
-        timeout: 60,
+        intent: 'Simple task',
+        timeoutMs: 60000,
         maxSteps: 5,
         parentClawId: 'parent-claw',
       });
@@ -260,10 +255,8 @@ describe('Task System + SubAgent', () => {
 
       const taskId = await taskSystem.scheduleSubAgent({
         kind: 'subagent',
-        prompt: 'Deliver result',
-        
-        tools: [],
-        timeout: 60,
+        intent: 'Deliver result',
+        timeoutMs: 60000,
         maxSteps: 5,
         parentClawId: 'motion',
       });
@@ -317,10 +310,8 @@ describe('Task System + SubAgent', () => {
       
       const taskId = await taskSystem.scheduleSubAgent({
         kind: 'subagent',
-        prompt: 'Long running task',
-        
-        tools: [],
-        timeout: 300,
+        intent: 'Long running task',
+        timeoutMs: 300000,
         maxSteps: 10,
         parentClawId: 'parent-claw',
       });
@@ -351,10 +342,8 @@ describe('Task System + SubAgent', () => {
 
       const taskId = await taskSystem.scheduleSubAgent({
         kind: 'subagent',
-        prompt: 'Simple task',
-        
-        tools: [],
-        timeout: 30,
+        intent: 'Simple task',
+        timeoutMs: 30000,
         maxSteps: 5,
         parentClawId: 'test-claw',
       });
@@ -384,10 +373,8 @@ describe('Task System + SubAgent', () => {
 
       const taskId = await taskSystem.scheduleSubAgent({
         kind: 'subagent',
-        prompt: 'This will time out',
-        
-        tools: [],
-        timeout: 0.3,   // 0.3 秒，触发 SubAgent timeout
+        intent: 'This will time out',
+        timeoutMs: 300,   // 300ms，触发 SubAgent timeout
         maxSteps: 5,
         parentClawId: 'test-claw',
       });
@@ -440,9 +427,8 @@ describe('Task System + SubAgent', () => {
 
       const taskId = await failSystem.scheduleSubAgent({
         kind: 'subagent',
-        prompt: 'test fallback',
-        tools: [],
-        timeout: 10,
+        intent: 'test fallback',
+        timeoutMs: 10000,
         maxSteps: 5,
         parentClawId: 'test-claw',
       });
@@ -484,9 +470,8 @@ describe('Task System + SubAgent', () => {
 
       const taskId = await failSystem.scheduleSubAgent({
         kind: 'subagent',
-        prompt: 'test move failure',
-        tools: [],
-        timeout: 10,
+        intent: 'test move failure',
+        timeoutMs: 10000,
         maxSteps: 5,
         parentClawId: 'test-claw',
       });
@@ -517,9 +502,8 @@ describe('Task System + SubAgent', () => {
 
       const taskId = await taskSystem.scheduleSubAgent({
         kind: 'subagent',
-        prompt: 'Hanging task',
-        tools: [],
-        timeout: 60,
+        intent: 'Hanging task',
+        timeoutMs: 60000,
         maxSteps: 5,
         parentClawId: 'test-claw',
       });
@@ -545,9 +529,8 @@ describe('Task System + SubAgent', () => {
 
       const taskId = await taskSystem.scheduleSubAgent({
         kind: 'subagent',
-        prompt: 'Hanging task',
-        tools: [],
-        timeout: 60,
+        intent: 'Hanging task',
+        timeoutMs: 60000,
         maxSteps: 5,
         parentClawId: 'test-claw',
       });
@@ -582,9 +565,8 @@ describe('Task System + SubAgent', () => {
 
         const taskId = await taskSystem.scheduleSubAgent({
           kind: 'subagent',
-          prompt: 'Test postProcessor',
-          tools: [],
-          timeout: 60,
+          intent: 'Test postProcessor',
+          timeoutMs: 60000,
           maxSteps: 5,
           parentClawId: 'motion',
           postProcessor: 'test-proc',
@@ -623,9 +605,8 @@ describe('Task System + SubAgent', () => {
 
         const taskId = await taskSystem.scheduleSubAgent({
           kind: 'subagent',
-          prompt: 'Test error path',
-          tools: [],
-          timeout: 60,
+          intent: 'Test error path',
+          timeoutMs: 60000,
           maxSteps: 5,
           parentClawId: 'motion',
           postProcessor: 'test-proc-err',
@@ -652,9 +633,8 @@ describe('Task System + SubAgent', () => {
 
         const taskId = await taskSystem.scheduleSubAgent({
           kind: 'subagent',
-          prompt: 'Test missing postProcessor',
-          tools: [],
-          timeout: 60,
+          intent: 'Test missing postProcessor',
+          timeoutMs: 60000,
           maxSteps: 5,
           parentClawId: 'motion',
           postProcessor: 'non-existent-proc',
