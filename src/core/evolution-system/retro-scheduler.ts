@@ -27,6 +27,7 @@ export interface RetroConfig {
   motionBaseDir: string;
   baseMessages: Message[];
   audit: AuditLog;  // claw audit (for skill failure log)
+  retroSubagentTimeoutMs?: number;   // default 600000ms
 }
 
 /**
@@ -64,7 +65,7 @@ export async function scheduleRetro(config: RetroConfig): Promise<void> {
   await writePendingSubagentTaskFile(config.motionFs, config.motionAudit, {
     kind: 'subagent',
     intent: retroPrompt,
-    timeoutMs: 600 * 1000,
+    timeoutMs: config.retroSubagentTimeoutMs ?? 600000,
     maxSteps: DEFAULT_MAX_STEPS,
     parentClawId: 'motion',
     originClawId: 'motion',

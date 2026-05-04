@@ -296,13 +296,23 @@ describe('EvolutionSystem.runRetroForContract - best-effort branches', () => {
     // sub-case B: 非 ENOENT（目录当文件读触发 EISDIR）
     vi.clearAllMocks();
     auditSpy.mockClear();
+    // 删除 state file 避免 dedupe（sub-case A 已持久化该 contractId）
+    const stateFilePath = path.join(motionDir, '.evolution-system-state.json');
+    await fs.rm(stateFilePath, { force: true });
+    // 新建 EvolutionSystem 实例以重置内存 dedupe state
+    const freshEvolutionSystem = new EvolutionSystem({
+      fs: ctx.motionFs,
+      audit: fixtures.mockAudit as any,
+      taskSystem: {} as any,
+      contractManager: {} as ContractSystem,
+    });
     await fs.writeFile(byContractPath, JSON.stringify({
       targetClaw: 'claw-a', mode: 'mining', miningTaskId: 'mining-123',
     }));
     // 建目录结构：tasks/results/mining-123/messages.json 是一个目录
     await fs.mkdir(path.join(motionDir, 'tasks', 'results', 'mining-123', 'messages.json'), { recursive: true });
 
-    result = await evolutionSystem.runRetroForContract(contractId, ctx);
+    result = await freshEvolutionSystem.runRetroForContract(contractId, ctx);
     expect(result.status).toBe('finished');
     expect(auditSpy).toHaveBeenCalledWith(
       RETRO_AUDIT_EVENTS.MINING_FAILED,

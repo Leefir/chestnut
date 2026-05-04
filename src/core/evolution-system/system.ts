@@ -20,11 +20,18 @@ export interface EvolutionSystemDeps {
   taskSystem: TaskSystem;
   contractManager: ContractSystem;
   skillRegistry?: SkillSystem;   // for SkillSystem.reload coordination
-
+  retroSubagentTimeoutMs?: number;   // default 600000ms (10 min)
 }
 
 export interface RetroResult {
-  status: 'finished' | 'skipped_duplicate' | 'subagent_timeout' | 'no_skill_output' | 'reload_failed' | 'error';
+  status:
+    | 'finished'
+    | 'skipped_duplicate'
+    | 'skipped_index_missing'
+    | 'subagent_timeout'
+    | 'no_skill_output'
+    | 'reload_failed'
+    | 'error';
   detail?: string;
 }
 
@@ -55,8 +62,55 @@ function isProgrammingBug(err: unknown): boolean {
   return PROGRAMMING_BUG_TYPES.some(T => err instanceof T);
 }
 
+const STATE_FILE_PATH = '.evolution-system-state.json';   // motion root
+
+interface EvolutionState {
+  version: number;
+  processedContractIds: string[];
+  lastProcessedAt: string;
+}
+
 export class EvolutionSystem {
+  private processedContractIds: Set<string> = new Set();
+  private stateFileLoaded = false;
+
   constructor(private readonly deps: EvolutionSystemDeps) {
+  }
+
+  private async _loadState(): Promise<void> {
+    try {
+      const content = await this.deps.fs.read(STATE_FILE_PATH);
+      const parsed = JSON.parse(content) as Partial<EvolutionState>;
+      this.processedContractIds = new Set(parsed.processedContractIds ?? []);
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT' || e instanceof FileNotFoundError) {
+        // first run / silent
+        return;
+      }
+      this.deps.audit.write(
+        RETRO_AUDIT_EVENTS.STATE_LOAD_FAILED,
+        `reason=${e instanceof Error ? e.message : String(e)}`,
+      );
+      // best-effort: 0 dedupe / 不抛
+    }
+  }
+
+  private async _saveState(): Promise<void> {
+    try {
+      const data: EvolutionState = {
+        version: 1,
+        processedContractIds: Array.from(this.processedContractIds),
+        lastProcessedAt: new Date().toISOString(),
+      };
+      await this.deps.fs.writeAtomic(STATE_FILE_PATH, JSON.stringify(data, null, 2));
+    } catch (e) {
+      this.deps.audit.write(
+        RETRO_AUDIT_EVENTS.STATE_SAVE_FAILED,
+        `reason=${e instanceof Error ? e.message : String(e)}`,
+      );
+      // best-effort: 不抛
+    }
   }
 
   async start(): Promise<void> {
@@ -72,6 +126,21 @@ export class EvolutionSystem {
     contractId: string,
     ctx: MotionReviewContext,
   ): Promise<RetroResult> {
+    // Step 0: lazy load state (first call only)
+    if (!this.stateFileLoaded) {
+      await this._loadState();
+      this.stateFileLoaded = true;
+    }
+
+    // Step 1: dedupe check
+    if (this.processedContractIds.has(contractId)) {
+      this.deps.audit.write(
+        RETRO_AUDIT_EVENTS.SKIPPED_DUPLICATE,
+        `contractId=${contractId}`,
+      );
+      return { status: 'skipped_duplicate', detail: 'already processed' };
+    }
+
     // Part 1: by-contract 索引解析（daemon.ts:124-158 等价迁移）
     const byContractPath = path.join(
       CLAWSPACE_DIR, 'pending-retrospective', 'by-contract',
@@ -129,7 +198,7 @@ export class EvolutionSystem {
         );
         return { status: 'error', detail: (e as NodeJS.ErrnoException).code };
       }
-      return { status: 'skipped_duplicate', detail: 'ENOENT' };
+      return { status: 'skipped_index_missing', detail: 'ENOENT' };
     }
 
     // Part 2: contract YAML + skills + mining messages（daemon.ts:160-213 等价）
@@ -193,6 +262,7 @@ export class EvolutionSystem {
         motionBaseDir: ctx.motionBaseDir,
         baseMessages,
         audit: this.deps.audit,
+        retroSubagentTimeoutMs: this.deps.retroSubagentTimeoutMs,
       });
     } catch (e) {
       this.deps.audit.write(
@@ -219,6 +289,10 @@ export class EvolutionSystem {
         `err=${e instanceof Error ? e.message : String(e)}`,
       );
     });
+
+    // Step Final: push contractId to dedupe set + save state (best-effort)
+    this.processedContractIds.add(contractId);
+    await this._saveState();
 
     return { status: 'finished' };
   }
