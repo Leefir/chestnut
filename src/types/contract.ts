@@ -17,7 +17,30 @@ export type SubtaskStatus =
   | 'todo'         // Not yet started (within a running contract)
   | 'in_progress'  // Undergoing acceptance verification
   | 'completed'    // Successfully finished
-  | 'failed';      // Execution failed
+  | 'failed';      // Reserved terminal status; fire-and-forget acceptance 路径不进入（phase 468 / feedback driven）
+
+/**
+ * 失败反馈结构化（phase 468 / feedback driven）
+ * 三类失败统一转 'todo' + retry_count++ + last_failed_feedback 升级
+ * cause 字段帮 agent 区分语义但不引入新 SubtaskStatus 进入路径
+ */
+export interface LastFailedFeedback {
+  feedback: string;
+  cause: 'llm_rejected' | 'programming_bug' | 'subagent_timeout';
+}
+
+/**
+ * inbox `acceptance_failed` 通知 payload（onNotify callback）
+ * agent 决策上下文完整（cause + retry context）
+ */
+export interface AcceptanceFailedNotification {
+  contract_id: string;
+  subtask_id: string;
+  cause: 'llm_rejected' | 'programming_bug' | 'subagent_timeout';
+  feedback: string;
+  retry_count: number;
+  max_retries: number;
+}
 
 export interface SubTask {
   id: string;

@@ -975,7 +975,8 @@ describe('ContractSystem', () => {
       const progress = await testManager.getProgress(contractId);
       expect(progress.subtasks['t1'].status).toBe('todo');
       expect(progress.subtasks['t1'].retry_count).toBe(1);
-      expect(progress.subtasks['t1'].last_failed_feedback).toContain('MaxStepsExceeded');
+      expect(progress.subtasks['t1'].last_failed_feedback?.feedback).toContain('MaxStepsExceeded');
+      expect(progress.subtasks['t1'].last_failed_feedback?.cause).toBe('programming_bug');
     });
 
     it('should use DEFAULT_MAX_STEPS=100 for verifier', async () => {
@@ -1241,6 +1242,309 @@ describe('ContractSystem', () => {
         expect.stringContaining('subtaskId=t1'),
         expect.stringContaining('status=completed'),
       );
+    });
+  });
+
+  describe('fire-and-forget 失败状态机（phase 468 / feedback driven）', () => {
+    it('LLM judged failed → cause=llm_rejected + reset todo + retry_count++', async () => {
+      const mockAudit = { write: vi.fn() };
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+
+      const contractId = await testManager.create({
+        schema_version: 1,
+        title: 'Test',
+        goal: 'Test goal',
+        deliverables: [],
+        subtasks: [{ id: 't1', description: 'T1' }],
+        acceptance: [
+          { subtask_id: 't1', type: 'llm' as const, prompt_file: 'acceptance/t1.prompt.txt' },
+        ],
+        auth_level: 'auto',
+      });
+
+      const contractDir = path.join(clawDir, 'contract/active', contractId);
+      await fs.mkdir(path.join(contractDir, 'acceptance'), { recursive: true });
+      await fs.writeFile(path.join(contractDir, 'acceptance', 't1.prompt.txt'), 'Check: {{evidence}}');
+
+      vi.spyOn(testManager as any, 'runLLMAcceptance').mockResolvedValue({
+        passed: false,
+        feedback: 'LLM says no',
+      });
+
+      const result = await testManager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'done' });
+      expect(result.async).toBe(true);
+
+      const dl = Date.now() + 5000;
+      while (Date.now() < dl) {
+        const p = await testManager.getProgress(contractId);
+        if (p.subtasks['t1'].status !== 'in_progress') break;
+        await new Promise(r => setTimeout(r, 10));
+      }
+
+      const progress = await testManager.getProgress(contractId);
+      expect(progress.subtasks['t1'].status).toBe('todo');
+      expect(progress.subtasks['t1'].retry_count).toBe(1);
+      expect(progress.subtasks['t1'].last_failed_feedback).toEqual({
+        feedback: 'LLM says no',
+        cause: 'llm_rejected',
+      });
+    });
+
+    it('programming bug throw → cause=programming_bug + reset todo', async () => {
+      const mockAudit = { write: vi.fn() };
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+
+      const contractId = await testManager.create({
+        schema_version: 1,
+        title: 'Test',
+        goal: 'Test goal',
+        deliverables: [],
+        subtasks: [{ id: 't1', description: 'T1' }],
+        acceptance: [
+          { subtask_id: 't1', type: 'llm' as const, prompt_file: 'acceptance/t1.prompt.txt' },
+        ],
+        auth_level: 'auto',
+      });
+
+      const contractDir = path.join(clawDir, 'contract/active', contractId);
+      await fs.mkdir(path.join(contractDir, 'acceptance'), { recursive: true });
+      await fs.writeFile(path.join(contractDir, 'acceptance', 't1.prompt.txt'), 'Check');
+
+      vi.spyOn(testManager as any, 'runLLMAcceptance').mockRejectedValue(
+        new TypeError('undefined is not a function')
+      );
+
+      await testManager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'done' });
+
+      const dl = Date.now() + 5000;
+      while (Date.now() < dl) {
+        const p = await testManager.getProgress(contractId);
+        if (p.subtasks['t1'].status !== 'in_progress') break;
+        await new Promise(r => setTimeout(r, 10));
+      }
+
+      const progress = await testManager.getProgress(contractId);
+      expect(progress.subtasks['t1'].status).toBe('todo');
+      expect(progress.subtasks['t1'].last_failed_feedback?.cause).toBe('programming_bug');
+      expect(progress.subtasks['t1'].last_failed_feedback?.feedback).toContain('system bug');
+
+      const unexpectedThrowCalls = mockAudit.write.mock.calls.filter(
+        (c: any[]) => c[0] === CONTRACT_AUDIT_EVENTS.UNEXPECTED_ASYNC_THROW
+      );
+      expect(unexpectedThrowCalls.length).toBeGreaterThan(0);
+      expect(unexpectedThrowCalls[0][4]).toContain('TypeError');
+    });
+
+    it('subagent timeout → cause=subagent_timeout + reset todo', async () => {
+      const { ToolTimeoutError } = await import('../../src/types/errors.js');
+      const mockAudit = { write: vi.fn() };
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+
+      const contractId = await testManager.create({
+        schema_version: 1,
+        title: 'Test',
+        goal: 'Test goal',
+        deliverables: [],
+        subtasks: [{ id: 't1', description: 'T1' }],
+        acceptance: [
+          { subtask_id: 't1', type: 'llm' as const, prompt_file: 'acceptance/t1.prompt.txt' },
+        ],
+        auth_level: 'auto',
+      });
+
+      const contractDir = path.join(clawDir, 'contract/active', contractId);
+      await fs.mkdir(path.join(contractDir, 'acceptance'), { recursive: true });
+      await fs.writeFile(path.join(contractDir, 'acceptance', 't1.prompt.txt'), 'Check');
+
+      vi.spyOn(testManager as any, 'runLLMAcceptance').mockRejectedValue(
+        new ToolTimeoutError('verifier', 5000)
+      );
+
+      await testManager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'done' });
+
+      const dl = Date.now() + 5000;
+      while (Date.now() < dl) {
+        const p = await testManager.getProgress(contractId);
+        if (p.subtasks['t1'].status !== 'in_progress') break;
+        await new Promise(r => setTimeout(r, 10));
+      }
+
+      const progress = await testManager.getProgress(contractId);
+      expect(progress.subtasks['t1'].status).toBe('todo');
+      expect(progress.subtasks['t1'].last_failed_feedback?.cause).toBe('subagent_timeout');
+      expect(progress.subtasks['t1'].last_failed_feedback?.feedback).toContain('5000');
+    });
+
+    it('onNotify acceptance_failed payload schema = AcceptanceFailedNotification', async () => {
+      const mockAudit = { write: vi.fn() };
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+      const onNotifySpy = vi.fn();
+      testManager.setOnNotify(onNotifySpy);
+
+      const contractId = await testManager.create({
+        schema_version: 1,
+        title: 'Test',
+        goal: 'Test goal',
+        deliverables: [],
+        subtasks: [{ id: 't1', description: 'T1' }],
+        acceptance: [
+          { subtask_id: 't1', type: 'llm' as const, prompt_file: 'acceptance/t1.prompt.txt' },
+        ],
+        auth_level: 'auto',
+      });
+
+      const contractDir = path.join(clawDir, 'contract/active', contractId);
+      await fs.mkdir(path.join(contractDir, 'acceptance'), { recursive: true });
+      await fs.writeFile(path.join(contractDir, 'acceptance', 't1.prompt.txt'), 'Check');
+
+      vi.spyOn(testManager as any, 'runLLMAcceptance').mockResolvedValue({
+        passed: false,
+        feedback: 'rejected by LLM',
+      });
+
+      await testManager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'done' });
+
+      const dl = Date.now() + 5000;
+      while (Date.now() < dl) {
+        const p = await testManager.getProgress(contractId);
+        if (p.subtasks['t1'].status !== 'in_progress') break;
+        await new Promise(r => setTimeout(r, 10));
+      }
+
+      const notifyCall = onNotifySpy.mock.calls.find(
+        (call: any[]) => call[0] === 'acceptance_failed'
+      );
+      expect(notifyCall).toBeDefined();
+      const payload = notifyCall![1];
+      expect(payload).toMatchObject({
+        contract_id: contractId,
+        subtask_id: 't1',
+        cause: 'llm_rejected',
+        feedback: 'rejected by LLM',
+        retry_count: 1,
+        max_retries: 3,
+      });
+    });
+
+    it('max_retries 后 subtask 仍 todo（不进 failed）', async () => {
+      const mockAudit = { write: vi.fn() };
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+
+      const contractId = await testManager.create({
+        schema_version: 1,
+        title: 'Test',
+        goal: 'Test goal',
+        deliverables: [],
+        subtasks: [{ id: 't1', description: 'T1' }],
+        acceptance: [
+          { subtask_id: 't1', type: 'script' as const, script_file: 'acceptance/t1.sh' },
+        ],
+        auth_level: 'auto',
+        escalation: { max_retries: 2 },
+      });
+
+      const contractDir = path.join(clawDir, 'contract/active', contractId);
+      await fs.mkdir(path.join(contractDir, 'acceptance'), { recursive: true });
+      await fs.writeFile(path.join(contractDir, 'acceptance', 't1.sh'), '#!/bin/sh\nexit 1');
+      await fs.chmod(path.join(contractDir, 'acceptance', 't1.sh'), 0o755);
+
+      vi.spyOn(testManager as any, 'runScriptAcceptance').mockResolvedValue({
+        passed: false,
+        feedback: 'acceptance failed',
+      });
+
+      for (let i = 0; i < 3; i++) {
+        await testManager.completeSubtask({ contractId, subtaskId: 't1', evidence: `attempt ${i + 1}` });
+        const dl = Date.now() + 5000;
+        while (Date.now() < dl) {
+          const p = await testManager.getProgress(contractId);
+          if (p.subtasks['t1'].status !== 'in_progress') break;
+          await new Promise(r => setTimeout(r, 10));
+        }
+      }
+
+      // Escalation saveProgress runs after inbox write; poll for escalated_at
+      const dl2 = Date.now() + 5000;
+      while (Date.now() < dl2) {
+        const p = await testManager.getProgress(contractId);
+        if (p.subtasks['t1'].escalated_at) break;
+        await new Promise(r => setTimeout(r, 10));
+      }
+
+      const progress = await testManager.getProgress(contractId);
+      expect(progress.subtasks['t1'].status).toBe('todo');
+      expect(progress.subtasks['t1'].status).not.toBe('failed');
+      expect(progress.subtasks['t1'].retry_count).toBe(3);
+      expect(progress.subtasks['t1'].escalated_at).toBeDefined();
+
+      const escalationCalls = mockAudit.write.mock.calls.filter(
+        (c: any[]) => c[0] === 'contract_escalation'
+      );
+      expect(escalationCalls.length).toBeGreaterThan(0);
+      expect(escalationCalls[0][1]).toContain(`${contractId}/t1`);
+    });
+
+    it('retry_count 跨多次失败递增', async () => {
+      const { ToolTimeoutError } = await import('../../src/types/errors.js');
+      const mockAudit = { write: vi.fn() };
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+
+      const contractId = await testManager.create({
+        schema_version: 1,
+        title: 'Test',
+        goal: 'Test goal',
+        deliverables: [],
+        subtasks: [{ id: 't1', description: 'T1' }],
+        acceptance: [
+          { subtask_id: 't1', type: 'llm' as const, prompt_file: 'acceptance/t1.prompt.txt' },
+        ],
+        auth_level: 'auto',
+      });
+
+      const contractDir = path.join(clawDir, 'contract/active', contractId);
+      await fs.mkdir(path.join(contractDir, 'acceptance'), { recursive: true });
+      await fs.writeFile(path.join(contractDir, 'acceptance', 't1.prompt.txt'), 'Check');
+
+      let spy = vi.spyOn(testManager as any, 'runLLMAcceptance').mockResolvedValueOnce({
+        passed: false,
+        feedback: 'first reject',
+      });
+      await testManager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'done1' });
+      let dl = Date.now() + 5000;
+      while (Date.now() < dl) {
+        const p = await testManager.getProgress(contractId);
+        if (p.subtasks['t1'].status !== 'in_progress') break;
+        await new Promise(r => setTimeout(r, 10));
+      }
+      spy.mockRestore();
+
+      spy = vi.spyOn(testManager as any, 'runLLMAcceptance').mockRejectedValueOnce(
+        new Error('bug')
+      );
+      await testManager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'done2' });
+      dl = Date.now() + 5000;
+      while (Date.now() < dl) {
+        const p = await testManager.getProgress(contractId);
+        if (p.subtasks['t1'].status !== 'in_progress') break;
+        await new Promise(r => setTimeout(r, 10));
+      }
+      spy.mockRestore();
+
+      spy = vi.spyOn(testManager as any, 'runLLMAcceptance').mockRejectedValueOnce(
+        new ToolTimeoutError('verifier', 3000)
+      );
+      await testManager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'done3' });
+      dl = Date.now() + 5000;
+      while (Date.now() < dl) {
+        const p = await testManager.getProgress(contractId);
+        if (p.subtasks['t1'].status !== 'in_progress') break;
+        await new Promise(r => setTimeout(r, 10));
+      }
+      spy.mockRestore();
+
+      const progress = await testManager.getProgress(contractId);
+      expect(progress.subtasks['t1'].retry_count).toBe(3);
+      expect(progress.subtasks['t1'].last_failed_feedback?.cause).toBe('subagent_timeout');
     });
   });
 });

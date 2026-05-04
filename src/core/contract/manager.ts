@@ -10,7 +10,7 @@ import * as path from 'path';
 
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
-import type { Contract, SubTask, ContractStatus, SubtaskStatus } from '../../types/contract.js';
+import type { Contract, SubTask, ContractStatus, SubtaskStatus, LastFailedFeedback, AcceptanceFailedNotification } from '../../types/contract.js';
 import { ToolError, ToolTimeoutError, FileNotFoundError } from '../../types/errors.js';
 import { exec, execFile } from '../../foundation/process-exec/index.js';
 import { ProcessExecError } from '../../foundation/process-exec/index.js';
@@ -74,7 +74,7 @@ export interface ProgressData {
     evidence?: string;
     artifacts?: string[];
     retry_count?: number;           // 默认 0，每次验收失败 +1
-    last_failed_feedback?: string;
+    last_failed_feedback?: LastFailedFeedback;
     escalated_at?: string;
   }>;
   started_at?: string;
@@ -784,13 +784,24 @@ export class ContractSystem {
       } else {
         // Rejected - track retry count and feedback
         subtask.retry_count = (subtask.retry_count || 0) + 1;
-        subtask.last_failed_feedback = result.feedback;
+        subtask.last_failed_feedback = {
+          feedback: result.feedback,
+          cause: 'llm_rejected',
+        };
         
         // Reset to todo for retry
         subtask.status = 'todo';
         
+        const maxRetries = contractYaml.escalation?.max_retries ?? 3;
         try {
-          this.onNotify?.('acceptance_failed', { contractId, subtaskId, feedback: result.feedback });
+          this.onNotify?.('acceptance_failed', {
+            contract_id: contractId,
+            subtask_id: subtaskId,
+            cause: 'llm_rejected',
+            feedback: result.feedback,
+            retry_count: subtask.retry_count,
+            max_retries: maxRetries,
+          } satisfies AcceptanceFailedNotification);
         } catch (err) {
           this.audit.write(
             CONTRACT_AUDIT_EVENTS.NOTIFY_FAILED,
@@ -808,7 +819,6 @@ export class ContractSystem {
         await this.saveProgress(contractId, progress);
         
         // Format rejection feedback
-        const maxRetries = contractYaml.escalation?.max_retries ?? 3;
         const acceptanceFile = acceptanceConfig.type === 'script' 
           ? acceptanceConfig.script_file ?? 'unknown'
           : acceptanceConfig.prompt_file ?? 'unknown';
@@ -892,6 +902,14 @@ export class ContractSystem {
   private async _writeAcceptanceError(contractId: string, subtaskId: string, error: unknown): Promise<void> {
     const errorMsg = error instanceof Error ? error.message : String(error);
 
+    // 区分 timeout vs programming bug（含 TypeError 等）
+    const cause: LastFailedFeedback['cause'] =
+      error instanceof ToolTimeoutError ? 'subagent_timeout' : 'programming_bug';
+    const feedbackText =
+      cause === 'subagent_timeout'
+        ? `Acceptance verifier timed out after ${(error as ToolTimeoutError).context?.timeoutMs ?? '?'}ms. 资源 / 网络问题 / 重试可能修复。Error: ${errorMsg}`
+        : `Acceptance verification crashed (system bug). Error: ${errorMsg}. 修代码后再 retry。`;
+
     try {
       const audit = this.audit;
       new InboxWriter(
@@ -928,8 +946,27 @@ export class ContractSystem {
         if (subtask && subtask.status === 'in_progress') {
           subtask.status = 'todo';
           subtask.retry_count = (subtask.retry_count || 0) + 1;
-          subtask.last_failed_feedback = `acceptance error: ${errorMsg}`;
+          subtask.last_failed_feedback = { feedback: feedbackText, cause };
           await this.saveProgress(contractId, progress);
+
+          // onNotify acceptance_failed payload align rejected 路径
+          const contractYaml = await this.loadContractYaml(contractId);
+          const maxRetries = contractYaml.escalation?.max_retries ?? 3;
+          try {
+            this.onNotify?.('acceptance_failed', {
+              contract_id: contractId,
+              subtask_id: subtaskId,
+              cause,
+              feedback: feedbackText,
+              retry_count: subtask.retry_count,
+              max_retries: maxRetries,
+            } satisfies AcceptanceFailedNotification);
+          } catch (notifyErr) {
+            this.audit.write(
+              CONTRACT_AUDIT_EVENTS.NOTIFY_FAILED,
+              `err=${notifyErr instanceof Error ? notifyErr.message : String(notifyErr)}`,
+            );
+          }
         }
       });
     } catch (e) {

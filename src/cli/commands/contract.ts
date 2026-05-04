@@ -187,11 +187,7 @@ export async function contractLogCommand(clawId: string, contractId?: string): P
       console.log(`               Evidence: ${ev}`);
     }
     if (st?.last_failed_feedback) {
-      let feedbackDisplay = st.last_failed_feedback;
-      try {
-        const parsed = JSON.parse(st.last_failed_feedback);
-        if (parsed.reason) feedbackDisplay = parsed.reason;
-      } catch { /* not JSON, use as-is */ }
+      const feedbackDisplay = st.last_failed_feedback.feedback;
       console.log(`               Last feedback: ${feedbackDisplay}`);
     }
     if (st?.retry_count) {
