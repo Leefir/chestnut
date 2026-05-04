@@ -11,7 +11,7 @@ import { InboxWriter } from '../../foundation/messaging/index.js';
 import { createDirContext, createProcessManagerForCLI } from '../../foundation/config/factories.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
-import { getContractCreatedMs } from '../../core/contract/utils.js';
+import { getContractCreatedMs } from '../../core/contract/index.js';
 import { LLM_OUTPUT_EVENTS } from '../../foundation/stream/types.js';
 import stringWidth from 'string-width';
 import { sliceFromStart, fitLine, wrapLine } from '../utils/string.js';

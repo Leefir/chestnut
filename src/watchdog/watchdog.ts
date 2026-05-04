@@ -21,7 +21,7 @@ import { createDirContext, createProcessManagerForCLI } from '../foundation/conf
 import { InboxWriter } from '../foundation/messaging/index.js';
 import { type ClawActivityInfo, getClawActivityInfo, clawHasContract, type ClawSnapshot, type ProcessLiveness, gatherClawSnapshot, getEffectiveInterval, shouldResetNotifyCount } from './watchdog-utils.js';
 import { LLM_OUTPUT_EVENTS } from '../foundation/stream/types.js';
-import { getContractCreatedMs } from '../core/contract/utils.js';
+import { getContractCreatedMs } from '../core/contract/index.js';
 import { WATCHDOG_AUDIT_EVENTS } from './audit-events.js';
 import { LOGS_DIR } from '../types/paths.js';
 

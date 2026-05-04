@@ -8,7 +8,7 @@ import * as path from 'path';
 
 import * as yaml from 'js-yaml';
 import { ContractSystem, type ContractYaml, type ProgressData } from '../../core/contract/index.js';
-import { collectContractEvents } from '../../core/contract/jobs/event-collector.js';
+import { collectContractEvents } from '../../core/contract/index.js';
 import { createDirContext } from '../../foundation/config/factories.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import { getClawDir } from '../../foundation/config/index.js';

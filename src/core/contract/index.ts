@@ -18,6 +18,9 @@ export {
 
 export { doneTool, DONE_TOOL_NAME } from './tools/done.js';
 
+export { getContractCreatedMs } from './utils.js';
+export { collectContractEvents } from './jobs/event-collector.js';
+
 /**
  * ContractSystem 工厂 —— 严格对齐 ctor 7 参数
  *

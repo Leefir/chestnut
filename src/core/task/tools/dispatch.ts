@@ -2,7 +2,7 @@ import type { Tool, ToolResult, ExecContext } from '../../../foundation/tool-pro
 
 import type { Message, ToolDefinition } from '../../../types/message.js';
 import { createSkillSystem } from '../../../foundation/skill-system/index.js';
-import { DISPATCH_SKILLS_PATH as DISPATCH_SKILLS_DIR } from '../../evolution-system/dispatch-skills-paths.js';
+import { DISPATCH_SKILLS_PATH as DISPATCH_SKILLS_DIR } from '../../evolution-system/index.js';
 import { ToolRegistryImpl } from '../../../foundation/tools/registry.js';
 import { DEFAULT_LLM_IDLE_TIMEOUT_MS, DEFAULT_MAX_STEPS } from '../../../constants.js';
 import { buildDescribingUserMessage, buildMinerSystemPrompt, buildMiningUserMessage } from '../../../prompts/index.js';
