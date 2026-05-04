@@ -5,10 +5,15 @@ import type { OutboxWriter } from '../../src/foundation/messaging/index.js';
 import type { AuditWriter } from '../../src/foundation/audit/writer.js';
 import type { FileSystem } from '../../src/foundation/fs/types.js';
 import { TaskSystem, type TaskSystemOptions } from '../../src/core/task/system.js';
+import { ToolRegistryImpl } from '../../src/foundation/tools/registry.js';
+
+export function makeTestRegistry(): ToolRegistryImpl {
+  return new ToolRegistryImpl();
+}
 
 export function makeTaskSystemDeps(
   llm?: LLMOrchestrator,
-): Pick<TaskSystemOptions, 'llm' | 'contractManager' | 'outboxWriter'> {
+): Pick<TaskSystemOptions, 'llm' | 'contractManager' | 'outboxWriter' | 'registry'> {
   return {
     llm: llm ?? ({} as unknown as LLMOrchestrator),
     contractManager: {
@@ -19,6 +24,7 @@ export function makeTaskSystemDeps(
     outboxWriter: {
       write: vi.fn().mockResolvedValue(undefined),
     } as unknown as OutboxWriter,
+    registry: makeTestRegistry(),
   };
 }
 
@@ -27,7 +33,7 @@ export function createTestTaskSystem(
   fs: FileSystem,
   auditWriter: AuditWriter,
   llm?: LLMOrchestrator,
-  overrides?: Partial<Omit<TaskSystemOptions, 'llm' | 'contractManager' | 'outboxWriter'>>,
+  overrides?: Partial<Omit<TaskSystemOptions, 'llm' | 'contractManager' | 'outboxWriter' | 'registry'>>,
 ): TaskSystem {
   const deps = makeTaskSystemDeps(llm);
   return new TaskSystem(clawDir, fs, {
