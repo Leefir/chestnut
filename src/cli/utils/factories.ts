@@ -22,12 +22,12 @@
  */
 
 import path from 'path';
-import { NodeFileSystem } from '../fs/node-fs.js';
-import { AuditWriter, createSystemAudit, AUDIT_FILE } from '../audit/index.js';
-import type { FileSystem } from '../fs/types.js';
-import type { ProcessManager } from '../process-manager/manager.js';
+import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
+import { AuditWriter, createSystemAudit, AUDIT_FILE } from '../../foundation/audit/index.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
+import type { ProcessManager } from '../../foundation/process-manager/manager.js';
 import { createAgentProcessManager } from '../../foundation/process-manager/agent-factory.js';
-import { getClawforumRoot } from './index.js';
+import { getClawforumRoot } from '../../foundation/config/index.js';
 
 /**
  * createProcessManagerForCLI

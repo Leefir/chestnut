@@ -19,9 +19,9 @@ import {
   initCommand as motionInitCommand,
   chatCommand as motionChatCommand,
 } from './motion.js';
-import { createProcessManagerForCLI } from '../../foundation/config/factories.js';
+import { createProcessManagerForCLI } from '../utils/factories.js';
 import { ContractSystem } from '../../core/contract/index.js';
-import { createDirContext } from '../../foundation/config/factories.js';
+import { createDirContext } from '../utils/factories.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import { InboxWriter } from '../../foundation/messaging/index.js';
 import { MOTION_CLAW_ID } from '../../constants.js';

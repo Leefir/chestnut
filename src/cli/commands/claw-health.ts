@@ -9,7 +9,7 @@ import {
   loadGlobalConfig, clawExists, getClawDir, getGlobalConfigPath,
 } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
-import { createDirContext, createProcessManagerForCLI } from '../../foundation/config/factories.js';
+import { createDirContext, createProcessManagerForCLI } from '../utils/factories.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import { CONTRACT_DIR } from '../../types/paths.js';
 import { formatRelativeTime, getLastActiveMs } from './claw-shared.js';

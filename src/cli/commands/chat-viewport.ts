@@ -7,7 +7,7 @@ import * as fsNative from 'fs';
 import * as path from 'path';
 import chokidar from 'chokidar';
 
-import { createDirContext, createProcessManagerForCLI } from '../../foundation/config/factories.js';
+import { createDirContext, createProcessManagerForCLI } from '../utils/factories.js';
 import { isAlive } from '../../foundation/process-exec/index.js';
 import { getContractCreatedMs } from '../../core/contract/index.js';
 import { LLM_OUTPUT_EVENTS } from '../../foundation/stream/types.js';

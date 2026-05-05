@@ -55,8 +55,8 @@ vi.mock('timers/promises', () => ({
 }));
 
 // Mock cli-factories (runWatchdogLoop uses createProcessManagerForCLI)
-vi.mock('../../src/foundation/config/factories.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/foundation/config/factories.js')>();
+vi.mock('../../src/cli/utils/factories.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/cli/utils/factories.js')>();
   return {
     ...actual,
     createProcessManagerForCLI: vi.fn(),
@@ -85,7 +85,7 @@ import { clawHasContract, gatherClawSnapshot } from '../../src/watchdog/watchdog
 import { InboxWriter } from '../../src/foundation/messaging/index.js';
 import { spawnDetached } from '../../src/foundation/process-exec/spawn-detached.js';
 import { setTimeout as setTimeoutP } from 'timers/promises';
-import { createProcessManagerForCLI } from '../../src/foundation/config/factories.js';
+import { createProcessManagerForCLI } from '../../src/cli/utils/factories.js';
 import { AuditWriter } from '../../src/foundation/audit/writer.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { WATCHDOG_AUDIT_EVENTS } from '../../src/watchdog/audit-events.js';

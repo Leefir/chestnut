@@ -8,7 +8,7 @@ import {
   loadGlobalConfig, clawExists, getClawDir, getGlobalConfigPath,
 } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
-import { createDirContext, createProcessManagerForCLI } from '../../foundation/config/factories.js';
+import { createDirContext, createProcessManagerForCLI } from '../utils/factories.js';
 
 export async function stopCommand(name: string): Promise<void> {
   loadGlobalConfig();

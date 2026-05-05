@@ -14,7 +14,7 @@ import { getMotionDir, loadGlobalConfig } from '../foundation/config/index.js';
 import type { FileSystem } from '../foundation/fs/types.js';
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import type { AuditWriter } from '../foundation/audit/index.js';
-import { createDirContext } from '../foundation/config/factories.js';
+import { createDirContext } from '../cli/utils/factories.js';
 
 // === 共享 Map（cron state）/ ESM const reference 跨 file 同实例 ===
 

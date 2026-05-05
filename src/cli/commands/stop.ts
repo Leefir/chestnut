@@ -10,7 +10,7 @@ import { stopCommand as watchdogStop } from '../../watchdog/watchdog.js';
 import { stopCommand as motionStop } from './motion.js';
 import { ProcessManager, ProcessListUnavailable } from '../../foundation/process-manager/index.js';
 import { kill } from '../../foundation/process-exec/index.js';
-import { createProcessManagerForCLI } from '../../foundation/config/factories.js';
+import { createProcessManagerForCLI } from '../utils/factories.js';
 import { fileURLToPath } from 'url';
 
 export async function stopAllCommand(): Promise<void> {

@@ -25,7 +25,7 @@ import { getMotionDir } from '../foundation/config/index.js';
 import { ProcessManager } from '../foundation/process-manager/index.js';
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import { AuditWriter, createAuditWriter } from '../foundation/audit/index.js';
-import { createProcessManagerForCLI } from '../foundation/config/factories.js';
+import { createProcessManagerForCLI } from '../cli/utils/factories.js';
 import { WATCHDOG_AUDIT_EVENTS } from './audit-events.js';
 import { LOGS_DIR } from '../types/paths.js';
 

@@ -10,7 +10,7 @@ import {
 } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import { runChatViewport } from './chat-viewport.js';
-import { createDirContext, createProcessManagerForCLI } from '../../foundation/config/factories.js';
+import { createDirContext, createProcessManagerForCLI } from '../utils/factories.js';
 import { LOGS_DIR } from '../../types/paths.js';
 import { PROCESS_SPAWN_CONFIRM_MS } from '../../foundation/process-manager/index.js';
 

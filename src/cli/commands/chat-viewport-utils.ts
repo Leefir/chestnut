@@ -5,7 +5,7 @@
 
 import * as path from 'path';
 import { InboxWriter } from '../../foundation/messaging/index.js';
-import { createDirContext } from '../../foundation/config/factories.js';
+import { createDirContext } from '../utils/factories.js';
 
 /** 写用户输入到 inbox（chat 命令期间用户输入流入 daemon）/ 1:1 保 chat-viewport.ts:78-89 body */
 export function writeUserChat(agentDir: string, message: string): void {

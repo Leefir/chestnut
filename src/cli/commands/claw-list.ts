@@ -9,7 +9,7 @@ import * as yaml from 'js-yaml';
 import {
   loadGlobalConfig, getGlobalConfigPath,
 } from '../../foundation/config/index.js';
-import { createDirContext, createProcessManagerForCLI } from '../../foundation/config/factories.js';
+import { createDirContext, createProcessManagerForCLI } from '../utils/factories.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import { CONTRACT_DIR } from '../../types/paths.js';
 import { formatRelativeTime, getLastActiveMs, LLM_OUTPUT_EVENTS } from './claw-shared.js';

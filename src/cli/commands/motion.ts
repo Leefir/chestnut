@@ -19,7 +19,7 @@ import { PROCESS_SPAWN_CONFIRM_MS } from '../../foundation/process-manager/index
 import { runChatViewport } from './chat-viewport.js';
 import { CliError } from '../errors.js';
 import { Snapshot } from '../../foundation/snapshot/index.js';
-import { createDirContext, createProcessManagerForCLI } from '../../foundation/config/factories.js';
+import { createDirContext, createProcessManagerForCLI } from '../utils/factories.js';
 import { SNAPSHOT_IGNORE_PATTERNS } from '../../foundation/snapshot/index.js';
 import { LOGS_DIR, STATUS_SUBDIR } from '../../types/paths.js';
 import { SKILLS_DIR_DEFAULT, BUNDLED_SKILLS_DIR_NAME } from '../../foundation/skill-system/skill-paths.js';
