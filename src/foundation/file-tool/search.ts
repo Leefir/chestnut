@@ -2,9 +2,6 @@
  * @module L2.FileTool
  * search tool - Search for text in files
  *
- * Path restrictions (MVP aligned):
- * - Whitelist: clawspace/, skills/, prompts/
- * 
  * Motion-only: can search other claws' files via `claw` parameter
  */
 
@@ -13,21 +10,6 @@ import { NodeFileSystem } from '../fs/node-fs.js';
 import type { FileSystem } from '../fs/types.js';
 import type { Tool, ToolResult, ExecContext } from '../tool-protocol/index.js';
 import { getChecker } from './permission-context.js';
-
-// Allowed paths/prefixes for search tool (MVP aligned)
-const SEARCH_ALLOWLIST = [
-  'clawspace/',   // 工作产出（最主要用途）
-  'skills/',      // 技能定义
-  'prompts/',     // prompt 模板
-];
-
-function isSearchPathAllowed(searchPath: string): boolean {
-  // Normalize path: add trailing slash for directory checks
-  const normalizedPath = searchPath.endsWith('/') ? searchPath : searchPath + '/';
-  return SEARCH_ALLOWLIST.some(allowed => 
-    searchPath === allowed || normalizedPath.startsWith(allowed)
-  );
-}
 
 /**
  * Walk directory recursively and search for query in files.
@@ -190,14 +172,6 @@ export const searchTool: Tool = {
       // Skip whitelist check for cross-claw search (Motion has full access)
       useNativeFs = true;
     } else {
-      // Normal search (with whitelist)
-      // Path restriction check (MVP aligned)
-      if (!isSearchPathAllowed(searchPath)) {
-        return {
-          success: false,
-          content: `Error: Path "${searchPath}" is not allowed for search. Allowed: clawspace/, skills/, prompts/.`,
-        };
-      }
       baseDir = searchPath;
     }
 

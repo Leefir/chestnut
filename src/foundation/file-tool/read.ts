@@ -2,9 +2,6 @@
  * @module L2.FileTool
  * read tool - Read file contents
  *
- * Path restrictions (MVP aligned):
- * - Blacklist: logs/ (system logs)
- * 
  * Motion-only: can read other claws' files via `claw` parameter
  */
 
@@ -13,18 +10,6 @@ import { NodeFileSystem } from '../fs/node-fs.js';
 import type { Tool, ToolResult, ExecContext } from '../tool-protocol/index.js';
 import { READ_MAX_LINES, READ_MAX_CHARS } from '../../constants.js';
 import { getChecker } from './permission-context.js';
-
-// Blocked paths (MVP aligned) - blacklist only
-const READ_BLOCKLIST = [
-  'logs/',
-];
-
-function isPathAllowed(filePath: string): boolean {
-  // Blacklist check only
-  return !READ_BLOCKLIST.some(
-    blocked => filePath.startsWith(blocked) || filePath.includes(`/${blocked}`)
-  );
-}
 
 import { READ_TOOL_NAME } from '../tools/tool-names.js';
 export { READ_TOOL_NAME };
@@ -119,14 +104,6 @@ export const readTool: Tool = {
         };
       }
     } else {
-      // Normal read (with whitelist/blacklist)
-      // Path restriction check (MVP aligned)
-      if (!isPathAllowed(normalized)) {
-        return {
-          success: false,
-          content: `Error: Path "${filePath}" is not allowed for read. Blocked: logs/.`,
-        };
-      }
       // Safety limits (from constants.ts)
       try {
         content = await ctx.fs.read(normalized);

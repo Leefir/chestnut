@@ -95,14 +95,7 @@ describe('Builtin Tools', () => {
       expect(result.content).toBe('Line 2\nLine 3');
     });
 
-    it('should block logs/ path (blacklist)', async () => {
-      const result = await readTool.execute({ path: 'logs/system.log' }, ctx);
-
-      expect(result.success).toBe(false);
-      expect(result.content).toContain('not allowed');
-    });
-
-    it('dialog/ path should not be blocked (only logs/ is blacklisted)', async () => {
+    it('dialog/ path is accessible (no extra blocklist)', async () => {
       // dialog/current.json 不存在时返回 FileNotFound，不是权限错误
       const result = await readTool.execute({ path: 'dialog/current.json' }, ctx);
       expect(result.content).not.toContain('not allowed');
@@ -349,13 +342,6 @@ describe('Builtin Tools', () => {
       expect(result.success).toBe(true);
       const lines = result.content.split('\n').filter(l => l.trim());
       expect(lines.length).toBe(3);
-    });
-
-    it('should block paths not in allowlist', async () => {
-      const result = await searchTool.execute({ query: 'test', path: 'dialog' }, ctx);
-
-      expect(result.success).toBe(false);
-      expect(result.content).toContain('not allowed');
     });
 
     it('should reject claw param for non-Motion', async () => {
