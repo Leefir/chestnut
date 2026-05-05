@@ -6,97 +6,48 @@
  * @contract design/modules/l6_watchdog.md
  *
  * Watchdog 守护进程 — 每 30s 检查 motion 存活 / 内建简易 cron。
+ *
+ * 内部物理拆 sub-file：
+ * - watchdog-context.ts   5 module-level state + 3 Map（cron state）+ getter/setter
+ * - watchdog-pid.ts       PID file mgmt（5 function）
+ * - watchdog-log.ts       log + audit + inbox message（4 function）
+ * - watchdog-state.ts     state 持久化（4 function）
+ * - watchdog-cron.ts      maybeCronClawInactivity + maybeCronClawCrash（2 业务）
+ * - watchdog-cli.ts       startCommand + stopCommand（2 cli）
+ *
+ * 本 file 保：runWatchdogLoop（main loop）+ shutdownWatchdog（graceful stop）+ barrel re-export
  */
 
 import * as path from 'path';
-import { spawnDetached } from '../foundation/process-exec/spawn-detached.js';
 import { fileURLToPath } from 'url';
 import { setTimeout } from 'timers/promises';
-import { getMotionDir, loadGlobalConfig } from '../foundation/config/index.js';
+import { getMotionDir } from '../foundation/config/index.js';
 import { ProcessManager } from '../foundation/process-manager/index.js';
-import type { FileSystem } from '../foundation/fs/types.js';
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import { AuditWriter, createAuditWriter } from '../foundation/audit/index.js';
-import { createDirContext, createProcessManagerForCLI } from '../foundation/config/factories.js';
-import { InboxWriter } from '../foundation/messaging/index.js';
-import { type ClawActivityInfo, getClawActivityInfo, clawHasContract, type ClawSnapshot, type ProcessLiveness, gatherClawSnapshot, getEffectiveInterval, shouldResetNotifyCount } from './watchdog-utils.js';
-import { LLM_OUTPUT_EVENTS } from '../foundation/stream/types.js';
-import { getContractCreatedMs } from '../core/contract/index.js';
+import { createProcessManagerForCLI } from '../foundation/config/factories.js';
 import { WATCHDOG_AUDIT_EVENTS } from './audit-events.js';
 import { LOGS_DIR } from '../types/paths.js';
 
-// Get the .clawforum/ directory (CLAWFORUM_ROOT takes priority)
-function getClawforumDir(): string {
-  return path.dirname(getMotionDir());
-}
+import {
+  getClawforumDir, getClawforumFs, getGlobalConfig, setAuditWriter,
+} from './watchdog-context.js';
+import {
+  writeWatchdogPid, removeWatchdogPid,
+} from './watchdog-pid.js';
+import {
+  log, logWithAudit,
+} from './watchdog-log.js';
+import {
+  loadWatchdogState, saveWatchdogState,
+} from './watchdog-state.js';
+import {
+  maybeCronClawInactivity, maybeCronClawCrash,
+} from './watchdog-cron.js';
 
-/**
- * Returns the absolute path to the watchdog entry script for this installation.
- * Used as the pgrep pattern to scope process operations to the current install.
- */
-export function getWatchdogEntryPath(): string {
-  const thisDir = path.dirname(fileURLToPath(import.meta.url));
-  const bundleEntry = path.join(thisDir, 'watchdog-entry.js');
-  const fallbackEntry = path.resolve(thisDir, '..', '..', 'dist', 'watchdog-entry.js');
-  const projectRoot = path.resolve(thisDir, '..', '..');
-  const fsProj = new NodeFileSystem({ baseDir: projectRoot });
-  const relBundle = path.relative(projectRoot, bundleEntry);
-  return fsProj.existsSync(relBundle)
-    ? bundleEntry
-    : fallbackEntry;
-}
+// === Shutdown (21 行) ===
 
-// PID file path
-function getWatchdogPidFile(): string {
-  return path.join(getClawforumDir(), 'watchdog.pid');
-}
-
-// motion audit 归属：watchdog 对 motion 的观察事件（inbox 通知 / crash 通知）
-// 命名契约：内部可变变量 `_motionCtx`（下划线前缀 = 模块私有），外部访问仅经 `getMotionContext()`
-// 唯一管理者：watchdog.ts 模块；进程级单例，lazy init
-let _motionCtx: { fs: FileSystem; audit: AuditWriter } | null = null;
-function getMotionContext(): { fs: FileSystem; audit: AuditWriter } {
-  if (!_motionCtx) {
-    _motionCtx = createDirContext(getMotionDir());
-    // 失败契约（fail-fast）：createDirContext 抛错 → 直接上抛
-    //   - _motionCtx 保持 null，调用方（watchdog 主循环）整个 iteration 失败
-    //   - 不做 catch 重建、不降级写 stdout；watchdog 进程应由 SIGTERM 或 uncaughtException 兜底
-    //   - 理由：motion audit 写入失败属基础设施损坏，静默继续会丢观察事件（违反"信息不丢失"）
-  }
-  return _motionCtx;
-}
-
-// clawforum FileSystem lazy singleton（mirror getMotionContext 模式）
-// 增加 baseDir 缓存校验，使测试环境在 getClawforumDir() 变化时自动重建实例
-let _clawforumFs: NodeFileSystem | null = null;
-let _clawforumFsBaseDir: string | null = null;
-function getClawforumFs(): NodeFileSystem {
-  const baseDir = getClawforumDir();
-  if (!_clawforumFs || _clawforumFsBaseDir !== baseDir) {
-    _clawforumFs = new NodeFileSystem({ baseDir });
-    _clawforumFsBaseDir = baseDir;
-  }
-  return _clawforumFs;
-}
-
-// 注：clawforum auditWriter（L334-338）不使用此 helper，它是 watchdog 进程自身事件的归属
-
-// Watchdog PID management
-function writeWatchdogPid(pid: number): void {
-  const root = process.env.CLAWFORUM_ROOT ?? process.cwd();
-  const fs = getClawforumFs();
-  fs.writeAtomicSync('watchdog.pid', JSON.stringify({ pid, root }));
-}
-
-function removeWatchdogPid(): void {
-  try {
-    const fs = getClawforumFs();
-    fs.deleteSync('watchdog.pid');
-  } catch {
-    // ignore
-  }
-}
-
+/** 1:1 保 watchdog.ts:100-120 */
 export function shutdownWatchdog(
   auditWriter: AuditWriter,
   signal: string,
@@ -118,287 +69,9 @@ export function shutdownWatchdog(
   process.exit(saveFailed ? 1 : 0);
 }
 
-export function getWatchdogPid(): number | null {
-  try {
-    const fs = getClawforumFs();
-    const content = fs.readSync('watchdog.pid');
-    const parsed = JSON.parse(content);
-    return typeof parsed.pid === 'number' ? parsed.pid : null;
-  } catch {
-    return null;
-  }
-}
+// === Main loop (112 行) ===
 
-export function isWatchdogAlive(): boolean {
-  try {
-    const fs = getClawforumFs();
-    const content = fs.readSync('watchdog.pid');
-    const { pid, root } = JSON.parse(content);
-    if (typeof pid !== 'number') return false;
-    const currentRoot = process.env.CLAWFORUM_ROOT ?? process.cwd();
-    if (root !== currentRoot) {
-      removeWatchdogPid();
-      return false;
-    }
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    removeWatchdogPid();
-    return false;
-  }
-}
-
-// Logging
-function log(message: string): void {
-  const timestamp = new Date().toISOString();
-  const logLine = `[${timestamp}] ${message}\n`;
-  console.log(logLine.trim());
-
-  try {
-    const fs = getClawforumFs();
-    fs.ensureDirSync(LOGS_DIR);
-    fs.appendSync(path.join(LOGS_DIR, 'watchdog.log'), logLine);
-  } catch {
-    // Fallback: already output to stdout above
-  }
-}
-
-export function logWithAudit(
-  message: string,
-  auditType?: string,
-  payload?: string,
-): void {
-  log(message);
-  if (auditType && _auditWriter) {
-    _auditWriter.write(auditType, payload ?? message);
-  }
-}
-
-// Write an inbox message (YAML frontmatter .md format)
-function writeWatchdogInboxMessage(type: string, content: Record<string, unknown>): void {
-  const motionDir = getMotionDir();
-  const inboxDir = path.join(motionDir, 'inbox', 'pending');
-  const { fs, audit } = getMotionContext();
-  const body = (content.message as string) ?? JSON.stringify(content);
-  new InboxWriter(fs, inboxDir, audit).writeSync({
-    type: `watchdog_${type}`,
-    source: 'watchdog',
-    priority: 'high',
-    body,
-    idPrefix: `${Date.now()}_${type}`,
-    filenameTag: `watchdog_${type}`,
-  });
-}
-
-// Cron state
-const lastInactivityNotified: Map<string, number> = new Map();
-const clawPreviouslyAlive: Map<string, boolean> = new Map();
-const inactivityNotifyCount: Map<string, number> = new Map();  // consecutive notification count, used for backoff
-
-interface WatchdogState {
-  version?: number;  // v0 = absent (legacy), v1 = current
-  lastInactivityNotified: Record<string, number>;
-  inactivityNotifyCount: Record<string, number>;
-}
-
-function getWatchdogStateFile(): string {
-  return path.join(getClawforumDir(), 'watchdog-state.json');
-}
-
-export function loadWatchdogState(): void {
-  try {
-    const fs = getClawforumFs();
-    const raw = fs.readSync('watchdog-state.json');
-    const state = JSON.parse(raw) as WatchdogState;
-    // version ?? 0 — 旧文件无 version 字段，视为 v0，兼容加载
-    for (const [k, v] of Object.entries(state.lastInactivityNotified ?? {})) {
-      lastInactivityNotified.set(k, v);
-    }
-    for (const [k, v] of Object.entries(state.inactivityNotifyCount ?? {})) {
-      inactivityNotifyCount.set(k, v);
-    }
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-      // 首次启动 — 从空状态开始
-      return;
-    }
-    // 文件损坏（SyntaxError / 字段类型错等）
-    const fs = getClawforumFs();
-    const backupPath = `watchdog-state.json.corrupt-${Date.now()}`;
-    try {
-      fs.moveSync('watchdog-state.json', backupPath);
-    } catch {
-      // move 失败不重试
-    }
-    _auditWriter?.write(
-      WATCHDOG_AUDIT_EVENTS.STATE_LOAD_FAILED,
-      `backup=${backupPath} err=${(err as Error).message?.slice(0, 200) ?? String(err)}`,
-    );
-  }
-}
-
-export function saveWatchdogState(): void {
-  const state: WatchdogState = {
-    version: 1,
-    lastInactivityNotified: Object.fromEntries(lastInactivityNotified),
-    inactivityNotifyCount: Object.fromEntries(inactivityNotifyCount),
-  };
-  const fs = getClawforumFs();
-  fs.writeAtomicSync('watchdog-state.json', JSON.stringify(state, null, 2));
-}
-
-// Global config (loaded lazily on first access)
-let globalConfigCache: ReturnType<typeof loadGlobalConfig> | null = null;
-function getGlobalConfig() {
-  if (!globalConfigCache) {
-    globalConfigCache = loadGlobalConfig();
-  }
-  return globalConfigCache;
-}
-
-let _auditWriter: AuditWriter | null = null;
-export function setAuditWriter(auditWriter: AuditWriter | null): void {
-  _auditWriter = auditWriter;
-}
-
-export function writeWatchdogCrash(err: Error): void {
-  try {
-    _auditWriter?.write(WATCHDOG_AUDIT_EVENTS.CRASH, `err=${err.message?.slice(0, 200) ?? String(err)}`);
-  } catch { /* ignore: crash handler 不抛 */ }
-}
-
-// Check for claws with an active contract but no progress for a long time, and send a reminder
-export async function maybeCronClawInactivity(pm: ProcessManager, audit: AuditWriter): Promise<void> {
-  const timeoutMs = getGlobalConfig().watchdog?.claw_inactivity_timeout_ms ?? 300000;
-  const fs = getClawforumFs();
-  if (!fs.existsSync('claws')) return;
-
-  // 清理已不存在的 claw 的 Map 条目
-  const clawEntries = fs.listSync('claws', { includeDirs: true });
-  const existingClawIds = new Set(clawEntries.filter(entry => entry.isDirectory).map(entry => entry.name));
-  audit.write(WATCHDOG_AUDIT_EVENTS.CLAW_SCAN, `ctx=inactivity present=${[...existingClawIds].join(',')}`);
-  for (const id of lastInactivityNotified.keys()) {
-    if (!existingClawIds.has(id)) {
-      lastInactivityNotified.delete(id);
-      inactivityNotifyCount.delete(id);
-    }
-  }
-
-  const now = Date.now();
-  for (const clawId of clawEntries.map(e => e.name)) {
-    try {
-      const clawDir = path.join(getClawforumDir(), 'claws', clawId);
-
-      // Has an active contract?
-      if (!clawHasContract(clawDir)) continue;
-
-      // Parse stream.jsonl to get real progress
-      const clawFs = new NodeFileSystem({ baseDir: clawDir });
-      const { lastEventMs, lastError } = await getClawActivityInfo(clawFs, audit);
-
-      // Merge with contract creation time to handle contract recreation scenario
-      const contractCreatedMs = getContractCreatedMs(clawFs, clawDir);
-      const referenceMs = Math.max(lastEventMs ?? 0, contractCreatedMs ?? 0) || null;
-      if (referenceMs === null) continue;
-
-      // Not yet timed out
-      if (now - referenceMs < timeoutMs) continue;
-
-      // Reset count if claw has made new progress since last notification
-      const lastNotified = lastInactivityNotified.get(clawId) ?? 0;
-      if (shouldResetNotifyCount(referenceMs, lastNotified)) {
-        inactivityNotifyCount.set(clawId, 0);
-      }
-
-      const notifyCount = inactivityNotifyCount.get(clawId) ?? 0;
-
-      // Backoff interval: first 2 notifications use timeoutMs, from the 3rd onward use 3x
-      const effectiveInterval = getEffectiveInterval(notifyCount, timeoutMs);
-      if (now - lastNotified < effectiveInterval) continue;
-
-      // Collect snapshot info
-      const snapshot = gatherClawSnapshot(clawDir, pm, clawId);
-      const inactiveMin = Math.round((now - referenceMs) / 60000);
-
-      // Body without directives: pure factual data (including notification number)
-      const displayCount = notifyCount + 1;
-      let body = `Claw ${clawId} no progress for ${inactiveMin}m (notification #${displayCount}). Status: ${snapshot.status}, contract: ${snapshot.contract}, inbox_pending: ${snapshot.inboxPending}, outbox_pending: ${snapshot.outboxPending}`;
-      if (lastError) body += `, last error: ${lastError}`;
-
-      log(`[watchdog] Claw ${clawId} no progress ${inactiveMin}m (notify #${displayCount}) with active contract${lastError ? ` (last error: ${lastError})` : ''}`);
-      writeWatchdogInboxMessage('claw_inactivity', {
-        message: body,
-        claw_id: clawId,
-        inactive_ms: now - referenceMs,
-        status: snapshot.status,
-        contract: snapshot.contract,
-        inbox_pending: snapshot.inboxPending,
-        outbox_pending: snapshot.outboxPending,
-        notify_count: displayCount,
-        as_of: new Date().toISOString(),
-        ...(lastError ? { last_error: lastError } : {}),
-      });
-      inactivityNotifyCount.set(clawId, displayCount);
-      lastInactivityNotified.set(clawId, now);
-    } catch (err) {
-      log(`[watchdog] Error checking claw ${clawId}: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
-}
-
-// Detect claw process crashes and notify motion
-export function maybeCronClawCrash(pm: ProcessManager, audit: AuditWriter): void {
-  const fs = getClawforumFs();
-  if (!fs.existsSync('claws')) return;
-
-  // 清理已不存在的 claw 的 Map 条目
-  const clawEntries = fs.listSync('claws', { includeDirs: true });
-  const existingClawIds = new Set(clawEntries.filter(entry => entry.isDirectory).map(entry => entry.name));
-  audit.write(WATCHDOG_AUDIT_EVENTS.CLAW_SCAN, `ctx=crash present=${[...existingClawIds].join(',')}`);
-  for (const id of clawPreviouslyAlive.keys()) {
-    if (!existingClawIds.has(id)) {
-      clawPreviouslyAlive.delete(id);
-    }
-  }
-
-  for (const clawId of clawEntries.map(e => e.name)) {
-    const clawDir = path.join(getClawforumDir(), 'claws', clawId);
-    const currentlyAlive = pm.isAlive(clawId);
-    const wasAlive = clawPreviouslyAlive.get(clawId);
-
-    if (wasAlive === true && !currentlyAlive) {
-      // Only notify motion when there is an active/paused contract (no notification needed if claw stops without a contract)
-      if (!clawHasContract(clawDir)) {
-        log(`[watchdog] Claw ${clawId} stopped (no active contract, skipping notification)`);
-        clawPreviouslyAlive.set(clawId, currentlyAlive);
-        continue;
-      }
-      log(`[watchdog] Claw ${clawId} crashed (was alive, now stopped)`);
-      audit.write(WATCHDOG_AUDIT_EVENTS.CLAW_CRASH_DETECTED, `claw=${clawId}`);
-
-      // Collect snapshot info
-      const snapshot = gatherClawSnapshot(clawDir, pm, clawId);
-      const body = `contract: ${snapshot.contract}, outbox_pending: ${snapshot.outboxPending}`;
-
-      const { fs: motionFs, audit: motionAudit } = getMotionContext();
-      try {
-        new InboxWriter(motionFs, path.join(getMotionDir(), 'inbox', 'pending'), motionAudit).writeSync({
-          type: 'crash_notification',
-          source: clawId,
-          priority: 'high',
-          body,
-          filenameTag: 'claw_crash',
-        });
-      } catch (err) {
-        audit.write(WATCHDOG_AUDIT_EVENTS.CLAW_CRASH_NOTIFY_DROPPED, `claw=${clawId}`, `err=${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
-
-    clawPreviouslyAlive.set(clawId, currentlyAlive);
-  }
-}
-
-// Daemon main loop
+/** 1:1 保 watchdog.ts:402-513 */
 export async function runWatchdogLoop(): Promise<void> {
   log('[watchdog] Daemon starting...');
 
@@ -411,7 +84,7 @@ export async function runWatchdogLoop(): Promise<void> {
     'audit.tsv',
     auditMaxSizeMb,
   );
-  _auditWriter = auditWriter;
+  setAuditWriter(auditWriter);
 
   loadWatchdogState();   // 恢复通知状态（_auditWriter 已设，corrupt 路径可写 audit）
   log('[watchdog] State loaded.');
@@ -510,72 +183,28 @@ export async function runWatchdogLoop(): Promise<void> {
   }
 }
 
-// Start command
-export async function startCommand(): Promise<void> {
-  const watchdogEntryPath = getWatchdogEntryPath();
+// === Barrel re-export 全集中（保 caller cascade 0 改）===
 
-  // 幂等：本 workspace 的 watchdog 已在运行则直接返回
-  if (isWatchdogAlive()) {
-    console.log(`Watchdog already running (PID: ${getWatchdogPid()})`);
-    return;
-  }
+export {
+  getWatchdogEntryPath, getMotionContext, setAuditWriter,
+} from './watchdog-context.js';
 
-  // spawn watchdog，显式传 CLAWFORUM_ROOT
-  const clawforumRoot = process.env.CLAWFORUM_ROOT ?? process.cwd();
-  spawnDetached('node', [watchdogEntryPath], {
-    env: { ...process.env, CLAWFORUM_ROOT: clawforumRoot },
-  });
+export {
+  getWatchdogPid, isWatchdogAlive, writeWatchdogPid, removeWatchdogPid,
+} from './watchdog-pid.js';
 
-  // 等待 PID 文件写入
-  let attempts = 0;
-  while (!isWatchdogAlive() && attempts < 30) {
-    await setTimeout(100);
-    attempts++;
-  }
+export {
+  log, logWithAudit, writeWatchdogInboxMessage,
+} from './watchdog-log.js';
 
-  const pid = getWatchdogPid();
-  if (pid) {
-    console.log(`Watchdog started (PID: ${pid})`);
-  } else {
-    console.log('Watchdog may have failed to start');
-  }
-}
+export {
+  loadWatchdogState, saveWatchdogState, writeWatchdogCrash,
+} from './watchdog-state.js';
 
-// Stop command
-export async function stopCommand(): Promise<void> {
-  const pid = getWatchdogPid();
-  
-  if (!pid || !isWatchdogAlive()) {
-    console.log('Watchdog is not running');
-    removeWatchdogPid();
-    return;
-  }
-  
-  console.log(`Stopping watchdog (PID: ${pid})...`);
-  
-  try {
-    process.kill(pid, 'SIGTERM');
-  } catch (err) {
-    console.log('Failed to send SIGTERM:', err);
-  }
-  
-  // Wait up to 5s
-  let attempts = 0;
-  while (isWatchdogAlive() && attempts < 50) {
-    await setTimeout(100);
-    attempts++;
-  }
-  
-  if (isWatchdogAlive()) {
-    console.log('Watchdog still alive, sending SIGKILL...');
-    try {
-      process.kill(pid, 'SIGKILL');
-    } catch (err) {
-      console.log('Failed to send SIGKILL:', err);
-    }
-    await setTimeout(500);
-  }
-  
-  removeWatchdogPid();
-  console.log('Watchdog stopped');
-}
+export {
+  maybeCronClawInactivity, maybeCronClawCrash,
+} from './watchdog-cron.js';
+
+export {
+  startCommand, stopCommand,
+} from './watchdog-cli.js';

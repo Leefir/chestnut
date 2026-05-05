@@ -15,12 +15,24 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const watchdogPath = path.join(__dirname, '../../src/watchdog/watchdog.ts');
+const watchdogDir = path.join(__dirname, '../../src/watchdog');
 const stopPath = path.join(__dirname, '../../src/cli/commands/stop.ts');
 const daemonLoopPath = path.join(__dirname, '../../src/daemon/daemon-loop.ts');
 
 describe('Phase 86: clean stop 生命周期修复', () => {
-  const watchdogSource = fs.readFileSync(watchdogPath, 'utf-8');
+  // 合并所有 watchdog 子文件源码（重构后代码分散在多个 sub-file）
+  const watchdogFiles = [
+    'watchdog.ts',
+    'watchdog-context.ts',
+    'watchdog-pid.ts',
+    'watchdog-log.ts',
+    'watchdog-state.ts',
+    'watchdog-cron.ts',
+    'watchdog-cli.ts',
+  ];
+  const watchdogSource = watchdogFiles
+    .map(f => fs.readFileSync(path.join(watchdogDir, f), 'utf-8'))
+    .join('\n');
   const stopSource = fs.readFileSync(stopPath, 'utf-8');
   const daemonLoopSource = fs.readFileSync(daemonLoopPath, 'utf-8');
 
