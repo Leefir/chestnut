@@ -9,7 +9,7 @@ import * as path from 'path';
 import type { FileSystem } from '../fs/types.js';
 import type { AuditLog } from '../audit/index.js';
 import { ProcessListUnavailable } from './errors.js';
-import { spawnDetached, pgrepSync } from '../process-exec/index.js';
+import { spawnDetached, kill, isAlive, findByPattern } from '../process-exec/index.js';
 import { PROCESS_MANAGER_AUDIT_EVENTS } from './audit-events.js';
 import { STATUS_SUBDIR } from '../../types/paths.js';
 
@@ -151,17 +151,13 @@ export class ProcessManager {
       }
 
       try {
-        process.kill(pid, 0);
-        return { alive: true, reason: `PID ${pid}`, pid };
+        if (isAlive(pid)) {
+          return { alive: true, reason: `PID ${pid}`, pid };
+        }
+        try { this.fs.deleteSync(pidFile); } catch { /* ignore */ }
+        return { alive: false, reason: `PID ${pid} not alive` };
       } catch (err: any) {
-        if (err.code === 'ESRCH') {
-          try { this.fs.deleteSync(pidFile); } catch { /* ignore */ }
-          return { alive: false, reason: `PID ${pid} not found (ESRCH)` };
-        }
-        if (err.code === 'EPERM') {
-          return { alive: true, reason: `PID ${pid} (EPERM, assumed alive)`, pid };
-        }
-        return { alive: false, reason: `kill(0) error: ${err.code}` };
+        return { alive: false, reason: `isAlive error: ${err.message ?? String(err)}` };
       }
     } catch (err: any) {
       if (err.code === 'ENOENT' || err.code === 'FS_NOT_FOUND') {
@@ -219,31 +215,13 @@ export class ProcessManager {
     // EEXIST: probe holder
     const holderPid = this.readLockPid(clawId);
     if (holderPid !== null) {
-      try {
-        process.kill(holderPid, 0);
-        // kill succeeded → holder is alive
+      if (isAlive(holderPid)) {
         throw new LockConflictError(
           clawId,
           `Another "${clawId}" daemon is running (PID: ${holderPid})`,
         );
-      } catch (killErr: any) {
-        if (killErr instanceof LockConflictError) throw killErr; // holder alive
-        if (killErr?.code === 'EPERM') {
-          // alive but no permission to signal
-          throw new LockConflictError(
-            clawId,
-            `Another "${clawId}" daemon is running (PID: ${holderPid}, no permission to signal)`,
-          );
-        }
-        if (killErr?.code === 'ESRCH') {
-          // stale, fall through to cleanup
-        } else {
-          // unknown errno: conservative — treat as alive, do not steal
-          throw new LockConflictError(
-            clawId,
-            `kill probe failed (errno=${killErr?.code}): ${killErr instanceof Error ? killErr.message : String(killErr)}`,
-          );
-        }
+      } else {
+        // holder not alive → fall through to stale lock cleanup
       }
     }
 
@@ -325,10 +303,11 @@ export class ProcessManager {
     let sentAny = false;
     for (const pid of pids) {
       try {
-        process.kill(pid, 'SIGTERM');
+        kill(pid, 'TERM');
         sentAny = true;
       } catch (err: any) {
-        if (err?.code !== 'ESRCH') {
+        // ESRCH 已在 L1 kill 内 silently ignore / 此 catch 兜底其他错
+        {
           this.audit.write(
             PROCESS_MANAGER_AUDIT_EVENTS.ORPHAN_SIGTERM_FAILED,
             `claw=${clawId}`,
@@ -347,21 +326,14 @@ export class ProcessManager {
     try {
       const lockPid = this.readLockPid(clawId);
       if (lockPid !== null) {
-        // Pre-check: only SIGTERM if the lock holder is still alive
-        let lockAlive = false;
-        try {
-          process.kill(lockPid, 0);
-          lockAlive = true;
-        } catch (err: any) {
-          if (err.code === 'EPERM') lockAlive = true; // process exists but no permission to signal
-        }
+        const lockAlive = isAlive(lockPid);
         if (lockAlive) {
           try {
-            process.kill(lockPid, 'SIGTERM');
+            kill(lockPid, 'TERM');
             // Wait for graceful exit
             await new Promise(resolve => setTimeout(resolve, SIGTERM_GRACE_MS));
           } catch (err: any) {
-            if (err?.code !== 'ESRCH') {
+            {
               this.audit.write(
                 PROCESS_MANAGER_AUDIT_EVENTS.LOCKFILE_CLEANUP_FAILED,
                 `claw=${clawId}`,
@@ -495,10 +467,22 @@ export class ProcessManager {
       return true;
     }
 
+    // 前置探测：进程已不存在 → STALE 路径
+    if (!isAlive(pid)) {
+      await this.removePid(clawId);
+      this.audit.write(
+        PROCESS_MANAGER_AUDIT_EVENTS.PROCESS_STOP_STALE,
+        `claw=${clawId}`,
+        `pid=${pid}`,
+        `via=esrch`,
+      );
+      return true;
+    }
+
     let via = 'sigterm';
     try {
       // Send SIGTERM
-      process.kill(pid, 'SIGTERM');
+      kill(pid, 'TERM');
 
       // Wait for graceful shutdown
       await new Promise(resolve => setTimeout(resolve, SIGTERM_GRACE_MS));
@@ -506,7 +490,7 @@ export class ProcessManager {
       // Check whether still running
       if (this.isAlive(clawId)) {
         // Force kill
-        process.kill(pid, 'SIGKILL');
+        kill(pid, 'KILL');
         via = 'sigkill';
         this.audit.write(
           PROCESS_MANAGER_AUDIT_EVENTS.PROCESS_KILL_ESCALATED,
@@ -524,17 +508,7 @@ export class ProcessManager {
       );
       return true;
     } catch (err: any) {
-      // Process no longer exists
-      if (err.code === 'ESRCH') {
-        await this.removePid(clawId);
-        this.audit.write(
-          PROCESS_MANAGER_AUDIT_EVENTS.PROCESS_STOP_STALE,
-          `claw=${clawId}`,
-          `pid=${pid}`,
-          `via=esrch`,
-        );
-        return true;
-      }
+      // ESRCH 已在 L1 silent / 此处 catch 兜底其他错（如 ProcessExecError）
       this.audit.write(
         PROCESS_MANAGER_AUDIT_EVENTS.PROCESS_STOP_FAILED,
         `claw=${clawId}`,
@@ -583,7 +557,7 @@ export class ProcessManager {
     const escaped = pattern.replace(/[\\.^$*+?()[\]{}|]/g, '\\$&');
     let pids: number[];
     try {
-      pids = pgrepSync(escaped);
+      pids = findByPattern(escaped).map(p => p.pid);
     } catch (err) {
       if (err instanceof ProcessListUnavailable) {
         this.audit.write(

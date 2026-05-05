@@ -27,6 +27,11 @@ export interface ExecResult {
  * Error thrown when process execution fails.
  * Carries raw output for consumer diagnostics.
  */
+export interface ProcessInfo {
+  pid: number;
+  command: string;
+}
+
 export interface SpawnDetachedOptions {
   cwd?: string;
   env?: Record<string, string | undefined>;

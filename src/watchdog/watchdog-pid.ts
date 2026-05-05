@@ -4,6 +4,7 @@
  */
 
 import { getClawforumDir, getClawforumFs } from './watchdog-context.js';
+import { isAlive } from '../foundation/process-exec/index.js';
 import * as path from 'path';
 
 /** 1:1 保 watchdog.ts:50-52 */
@@ -52,8 +53,7 @@ export function isWatchdogAlive(): boolean {
       removeWatchdogPid();
       return false;
     }
-    process.kill(pid, 0);
-    return true;
+    return isAlive(pid);
   } catch {
     removeWatchdogPid();
     return false;

@@ -8,6 +8,7 @@ import * as path from 'path';
 import chokidar from 'chokidar';
 
 import { createDirContext, createProcessManagerForCLI } from '../../foundation/config/factories.js';
+import { isAlive } from '../../foundation/process-exec/index.js';
 import { getContractCreatedMs } from '../../core/contract/index.js';
 import { LLM_OUTPUT_EVENTS } from '../../foundation/stream/types.js';
 import stringWidth from 'string-width';
@@ -568,12 +569,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
       try {
         const pid = await pm.readPid(clawId);
         if (pid !== null) {
-          try {
-            process.kill(pid, 0);
-            track.isAlive = true;
-          } catch (e) {
-            track.isAlive = (e as NodeJS.ErrnoException).code === 'EPERM';
-          }
+          track.isAlive = isAlive(pid);
         } else { track.isAlive = false; }
       } catch { track.isAlive = false; }
       // Fix 2：刷新 hasContract（契约可能完成或新创建）
@@ -609,9 +605,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
     try {
       const pid = await pm.readPid(options.label);
       if (pid === null) return;
-      try {
-        process.kill(pid, 0); // 检测存活
-      } catch {
+      if (!isAlive(pid)) {
         // 进程不存在
         daemonDead = true;
         inTurn = false;
@@ -901,8 +895,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
       if (pid === null) {
         inTurn = false;
       } else {
-        try { process.kill(pid, 0); }
-        catch { inTurn = false; }
+        if (!isAlive(pid)) { inTurn = false; }
       }
     } catch { inTurn = false; }
   }

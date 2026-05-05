@@ -78,12 +78,13 @@ describe('ProcessManager.acquireLock — fix 004: TOCTOU race protection', () =>
       throw err;
     });
 
+    // isAlive(pid) returns true for EPERM → LockConflictError (generic message)
     expect(() => pm.acquireLock('test-claw')).toThrow(
-      'Another "test-claw" daemon is running (PID: 12345, no permission to signal)',
+      'Another "test-claw" daemon is running (PID: 12345)',
     );
   });
 
-  it('throws on unknown kill errno (conservative, does not steal)', () => {
+  it('unknown kill errno → stale cleanup + retry (no longer conservative steal)', () => {
     const fs = (pm as any).fs;
     vi.spyOn(fs, 'writeExclusiveSync').mockImplementation(() => {
       const err: any = new Error('EEXIST');
@@ -97,8 +98,9 @@ describe('ProcessManager.acquireLock — fix 004: TOCTOU race protection', () =>
       throw err;
     });
 
+    // isAlive(pid) returns false for unknown errno → stale cleanup → retry → EEXIST
     expect(() => pm.acquireLock('test-claw')).toThrow(
-      'kill probe failed (errno=EINVAL)',
+      'Another "test-claw" daemon acquired the lock during retry',
     );
   });
 

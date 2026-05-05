@@ -9,8 +9,11 @@
  */
 
 export { exec } from './exec.js';
-export { spawnDetached, pgrepSync } from './spawn-detached.js';
-export type { ExecOptions, ExecResult, SpawnDetachedOptions } from './types.js';
+export { spawnDetached } from './spawn-detached.js';
+export { kill, isAlive } from './process-control.js';
+export type { Signal } from './process-control.js';
+export { findByPattern } from './find-by-pattern.js';
+export type { ExecOptions, ExecResult, SpawnDetachedOptions, ProcessInfo } from './types.js';
 export { ProcessExecError } from './types.js';
 export { ProcessListUnavailable } from './errors.js';
 export {

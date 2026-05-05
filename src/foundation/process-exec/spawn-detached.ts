@@ -1,6 +1,5 @@
-import { spawn, spawnSync } from 'child_process';
+import { spawn } from 'child_process';
 import { openSync, closeSync } from 'fs';
-import { ProcessListUnavailable } from './errors.js';
 import type { SpawnDetachedOptions } from './types.js';
 
 /**
@@ -33,35 +32,5 @@ export function spawnDetached(
     return { pid: proc.pid };
   } finally {
     if (typeof logFd === 'number') closeSync(logFd);
-  }
-}
-
-/**
- * Find processes by pattern using pgrep (POSIX).
- *
- * @returns array of pids matching pattern (empty if no match)
- * @throws ProcessListUnavailable if pgrep binary not available
- */
-export function pgrepSync(pattern: string): number[] {
-  try {
-    const result = spawnSync('pgrep', ['-f', pattern], { encoding: 'utf-8' });
-    if (result.error) {
-      throw new ProcessListUnavailable(pattern, result.error);
-    }
-    if (result.status === 1) {
-      return [];  // pgrep returns 1 when no match (not error)
-    }
-    if (result.status !== 0) {
-      throw new ProcessListUnavailable(pattern, new Error(`pgrep exit ${result.status}`));
-    }
-    return result.stdout
-      .split('\n')
-      .map(s => s.trim())
-      .filter(s => s.length > 0)
-      .map(s => parseInt(s, 10))
-      .filter(n => !isNaN(n));
-  } catch (err) {
-    if (err instanceof ProcessListUnavailable) throw err;
-    throw new ProcessListUnavailable(pattern, err);
   }
 }

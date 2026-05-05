@@ -3,7 +3,7 @@
  * Watchdog CLI subcommands — start + stop
  */
 
-import { spawnDetached } from '../foundation/process-exec/spawn-detached.js';
+import { spawnDetached, kill } from '../foundation/process-exec/index.js';
 import { setTimeout } from 'timers/promises';
 import {
   getWatchdogEntryPath,
@@ -56,7 +56,7 @@ export async function stopCommand(): Promise<void> {
   console.log(`Stopping watchdog (PID: ${pid})...`);
   
   try {
-    process.kill(pid, 'SIGTERM');
+    kill(pid, 'TERM');
   } catch (err) {
     console.log('Failed to send SIGTERM:', err);
   }
@@ -71,7 +71,7 @@ export async function stopCommand(): Promise<void> {
   if (isWatchdogAlive()) {
     console.log('Watchdog still alive, sending SIGKILL...');
     try {
-      process.kill(pid, 'SIGKILL');
+      kill(pid, 'KILL');
     } catch (err) {
       console.log('Failed to send SIGKILL:', err);
     }

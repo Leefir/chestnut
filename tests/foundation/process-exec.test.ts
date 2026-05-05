@@ -11,9 +11,10 @@ import { describe, it, expect } from 'vitest';
 import * as path from 'path';
 import { tmpdir } from 'os';
 import * as fs from 'fs';
+import { spawn } from 'child_process';
 
-import { exec } from '../../src/foundation/process-exec/index.js';
-import { ProcessExecError } from '../../src/foundation/process-exec/types.js';
+import { exec, kill, isAlive, findByPattern } from '../../src/foundation/process-exec/index.js';
+import { ProcessExecError, ProcessListUnavailable } from '../../src/foundation/process-exec/index.js';
 
 describe('ProcessExec exec', () => {
   const workDir = tmpdir();
@@ -152,5 +153,41 @@ describe('ProcessExec exec', () => {
     });
     const nodeBinDir = path.dirname(process.execPath);
     expect(result.output).toContain(nodeBinDir);
+  });
+});
+
+describe('kill', () => {
+  it('silently ignores ESRCH (already gone)', () => {
+    expect(() => kill(999999999, 'TERM')).not.toThrow();
+  });
+  it('sends SIGTERM to live process', async () => {
+    const child = spawn('sleep', ['10']);
+    expect(child.pid).toBeDefined();
+    kill(child.pid!, 'TERM');
+    await new Promise(r => setTimeout(r, 100));
+    expect(isAlive(child.pid!)).toBe(false);
+  });
+});
+
+describe('isAlive', () => {
+  it('returns true for self', () => {
+    expect(isAlive(process.pid)).toBe(true);
+  });
+  it('returns false for nonexistent pid', () => {
+    expect(isAlive(999999999)).toBe(false);
+  });
+});
+
+describe('findByPattern', () => {
+  it('returns empty for no match', () => {
+    expect(findByPattern('zzz_no_such_process_zzz_xyz')).toEqual([]);
+  });
+  it('finds processes with command field', () => {
+    const r = findByPattern('node');
+    expect(r.length).toBeGreaterThan(0);
+    expect(r[0]).toHaveProperty('pid');
+    expect(r[0]).toHaveProperty('command');
+    expect(typeof r[0]!.pid).toBe('number');
+    expect(typeof r[0]!.command).toBe('string');
   });
 });
