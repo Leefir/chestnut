@@ -1,86 +1,41 @@
 /**
- * Tool Executor - Execution context and tool interfaces
- * Phase 0: Interface definitions + Implementation
- * 
- * This file contains both:
- * - Interface definitions (from Phase 0)
- * - ToolExecutorImpl implementation (Phase 1)
+ * @module L2.Tools
+ * Tool Executor - Implementation
+ *
+ * phase 501: 4 interface + escapeForLog 抽 to types.ts (C-α 极保守整理性)
  */
 
-import type { JSONSchema7 } from '../../types/message.js';
-import type { ToolProfile } from '../../types/config.js';
-import type { FileSystem } from '../fs/types.js';
-import type { LLMOrchestrator } from '../llm-orchestrator/index.js';
-import type { OutboxWriter } from '../messaging/index.js';
-import type { AuditLog } from '../audit/index.js';
-import type { Tool, ToolResult, ExecContext, CallerType } from '../tool-protocol/index.js';
 import * as path from 'path';
-import type { ScheduleAsyncTool } from './async-dispatch.js';
+import { ExecContextImpl, cloneExecContext } from './context.js';
+import { DEFAULT_MAX_STEPS } from '../../constants.js';
 import {
   ToolNotFoundError,
   ToolTimeoutError,
   ToolInvalidInputError,
 } from '../../types/errors.js';
-import { ExecContextImpl, cloneExecContext } from './context.js';
-import { DEFAULT_MAX_STEPS } from '../../constants.js';
-import type { ToolRegistryImpl } from './registry.js';
+import type { CallerType, ExecContext } from '../tool-protocol/index.js';
+import type { ToolResult } from '../tool-protocol/index.js';
+import type { ToolProfile } from '../../types/config.js';
+import type { FileSystem } from '../fs/types.js';
+import type { LLMOrchestrator } from '../llm-orchestrator/index.js';
+import type { AuditLog } from '../audit/index.js';
+import type { ScheduleAsyncTool } from './async-dispatch.js';
 import type { DialogStore } from '../dialog-store/index.js';
-// Note: ToolRegistry type imported via ToolRegistry interface
+import {
+  escapeForLog,
+  type ToolRegistry,
+  type ExecuteOptions,
+  type IToolExecutor,
+  type ToolExecutorOptions,
+} from './types.js';
 
-function escapeForLog(s: string): string {
-  return s.replace(/\n/g, '\\n').slice(0, 120);
-}
-
-// ============================================================================
-// Phase 0: Interface Definitions (Frozen)
-// ============================================================================
-// ToolProtocol type 物理迁 to '../tool-protocol/' (phase435)
-// 本 file 保留 ToolRegistry + IToolExecutor 框架 type + impl 类
-
-/**
- * Tool registry interface
- */
-export interface ToolRegistry {
-  register(tool: Tool): void;
-  unregister(name: string): void;
-  get(name: string): Tool | undefined;
-  has(name: string): boolean;
-  getAll(): Tool[];
-  getForProfile(profile: ToolProfile): Tool[];
-  formatForLLM(tools: Tool[]): Array<{
-    name: string;
-    description: string;
-    input_schema: JSONSchema7;
-  }>;
-}
-
-/**
- * Tool execution options
- */
-export interface ExecuteOptions {
-  toolName: string;
-  args: Record<string, unknown>;
-  ctx: ExecContext;
-  timeoutMs?: number;
-  async?: boolean;   // 新增：true 时走异步路径
-  toolUseId?: string;   // 新增：LLM 生成的 tool_use block id
-}
-
-/**
- * Tool executor interface
- */
-export interface IToolExecutor {
-  execute(options: ExecuteOptions): Promise<ToolResult>;
-  executeParallel(
-    batch: Array<{ toolName: string; args: Record<string, unknown> }>,
-    ctx: ExecContext
-  ): Promise<ToolResult[]>;
-  validateArgs(toolName: string, args: Record<string, unknown>): { valid: boolean; errors?: string[] };
-}
-
-// ============================================================================
-// Phase 1: Implementation
-// ============================================================================
+// Re-export types from ./types.js for caller compat (18 caller 0 改)
+export type {
+  ToolRegistry,
+  ExecuteOptions,
+  IToolExecutor,
+  ToolExecutorOptions,
+} from './types.js';
 
 /**
  * Tool execution implementation
@@ -148,8 +103,6 @@ export class ToolExecutorImpl implements IToolExecutor {
     }
 
     // 5. Execute with timeout using Promise.race (sync path)
-    // Timeout + signal merging: executor 的 timeout abort 与 options.signal 合并，
-    // 传给 tool ctx.signal，让支持 signal 的工具在超时时主动退出。
     const timeoutController = new AbortController();
     const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs);
 
@@ -165,28 +118,23 @@ export class ToolExecutorImpl implements IToolExecutor {
         { once: true },
       );
     });
-    timeoutPromise.catch(() => {});  // race 胜出后的孤立 rejection fallback
+    timeoutPromise.catch(() => {});
 
-    // 用 mergedSignal 覆盖 ctx.signal（保留 prototype chain）
     const ctxWithSignal = cloneExecContext(ctx, { signal: mergedSignal, currentToolUseId: options.toolUseId });
     const executionPromise = tool.execute(args, ctxWithSignal);
-    executionPromise.catch(() => {});  // 对不响应 signal 的 tool 保底
+    executionPromise.catch(() => {});
 
     let result: ToolResult | undefined;
     try {
       result = await Promise.race([executionPromise, timeoutPromise]);
     } catch (err) {
-      // Execution failed - create error result for LLM
       result = {
         success: false,
         content: err instanceof Error ? err.message : String(err),
       };
-      // finally 块完成 audit logging 后走 return result!
     } finally {
-      // Clean up timeout timer
       clearTimeout(timeoutId);
-      
-      // AuditLog logging via auditWriter (TSV format)
+
       const duration = Date.now() - startTime;
       const auditResult = result ?? { success: false, content: 'unknown' };
       ctx.auditWriter?.write(
@@ -197,28 +145,22 @@ export class ToolExecutorImpl implements IToolExecutor {
         `summary=${escapeForLog(auditResult.content ?? '')}`,
       );
     }
-    
+
     return result!;
   }
 
   /**
    * Execute multiple read-only tools in parallel
-   * Write operations are executed sequentially (not in this batch)
-   * 
-   * NOTE: 当前 ReAct 循环每步单工具调用，写操作天然串行。
-   * executeParallel 已过滤为只读工具，无需额外串行化。
    */
   async executeParallel(
     batch: Array<{ toolName: string; args: Record<string, unknown> }>,
     ctx: ExecContext
   ): Promise<ToolResult[]> {
-    // Filter to only read-only tools
     const readOnlyCalls = batch.filter(({ toolName }) => {
       const tool = this.registry.get(toolName);
       return tool?.readonly === true;
     });
 
-    // Execute all in parallel
     const promises = readOnlyCalls.map(({ toolName, args }) =>
       this.execute({ toolName, args, ctx }).catch(err => ({
         success: false,
@@ -244,7 +186,6 @@ export class ToolExecutorImpl implements IToolExecutor {
     const errors: string[] = [];
     const schema = tool.schema;
 
-    // Check required fields
     if (schema.required && Array.isArray(schema.required)) {
       for (const field of schema.required) {
         if (!(field in args)) {
@@ -253,7 +194,6 @@ export class ToolExecutorImpl implements IToolExecutor {
       }
     }
 
-    // Check type validation (Phase 2+ enhancement)
     if (schema.properties && typeof schema.properties === 'object') {
       for (const [key, prop] of Object.entries(schema.properties)) {
         if (key in args && prop && typeof prop === 'object' && 'type' in prop) {
@@ -274,27 +214,8 @@ export class ToolExecutorImpl implements IToolExecutor {
   }
 }
 
-// ============================================================================
-// Phase 1+: Extended ToolExecutor with context factory
-// ============================================================================
-
-export interface ToolExecutorOptions {
-  registry: ToolRegistry;
-  clawDir: string;
-  syncDir: string;
-  fs: FileSystem;
-  llm?: LLMOrchestrator;
-  profile?: ToolProfile;
-  subagentMaxSteps?: number;
-  auditWriter?: AuditLog;
-  scheduleAsyncTool?: ScheduleAsyncTool;
-  mainDialogStore?: DialogStore;
-  mainContextSnapshot?: { clawId: string; toolUseId: string };
-}
-
 /**
  * Extended ToolExecutor with context factory
- * Use this for creating executable contexts
  */
 export class ToolExecutor extends ToolExecutorImpl {
   private clawDir: string;
@@ -348,8 +269,6 @@ export class ToolExecutor extends ToolExecutorImpl {
 
 /**
  * Factory: createToolExecutor
- * 装配期构造 ToolExecutorImpl / 承 phase212 D.1 工厂模板.
- * 签名对齐 ctor: (registry, timeoutMs?).
  */
 export function createToolExecutor(
   registry: ToolRegistry,
