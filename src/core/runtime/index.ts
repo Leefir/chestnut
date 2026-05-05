@@ -4,7 +4,7 @@
  */
 
 export { Runtime } from './runtime.js';
-export type { RuntimeOptions, RuntimeDependencies, StreamCallbacks } from './runtime.js';
+export type { RuntimeOptions, RuntimeDependencies, StreamCallbacks, DaemonStreamCallbacks } from './types.js';
 export { createRuntime, buildMotionSystemPrompt } from './create-runtime.js';
 export type { CreateRuntimeOptions } from './create-runtime.js';
 export { Heartbeat, createHeartbeat } from './heartbeat.js';

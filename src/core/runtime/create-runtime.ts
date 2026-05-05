@@ -12,7 +12,8 @@
  * 见 design/modules/l5_runtime.md §2.1
  */
 
-import { Runtime, type RuntimeOptions } from './runtime.js';
+import { Runtime } from './runtime.js';
+import type { RuntimeOptions } from './types.js';
 import type { ContextInjector } from '../dialog/injector.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 

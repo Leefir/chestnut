@@ -1,0 +1,97 @@
+/**
+ * @module L5.Runtime.Types
+ * Runtime interface types — 1:1 保 runtime.ts:47-126 body
+ */
+
+import type { FileSystem } from '../../foundation/fs/types.js';
+import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
+import type { LLMOrchestratorConfig } from '../../foundation/llm-orchestrator/types.js';
+import type { AuditLog } from '../../foundation/audit/index.js';
+import type { Snapshot } from '../../foundation/snapshot/index.js';
+import type { DialogStore } from '../../foundation/dialog-store/index.js';
+import type { InboxReader, OutboxWriter } from '../../foundation/messaging/index.js';
+import type { ToolRegistry } from '../../foundation/tools/index.js';
+import type { IToolExecutor } from '../../foundation/tools/executor.js';
+import type { ContextInjector } from '../dialog/injector.js';
+import type { ContractSystem } from '../contract/index.js';
+import type { TaskSystem } from '../task/index.js';
+import type { SkillSystem } from '../../foundation/skill-system/index.js';
+import type { ExecContext } from '../../foundation/tool-protocol/index.js';
+import type { InboxMessage } from '../../types/messaging.js';
+import type { ToolProfile } from '../../types/config.js';
+
+/** 1:1 保 runtime.ts:47-72 body */
+export interface RuntimeDependencies {
+  // === L1 ===
+  readonly systemFs: FileSystem;
+  readonly clawFs: FileSystem;
+
+  // === L2 ===
+  readonly auditWriter: AuditLog;
+  readonly snapshot: Snapshot;
+  readonly sessionManager: DialogStore;
+  readonly inboxReader: InboxReader;
+  readonly outboxWriter: OutboxWriter;
+
+  // === L3-L5 ===
+  readonly llm: LLMOrchestrator;
+  readonly toolRegistry: ToolRegistry;
+  readonly toolExecutor: IToolExecutor;
+  readonly skillRegistry: SkillSystem;
+  readonly contractManager: ContractSystem;
+  readonly taskSystem: TaskSystem;
+  readonly contextInjector: ContextInjector;
+  readonly execContext: ExecContext;
+
+  // 构造期注入（phase182 B.p166-5 升档：setter 双阶段消除）
+  readonly parentStreamLog?: import('../../foundation/stream/types.js').StreamLog;
+  readonly contractNotifyCallback?: (type: string, data: Record<string, unknown>) => void;
+}
+
+/** 1:1 保 runtime.ts:74-101 body */
+export interface RuntimeOptions {
+  clawId: string;
+  clawDir: string;
+  llmConfig: LLMOrchestratorConfig;
+  maxSteps?: number;
+  toolProfile?: ToolProfile;
+  toolTimeoutMs?: number;
+  subagentMaxSteps?: number;
+  maxConcurrentTasks?: number;
+  maxConsecutiveParseErrors?: number;
+  maxConsecutiveMaxTokensToolUse?: number;
+  idleTimeoutMs?: number;  // 覆盖 DEFAULT_LLM_IDLE_TIMEOUT_MS（0 = 禁用）
+
+  dependencies: RuntimeDependencies;  // 必传（phase155B 起，字段随 phase155C 扩展）
+
+  // Motion/claw 身份差异由 Assembly 按 identity 分支注入（phase266 消除 MotionRuntime subclass）
+  systemPromptBuilder?: (params: {
+    contextInjector: ContextInjector;
+    systemFs: FileSystem;
+  }) => Promise<string>;
+  identityToolFilter?: (registry: ToolRegistry) => void;
+}
+
+/** 1:1 保 runtime.ts:102-120 body */
+export interface StreamCallbacks {
+  onBeforeLLMCall?: () => void;
+  onTextDelta?: (delta: string) => void;
+  onTextEnd?: () => void;
+  onThinkingDelta?: (delta: string) => void;
+  onToolCall?: (toolName: string, toolUseId: string) => void;
+  onToolResult?: (toolName: string, toolUseId: string, result: { success: boolean; content: string }, step: number, maxSteps: number) => void;
+  onTurnStart?: (sources: Array<{ text: string; type: string }>) => void;
+  onTurnEnd?: () => void;
+  onTurnError?: (error: string) => void;
+  onTurnInterrupted?: (cause: string, message?: string) => void;
+  onProviderInfo?: (info: { name: string; model: string; isFallback: boolean }) => void;
+  /** Provider timed out mid-stream, failover starting */
+  onProviderFailover?: (info: { from: string; timeoutMs: number }) => void;
+  /** Provider failed, failover continuing to next provider */
+  onProviderFailed?: (info: { provider: string; model: string; error: string }) => void;
+}
+
+/** 1:1 保 runtime.ts:121-126 body */
+export interface DaemonStreamCallbacks extends StreamCallbacks {
+  onInboxMessages?: (messages: InboxMessage[]) => Promise<void>;
+}

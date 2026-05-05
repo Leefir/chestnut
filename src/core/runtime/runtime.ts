@@ -40,87 +40,13 @@ import type { ContextInjector } from '../dialog/injector.js';
 import type { ContractSystem } from '../contract/index.js';
 import type { SkillSystem } from '../../foundation/skill-system/index.js';
 import type { TaskSystem } from '../task/index.js';
-
-/**
- * Runtime constructor options
- */
-export interface RuntimeDependencies {
-  // === L1 ===
-  readonly systemFs: FileSystem;
-  readonly clawFs: FileSystem;
-
-  // === L2 ===
-  readonly auditWriter: AuditLog;
-  readonly snapshot: Snapshot;
-  readonly sessionManager: DialogStore;
-  readonly inboxReader: InboxReader;
-  readonly outboxWriter: OutboxWriter;
-
-  // === L3-L5 ===
-  readonly llm: LLMOrchestrator;
-  readonly toolRegistry: ToolRegistry;
-  readonly toolExecutor: IToolExecutor;
-  readonly skillRegistry: SkillSystem;
-  readonly contractManager: ContractSystem;
-  readonly taskSystem: TaskSystem;
-  readonly contextInjector: ContextInjector;
-  readonly execContext: ExecContext;
-
-  // 构造期注入（phase182 B.p166-5 升档：setter 双阶段消除）
-  readonly parentStreamLog?: import('../../foundation/stream/types.js').StreamLog;
-  readonly contractNotifyCallback?: (type: string, data: Record<string, unknown>) => void;
-}
-
-export interface RuntimeOptions {
-  clawId: string;
-  clawDir: string;
-  llmConfig: LLMOrchestratorConfig;
-  maxSteps?: number;
-  toolProfile?: ToolProfile;
-  toolTimeoutMs?: number;
-  subagentMaxSteps?: number;
-  maxConcurrentTasks?: number;
-  maxConsecutiveParseErrors?: number;
-  maxConsecutiveMaxTokensToolUse?: number;
-  idleTimeoutMs?: number;  // 覆盖 DEFAULT_LLM_IDLE_TIMEOUT_MS（0 = 禁用）
-
-  dependencies: RuntimeDependencies;  // 必传（phase155B 起，字段随 phase155C 扩展）
-
-  // Motion/claw 身份差异由 Assembly 按 identity 分支注入（phase266 消除 MotionRuntime subclass）
-  systemPromptBuilder?: (params: {
-    contextInjector: ContextInjector;
-    systemFs: FileSystem;
-  }) => Promise<string>;
-  identityToolFilter?: (registry: ToolRegistry) => void;
-}
-
-
-/**
- * ReAct 循环的流式事件回调
- * daemon 专用的 onInboxMessages 在下方 DaemonStreamCallbacks 扩展定义
- */
-export interface StreamCallbacks {
-  onBeforeLLMCall?: () => void;
-  onTextDelta?: (delta: string) => void;
-  onTextEnd?: () => void;
-  onThinkingDelta?: (delta: string) => void;
-  onToolCall?: (toolName: string, toolUseId: string) => void;
-  onToolResult?: (toolName: string, toolUseId: string, result: { success: boolean; content: string }, step: number, maxSteps: number) => void;
-  onTurnStart?: (sources: Array<{ text: string; type: string }>) => void;
-  onTurnEnd?: () => void;
-  onTurnError?: (error: string) => void;
-  onTurnInterrupted?: (cause: string, message?: string) => void;
-  onProviderInfo?: (info: { name: string; model: string; isFallback: boolean }) => void;
-  /** Provider timed out mid-stream, failover starting */
-  onProviderFailover?: (info: { from: string; timeoutMs: number }) => void;
-  /** Provider failed, failover continuing to next provider */
-  onProviderFailed?: (info: { provider: string; model: string; error: string }) => void;
-}
-
-/** daemon 专用回调，在 StreamCallbacks 基础上增加 inbox 通知 */
-export interface DaemonStreamCallbacks extends StreamCallbacks {
-  onInboxMessages?: (messages: InboxMessage[]) => Promise<void>;
-}
+import {
+  type RuntimeDependencies,
+  type RuntimeOptions,
+  type StreamCallbacks,
+  type DaemonStreamCallbacks,
+} from './types.js';
+import { formatTimeAgo } from './utils.js';
 
 /**
  * Runtime - fully assembled Claw runtime instance
@@ -305,28 +231,13 @@ export class Runtime {
   }
 
   /**
-   * Format a relative time string from an ISO8601 timestamp.
-   */
-  private formatTimeAgo(timestamp: string): string {
-    const diffMs = Date.now() - new Date(timestamp).getTime();
-    if (!Number.isFinite(diffMs) || diffMs < 0) return '';
-    const s = Math.floor(diffMs / 1_000);
-    if (s < 60) return `${s}s ago`;
-    const m = Math.floor(s / 60);
-    if (m < 60) return `${m}m ago`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h}h ago`;
-    return `${Math.floor(h / 24)}d ago`;
-  }
-
-  /**
    * Format the injection text for an inbox message by its type.
    * user_chat: no prefix (user typed in the chat)
    * user_inbox_message: [user inbox message] prefix (user sent a message via CLI)
    * system events: [system message] prefix
    */
   protected async formatInboxMessage(type: string, from: string, body: string, timestamp?: string): Promise<string> {
-    const ago = timestamp ? this.formatTimeAgo(timestamp) : '';
+    const ago = timestamp ? formatTimeAgo(timestamp) : '';
     const t = ago ? ` (${ago})` : '';
 
     switch (type) {
