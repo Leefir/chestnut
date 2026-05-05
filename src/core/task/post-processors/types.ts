@@ -1,5 +1,5 @@
 import type { FileSystem } from '../../../foundation/fs/types.js';
-import type { AuditWriter } from '../../../foundation/audit/index.js';
+import type { AuditLog } from '../../../foundation/audit/index.js';
 import type { SubAgentTask } from '../system.js';
 
 /**
@@ -14,5 +14,5 @@ export type PostProcessor = (
   task: SubAgentTask,
   isError: boolean,
   fs: FileSystem,
-  audit: AuditWriter,
+  audit: AuditLog,
 ) => Promise<string>;

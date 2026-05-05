@@ -23,7 +23,7 @@
 
 import path from 'path';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
-import { AuditWriter, createSystemAudit, AUDIT_FILE } from '../../foundation/audit/index.js';
+import { type AuditLog, createSystemAudit, AUDIT_FILE } from '../../foundation/audit/index.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { ProcessManager } from '../../foundation/process-manager/manager.js';
 import { createAgentProcessManager } from '../../foundation/process-manager/agent-factory.js';
@@ -79,7 +79,7 @@ export function createProcessManagerForCLI(): ProcessManager {
  */
 export function createDirContext(dir: string): {
   fs: FileSystem;
-  audit: AuditWriter;
+  audit: AuditLog;
 } {
   const fs = new NodeFileSystem({ baseDir: dir });
   const audit = createSystemAudit(fs, dir);

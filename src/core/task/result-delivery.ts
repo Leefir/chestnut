@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import type { FileSystem } from '../../foundation/fs/types.js';
-import type { AuditWriter } from '../../foundation/audit/writer.js';
+import type { AuditLog } from '../../foundation/audit/index.js';
 import type { InboxMessage } from '../../types/messaging.js';
 import { InboxWriter } from '../../foundation/messaging/index.js';
 import { TASK_AUDIT_EVENTS } from './audit-events.js';
@@ -15,7 +15,7 @@ import type { ToolResult } from '../../foundation/tool-protocol/index.js';
  */
 export async function sendToolResult(
   fs: FileSystem,
-  auditWriter: AuditWriter,
+  auditWriter: AuditLog,
   task: ToolTask,
   result: ToolResult | string,
   isError: boolean,
@@ -95,7 +95,7 @@ export async function sendToolResult(
  */
 export async function sendResult(
   fs: FileSystem,
-  auditWriter: AuditWriter,
+  auditWriter: AuditLog,
   task: SubAgentTask,
   result: string,
   isError: boolean,
@@ -171,7 +171,7 @@ export async function sendResult(
  */
 export async function sendFallbackError(
   fs: FileSystem,
-  auditWriter: AuditWriter,
+  auditWriter: AuditLog,
   task: SubAgentTask | ToolTask,
   errorMsg: string,
 ): Promise<void> {

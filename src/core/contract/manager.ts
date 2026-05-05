@@ -29,7 +29,7 @@ import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js
 import type { Contract, ContractStatus, SubtaskStatus, LastFailedFeedback, AcceptanceFailedNotification } from '../../types/contract.js';
 import { ToolError, ToolTimeoutError } from '../../types/errors.js';
 import { InboxWriter } from '../../foundation/messaging/index.js';
-import { AuditWriter } from '../../foundation/audit/index.js';
+import { type AuditLog } from '../../foundation/audit/index.js';
 import { CONTRACT_AUDIT_EVENTS } from './audit-events.js';
 
 import type {
@@ -85,7 +85,7 @@ export class ContractSystem {
   private fs: FileSystem;
   private clawDir: string;
   private readonly clawId: string;
-  private readonly audit: AuditWriter;
+  private readonly audit: AuditLog;
   private llm?: LLMOrchestrator;
 
   private activeDir = 'contract/active';
@@ -99,7 +99,7 @@ export class ContractSystem {
     clawDir: string,
     clawId: string,
     fs: FileSystem,
-    audit: AuditWriter,
+    audit: AuditLog,
     llm?: LLMOrchestrator,
   ) {
     this.clawDir = clawDir;

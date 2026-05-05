@@ -7,7 +7,7 @@
  */
 
 import stringWidth from 'string-width';
-import type { AuditWriter } from '../../foundation/audit/writer.js';
+import type { AuditLog } from '../../foundation/audit/index.js';
 import { VIEWPORT_AUDIT_EVENTS } from './viewport-audit-events.js';
 
 export interface MainTurnUIDeps {
@@ -15,7 +15,7 @@ export interface MainTurnUIDeps {
   updateDisplay: () => void;
   trimOutputNewlines: boolean;
   getThinkingMode: () => 'compact' | 'full' | 'off';
-  audit: AuditWriter;
+  audit: AuditLog;
   observability?: { recordSpinner: (action: 'start' | 'stop', text: string) => void };
 }
 

@@ -16,7 +16,7 @@ import { wrapLine, fitLine } from '../utils/string.js';
 import { OUTPUT_LINES_CAP } from '../../constants.js';
 import type { CallerType } from '../../foundation/tool-protocol/caller-type.js';
 import type { Watcher } from '../../foundation/file-watcher/types.js';
-import type { AuditWriter } from '../../foundation/audit/writer.js';
+import type { AuditLog } from '../../foundation/audit/index.js';
 import { VIEWPORT_AUDIT_EVENTS } from './viewport-audit-events.js';
 import { createStreamReader, STREAM_FILE } from '../../foundation/stream/index.js';
 import { createViewportObservability } from './chat-viewport-observability.js';
@@ -37,7 +37,7 @@ export interface ChatViewportOptions {
   showSystemMessages?: boolean;   // system message，默认 false
   showContractEvents?: boolean;   // contract 子任务完成信息，默认 true
   trimOutputNewlines?: boolean;   // LLM 输出首尾换行清理，默认 true
-  audit: AuditWriter; // audit sink for createWatcher
+  audit: AuditLog; // audit sink for createWatcher
 }
 
 

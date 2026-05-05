@@ -3,7 +3,7 @@
  * Assembly — 运行时依赖组装与注入。
  */
 
-import type { AuditWriter } from '../foundation/audit/writer.js';
+import type { AuditLog } from '../foundation/audit/index.js';
 import type { Snapshot } from '../foundation/snapshot/index.js';
 import type { StreamWriter } from '../foundation/stream/writer.js';
 import type { ProcessManager } from '../foundation/process-manager/manager.js';
@@ -29,7 +29,7 @@ export interface Instances {
   readonly streamWriter: StreamWriter;
   readonly snapshot: Snapshot;
   readonly processManager: ProcessManager;
-  readonly auditWriter: AuditWriter;
+  readonly auditWriter: AuditLog;
   readonly cronRunner?: CronRunner;   // motion + config.cron.enabled
   readonly heartbeat?: Heartbeat;     // motion + heartbeat_interval_ms > 0
   readonly gateway?: Gateway;          // motion only, offline mode（phase157）

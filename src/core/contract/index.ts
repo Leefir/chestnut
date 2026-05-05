@@ -6,7 +6,7 @@
 import { ContractSystem } from './manager.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
-import type { AuditWriter } from '../../foundation/audit/writer.js';
+import type { AuditLog } from '../../foundation/audit/index.js';
 
 export {
   ContractSystem,
@@ -37,7 +37,7 @@ export function createContractSystem(
   clawDir: string,
   clawId: string,
   fs: FileSystem,
-  audit: AuditWriter,
+  audit: AuditLog,
   llm?: LLMOrchestrator,
 ): ContractSystem {
   return new ContractSystem(clawDir, clawId, fs, audit, llm);

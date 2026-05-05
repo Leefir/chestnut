@@ -4,7 +4,7 @@
  */
 
 import type { FileSystem } from '../../foundation/fs/types.js';
-import type { AuditWriter } from '../../foundation/audit/writer.js';
+import type { AuditLog } from '../../foundation/audit/index.js';
 import { createWatcher } from '../../foundation/file-watcher/index.js';
 import type { Watcher } from '../../foundation/file-watcher/types.js';
 import { VIEWPORT_AUDIT_EVENTS } from './viewport-audit-events.js';
@@ -18,7 +18,7 @@ export type { Watcher };
  * @param clawId claw 标识
  * @param streamPath 监听文件路径
  * @param refresh 文件 change 回调
- * @param audit AuditWriter（写 watcher 错误事件）
+ * @param audit AuditLog（写 watcher 错误事件）
  * @param onClose watcher close 回调（cleanup map）
  * @param persistent persistent=true 持续监听
  */
@@ -27,7 +27,7 @@ export function createChatViewportWatcher(
   clawId: string,
   streamPath: string,
   refresh: () => void,
-  audit: AuditWriter,
+  audit: AuditLog,
   onClose: () => void,
   persistent?: boolean,
 ): Watcher {

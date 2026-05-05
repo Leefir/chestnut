@@ -13,7 +13,7 @@
 import type { Connection, Transport } from '../../foundation/transport/index.js';
 import type { StreamEvent, StreamReader } from '../../foundation/stream/index.js';
 import type { ToolResult, ExecContext } from '../../foundation/tools/index.js';
-import type { AuditWriter } from '../../foundation/audit/index.js';
+import type { AuditLog } from '../../foundation/audit/index.js';
 
 /**
  * Gateway 构造输入。
@@ -33,7 +33,7 @@ export interface GatewayInput {
   /** askUser 超时（Step 3 使用） */
   askUserTimeoutMs?: number;
   /** audit 写入器；Gateway 用于写 10 类结构化事件 */
-  audit: AuditWriter;
+  audit: AuditLog;
 }
 
 /**

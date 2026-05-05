@@ -1,5 +1,5 @@
 import type { FileSystem } from '../../foundation/fs/types.js';
-import type { AuditWriter } from '../../foundation/audit/writer.js';
+import type { AuditLog } from '../../foundation/audit/index.js';
 import type { SubAgentTask, ToolTask } from './system.js';
 import { TASKS_PENDING_DIR, TASKS_RUNNING_DIR } from '../../types/paths.js';
 import { TASK_AUDIT_EVENTS } from './audit-events.js';
@@ -8,7 +8,7 @@ import { sendFallbackError, sendResult } from './result-delivery.js';
 /** M9: 闭包 ≥ 4 依赖 → deps interface */
 export interface RecoveryDeps {
   fs: FileSystem;
-  auditWriter: AuditWriter;
+  auditWriter: AuditLog;
   pendingQueue: Array<SubAgentTask | ToolTask>;
 }
 

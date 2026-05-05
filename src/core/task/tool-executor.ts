@@ -1,5 +1,5 @@
 import type { FileSystem } from '../../foundation/fs/types.js';
-import type { AuditWriter } from '../../foundation/audit/writer.js';
+import type { AuditLog } from '../../foundation/audit/index.js';
 import type { ToolResult } from '../../foundation/tool-protocol/index.js';
 import type { ToolTask } from './system.js';
 import { sendToolResult, sendFallbackError } from './result-delivery.js';
@@ -7,7 +7,7 @@ import { TASK_AUDIT_EVENTS } from './audit-events.js';
 
 export interface ToolExecutionDeps {
   fs: FileSystem;
-  auditWriter: AuditWriter;
+  auditWriter: AuditLog;
   retryBaseDelayMs: number;
   moveTaskToDone: (taskId: string) => Promise<void>;
   moveTaskToFailed: (taskId: string) => Promise<void>;

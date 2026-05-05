@@ -1,6 +1,6 @@
 import * as path from 'path';
 import type { FileSystem } from '../../foundation/fs/types.js';
-import { AuditWriter, createAuditWriter } from '../../foundation/audit/index.js';
+import { type AuditLog, createAuditWriter } from '../../foundation/audit/index.js';
 import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
 import type { StreamLog } from '../../foundation/stream/types.js';
 import { STREAM_FILE } from '../../foundation/stream/types.js';
@@ -22,7 +22,7 @@ import type { DialogStore } from '../../foundation/dialog-store/index.js';
 /** M9: 闭包 ≥ 6 依赖 → deps interface */
 export interface SubAgentExecutionDeps {
   fs: FileSystem;
-  auditWriter: AuditWriter;
+  auditWriter: AuditLog;
   llm: LLMOrchestrator;
   registry: ToolRegistry;
   clawDir: string;

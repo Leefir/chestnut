@@ -13,7 +13,7 @@ import { fileURLToPath } from 'url';
 import { getMotionDir, loadGlobalConfig } from '../foundation/config/index.js';
 import type { FileSystem } from '../foundation/fs/types.js';
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
-import type { AuditWriter } from '../foundation/audit/index.js';
+import type { AuditLog } from '../foundation/audit/index.js';
 import { createDirContext } from '../cli/utils/factories.js';
 
 // === 共享 Map（cron state）/ ESM const reference 跨 file 同实例 ===
@@ -29,11 +29,11 @@ export const inactivityNotifyCount: Map<string, number> = new Map();
 
 // === Lazy cache state（封装 / 经 getter） ===
 
-let _motionCtx: { fs: FileSystem; audit: AuditWriter } | null = null;
+let _motionCtx: { fs: FileSystem; audit: AuditLog } | null = null;
 let _clawforumFs: NodeFileSystem | null = null;
 let _clawforumFsBaseDir: string | null = null;
 let globalConfigCache: ReturnType<typeof loadGlobalConfig> | null = null;
-let _auditWriter: AuditWriter | null = null;
+let _auditWriter: AuditLog | null = null;
 
 /** 1:1 保 watchdog.ts:29-31 */
 export function getClawforumDir(): string {
@@ -61,7 +61,7 @@ export function getWatchdogEntryPath(): string {
 // 命名契约：内部可变变量 `_motionCtx`（下划线前缀 = 模块私有），外部访问仅经 `getMotionContext()`
 // 唯一管理者：watchdog.ts 模块；进程级单例，lazy init
 /** 1:1 保 watchdog.ts:58-67 */
-export function getMotionContext(): { fs: FileSystem; audit: AuditWriter } {
+export function getMotionContext(): { fs: FileSystem; audit: AuditLog } {
   if (!_motionCtx) {
     _motionCtx = createDirContext(getMotionDir());
     // 失败契约（fail-fast）：createDirContext 抛错 → 直接上抛
@@ -94,11 +94,11 @@ export function getGlobalConfig() {
 }
 
 /** 1:1 保 watchdog.ts:260-262 */
-export function setAuditWriter(auditWriter: AuditWriter | null): void {
+export function setAuditWriter(auditWriter: AuditLog | null): void {
   _auditWriter = auditWriter;
 }
 
 /** Reader for sub-file（log / state / cron / cli）*/
-export function getAuditWriter(): AuditWriter | null {
+export function getAuditWriter(): AuditLog | null {
   return _auditWriter;
 }

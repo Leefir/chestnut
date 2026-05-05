@@ -24,7 +24,7 @@ import { setTimeout } from 'timers/promises';
 import { getMotionDir } from '../foundation/config/index.js';
 import { ProcessManager } from '../foundation/process-manager/index.js';
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
-import { AuditWriter, createAuditWriter } from '../foundation/audit/index.js';
+import { type AuditLog, createAuditWriter } from '../foundation/audit/index.js';
 import { createProcessManagerForCLI } from '../cli/utils/factories.js';
 import { WATCHDOG_AUDIT_EVENTS } from './audit-events.js';
 import { LOGS_DIR } from '../types/paths.js';
@@ -49,7 +49,7 @@ import {
 
 /** 1:1 保 watchdog.ts:100-120 */
 export function shutdownWatchdog(
-  auditWriter: AuditWriter,
+  auditWriter: AuditLog,
   signal: string,
 ): void {
   log(`[watchdog] Received ${signal}, shutting down...`);

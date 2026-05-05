@@ -5,7 +5,7 @@
 
 import * as path from 'path';
 import type { ProcessManager } from '../foundation/process-manager/index.js';
-import type { AuditWriter } from '../foundation/audit/index.js';
+import type { AuditLog } from '../foundation/audit/index.js';
 import {
   getClawforumDir, getClawforumFs, getGlobalConfig, getMotionContext,
   lastInactivityNotified, inactivityNotifyCount, clawPreviouslyAlive,
@@ -21,7 +21,7 @@ import { WATCHDOG_AUDIT_EVENTS } from './audit-events.js';
 
 // Check for claws with an active contract but no progress for a long time, and send a reminder
 /** 1:1 保 watchdog.ts:271-349 / 78 行 / inactivity timeout + backoff */
-export async function maybeCronClawInactivity(pm: ProcessManager, audit: AuditWriter): Promise<void> {
+export async function maybeCronClawInactivity(pm: ProcessManager, audit: AuditLog): Promise<void> {
   const timeoutMs = getGlobalConfig().watchdog?.claw_inactivity_timeout_ms ?? 300000;
   const fs = getClawforumFs();
   if (!fs.existsSync('claws')) return;
@@ -101,7 +101,7 @@ export async function maybeCronClawInactivity(pm: ProcessManager, audit: AuditWr
 
 // Detect claw process crashes and notify motion
 /** 1:1 保 watchdog.ts:350-401 / 51 行 / crash 检测 */
-export function maybeCronClawCrash(pm: ProcessManager, audit: AuditWriter): void {
+export function maybeCronClawCrash(pm: ProcessManager, audit: AuditLog): void {
   const fs = getClawforumFs();
   if (!fs.existsSync('claws')) return;
 

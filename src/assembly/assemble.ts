@@ -1,7 +1,7 @@
 import path from 'path';
 import * as fsNative from 'fs';
 
-import { createAuditWriter, type AuditWriter } from '../foundation/audit/index.js';
+import { createAuditWriter, type AuditLog } from '../foundation/audit/index.js';
 import { SNAPSHOT_IGNORE_PATTERNS, createSnapshot } from '../foundation/snapshot/index.js';
 import type { Snapshot } from '../foundation/snapshot/index.js';
 import { createStreamWriter } from '../foundation/stream/index.js';
@@ -62,7 +62,7 @@ import { createStreamReader, STREAM_FILE } from '../foundation/stream/index.js';
 import { DIALOG_DIR } from '../types/paths.js';
 
 // 内部 helper（从 daemon.ts L42-75 搬入）
-function detectUncleanExit(auditDir: string, auditWriter: AuditWriter): void {
+function detectUncleanExit(auditDir: string, auditWriter: AuditLog): void {
   const auditPath = path.join(auditDir, 'audit.tsv');
   if (!fsNative.existsSync(auditPath)) return;
   try {
@@ -113,11 +113,11 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   await clawFs.ensureDir(syncDir);
 
   // --- 1. AuditWriter (daemon.ts L100-104) ---
-  let auditWriter: AuditWriter;
+  let auditWriter: AuditLog;
   try {
     auditWriter = createAuditWriter(systemFs, 'audit.tsv', auditMaxSizeMb);
   } catch (e) {
-    throw new Error(`Assembly: AuditWriter construct failed: ${errMsg(e)}`, { cause: e });
+    throw new Error(`Assembly: audit writer construct failed: ${errMsg(e)}`, { cause: e });
   }
 
   // --- 2. ProcessManager + acquireLock (daemon.ts L107-108) ---

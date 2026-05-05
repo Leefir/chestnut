@@ -1,5 +1,5 @@
 // src/core/evolution-system/system.ts
-import type { AuditLog, AuditWriter } from '../../foundation/audit/index.js';
+import type { AuditLog } from '../../foundation/audit/index.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { TaskSystem } from '../task/index.js';
 import { ContractSystem } from '../contract/manager.js';
@@ -51,7 +51,7 @@ export interface MotionReviewContext {
   /** Motion agent 根目录绝对路径（NodeFileSystem.options.baseDir 同义，供 path.join 使用） */
   motionBaseDir: string;
   /** Motion audit sink（writePendingSubagentTaskFile 调用需要）*/
-  motionAudit: AuditWriter;
+  motionAudit: AuditLog;
   /** Claws 基础目录（解析目标 claw 路径：`path.resolve(clawsBaseDir, targetClaw)`）*/
   clawsBaseDir: string;
 }
