@@ -764,7 +764,7 @@ describe('assemble', () => {
         '../../src/foundation/tools/context.js', 'ExecContextImpl', 'ctor',
       );
       expect(events.some(e => /^assemble_failed\tmodule=exec_context\tphase=construct\treason=injected/.test(e))).toBe(true);
-      expect(thrown.message).toMatch(/ExecContextImpl construct failed/);
+      expect(thrown.message).toMatch(/ExecContext construct failed/);
     });
 
     it('tool_executor construct failure → audit module=tool_executor phase=construct + throw', async () => {
@@ -772,7 +772,7 @@ describe('assemble', () => {
         '../../src/foundation/tools/executor.js', 'ToolExecutorImpl', 'ctor',
       );
       expect(events.some(e => /^assemble_failed\tmodule=tool_executor\tphase=construct\treason=injected/.test(e))).toBe(true);
-      expect(thrown.message).toMatch(/ToolExecutorImpl construct failed/);
+      expect(thrown.message).toMatch(/IToolExecutor construct failed/);
     });
 
     it('audit write happens BEFORE throw (时机契约)', async () => {

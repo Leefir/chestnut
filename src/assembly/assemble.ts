@@ -16,7 +16,8 @@ import { createLLMOrchestrator, type LLMOrchestrator } from '../foundation/llm-o
 import { createLLMAuditSink } from './llm-audit-sink.js';
 import { ASSEMBLY_AUDIT_EVENTS } from './audit-events.js';
 import { createToolRegistry, type ToolRegistry } from '../foundation/tools/index.js';
-import { createToolExecutor, type ToolExecutorImpl } from '../foundation/tools/index.js';
+import { createToolExecutor } from '../foundation/tools/index.js';
+import type { IToolExecutor } from '../foundation/tools/types.js';
 import { writePendingToolTaskFile } from '../core/task/tools/_pending-tool-task-writer.js';
 import { createSkillSystem, SkillSystem } from '../foundation/skill-system/index.js';
 import { SKILLS_DIR_DEFAULT } from '../foundation/skill-system/skill-paths.js';
@@ -29,6 +30,7 @@ import type { TaskSystem } from '../core/task/system.js';
 import { dispatchContractExtractPostProcessor } from '../core/task/post-processors/dispatch-contract-extract.js';
 import { createContextInjector, type ContextInjector } from '../core/dialog/index.js';
 import { ExecContextImpl } from '../foundation/tools/context.js';
+import type { ExecContext } from '../foundation/tool-protocol/index.js';
 import { createFileTools } from '../foundation/file-tool/index.js';
 import { createCommandTools } from '../foundation/command-tool/index.js';
 import { createClawPermissionChecker } from '../core/permissions/claw-permissions.js';
@@ -288,7 +290,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   }
 
   // --- L3-L5: execContext ---
-  let execContext: ExecContextImpl;
+  let execContext: ExecContext;
   try {
     execContext = new ExecContextImpl({
       clawId,
@@ -304,7 +306,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     });
   } catch (e) {
     auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=exec_context`, `phase=construct`, `reason=${errMsg(e)}`);
-    throw new Error(`Assembly: ExecContextImpl construct failed: ${errMsg(e)}`, { cause: e });
+    throw new Error(`Assembly: ExecContext construct failed: ${errMsg(e)}`, { cause: e });
   }
 
   // 注入工具属性（避免通过 ExecContext 传业务依赖）
@@ -323,7 +325,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   sendTool.outboxWriter = outboxWriter;
 
   // --- L3-L5: toolExecutor ---
-  let toolExecutor: ToolExecutorImpl;
+  let toolExecutor: IToolExecutor;
   try {
     toolExecutor = createToolExecutor(
       toolRegistry,
@@ -332,7 +334,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     );
   } catch (e) {
     auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=tool_executor`, `phase=construct`, `reason=${errMsg(e)}`);
-    throw new Error(`Assembly: ToolExecutorImpl construct failed: ${errMsg(e)}`, { cause: e });
+    throw new Error(`Assembly: IToolExecutor construct failed: ${errMsg(e)}`, { cause: e });
   }
 
   // NOTE: 此段 L2 装配位于 L3-L5 之后，是 phase155C squash-merge 时为避免大规模代码移动保留的形态。
