@@ -7,8 +7,7 @@
 
 import type { Tool, ToolResult, ExecContext } from '../tool-protocol/index.js';
 import {
-  EXEC_MAX_STDOUT,
-  EXEC_MAX_STDERR,
+  EXEC_MAX_OUTPUT,
 } from '../../constants.js';
 import { exec } from '../process-exec/index.js';
 import { ProcessExecError } from '../process-exec/index.js';
@@ -60,14 +59,11 @@ export const execTool: Tool = {
       });
 
       // Truncate output for LLM context window
-      const stdout = truncate(result.stdout, EXEC_MAX_STDOUT);
-      const stderr = truncate(result.stderr, EXEC_MAX_STDERR);
-
-      const fullOutput = stdout + (stderr ? '\n[stderr]: ' + stderr : '') || '(no output)';
+      const output = truncate(result.output, EXEC_MAX_OUTPUT) || '(no output)';
 
       return {
         success: true,
-        content: fullOutput,
+        content: output,
       };
     } catch (error) {
       // 失败时总是附上 cwd，防止 LLM 对路径上下文产生幻觉（例如误以为在根目录）
@@ -82,8 +78,8 @@ export const execTool: Tool = {
 
       // maxBuffer exceeded
       if (error.maxBufferExceeded) {
-        const partial = error.stdout
-          ? `\n[partial stdout]: ${truncate(error.stdout, EXEC_MAX_STDOUT)}`
+        const partial = error.output
+          ? `\n[partial output]: ${truncate(error.output, EXEC_MAX_OUTPUT)}`
           : '';
         return {
           success: false,
@@ -92,12 +88,11 @@ export const execTool: Tool = {
       }
 
       // General error (non-zero exit code, timeout, etc.)
-      const stderr = error.stderr ? `\n[stderr]: ${truncate(error.stderr, EXEC_MAX_STDERR)}` : '';
-      const stdout = error.stdout ? `\n[stdout]: ${truncate(error.stdout, EXEC_MAX_STDOUT)}` : '';
+      const output = error.output ? `\n[output]: ${truncate(error.output, EXEC_MAX_OUTPUT)}` : '';
 
       return {
         success: false,
-        content: `Error: ${error.message}${stderr}${stdout}${cwdHint}`,
+        content: `Error: ${error.message}${output}${cwdHint}`,
       };
     }
   },

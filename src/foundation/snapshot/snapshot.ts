@@ -20,13 +20,13 @@ import { classifyGitError, type ExpectedGitFailure } from './git-errors.js';
 
 const DEFAULT_IGNORES = ['logs/', '*.tmp'];
 
-function toGitExecError(e: unknown): { code?: string; exitCode?: number; signal?: string; stderr?: string; message: string } {
+function toGitExecError(e: unknown): { code?: string; exitCode?: number; signal?: string; output?: string; message: string } {
   if (e instanceof Error) {
     return {
       code: (e as any).code,
       exitCode: (e as any).exitCode,
       signal: (e as any).signal,
-      stderr: (e as any).stderr,
+      output: (e as any).output,
       message: e.message,
     };
   }
@@ -53,7 +53,7 @@ export class Snapshot {
 
   private static async git(dir: string, args: string[]): Promise<string> {
     const result = await exec('git', args, { cwd: dir });
-    return result.stdout.trim();
+    return result.output.trim();
   }
 
   /**

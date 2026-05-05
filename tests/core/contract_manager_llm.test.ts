@@ -7,8 +7,9 @@ import * as path from 'path';
 import { promises as fs } from 'fs';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
+import { EventEmitter } from 'events';
 
-// State to control execFile mock behavior
+// State to control spawn mock behavior
 let execFileMockBehavior: 'success' | 'fail' | 'timeout' = 'success';
 let execFileMockError: any = null;
 let execFileMockStdout = '';
@@ -19,30 +20,37 @@ vi.mock('child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('child_process')>();
   return {
     ...actual,
-    execFile: vi.fn((file: string, args: string[], options: any, callback?: any) => {
-      // Handle overloaded signature - callback might be 3rd arg
-      const cb = typeof options === 'function' ? options : callback;
-      
-      if (!cb) {
-        // Promise mode - not used by our code (we use promisify)
-        return;
-      }
+    spawn: vi.fn((file: string, args: string[], options: any) => {
+      const proc = new EventEmitter() as any;
+      proc.stdout = new EventEmitter();
+      proc.stderr = new EventEmitter();
+      proc.kill = vi.fn(() => {
+        proc.emit('close', null, 'SIGTERM');
+      });
 
-      // Simulate async behavior
       setImmediate(() => {
         if (execFileMockBehavior === 'success') {
-          cb(null, { stdout: execFileMockStdout, stderr: execFileMockStderr });
+          if (execFileMockStdout) {
+            proc.stdout.emit('data', Buffer.from(execFileMockStdout));
+          }
+          if (execFileMockStderr) {
+            proc.stderr.emit('data', Buffer.from(execFileMockStderr));
+          }
+          proc.emit('close', 0, null);
         } else if (execFileMockBehavior === 'fail') {
-          const err = new Error(execFileMockError?.message || 'Command failed') as any;
-          err.stderr = execFileMockStderr || 'error';
-          err.killed = false;
-          cb(err, { stdout: execFileMockStdout, stderr: execFileMockStderr });
+          if (execFileMockStdout) {
+            proc.stdout.emit('data', Buffer.from(execFileMockStdout));
+          }
+          if (execFileMockStderr) {
+            proc.stderr.emit('data', Buffer.from(execFileMockStderr));
+          }
+          proc.emit('close', 1, null);
         } else if (execFileMockBehavior === 'timeout') {
-          const err = new Error('Timeout') as any;
-          err.killed = true;
-          cb(err, { stdout: '', stderr: 'timeout' });
+          proc.emit('close', null, 'SIGTERM');
         }
       });
+
+      return proc;
     }),
   };
 });

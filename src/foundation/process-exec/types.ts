@@ -17,10 +17,8 @@ export interface ExecOptions {
 }
 
 export interface ExecResult {
-  /** Raw stdout */
-  stdout: string;
-  /** Raw stderr */
-  stderr: string;
+  /** Combined stdout + stderr in chronological order */
+  output: string;
   /** Process exit code */
   exitCode: number;
 }
@@ -36,8 +34,7 @@ export interface SpawnDetachedOptions {
 }
 
 export class ProcessExecError extends Error {
-  readonly stdout: string;
-  readonly stderr: string;
+  readonly output: string;
   readonly exitCode: number | null;
   readonly code?: string;
   readonly signal?: string;
@@ -46,8 +43,7 @@ export class ProcessExecError extends Error {
 
   constructor(options: {
     message: string;
-    stdout?: string;
-    stderr?: string;
+    output?: string;
     exitCode?: number | null;
     code?: string;
     signal?: string;
@@ -56,8 +52,7 @@ export class ProcessExecError extends Error {
   }) {
     super(options.message);
     this.name = 'ProcessExecError';
-    this.stdout = options.stdout ?? '';
-    this.stderr = options.stderr ?? '';
+    this.output = options.output ?? '';
     this.exitCode = options.exitCode ?? null;
     this.code = options.code;
     this.signal = options.signal;

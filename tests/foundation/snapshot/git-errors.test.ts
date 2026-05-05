@@ -11,7 +11,7 @@ describe('classifyGitError', () => {
   it('classifies "not a git repository" as not_a_repo', () => {
     const result = classifyGitError({
       message: 'fatal: not a git repository',
-      stderr: 'fatal: not a git repository (or any of the parent directories): .git',
+      output: 'fatal: not a git repository (or any of the parent directories): .git',
       exitCode: 128,
     });
     expect(result.ok).toBe(true);
@@ -23,7 +23,7 @@ describe('classifyGitError', () => {
   it('classifies "nothing to commit" as nothing_to_commit', () => {
     const result = classifyGitError({
       message: 'nothing to commit',
-      stderr: 'On branch main\nnothing to commit, working tree clean',
+      output: 'On branch main\nnothing to commit, working tree clean',
       exitCode: 0,
     });
     expect(result.ok).toBe(true);
@@ -35,7 +35,7 @@ describe('classifyGitError', () => {
   it('classifies "no commits yet" as no_commits_yet', () => {
     const result = classifyGitError({
       message: 'does not have any commits yet',
-      stderr: 'fatal: your current branch "main" does not have any commits yet',
+      output: 'fatal: your current branch "main" does not have any commits yet',
       exitCode: 128,
     });
     expect(result.ok).toBe(true);
@@ -47,7 +47,7 @@ describe('classifyGitError', () => {
   it('classifies "could not get a repository handle" as no_repo_handle', () => {
     const result = classifyGitError({
       message: 'could not get a repository handle',
-      stderr: 'could not get a repository handle for current working directory',
+      output: 'could not get a repository handle for current working directory',
       exitCode: 1,
     });
     expect(result.ok).toBe(true);
@@ -59,7 +59,7 @@ describe('classifyGitError', () => {
   it('classifies exit non-0 with no match as uncategorized', () => {
     const result = classifyGitError({
       message: 'some random git error',
-      stderr: 'random unknown error',
+      output: 'random unknown error',
       exitCode: 2,
     });
     expect(result.ok).toBe(true);

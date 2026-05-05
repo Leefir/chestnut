@@ -7,11 +7,8 @@
  * Shared: timeout clamping, PATH augmentation, maxBuffer protection, ProcessExecError.
  */
 
-import { execFile as childProcessExecFile } from 'child_process';
-import { promisify } from 'util';
+import { spawn } from 'child_process';
 import * as path from 'path';
-
-const execFileAsync = promisify(childProcessExecFile);
 
 import {
   PROCESS_EXEC_TIMEOUT_MIN_MS,
@@ -25,6 +22,7 @@ import { ProcessExecError } from './types.js';
 
 /**
  * Internal: run a process with shared cross-cutting concerns.
+ * Uses spawn for stdout+stderr interleaved capture (preserves timing order).
  */
 async function runProcess(
   file: string,
@@ -45,12 +43,9 @@ async function runProcess(
     ? pathEnv
     : `${nodeBinDir}:${pathEnv}`;
 
-  try {
-    const { stdout, stderr } = await execFileAsync(file, args, {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(file, args, {
       cwd: options.cwd,
-      timeout,
-      encoding: 'utf-8',
-      maxBuffer: PROCESS_EXEC_MAX_BUFFER,
       signal: options.signal,
       env: {
         ...process.env,
@@ -58,43 +53,89 @@ async function runProcess(
       },
     });
 
-    return {
-      stdout: stdout || '',
-      stderr: stderr || '',
-      exitCode: 0,
-    };
-  } catch (error: any) {
-    // Extract exit code: Node.js execFile uses error.code for numeric exit codes,
-    // but error.code can also be a string (e.g. 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER').
-    const numericExitCode = typeof error?.code === 'number' ? error.code : null;
+    const buffers: Buffer[] = [];
+    let totalSize = 0;
+    let timedOut = false;
+    let maxBufferExceeded = false;
+    let settled = false;
 
-    // maxBuffer exceeded
-    if (error?.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
-      throw new ProcessExecError({
-        message: `Command output exceeded ${PROCESS_EXEC_MAX_BUFFER / 1024 / 1024} MB limit`,
-        stdout: error.stdout || '',
-        stderr: error.stderr || '',
-        exitCode: numericExitCode,
-        maxBufferExceeded: true,
-      });
+    function settle() {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
     }
 
-    // General error (non-zero exit code, timeout, etc.)
-    const isTimeout = error?.killed === true;
-    const stringCode = typeof error?.code === 'string' ? error.code : undefined;
+    function pushChunk(chunk: Buffer) {
+      buffers.push(chunk);
+      totalSize += chunk.length;
+      if (totalSize > PROCESS_EXEC_MAX_BUFFER && !maxBufferExceeded) {
+        maxBufferExceeded = true;
+        proc.kill();
+      }
+    }
 
-    throw new ProcessExecError({
-      message: isTimeout
-        ? `Command timed out after ${timeout}ms`
-        : (error?.message || String(error)),
-      stdout: error?.stdout || '',
-      stderr: error?.stderr || '',
-      exitCode: numericExitCode,
-      code: stringCode,
-      signal: error?.signal,
-      killed: isTimeout,
+    proc.stdout?.on('data', pushChunk);
+    proc.stderr?.on('data', pushChunk);
+
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      proc.kill();
+    }, timeout);
+
+    proc.on('error', (err) => {
+      settle();
+      reject(new ProcessExecError({
+        message: err.message,
+        output: Buffer.concat(buffers).toString('utf-8'),
+        code: (err as any).code,
+        exitCode: null,
+      }));
     });
-  }
+
+    proc.on('close', (code, signal) => {
+      if (settled) return;
+      settle();
+
+      const output = Buffer.concat(buffers).toString('utf-8');
+
+      if (code === 0) {
+        resolve({ output, exitCode: 0 });
+        return;
+      }
+
+      const exitCode = code ?? null;
+
+      if (timedOut) {
+        reject(new ProcessExecError({
+          message: `Command timed out after ${timeout}ms`,
+          output,
+          exitCode,
+          killed: true,
+        }));
+        return;
+      }
+
+      if (maxBufferExceeded) {
+        reject(new ProcessExecError({
+          message: `Command output exceeded ${PROCESS_EXEC_MAX_BUFFER / 1024 / 1024} MB limit`,
+          output,
+          exitCode,
+          maxBufferExceeded: true,
+        }));
+        return;
+      }
+
+      reject(new ProcessExecError({
+        message: signal
+          ? `Command killed with signal ${signal}`
+          : `Command failed with exit code ${exitCode}`,
+        output,
+        exitCode,
+        signal: signal ?? undefined,
+        killed: !!signal,
+      }));
+    });
+  });
 }
 
 /**

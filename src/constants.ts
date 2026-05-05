@@ -40,11 +40,8 @@ export const WRITE_VERSION_RETENTION = 10;
 // Execution Tools
 // ----------------------------------------------------------------------------
 
-/** Maximum stdout capture for exec tool */
-export const EXEC_MAX_STDOUT = 8000;
-
-/** Maximum stderr capture for exec tool */
-export const EXEC_MAX_STDERR = 500;
+/** Truncation threshold for combined exec output (β 应用层 / 应然 §10.4 ~2000) */
+export const EXEC_MAX_OUTPUT = 2000;
 
 // ----------------------------------------------------------------------------
 // Subagent System

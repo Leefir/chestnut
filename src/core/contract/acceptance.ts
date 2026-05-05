@@ -383,7 +383,7 @@ export async function runScriptAcceptance(
       return { passed: false, feedback: `验收失败: ${err instanceof Error ? err.message : String(err)}` };
     }
     const prefix = err.killed ? '验收脚本超时' : '验收失败';
-    const detail = err.stderr || err.stdout || err.message;
+    const detail = err.output || err.message;
     const firstLine = detail.split('\n').find(l => l.trim()) ?? detail.trim();
     return { passed: false, feedback: `${prefix}: ${firstLine}` };
   }

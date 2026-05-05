@@ -967,7 +967,7 @@ describe('Builtin Tools', () => {
       );
 
       expect(result.success).toBe(false);
-      expect(result.content).toContain('[stderr]');
+      expect(result.content).toContain('[output]');
       expect(result.content).toContain('stderr output');
     });
 
@@ -978,7 +978,7 @@ describe('Builtin Tools', () => {
       );
 
       expect(result.success).toBe(false);
-      expect(result.content).toContain('[stdout]');
+      expect(result.content).toContain('[output]');
       expect(result.content).toContain('stdout output');
     });
 

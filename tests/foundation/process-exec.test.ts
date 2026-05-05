@@ -23,12 +23,12 @@ describe('ProcessExec exec', () => {
   it('should execute command with args', async () => {
     const result = await exec('echo', ['hello', 'world'], { cwd: workDir });
     expect(result.exitCode).toBe(0);
-    expect(result.stdout.trim()).toBe('hello world');
+    expect(result.output.trim()).toBe('hello world');
   });
 
-  it('should return empty stderr on success', async () => {
+  it('should return empty output on success', async () => {
     const result = await exec('echo', ['ok'], { cwd: workDir });
-    expect(result.stderr).toBe('');
+    expect(result.output.trim()).toBe('ok');
   });
 
   // ── args are verbatim (no shell interpretation) ─────────────────────────
@@ -37,28 +37,28 @@ describe('ProcessExec exec', () => {
     // With shell: echo "hello world" → hello world
     // Without shell: args=['hello world'] → single arg passed to echo
     const result = await exec('echo', ['hello world'], { cwd: workDir });
-    expect(result.stdout.trim()).toBe('hello world');
+    expect(result.output.trim()).toBe('hello world');
   });
 
   it('should pass args with special chars verbatim', async () => {
     const result = await exec('echo', ['$', 'HOME', '|', 'grep'], { cwd: workDir });
     // No shell expansion: $ stays literal, | stays literal
-    expect(result.stdout.trim()).toBe('$ HOME | grep');
+    expect(result.output.trim()).toBe('$ HOME | grep');
   });
 
   it('should pass args with single quotes verbatim', async () => {
     const result = await exec('echo', ["it's a test"], { cwd: workDir });
-    expect(result.stdout.trim()).toBe("it's a test");
+    expect(result.output.trim()).toBe("it's a test");
   });
 
   // ── contrast with exec (shell) ──────────────────────────────────────────
 
   it('exec does not expand $VAR, sh -c does', async () => {
     const direct = await exec('echo', ['$HOME'], { cwd: workDir });
-    expect(direct.stdout.trim()).toBe('$HOME');
+    expect(direct.output.trim()).toBe('$HOME');
 
     const shell = await exec('sh', ['-c', 'echo $HOME'], { cwd: workDir });
-    expect(shell.stdout.trim()).not.toBe('$HOME');
+    expect(shell.output.trim()).not.toBe('$HOME');
   });
 
   // ── error paths ─────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ describe('ProcessExec exec', () => {
     }
   });
 
-  it('should capture stdout/stderr on non-zero exit', async () => {
+  it('should capture output on non-zero exit', async () => {
     try {
       await exec('node', ['-e', `
         process.stdout.write('out data');
@@ -89,8 +89,7 @@ describe('ProcessExec exec', () => {
       expect.fail('should have thrown');
     } catch (err) {
       expect(err).toBeInstanceOf(ProcessExecError);
-      expect((err as ProcessExecError).stdout).toBe('out data');
-      expect((err as ProcessExecError).stderr).toBe('err data');
+      expect((err as ProcessExecError).output).toBe('out dataerr data');
     }
   });
 
@@ -123,6 +122,16 @@ describe('ProcessExec exec', () => {
     ).rejects.toThrow();
   });
 
+  // ── interleaved stdout+stderr ordering ───────────────────────────────────
+
+  it('should merge stdout and stderr into single output', async () => {
+    const result = await exec('sh', ['-c', 'echo a; echo b >&2; echo c'], { cwd: workDir });
+    expect(result.exitCode).toBe(0);
+    expect(result.output).toContain('a\n');
+    expect(result.output).toContain('b\n');
+    expect(result.output).toContain('c\n');
+  });
+
   // ── timeout clamping shared with exec ────────────────────────────────────
 
   it('should clamp timeout to MIN (1000ms)', async () => {
@@ -142,6 +151,6 @@ describe('ProcessExec exec', () => {
       cwd: workDir,
     });
     const nodeBinDir = path.dirname(process.execPath);
-    expect(result.stdout).toContain(nodeBinDir);
+    expect(result.output).toContain(nodeBinDir);
   });
 });

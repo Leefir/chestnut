@@ -2,11 +2,11 @@ import { ok, err as errResult, type Result } from '../../types/result.js';
 
 /** 预期失败：git 语义上的可识别状态，降级不抛 */
 export type ExpectedGitFailure =
-  | { kind: 'not_a_repo'; stderr: string }
-  | { kind: 'nothing_to_commit'; stderr: string }
-  | { kind: 'no_commits_yet'; stderr: string }
-  | { kind: 'no_repo_handle'; stderr: string }
-  | { kind: 'uncategorized'; exitCode: number; stderr: string };
+  | { kind: 'not_a_repo'; output: string }
+  | { kind: 'nothing_to_commit'; output: string }
+  | { kind: 'no_commits_yet'; output: string }
+  | { kind: 'no_repo_handle'; output: string }
+  | { kind: 'uncategorized'; exitCode: number; output: string };
 
 const EXPECTED_PATTERNS: Array<{ kind: ExpectedGitFailure['kind']; re: RegExp }> = [
   { kind: 'not_a_repo', re: /fatal:\s+not a git repository/i },
@@ -21,7 +21,7 @@ export interface GitExecError {
   code?: string;
   exitCode?: number;
   signal?: string;
-  stderr?: string;
+  output?: string;
   message: string;
 }
 
@@ -41,16 +41,16 @@ export function classifyGitError(e: GitExecError): Result<ExpectedGitFailure, ne
   if (e.signal) {
     throw e;
   }
-  const stderr = e.stderr ?? e.message ?? '';
-  // 3) 预期：stderr match 白名单
+  const output = e.output ?? e.message ?? '';
+  // 3) 预期：output match 白名单
   for (const { kind, re } of EXPECTED_PATTERNS) {
-    if (re.test(stderr)) {
-      return ok({ kind, stderr } as ExpectedGitFailure);
+    if (re.test(output)) {
+      return ok({ kind, output } as ExpectedGitFailure);
     }
   }
   // 4) 守恒：exit 非 0 但无 match → 视为预期 uncategorized
   if (typeof e.exitCode === 'number' && e.exitCode > 0) {
-    return ok({ kind: 'uncategorized', exitCode: e.exitCode, stderr } as ExpectedGitFailure);
+    return ok({ kind: 'uncategorized', exitCode: e.exitCode, output } as ExpectedGitFailure);
   }
   // 5) 其他（exitCode 缺失 / stderr 空且无 code）→ 不可预期
   throw e;
