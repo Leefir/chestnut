@@ -12,6 +12,7 @@ import { ReportResultTool } from '../../foundation/tools/report-result.js';
 import { createToolRegistry } from '../../foundation/tools/index.js';
 import { CONTRACT_VERIFIER_SYSTEM_PROMPT } from '../../prompts/subagent.js';
 import { ToolTimeoutError } from '../../types/errors.js';
+import { TASKS_SYNC_SPAWN_DIR } from '../../types/paths.js';
 import type { VerifierConfig, VerifierResult } from './types.js';
 
 export async function runContractVerifier(config: VerifierConfig): Promise<VerifierResult> {
@@ -22,10 +23,10 @@ export async function runContractVerifier(config: VerifierConfig): Promise<Verif
 
     const agent = createSubAgent({
       agentId: config.agentId,
-      resultDir: `tasks/results/${config.agentId}`,
+      resultDir: `${TASKS_SYNC_SPAWN_DIR}/${config.agentId}`,
       messageStore: createDialogStore(
         config.fs as any,
-        `tasks/results/${config.agentId}`,
+        `${TASKS_SYNC_SPAWN_DIR}/${config.agentId}`,
         new NoopAuditWriter(),
         'messages.json',
         CONTRACT_VERIFIER_SYSTEM_PROMPT,

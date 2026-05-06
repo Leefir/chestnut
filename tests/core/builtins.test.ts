@@ -228,12 +228,12 @@ describe('Builtin Tools', () => {
       expect(result.success).toBe(true);
       expect(result.content).toContain('backup:');
 
-      // 验证 syncDir 中有 backup 文件
+      // 验证 syncDir/write/ 中有 backup 文件（phase 511 子目录路由）
       const syncDir = path.join(tempDir, 'tasks', 'sync');
-      const syncFiles = await fs.readdir(syncDir).catch(() => []);
+      const syncFiles = await fs.readdir(path.join(syncDir, 'write')).catch(() => []);
       expect(syncFiles.length).toBeGreaterThan(0);
       const backupFile = syncFiles[0];
-      const backupContent = await fs.readFile(path.join(syncDir, backupFile), 'utf-8');
+      const backupContent = await fs.readFile(path.join(syncDir, 'write', backupFile), 'utf-8');
       expect(backupContent).toContain('source: file_backup');
       expect(backupContent).toContain('original_path: clawspace/versioned.txt');
       expect(backupContent).toContain('original content');

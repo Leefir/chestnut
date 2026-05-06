@@ -132,9 +132,9 @@ describe('multi_edit tool', () => {
     expect(result.success).toBe(true);
 
     const syncDir = path.join(tempDir, 'tasks', 'sync');
-    const syncFiles = await fs.readdir(syncDir).catch(() => []);
+    const syncFiles = await fs.readdir(path.join(syncDir, 'write')).catch(() => []);
     expect(syncFiles.length).toBe(1);
-    const backupContent = await fs.readFile(path.join(syncDir, syncFiles[0]), 'utf-8');
+    const backupContent = await fs.readFile(path.join(syncDir, 'write', syncFiles[0]), 'utf-8');
     expect(backupContent).toContain('source: multi_edit_backup');
     expect(backupContent).toContain('original content');
   });

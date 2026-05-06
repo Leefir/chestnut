@@ -21,7 +21,8 @@ export async function backupToSync(
     if (!exists) return null;
     const content = await ctx.fs.read(filePath);
     const id = randomUUID().slice(0, 8);
-    const fullPath = `${ctx.syncDir}/${id}.md`;
+    // file_backup scratch 写到 tasks/sync/write/ 子目录（phase 511）
+    const fullPath = `${ctx.syncDir}/write/${id}.md`;
     const frontmatter = `---\nsource: ${source}\noriginal_path: ${filePath}\ncontent_length: ${content.length}\ncreated_at: ${new Date().toISOString()}\n---\n`;
     await ctx.fs.writeAtomic(fullPath, frontmatter + content);
     return path.relative(ctx.clawDir, fullPath);

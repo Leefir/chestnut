@@ -38,7 +38,8 @@ async function persistOverflow(
 ): Promise<string | null> {
   try {
     const id = randomUUID().slice(0, 8);
-    const fullPath = `${ctx.syncDir}/${id}.md`;
+    // exec_overflow scratch 写到 tasks/sync/exec/ 子目录（phase 511）
+    const fullPath = `${ctx.syncDir}/exec/${id}.md`;
     const frontmatter = `---\nsource: exec_overflow\ncontent_length: ${output.length}\ncreated_at: ${new Date().toISOString()}\n---\n`;
     await ctx.fs.writeAtomic(fullPath, frontmatter + output);
     return path.relative(ctx.clawDir, fullPath);
