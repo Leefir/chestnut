@@ -10,6 +10,7 @@ import { NodeFileSystem } from '../fs/node-fs.js';
 import type { FileSystem } from '../fs/types.js';
 import type { Tool, ToolResult, ExecContext } from '../tool-protocol/index.js';
 import { getChecker } from './permission-context.js';
+import { resolveWorkspacePath } from './_resolve-path.js';
 
 /**
  * Walk directory recursively and search for query in files.
@@ -63,7 +64,11 @@ export const searchTool: Tool = {
       },
       path: {
         type: 'string',
-        description: 'Directory to search in (defaults to clawspace/, allowed: clawspace/, skills/, prompts/)',
+        description: 'Directory to search in (default base: workspace dir)',
+      },
+      cwd: {
+        type: 'string',
+        description: 'Override base for path resolution (relative to claw root, or absolute). Default: agent workspace dir.',
       },
       max_results: {
         type: 'number',
@@ -86,7 +91,15 @@ export const searchTool: Tool = {
 
   async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
     const query = (args.query as string).toLowerCase();
-    const searchPath = (args.path as string) ?? nodePath.relative(ctx.clawDir, ctx.workspaceDir) + '/';  // phase 512 / main=clawspace/ / subagent=tasks/subagents/<id>/
+    const pathArg = (args.path as string) ?? '.';
+    const cwdArg = args.cwd as string | undefined;
+    const searchPath = resolveWorkspacePath(ctx, pathArg, cwdArg);
+    if (searchPath.startsWith('..') || searchPath.startsWith('/')) {
+      return {
+        success: false,
+        content: `Error: Path escapes claw directory: "${pathArg}"${cwdArg ? ` (cwd: ${cwdArg})` : ''}`,
+      };
+    }
     const maxResults = (args.max_results as number) ?? 5;
     const clawParam = args.claw as string | undefined;
 
@@ -125,18 +138,19 @@ export const searchTool: Tool = {
 
         for (const clawId of clawIds) {
           if (allResults.length >= maxResults) break;
-          const clawBaseDir = nodePath.join(clawsDir, clawId, searchPath);
+          const rawSearchPath = nodePath.normalize(pathArg);
+          const clawBaseDir = nodePath.join(clawsDir, clawId, rawSearchPath);
           const clawFs = new NodeFileSystem({ baseDir: nodePath.join(clawsDir, clawId) });
-          if (!clawFs.existsSync(searchPath)) continue;
+          if (!clawFs.existsSync(rawSearchPath)) continue;
 
           try {
             await walkNative(
               clawFs,
-              searchPath,
+              rawSearchPath,
               query,
               maxResults - allResults.length,
               (relPath, lineNo, line) => {
-                allResults.push(`[${clawId}] ${searchPath}${relPath}:${lineNo}: ${line}`);
+                allResults.push(`[${clawId}] ${rawSearchPath}${relPath}:${lineNo}: ${line}`);
               },
               () => { totalSkipped++; }
             );
@@ -158,14 +172,15 @@ export const searchTool: Tool = {
         };
       }
       // Resolve path to target claw's directory
-      baseDir = nodePath.resolve(ctx.clawDir, '..', 'claws', clawParam, searchPath);
+      const rawSearchPath = nodePath.normalize(pathArg);
+      baseDir = nodePath.resolve(ctx.clawDir, '..', 'claws', clawParam, rawSearchPath);
       // Escape check: must be within the target claw's directory
       const clawsDir = nodePath.resolve(ctx.clawDir, '..', 'claws');
       const clawRoot = nodePath.join(clawsDir, clawParam);
       if (baseDir !== clawRoot && !baseDir.startsWith(clawRoot + nodePath.sep)) {
         return {
           success: false,
-          content: `Error: Path escapes target claw directory: "${searchPath}"`,
+          content: `Error: Path escapes target claw directory: "${rawSearchPath}"`,
         };
       }
       // Skip whitelist check for cross-claw search (Motion has full access)
@@ -186,7 +201,7 @@ export const searchTool: Tool = {
         const targetFs = new NodeFileSystem({ baseDir: nodePath.resolve(ctx.clawDir, '..', 'claws', clawParam!) });
         await walkNative(
           targetFs,
-          searchPath,
+          nodePath.normalize(pathArg),
           query,
           maxResults,
           (relPath, lineNo, line) => {

@@ -13,6 +13,7 @@
 import type { Tool, ToolResult, ExecContext } from '../tool-protocol/index.js';
 import { getChecker } from './permission-context.js';
 import { backupToSync } from './sync-backup.js';
+import { resolveWorkspacePath } from './_resolve-path.js';
 import { MULTI_EDIT_TOOL_NAME } from '../tools/tool-names.js';
 export { MULTI_EDIT_TOOL_NAME };
 
@@ -35,7 +36,11 @@ export const multiEditTool: Tool = {
     properties: {
       path: {
         type: 'string',
-        description: 'Path to the file to edit',
+        description: 'File path (default base: workspace dir)',
+      },
+      cwd: {
+        type: 'string',
+        description: 'Override base for path resolution (relative to claw root, or absolute). Default: agent workspace dir.',
       },
       edits: {
         type: 'array',
@@ -67,11 +72,20 @@ export const multiEditTool: Tool = {
 
   async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
     const filePath = args.path as string;
+    const cwdArg = args.cwd as string | undefined;
     const edits = args.edits as Array<{ old_string: string; new_string: string; replace_all?: boolean }>;
+
+    const resolved = resolveWorkspacePath(ctx, filePath, cwdArg);
+    if (resolved.startsWith('..') || resolved.startsWith('/')) {
+      return {
+        success: false,
+        content: `Error: Path escapes claw directory: "${filePath}"${cwdArg ? ` (cwd: ${cwdArg})` : ''}`,
+      };
+    }
 
     // Phase430: claw-space boundary check — caller autonomy
     const checker = getChecker(ctx.clawDir);
-    checker.resolveAndCheck(filePath, 'write');
+    checker.resolveAndCheck(resolved, 'write');
 
     // Edits array must not be empty
     if (!edits || edits.length === 0) {
@@ -82,7 +96,7 @@ export const multiEditTool: Tool = {
     }
 
     // File must exist
-    const exists = await ctx.fs.exists(filePath);
+    const exists = await ctx.fs.exists(resolved);
     if (!exists) {
       return {
         success: false,
@@ -90,10 +104,10 @@ export const multiEditTool: Tool = {
       };
     }
 
-    const original = await ctx.fs.read(filePath);
+    const original = await ctx.fs.read(resolved);
 
     // Single backup before applying edits
-    const backupPath = await backupToSync(ctx, filePath, 'multi_edit_backup');
+    const backupPath = await backupToSync(ctx, resolved, 'multi_edit_backup');
 
     // Apply edits in-memory
     let current = original;
@@ -123,7 +137,8 @@ export const multiEditTool: Tool = {
     }
 
     // All edits succeeded — single atomic write
-    await ctx.fs.writeAtomic(filePath, current);
+    await ctx.fs.writeAtomic(resolved, current);
+    ctx.fullyReadPaths.add(resolved);
 
     const backupHint = backupPath ? ` (backup: ${backupPath})` : '';
     return {

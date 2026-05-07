@@ -35,8 +35,9 @@ Your workspace: \`${TASKS_SUBAGENTS_DIR}/${args.taskId}/\` (default cwd / scratc
 Your caller: claw "${args.callerClawId}" (workspace at \`clawspace/\`)
 
 Tool defaults:
-- exec / read / write / search / ls 默认在 your workspace
+- exec / read / write / search / ls / edit / multi_edit 默认在 your workspace
 - 访问 caller 的资源用 \`claw: "${args.callerClawId}"\` 参数（read tools 支持 ls/read/search）
+- 访问其他子目录用 \`cwd\` 参数（如 \`cwd: ".."\` 或 \`cwd: "tasks"\`）
 - 写 caller 资源不支持（write tools 无 claw 参数 / 但显式 path 'clawspace/foo' 仍允许 via PermissionChecker）
 - 临时文件留你自己的 workspace / 别污染 caller 的 clawspace
 `;

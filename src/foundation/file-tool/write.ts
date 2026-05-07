@@ -11,6 +11,7 @@ import * as path from 'path';
 import type { Tool, ToolResult, ExecContext } from '../tool-protocol/index.js';
 import { getChecker } from './permission-context.js';
 import { backupToSync } from './sync-backup.js';
+import { resolveWorkspacePath } from './_resolve-path.js';
 
 import { WRITE_TOOL_NAME } from '../tools/tool-names.js';
 export { WRITE_TOOL_NAME };
@@ -23,7 +24,11 @@ export const writeTool: Tool = {
     properties: {
       path: {
         type: 'string',
-        description: 'Path to the file to write',
+        description: 'File path (default base: workspace dir)',
+      },
+      cwd: {
+        type: 'string',
+        description: 'Override base for path resolution (relative to claw root, or absolute). Default: agent workspace dir.',
       },
       content: {
         type: 'string',
@@ -41,17 +46,26 @@ export const writeTool: Tool = {
 
   async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
     const filePath = args.path as string;
+    const cwdArg = args.cwd as string | undefined;
     const content = args.content as string;
     const append = args.append === true;
 
+    const resolved = resolveWorkspacePath(ctx, filePath, cwdArg);
+    if (resolved.startsWith('..') || resolved.startsWith('/')) {
+      return {
+        success: false,
+        content: `Error: Path escapes claw directory: "${filePath}"${cwdArg ? ` (cwd: ${cwdArg})` : ''}`,
+      };
+    }
+
     // Phase430: claw-space boundary check — caller autonomy
     const checker = getChecker(ctx.clawDir);
-    checker.resolveAndCheck(filePath, 'write');
+    checker.resolveAndCheck(resolved, 'write');
 
     // overwrite gate (phase 487 G6 (a) / append 不 gate)
     if (!append) {
-      const exists = await ctx.fs.exists(filePath);
-      if (exists && !ctx.fullyReadPaths.has(filePath)) {
+      const exists = await ctx.fs.exists(resolved);
+      if (exists && !ctx.fullyReadPaths.has(resolved)) {
         return {
           success: false,
           content: `Error: 'overwrite' mode requires fully-read first. Path '${filePath}' was not fully read in this session. Use append=true, or read the file first (without truncation).`,
@@ -62,15 +76,15 @@ export const writeTool: Tool = {
     try {
       let backupPath: string | null = null;
       if (!append) {
-        backupPath = await backupToSync(ctx, filePath, 'file_backup');
+        backupPath = await backupToSync(ctx, resolved, 'file_backup');
       }
 
       if (append) {
-        await ctx.fs.append(filePath, content);
+        await ctx.fs.append(resolved, content);
       } else {
-        await ctx.fs.writeAtomic(filePath, content);
+        await ctx.fs.writeAtomic(resolved, content);
         // overwrite 写成功时 add fullyReadPaths (append 不 add)
-        ctx.fullyReadPaths.add(filePath);
+        ctx.fullyReadPaths.add(resolved);
       }
 
       const backupHint = backupPath ? ` (backup: ${backupPath})` : '';

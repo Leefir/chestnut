@@ -41,7 +41,7 @@ describe('edit tool', () => {
     await mockFs.writeAtomic('clawspace/file.txt', 'hello world');
 
     const result = await editTool.execute({
-      path: 'clawspace/file.txt',
+      path: 'file.txt',
       old_string: 'hello',
       new_string: 'hi',
     }, ctx);
@@ -60,7 +60,7 @@ describe('edit tool', () => {
     await mockFs.writeAtomic('clawspace/file.txt', 'foo bar foo baz foo');
 
     const result = await editTool.execute({
-      path: 'clawspace/file.txt',
+      path: 'file.txt',
       old_string: 'foo',
       new_string: 'qux',
       replace_all: true,
@@ -79,7 +79,7 @@ describe('edit tool', () => {
     await mockFs.writeAtomic('clawspace/file.txt', 'hello world');
 
     const result = await editTool.execute({
-      path: 'clawspace/file.txt',
+      path: 'file.txt',
       old_string: 'notfound',
       new_string: 'replacement',
     }, ctx);
@@ -96,7 +96,7 @@ describe('edit tool', () => {
     await mockFs.writeAtomic('clawspace/file.txt', 'foo bar foo');
 
     const result = await editTool.execute({
-      path: 'clawspace/file.txt',
+      path: 'file.txt',
       old_string: 'foo',
       new_string: 'qux',
     }, ctx);
@@ -111,7 +111,7 @@ describe('edit tool', () => {
 
   it('should reject when file does not exist', async () => {
     const result = await editTool.execute({
-      path: 'clawspace/nonexistent.txt',
+      path: 'nonexistent.txt',
       old_string: 'a',
       new_string: 'b',
     }, ctx);
@@ -126,7 +126,7 @@ describe('edit tool', () => {
     await mockFs.writeAtomic('clawspace/versioned.txt', 'original content');
 
     const result = await editTool.execute({
-      path: 'clawspace/versioned.txt',
+      path: 'versioned.txt',
       old_string: 'original',
       new_string: 'updated',
     }, ctx);
@@ -150,7 +150,7 @@ describe('edit tool', () => {
     const writeSpy = vi.spyOn(mockFs, 'writeAtomic');
 
     await editTool.execute({
-      path: 'clawspace/atomic.txt',
+      path: 'atomic.txt',
       old_string: 'hello',
       new_string: 'world',
     }, ctx);
@@ -175,7 +175,7 @@ describe('edit tool', () => {
     });
 
     const result = await editTool.execute({
-      path: 'clawspace/file.txt',
+      path: 'file.txt',
       old_string: 'hello',
       new_string: 'hi',
     }, ctx);

@@ -75,7 +75,7 @@ describe('Builtin Tools', () => {
       await mockFs.ensureDir('clawspace');
       await mockFs.writeAtomic('clawspace/test.txt', 'Hello, World!');
 
-      const result = await readTool.execute({ path: 'clawspace/test.txt' }, ctx);
+      const result = await readTool.execute({ path: 'test.txt' }, ctx);
 
       expect(result.success).toBe(true);
       expect(result.content).toBe('Hello, World!');
@@ -85,13 +85,13 @@ describe('Builtin Tools', () => {
       await mockFs.ensureDir('clawspace');
       await mockFs.writeAtomic('clawspace/small.txt', 'small content');
 
-      await readTool.execute({ path: 'clawspace/small.txt' }, ctx);
+      await readTool.execute({ path: 'small.txt' }, ctx);
 
       expect(ctx.fullyReadPaths.has('clawspace/small.txt')).toBe(true);
     });
 
     it('should return error for non-existent file', async () => {
-      const result = await readTool.execute({ path: 'clawspace/nonexistent.txt' }, ctx);
+      const result = await readTool.execute({ path: 'nonexistent.txt' }, ctx);
 
       expect(result.success).toBe(false);
       expect(result.content).toContain('Error');
@@ -101,7 +101,7 @@ describe('Builtin Tools', () => {
       await mockFs.ensureDir('clawspace');
       await mockFs.writeAtomic('clawspace/lines.txt', 'Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
 
-      const result = await readTool.execute({ path: 'clawspace/lines.txt', offset: 2, limit: 2 }, ctx);
+      const result = await readTool.execute({ path: 'lines.txt', offset: 2, limit: 2 }, ctx);
 
       expect(result.success).toBe(true);
       expect(result.content).toBe('Line 2\nLine 3');
@@ -109,6 +109,8 @@ describe('Builtin Tools', () => {
 
     it('dialog/ path is accessible (no extra blocklist)', async () => {
       // dialog/current.json 不存在时返回 FileNotFound，不是权限错误
+      await mockFs.ensureDir('clawspace/dialog');
+      await mockFs.writeAtomic('clawspace/dialog/current.json', '{}');
       const result = await readTool.execute({ path: 'dialog/current.json' }, ctx);
       expect(result.content).not.toContain('not allowed');
     });
@@ -120,7 +122,7 @@ describe('Builtin Tools', () => {
       const lines = Array.from({ length: 300 }, (_, i) => `Line ${i + 1}`);
       await mockFs.writeAtomic('clawspace/large.txt', lines.join('\n'));
 
-      const result = await readTool.execute({ path: 'clawspace/large.txt' }, ctx);
+      const result = await readTool.execute({ path: 'large.txt' }, ctx);
 
       expect(result.success).toBe(true);
       expect(result.content).toContain('Showing lines 1-200 of 300');
@@ -134,7 +136,7 @@ describe('Builtin Tools', () => {
       const content = 'x'.repeat(10000);
       await mockFs.writeAtomic('clawspace/huge.txt', content);
 
-      const result = await readTool.execute({ path: 'clawspace/huge.txt' }, ctx);
+      const result = await readTool.execute({ path: 'huge.txt' }, ctx);
 
       expect(result.success).toBe(true);
       expect(result.content).toContain('Showing first');
@@ -146,7 +148,7 @@ describe('Builtin Tools', () => {
       await mockFs.ensureDir('clawspace');
       await mockFs.writeAtomic('clawspace/lines.txt', 'Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
 
-      const result = await readTool.execute({ path: 'clawspace/lines.txt', offset: -2 }, ctx);
+      const result = await readTool.execute({ path: 'lines.txt', offset: -2 }, ctx);
 
       expect(result.success).toBe(true);
       expect(result.content).toBe('Line 4\nLine 5');
@@ -157,7 +159,7 @@ describe('Builtin Tools', () => {
       await mockFs.writeAtomic('clawspace/lines.txt', 'Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
 
       // offset=-3 means start from Line 3, limit=2 reads Line 3 and Line 4
-      const result = await readTool.execute({ path: 'clawspace/lines.txt', offset: -3, limit: 2 }, ctx);
+      const result = await readTool.execute({ path: 'lines.txt', offset: -3, limit: 2 }, ctx);
 
       expect(result.success).toBe(true);
       expect(result.content).toBe('Line 3\nLine 4');
@@ -168,7 +170,7 @@ describe('Builtin Tools', () => {
       await mockFs.writeAtomic('clawspace/lines.txt', 'Line 1\nLine 2\nLine 3');
 
       // offset=-10 exceeds total lines (3), should start from line 1
-      const result = await readTool.execute({ path: 'clawspace/lines.txt', offset: -10 }, ctx);
+      const result = await readTool.execute({ path: 'lines.txt', offset: -10 }, ctx);
 
       expect(result.success).toBe(true);
       expect(result.content).toBe('Line 1\nLine 2\nLine 3');
@@ -176,7 +178,7 @@ describe('Builtin Tools', () => {
 
     // Phase 16: error path Tip about claw parameter
     it('should include claw parameter Tip in error when reading non-existent file', async () => {
-      const result = await readTool.execute({ path: 'clawspace/no-such-file.txt' }, ctx);
+      const result = await readTool.execute({ path: 'no-such-file.txt' }, ctx);
 
       expect(result.success).toBe(false);
       expect(result.content).toContain('Tip');
@@ -187,7 +189,7 @@ describe('Builtin Tools', () => {
   describe('write tool', () => {
     it('should write new file', async () => {
       await mockFs.ensureDir('clawspace');
-      const result = await writeTool.execute({ path: 'clawspace/output.txt', content: 'New content' }, ctx);
+      const result = await writeTool.execute({ path: 'output.txt', content: 'New content' }, ctx);
 
       expect(result.success).toBe(true);
       expect(result.content).toContain('Written:');
@@ -202,7 +204,7 @@ describe('Builtin Tools', () => {
       await mockFs.writeAtomic('clawspace/append.txt', 'First line\n');
 
       const result = await writeTool.execute({
-        path: 'clawspace/append.txt',
+        path: 'append.txt',
         content: 'Second line',
         append: true,
       }, ctx);
@@ -218,10 +220,10 @@ describe('Builtin Tools', () => {
       await mockFs.ensureDir('clawspace');
       await mockFs.writeAtomic('clawspace/versioned.txt', 'original content');
       // 先 read 使其进入 fullyReadPaths
-      await readTool.execute({ path: 'clawspace/versioned.txt' }, ctx);
+      await readTool.execute({ path: 'versioned.txt' }, ctx);
 
       const result = await writeTool.execute({
-        path: 'clawspace/versioned.txt',
+        path: 'versioned.txt',
         content: 'new content',
       }, ctx);
 
@@ -245,7 +247,7 @@ describe('Builtin Tools', () => {
       await mockFs.writeAtomic('clawspace/gated.txt', 'existing content');
 
       const result = await writeTool.execute({
-        path: 'clawspace/gated.txt',
+        path: 'gated.txt',
         content: 'new content',
       }, ctx);
 
@@ -258,12 +260,12 @@ describe('Builtin Tools', () => {
       await mockFs.writeAtomic('clawspace/gated2.txt', 'existing content');
 
       // 先 read
-      const readResult = await readTool.execute({ path: 'clawspace/gated2.txt' }, ctx);
+      const readResult = await readTool.execute({ path: 'gated2.txt' }, ctx);
       expect(readResult.success).toBe(true);
 
       // 再 overwrite 应该成功
       const writeResult = await writeTool.execute({
-        path: 'clawspace/gated2.txt',
+        path: 'gated2.txt',
         content: 'new content',
       }, ctx);
 
@@ -275,12 +277,12 @@ describe('Builtin Tools', () => {
       await mockFs.writeAtomic('clawspace/gated3.txt', 'v1');
 
       // 先 read
-      await readTool.execute({ path: 'clawspace/gated3.txt' }, ctx);
+      await readTool.execute({ path: 'gated3.txt' }, ctx);
       // 第一次 overwrite
-      const w1 = await writeTool.execute({ path: 'clawspace/gated3.txt', content: 'v2' }, ctx);
+      const w1 = await writeTool.execute({ path: 'gated3.txt', content: 'v2' }, ctx);
       expect(w1.success).toBe(true);
       // 第二次 overwrite（写成功后已加入 fullyReadPaths）
-      const w2 = await writeTool.execute({ path: 'clawspace/gated3.txt', content: 'v3' }, ctx);
+      const w2 = await writeTool.execute({ path: 'gated3.txt', content: 'v3' }, ctx);
       expect(w2.success).toBe(true);
     });
 
@@ -289,7 +291,7 @@ describe('Builtin Tools', () => {
       await mockFs.writeAtomic('clawspace/append-gate.txt', 'existing');
 
       const result = await writeTool.execute({
-        path: 'clawspace/append-gate.txt',
+        path: 'append-gate.txt',
         content: ' appended',
         append: true,
       }, ctx);
@@ -301,7 +303,7 @@ describe('Builtin Tools', () => {
       await mockFs.ensureDir('clawspace');
 
       const result = await writeTool.execute({
-        path: 'clawspace/new-file.txt',
+        path: 'new-file.txt',
         content: 'new content',
       }, ctx);
 
@@ -313,7 +315,7 @@ describe('Builtin Tools', () => {
       const content = 'Hello, this is test content';
 
       const result = await writeTool.execute({
-        path: 'clawspace/bytecount.txt',
+        path: 'bytecount.txt',
         content,
       }, ctx);
 
@@ -328,7 +330,7 @@ describe('Builtin Tools', () => {
       await mockFs.ensureDir('clawspace');
       await mockFs.writeAtomic('clawspace/edit.txt', 'hello world');
 
-      const result = await editTool.execute({ path: 'clawspace/edit.txt', old_string: 'hello', new_string: 'hi' }, ctx);
+      const result = await editTool.execute({ path: 'edit.txt', old_string: 'hello', new_string: 'hi' }, ctx);
 
       expect(result.success).toBe(true);
       expect(result.content).toContain('Edited:');
@@ -341,7 +343,7 @@ describe('Builtin Tools', () => {
       await mockFs.ensureDir('clawspace');
       await mockFs.writeAtomic('clawspace/edit.txt', 'hello world');
 
-      const result = await editTool.execute({ path: 'clawspace/edit.txt', old_string: 'notfound', new_string: 'x' }, ctx);
+      const result = await editTool.execute({ path: 'edit.txt', old_string: 'notfound', new_string: 'x' }, ctx);
 
       expect(result.success).toBe(false);
       expect(result.content).toContain('0 matches');
@@ -351,14 +353,14 @@ describe('Builtin Tools', () => {
       await mockFs.ensureDir('clawspace');
       await mockFs.writeAtomic('clawspace/edit.txt', 'foo bar foo');
 
-      const result = await editTool.execute({ path: 'clawspace/edit.txt', old_string: 'foo', new_string: 'qux' }, ctx);
+      const result = await editTool.execute({ path: 'edit.txt', old_string: 'foo', new_string: 'qux' }, ctx);
 
       expect(result.success).toBe(false);
       expect(result.content).toContain('2 matches');
     });
 
     it('should reject when file does not exist', async () => {
-      const result = await editTool.execute({ path: 'clawspace/nonexistent.txt', old_string: 'a', new_string: 'b' }, ctx);
+      const result = await editTool.execute({ path: 'nonexistent.txt', old_string: 'a', new_string: 'b' }, ctx);
       expect(result.success).toBe(false);
       expect(result.content).toContain('does not exist');
     });
@@ -370,7 +372,7 @@ describe('Builtin Tools', () => {
       await mockFs.writeAtomic('clawspace/multi.txt', 'a b c d');
 
       const result = await multiEditTool.execute({
-        path: 'clawspace/multi.txt',
+        path: 'multi.txt',
         edits: [
           { old_string: 'a', new_string: 'x' },
           { old_string: 'c', new_string: 'y' },
@@ -388,7 +390,7 @@ describe('Builtin Tools', () => {
       await mockFs.writeAtomic('clawspace/multi.txt', 'hello world');
 
       const result = await multiEditTool.execute({
-        path: 'clawspace/multi.txt',
+        path: 'multi.txt',
         edits: [
           { old_string: 'hello', new_string: 'hi' },
           { old_string: 'notfound', new_string: 'x' },
@@ -406,7 +408,7 @@ describe('Builtin Tools', () => {
       await mockFs.ensureDir('clawspace');
       await mockFs.writeAtomic('clawspace/multi.txt', 'hello');
 
-      const result = await multiEditTool.execute({ path: 'clawspace/multi.txt', edits: [] }, ctx);
+      const result = await multiEditTool.execute({ path: 'multi.txt', edits: [] }, ctx);
 
       expect(result.success).toBe(false);
       expect(result.content).toContain('at least 1 edit');
@@ -415,9 +417,9 @@ describe('Builtin Tools', () => {
 
   describe('ls tool', () => {
     it('should list directory contents', async () => {
-      await mockFs.writeAtomic('file1.txt', '');
-      await mockFs.writeAtomic('file2.txt', '');
-      await mockFs.ensureDir('subdir');
+      await mockFs.writeAtomic('clawspace/file1.txt', '');
+      await mockFs.writeAtomic('clawspace/file2.txt', '');
+      await mockFs.ensureDir('clawspace/subdir');
 
       const result = await lsTool.execute({ path: '.' }, ctx);
 
@@ -428,7 +430,7 @@ describe('Builtin Tools', () => {
     });
 
     it('should handle empty directory', async () => {
-      await mockFs.ensureDir('empty');
+      await mockFs.ensureDir('clawspace/empty');
 
       const result = await lsTool.execute({ path: 'empty' }, ctx);
 
@@ -437,7 +439,7 @@ describe('Builtin Tools', () => {
     });
 
     it('should default to current directory', async () => {
-      await mockFs.writeAtomic('current.txt', '');
+      await mockFs.writeAtomic('clawspace/current.txt', '');
 
       const result = await lsTool.execute({}, ctx);
 
@@ -449,7 +451,7 @@ describe('Builtin Tools', () => {
     it('should show pagination indicator when more than 100 files', async () => {
       // Create 120 files
       for (let i = 0; i < 120; i++) {
-        await mockFs.writeAtomic(`file${i}.txt`, '');
+        await mockFs.writeAtomic(`clawspace/file${i}.txt`, '');
       }
 
       const result = await lsTool.execute({ path: '.' }, ctx);
@@ -457,13 +459,13 @@ describe('Builtin Tools', () => {
       expect(result.success).toBe(true);
       // Should show pagination indicator
       expect(result.content).toContain('entries total');
-      expect(result.content).toContain('121');
+      expect(result.content).toContain('120');
     });
 
     it('should limit output to 100 entries', async () => {
       // Create 120 files
       for (let i = 0; i < 120; i++) {
-        await mockFs.writeAtomic(`file${i}.txt`, '');
+        await mockFs.writeAtomic(`clawspace/file${i}.txt`, '');
       }
 
       const result = await lsTool.execute({ path: '.' }, ctx);
@@ -491,7 +493,7 @@ describe('Builtin Tools', () => {
       await mockFs.writeAtomic('clawspace/note1.txt', 'Hello world\nThis is a test\nHello again');
       await mockFs.writeAtomic('clawspace/note2.txt', 'Goodbye world');
 
-      const result = await searchTool.execute({ query: 'hello', path: 'clawspace' }, ctx);
+      const result = await searchTool.execute({ query: 'hello' }, ctx);
 
       expect(result.success).toBe(true);
       expect(result.content).toContain('Hello world');
@@ -503,7 +505,7 @@ describe('Builtin Tools', () => {
       await mockFs.ensureDir('clawspace');
       await mockFs.writeAtomic('clawspace/empty.txt', 'Nothing here');
 
-      const result = await searchTool.execute({ query: 'xyz', path: 'clawspace' }, ctx);
+      const result = await searchTool.execute({ query: 'xyz' }, ctx);
 
       expect(result.success).toBe(true);
       expect(result.content).toContain('未找到');
@@ -513,7 +515,7 @@ describe('Builtin Tools', () => {
       await mockFs.ensureDir('clawspace');
       await mockFs.writeAtomic('clawspace/many.txt', 'target\ntarget\ntarget\ntarget\ntarget\ntarget');
 
-      const result = await searchTool.execute({ query: 'target', path: 'clawspace', max_results: 3 }, ctx);
+      const result = await searchTool.execute({ query: 'target', max_results: 3 }, ctx);
 
       expect(result.success).toBe(true);
       const lines = result.content.split('\n').filter(l => l.trim());

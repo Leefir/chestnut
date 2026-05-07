@@ -10,19 +10,24 @@ import { NodeFileSystem } from '../fs/node-fs.js';
 import type { Tool, ToolResult, ExecContext } from '../tool-protocol/index.js';
 import { READ_MAX_LINES, READ_MAX_CHARS } from '../../constants.js';
 import { getChecker } from './permission-context.js';
+import { resolveWorkspacePath } from './_resolve-path.js';
 
 import { READ_TOOL_NAME } from '../tools/tool-names.js';
 export { READ_TOOL_NAME };
 
 export const readTool: Tool = {
   name: READ_TOOL_NAME,
-  description: 'Read the contents of a file. Blocked: logs/. Use `claw: "<id>"` to read another claw\'s file. Specific target access is available to all agents.',
+  description: 'Read a file. Default base: agent workspace dir (clawspace/ for main / tasks/subagents/<id>/ for subagent). Use cwd: "<rel|abs>" to override (e.g., cwd: ".." for claw root files like MEMORY.md, cwd: "memory" for memory/ subdir). Use claw: "<id>" for cross-claw read.',
   schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'Path to the file to read, relative to YOUR OWN claw directory (blocked: logs/). To read another claw\'s files, use the "claw" parameter.',
+        description: 'File path (default base: workspace dir)',
+      },
+      cwd: {
+        type: 'string',
+        description: 'Override base for path resolution (relative to claw root, or absolute). Default: agent workspace dir (clawspace/ for main / tasks/subagents/<id>/ for subagent). Use cwd: ".." to access claw root files like MEMORY.md.',
       },
       offset: {
         type: 'number',
@@ -49,22 +54,22 @@ export const readTool: Tool = {
 
   async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
     const filePath = args.path as string;
+    const cwdArg = args.cwd as string | undefined;
     const offset = args.offset as number | undefined;
     const limit = args.limit as number | undefined;
     const clawParam = args.claw as string | undefined;
 
-    // Path normalization for security (defense-in-depth)
-    const normalized = nodePath.normalize(filePath);
-    if (normalized.startsWith('..')) {
+    const resolved = resolveWorkspacePath(ctx, filePath, cwdArg);
+    if (resolved.startsWith('..') || resolved.startsWith('/')) {
       return {
         success: false,
-        content: `Error: Path traversal not allowed: "${filePath}"`,
+        content: `Error: Path escapes claw directory: "${filePath}"${cwdArg ? ` (cwd: ${cwdArg})` : ''}`,
       };
     }
 
     // Phase430: claw-space boundary check — caller autonomy
     const checker = getChecker(ctx.clawDir);
-    checker.resolveAndCheck(normalized, 'read');
+    checker.resolveAndCheck(resolved, 'read');
 
     // Cross-claw read: specific target / 任意 callerType OK（D11 inter-claw 互访 align）
     let content: string;
@@ -77,7 +82,7 @@ export const readTool: Tool = {
         };
       }
       // Resolve path to target claw's directory
-      const targetPath = nodePath.resolve(ctx.clawDir, '..', 'claws', clawParam, normalized);
+      const targetPath = nodePath.resolve(ctx.clawDir, '..', 'claws', clawParam, nodePath.normalize(filePath));
       // Escape check: must be within the target claw's directory
       const clawsDir = nodePath.resolve(ctx.clawDir, '..', 'claws');
       if (!targetPath.startsWith(nodePath.join(clawsDir, clawParam))) {
@@ -89,7 +94,7 @@ export const readTool: Tool = {
       // Cross-claw read: per-target NodeFileSystem
       try {
         const targetFs = new NodeFileSystem({ baseDir: nodePath.join(clawsDir, clawParam) });
-        content = await targetFs.read(normalized);
+        content = await targetFs.read(nodePath.normalize(filePath));
       } catch (error) {
         return {
           success: false,
@@ -99,7 +104,7 @@ export const readTool: Tool = {
     } else {
       // Safety limits (from constants.ts)
       try {
-        content = await ctx.fs.read(normalized);
+        content = await ctx.fs.read(resolved);
       } catch (error) {
         return {
           success: false,
@@ -139,7 +144,7 @@ export const readTool: Tool = {
 
       // fully-read 集合 add（未截断 / phase 487 G6 (a)）
       if (!isTruncated) {
-        ctx.fullyReadPaths.add(normalized);
+        ctx.fullyReadPaths.add(resolved);
       }
 
       return {

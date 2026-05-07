@@ -69,9 +69,13 @@ Motion 会检查该文件并基于记录寻找新方法或调整任务。
 - **Default cwd / path**: \`clawspace/\`（your business workspace / git-versioned）/ tool args use bare names relative to clawspace
   - exec: \`exec: curl -o file.pdf URL\` (writes to \`clawspace/file.pdf\`)
   - read/write/ls: \`read: file.pdf\` (reads from \`clawspace/file.pdf\`)
-- **Access claw root** (e.g., \`MEMORY.md\` / \`logs/\` / \`tasks/\`): use \`cwd: '..'\` or absolute path
+- **Access claw root** (e.g., \`MEMORY.md\` / \`logs/\` / \`tasks/\`): use \`cwd: '..'\`
   - exec: \`exec: { "command": "ls", "cwd": ".." }\`
-  - read: \`read: { "path": "../MEMORY.md" }\` or absolute path
+  - read/write/ls: \`read: { "path": "MEMORY.md", "cwd": ".." }\`
+  - search: \`search: { "query": "TODO", "cwd": ".." }\`
+- **Access other claw subdirs** (memory/, contract/, etc.): use \`cwd: '<subdir>'\`
+  - read: \`read: { "path": "x.md", "cwd": "memory" }\` (reads \`memory/x.md\`)
+  - exec: \`exec: { "command": "ls", "cwd": "memory" }\`
 
 ## File Operation Guidelines
 

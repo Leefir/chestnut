@@ -13,6 +13,7 @@
 import type { Tool, ToolResult, ExecContext } from '../tool-protocol/index.js';
 import { getChecker } from './permission-context.js';
 import { backupToSync } from './sync-backup.js';
+import { resolveWorkspacePath } from './_resolve-path.js';
 import { EDIT_TOOL_NAME } from '../tools/tool-names.js';
 export { EDIT_TOOL_NAME };
 
@@ -35,7 +36,11 @@ export const editTool: Tool = {
     properties: {
       path: {
         type: 'string',
-        description: 'Path to the file to edit',
+        description: 'File path (default base: workspace dir)',
+      },
+      cwd: {
+        type: 'string',
+        description: 'Override base for path resolution (relative to claw root, or absolute). Default: agent workspace dir.',
       },
       old_string: {
         type: 'string',
@@ -57,16 +62,25 @@ export const editTool: Tool = {
 
   async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
     const filePath = args.path as string;
+    const cwdArg = args.cwd as string | undefined;
     const oldString = args.old_string as string;
     const newString = args.new_string as string;
     const replaceAll = args.replace_all === true;
 
+    const resolved = resolveWorkspacePath(ctx, filePath, cwdArg);
+    if (resolved.startsWith('..') || resolved.startsWith('/')) {
+      return {
+        success: false,
+        content: `Error: Path escapes claw directory: "${filePath}"${cwdArg ? ` (cwd: ${cwdArg})` : ''}`,
+      };
+    }
+
     // Phase430: claw-space boundary check — caller autonomy
     const checker = getChecker(ctx.clawDir);
-    checker.resolveAndCheck(filePath, 'write');
+    checker.resolveAndCheck(resolved, 'write');
 
     // File must exist
-    const exists = await ctx.fs.exists(filePath);
+    const exists = await ctx.fs.exists(resolved);
     if (!exists) {
       return {
         success: false,
@@ -74,7 +88,7 @@ export const editTool: Tool = {
       };
     }
 
-    const content = await ctx.fs.read(filePath);
+    const content = await ctx.fs.read(resolved);
 
     // Match checking
     const matches = countMatches(content, oldString);
@@ -92,14 +106,15 @@ export const editTool: Tool = {
     }
 
     // Backup
-    const backupPath = await backupToSync(ctx, filePath, 'edit_backup');
+    const backupPath = await backupToSync(ctx, resolved, 'edit_backup');
 
     // Replace
     const replaced = replaceAll
       ? content.split(oldString).join(newString)
       : content.replace(oldString, newString);
 
-    await ctx.fs.writeAtomic(filePath, replaced);
+    await ctx.fs.writeAtomic(resolved, replaced);
+    ctx.fullyReadPaths.add(resolved);
 
     const replacedCount = replaceAll ? matches : 1;
     const backupHint = backupPath ? ` (backup: ${backupPath})` : '';

@@ -10,6 +10,7 @@ import { NodeFileSystem } from '../fs/node-fs.js';
 import type { Tool, ToolResult, ExecContext } from '../tool-protocol/index.js';
 import { LS_MAX_ENTRIES } from '../../constants.js';
 import { getChecker } from './permission-context.js';
+import { resolveWorkspacePath } from './_resolve-path.js';
 
 import { LS_TOOL_NAME } from '../tools/tool-names.js';
 export { LS_TOOL_NAME };
@@ -22,7 +23,11 @@ export const lsTool: Tool = {
     properties: {
       path: {
         type: 'string',
-        description: 'Directory path to list, relative to YOUR OWN claw directory. To list another claw\'s files, use the "claw" parameter instead of putting their path here.',
+        description: 'Directory path to list (default base: workspace dir)',
+      },
+      cwd: {
+        type: 'string',
+        description: 'Override base for path resolution (relative to claw root, or absolute). Default: agent workspace dir.',
       },
       claw: {
         type: 'string',
@@ -40,7 +45,8 @@ export const lsTool: Tool = {
   supportsAsync: false,
 
   async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
-    const path = (args.path as string) ?? '.';
+    const pathArg = (args.path as string) ?? '.';
+    const cwdArg = args.cwd as string | undefined;
     const clawParam = args.claw as string | undefined;
     // From constants.ts: pagination limit
 
@@ -48,9 +54,17 @@ export const lsTool: Tool = {
     let targetPath: string;
     let entries: { path: string; isDirectory: boolean; isFile: boolean; size?: number }[];
 
+    const resolved = resolveWorkspacePath(ctx, pathArg, cwdArg);
+    if (resolved.startsWith('..') || resolved.startsWith('/')) {
+      return {
+        success: false,
+        content: `Error: Path escapes claw directory: "${pathArg}"${cwdArg ? ` (cwd: ${cwdArg})` : ''}`,
+      };
+    }
+
     // Phase430: claw-space boundary check — caller autonomy
     const checker = getChecker(ctx.clawDir);
-    checker.resolveAndCheck(path, 'read');
+    checker.resolveAndCheck(resolved, 'read');
 
     if (clawParam !== undefined) {
       // specific target / 任意 callerType OK（D11 inter-claw 互访 align）
@@ -62,14 +76,14 @@ export const lsTool: Tool = {
         };
       }
       // Resolve path to target claw's directory
-      targetPath = nodePath.resolve(ctx.clawDir, '..', 'claws', clawParam, path);
+      targetPath = nodePath.resolve(ctx.clawDir, '..', 'claws', clawParam, nodePath.normalize(pathArg));
       // Escape check: must be within the target claw's directory
       const clawsDir = nodePath.resolve(ctx.clawDir, '..', 'claws');
       const clawRoot = nodePath.join(clawsDir, clawParam);
       if (targetPath !== clawRoot && !targetPath.startsWith(clawRoot + nodePath.sep)) {
         return {
           success: false,
-          content: `Error: Path escapes target claw directory: "${path}"`,
+          content: `Error: Path escapes target claw directory: "${pathArg}"`,
         };
       }
       // Cross-claw read: per-target NodeFileSystem (无 PermissionChecker = 等价 skip permissions)
@@ -85,7 +99,7 @@ export const lsTool: Tool = {
     } else {
       // Normal list (within current claw)
       try {
-        entries = await ctx.fs.list(path, { includeDirs: true });
+        entries = await ctx.fs.list(resolved, { includeDirs: true });
       } catch (error) {
         return {
           success: false,
@@ -107,7 +121,8 @@ export const lsTool: Tool = {
     const lines = limited.map(e => {
       const type = e.isDirectory ? '[DIR]' : '[FILE]';
       const size = e.isFile ? ` ${e.size} bytes` : '';
-      return `${type} ${e.path}${size}`;
+      const displayPath = nodePath.relative(resolved, e.path) || '.';
+      return `${type} ${displayPath}${size}`;
     });
 
     const suffix = total > LS_MAX_ENTRIES ? `\n... ${total} entries total` : '';

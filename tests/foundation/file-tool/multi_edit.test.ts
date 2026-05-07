@@ -41,7 +41,7 @@ describe('multi_edit tool', () => {
     await mockFs.writeAtomic('clawspace/file.txt', 'a b c d');
 
     const result = await multiEditTool.execute({
-      path: 'clawspace/file.txt',
+      path: 'file.txt',
       edits: [
         { old_string: 'a', new_string: 'x' },
         { old_string: 'c', new_string: 'y' },
@@ -61,7 +61,7 @@ describe('multi_edit tool', () => {
     await mockFs.writeAtomic('clawspace/file.txt', 'hello world');
 
     const result = await multiEditTool.execute({
-      path: 'clawspace/file.txt',
+      path: 'file.txt',
       edits: [
         { old_string: 'hello', new_string: 'hi' },
         { old_string: 'notfound', new_string: 'replacement' },
@@ -82,7 +82,7 @@ describe('multi_edit tool', () => {
     await mockFs.writeAtomic('clawspace/file.txt', 'foo bar foo');
 
     const result = await multiEditTool.execute({
-      path: 'clawspace/file.txt',
+      path: 'file.txt',
       edits: [
         { old_string: 'bar', new_string: 'qux' },
         { old_string: 'foo', new_string: 'qux' },
@@ -102,7 +102,7 @@ describe('multi_edit tool', () => {
     await mockFs.writeAtomic('clawspace/file.txt', 'hello world');
 
     const result = await multiEditTool.execute({
-      path: 'clawspace/file.txt',
+      path: 'file.txt',
       edits: [
         { old_string: 'hello', new_string: 'goodbye' },
         { old_string: 'hello', new_string: 'hi' },
@@ -122,7 +122,7 @@ describe('multi_edit tool', () => {
     await mockFs.writeAtomic('clawspace/file.txt', 'original content');
 
     const result = await multiEditTool.execute({
-      path: 'clawspace/file.txt',
+      path: 'file.txt',
       edits: [
         { old_string: 'original', new_string: 'updated' },
         { old_string: 'content', new_string: 'data' },
@@ -145,7 +145,7 @@ describe('multi_edit tool', () => {
     const writeSpy = vi.spyOn(mockFs, 'writeAtomic');
 
     await multiEditTool.execute({
-      path: 'clawspace/file.txt',
+      path: 'file.txt',
       edits: [
         { old_string: 'a', new_string: 'x' },
         { old_string: 'b', new_string: 'y' },
@@ -163,7 +163,7 @@ describe('multi_edit tool', () => {
     const writeSpy = vi.spyOn(mockFs, 'writeAtomic');
 
     const result = await multiEditTool.execute({
-      path: 'clawspace/file.txt',
+      path: 'file.txt',
       edits: [
         { old_string: 'a', new_string: 'x' },
         { old_string: 'notfound', new_string: 'y' },
@@ -181,7 +181,7 @@ describe('multi_edit tool', () => {
     await mockFs.writeAtomic('clawspace/file.txt', 'hello');
 
     const result = await multiEditTool.execute({
-      path: 'clawspace/file.txt',
+      path: 'file.txt',
       edits: [],
     }, ctx);
 
