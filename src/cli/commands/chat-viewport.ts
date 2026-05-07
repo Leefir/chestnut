@@ -380,7 +380,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
         const taskReader = createStreamReader(taskFs, STREAM_FILE, (ev) => mainUI.withScope('task', () => handleTaskEvent(taskId, callerType, ev)), options.audit, { persistent: false });
         taskReader.start();
         const tw: TaskWatch = {
-          callerType: callerType as any,
+          callerType: callerType as CallerType,
           silent: (event.silent as boolean) ?? false,
           fileSize: 0, leftover: '', streamReader: taskReader,
         };
@@ -792,7 +792,15 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
       const args = rawTail ? rawTail.split(/\s+/) : [];
       const cmd = commandRegistry.get(name);
       if (cmd) {
-        cmd.execute(args);
+        try {
+          cmd.execute(args);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          try {
+            options.audit.write(VIEWPORT_AUDIT_EVENTS.COMMAND_ERROR, `name=${name}`, `reason=${msg}`);
+          } catch { /* audit self-failure tolerated */ }
+          appendOutput('\x1b[31m', `[error] /${name} 执行失败：${msg}`, true);
+        }
       } else {
         appendOutput('\x1b[31m', `[unknown command: /${name}]  输入 /help 查看可用命令`);
       }
