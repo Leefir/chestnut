@@ -3,7 +3,7 @@ import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { AuditWriter } from '../../src/foundation/audit/writer.js';
 import { Snapshot, SNAPSHOT_IGNORE_PATTERNS } from '../../src/foundation/snapshot/index.js';
 
-import { DialogStore } from '../../src/foundation/dialog-store/index.js';
+import { DialogStore, createDialogStore } from '../../src/foundation/dialog-store/index.js';
 import { InboxReader, OutboxWriter } from '../../src/foundation/messaging/index.js';
 import { LLMOrchestratorImpl } from '../../src/foundation/llm-orchestrator/orchestrator.js';
 import { ToolRegistryImpl } from '../../src/foundation/tools/registry.js';
@@ -68,5 +68,9 @@ export async function makeRuntimeDeps(input: MakeRuntimeDepsInput): Promise<Runt
     skillRegistry, contractManager, taskSystem, contextInjector, execContext,
     parentStreamLog: undefined,
     contractNotifyCallback: undefined,
+    // phase 521 mock
+    dialogStoreFactory: (systemPrompt: string) => {
+      return createDialogStore(systemFs, 'dialog', auditWriter, 'current.json', systemPrompt, clawId);
+    },
   };
 }

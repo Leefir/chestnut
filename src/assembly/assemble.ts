@@ -436,6 +436,10 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     execContext,
     parentStreamLog: streamWriter,
     contractNotifyCallback,
+    // phase 521: regime switch coordination / Assembly own factory / closure capture 5 const
+    dialogStoreFactory: (systemPrompt: string) => createDialogStore(
+      systemFs, DIALOG_DIR, auditWriter, 'current.json', systemPrompt, clawId
+    ),
   };
 
   // 孤儿临时文件清理（从 Runtime.initialize 搬来；Assembly 负责一次性的启动清理）

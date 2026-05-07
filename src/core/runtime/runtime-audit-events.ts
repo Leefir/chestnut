@@ -35,6 +35,8 @@ export const RUNTIME_AUDIT_EVENTS = {
   // INITIALIZE phase failures (phase 454: 替代 Runtime 借 ASSEMBLE_FAILED)
   INBOX_INIT_FAILED: 'runtime_inbox_init_failed',
   SESSION_REPAIR_FAILED: 'runtime_session_repair_failed',
+  // phase 521: regime switch audit event
+  REGIME_SWITCH: 'regime_switch',
 } as const;
 
 /**

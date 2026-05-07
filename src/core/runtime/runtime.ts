@@ -84,6 +84,10 @@ export class Runtime {
   private outboxWriter!: OutboxWriter;
   private snapshot!: Snapshot;
 
+  // phase 521: regime switch coordination
+  private dialogStoreFactory!: (systemPrompt: string) => DialogStore;
+  private lastSystemPrompt?: string;
+
   constructor(options: RuntimeOptions) {
     this.options = {
       maxSteps: DEFAULT_MAX_STEPS,
@@ -95,6 +99,7 @@ export class Runtime {
     // auditWriter now comes from dependencies (phase155B+)
     this.auditWriter = options.dependencies.auditWriter;
     const deps = options.dependencies;
+    this.dialogStoreFactory = deps.dialogStoreFactory;
     if (deps.parentStreamLog) {
       deps.taskSystem.setParentStreamLog(deps.parentStreamLog);
     }
@@ -460,6 +465,9 @@ export class Runtime {
     if (commitResult && !commitResult.ok && commitResult.error.kind === 'uncategorized') {
       this.auditWriter.write(RUNTIME_AUDIT_EVENTS.SNAPSHOT_COMMIT_UNCATEGORIZED, `context=turn-${this.turnCount}`, `exitCode=${commitResult.error.exitCode}`);
     }
+
+    // phase 521: turn 末 regime change 检测（per L5.G3 (a) 自动检测）
+    await this._checkRegimeSwitch(systemPrompt);
   }
 
   /**
@@ -704,6 +712,9 @@ export class Runtime {
       // Save the final session
       await this.sessionManager.save(messages);
 
+      // phase 521: turn 末 regime change 检测（chat() 也走 _runReact 等效路径）
+      await this._checkRegimeSwitch(systemPrompt);
+
       // Return the final text
       return result.finalText;
     } finally {
@@ -831,5 +842,54 @@ export class Runtime {
     return this.auditWriter;
   }
 
+  // ============================================================================
+  // phase 521: regime switch coordination
+  // ============================================================================
+
+  private async _checkRegimeSwitch(systemPrompt: string): Promise<void> {
+    if (this.lastSystemPrompt !== undefined && this.lastSystemPrompt !== systemPrompt) {
+      await this._performRegimeSwitch(systemPrompt);
+    }
+    this.lastSystemPrompt = systemPrompt;
+  }
+
+  private async _performRegimeSwitch(newSystemPrompt: string): Promise<void> {
+    const strategy = this.options.regimeSwitchStrategy ?? 'all';
+    // 1. 加载 oldMessages
+    const { session } = await this.sessionManager.load();
+    const oldMessages = session.messages;
+    // 2. archive 当前 sessionManager
+    await this.sessionManager.archive();
+    // 3. 计算 inherited per strategy
+    let inherited: Message[];
+    switch (strategy) {
+      case 'none': inherited = []; break;
+      case 'last-turn': inherited = extractLastTurn(oldMessages); break;
+      case 'all':
+      default: inherited = oldMessages;
+    }
+    // 4. tool_use 悬空 repair（per L5.G4）
+    const { repaired } = DialogStore.repair(inherited, { interruptionMessage: 'Regime switch: tools may have changed.' });
+    // 5. dialogStoreFactory 装配 new instance
+    this.sessionManager = this.dialogStoreFactory(newSystemPrompt);
+    // 6. save inherited messages
+    await this.sessionManager.save(repaired);
+    // 7. audit
+    this.auditWriter.write(
+      RUNTIME_AUDIT_EVENTS.REGIME_SWITCH,
+      `strategy=${strategy}`,
+      `inherited=${repaired.length}`,
+      `discarded=${oldMessages.length - repaired.length}`,
+    );
+  }
+
+}
+
+/** phase 521: 'last-turn' strategy helper — 找最近 'user' role msg / 从那里切片 */
+function extractLastTurn(messages: Message[]): Message[] {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'user') return messages.slice(i);
+  }
+  return messages; // 0 user msg / 全继承
 }
 

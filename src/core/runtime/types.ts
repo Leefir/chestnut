@@ -46,6 +46,9 @@ export interface RuntimeDependencies {
   // 构造期注入（phase182 B.p166-5 升档：setter 双阶段消除）
   readonly parentStreamLog?: import('../../foundation/stream/types.js').StreamLog;
   readonly contractNotifyCallback?: (type: string, data: Record<string, unknown>) => void;
+
+  /** phase 521: regime 切换协调装配 / Assembly own factory / per L5.G1-G4 closure 2026-05-07 */
+  readonly dialogStoreFactory: (systemPrompt: string) => DialogStore;
 }
 
 /** 1:1 保 runtime.ts:74-101 body */
@@ -70,6 +73,9 @@ export interface RuntimeOptions {
     systemFs: FileSystem;
   }) => Promise<string>;
   identityToolFilter?: (registry: ToolRegistry) => void;
+
+  /** phase 521: regime 切换 messages 继承 strategy / default 'all' / per L5.G1+G2 */
+  regimeSwitchStrategy?: 'all' | 'none' | 'last-turn';
 }
 
 /** 1:1 保 runtime.ts:102-120 body */
