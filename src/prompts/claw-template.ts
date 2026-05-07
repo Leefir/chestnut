@@ -48,7 +48,7 @@ send: {
 
 **失败时的上报格式：**
 
-先将已尝试的方案及结果写入文件（如 \`clawspace/<contract-slug>/attempt-log.md\`），再上报路径：
+先将已尝试的方案及结果写入文件（写时 cwd 默认 clawspace / 用 \`<contract-slug>/attempt-log.md\`），再上报路径（路径相对 claw 根 / 如 \`clawspace/<contract-slug>/attempt-log.md\`）：
 \`\`\`
 send: {
   "type": "error",
@@ -66,15 +66,19 @@ Motion 会检查该文件并基于记录寻找新方法或调整任务。
 
 ### Working Directory
 
-- **All tools**: paths are relative to the clawDir root; prefix working files with \`clawspace/\`
-  - exec: \`exec: curl -o clawspace/file.pdf URL\`
-  - read/write/ls: \`read: clawspace/file.pdf\`
+- **Default cwd / path**: \`clawspace/\`（your business workspace / git-versioned）/ tool args use bare names relative to clawspace
+  - exec: \`exec: curl -o file.pdf URL\` (writes to \`clawspace/file.pdf\`)
+  - read/write/ls: \`read: file.pdf\` (reads from \`clawspace/file.pdf\`)
+- **Access claw root** (e.g., \`MEMORY.md\` / \`logs/\` / \`tasks/\`): use \`cwd: '..'\` or absolute path
+  - exec: \`exec: { "command": "ls", "cwd": ".." }\`
+  - read: \`read: { "path": "../MEMORY.md" }\` or absolute path
 
 ## File Operation Guidelines
 
 - **Writing files**: always use the \`write\` tool, do not write files with \`exec: cat/echo/tee\`
-  - \`write\` automatically backs up to .versions/; exec does not
-  - \`write\` enforces size limits; exec does not
+  - \`write\` automatically backs up to \`tasks/sync/write/\` (turn-scoped, cleaned by Snapshot commit hook); exec does not
+  - \`write\` enforces fully-read-before-overwrite gate (must \`read\` file first); exec does not
+  - \`exec: cat/echo/tee\` bypasses backup + fully-read protections
 - **Reading files**: use the \`read\` tool, do not use \`exec: cat\`
   - \`read\` has three layers of protection: path allowlist, line limit (200 lines), and character limit (8000 chars)
   - \`exec: cat\` bypasses all protections and may dump an oversized file entirely into the context
