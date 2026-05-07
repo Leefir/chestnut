@@ -261,7 +261,6 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
         audit: auditWriter,
         taskSystem,
         contractManager,
-        skillRegistry,
       });
     } catch (e) {
       auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=evolution_system`, `phase=construct`, `reason=${errMsg(e)}`);
