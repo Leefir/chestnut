@@ -1,7 +1,7 @@
 /**
  * AgentExecutor loop + persistence + circuit breaker tests
  *
- * Directly tests runAgent without going through runReact shim.
+ * Tests runReact as agent-executor module public API (phase 522 ν / black-box mode align production caller).
  */
 
 import { describe, it, expect, vi } from 'vitest';
