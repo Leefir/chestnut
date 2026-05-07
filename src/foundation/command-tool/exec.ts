@@ -80,7 +80,7 @@ export const execTool: Tool = {
     const command = args.command as string;
     const cwdArg = args.cwd as string | undefined;
     const cwd = cwdArg
-      ? path.resolve(ctx.clawDir, cwdArg)
+      ? (path.isAbsolute(cwdArg) ? cwdArg : path.resolve(ctx.workspaceDir, cwdArg))   // phase 519: workspace-relative
       : ctx.workspaceDir;            // phase 512 / per-callerType: 主代理=clawspace / 子代理=tasks/subagents/<id>
     const timeoutMs = (args.timeoutMs as number) ?? undefined;
 

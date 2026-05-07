@@ -1253,7 +1253,7 @@ describe('Builtin Tools', () => {
       expect(result.content).toContain('clawspace');
     });
 
-    it('subagent 显式用 cwd 写 dedicated temp dir', async () => {
+    it('subagent 显式用 cwd 写 dedicated temp dir (phase 519: ../ prefix)', async () => {
       const fsNative = await import('fs');
       const subagentTempDir = path.join(tempDir, 'tasks/subagents/phase518-test');
       fsNative.mkdirSync(subagentTempDir, { recursive: true });
@@ -1269,7 +1269,7 @@ describe('Builtin Tools', () => {
       });
 
       const result = await writeTool.execute(
-        { path: 'temp.txt', cwd: 'tasks/subagents/phase518-test', content: 'data' },
+        { path: 'temp.txt', cwd: '../tasks/subagents/phase518-test', content: 'data' },
         subagentCtx,
       );
 
@@ -1299,14 +1299,14 @@ describe('Builtin Tools', () => {
       expect(fsNative.existsSync(path.join(tempDir, 'clawspace/shared-by-subagent.txt'))).toBe(true);
     });
 
-    it('execTool args.cwd 相对路径以 clawDir 为基准 resolve（非 clawspace）', async () => {
+    it('execTool args.cwd 相对路径以 workspaceDir 为基准 resolve (phase 519)', async () => {
       const fsNative = await import('fs');
-      fsNative.mkdirSync(path.join(tempDir, 'logs'), { recursive: true });
+      fsNative.mkdirSync(path.join(tempDir, 'clawspace', 'build'), { recursive: true });
 
-      const result = await execTool.execute({ command: 'pwd', cwd: 'logs' }, ctx);
+      const result = await execTool.execute({ command: 'pwd', cwd: 'build' }, ctx);
 
       expect(result.success).toBe(true);
-      expect(result.content).toContain(path.join(tempDir, 'logs'));
+      expect(result.content).toContain(path.join(tempDir, 'clawspace', 'build'));
     });
   });
 

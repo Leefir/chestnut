@@ -68,13 +68,15 @@ Motion 会检查该文件并基于记录寻找新方法或调整任务。
 
 - **Default cwd / path**: \`clawspace/\`（your business workspace / git-versioned）/ tool args use bare names relative to clawspace
   - exec: \`exec: curl -o file.pdf URL\` (writes to \`clawspace/file.pdf\`)
-  - read/write/ls: \`read: file.pdf\` (reads from \`clawspace/file.pdf\`)
-- **Access claw root** (e.g., \`MEMORY.md\` / \`logs/\` / \`tasks/\`): use \`cwd: '..'\`
+- **Access claw root** (e.g., \`MEMORY.md\` / \`logs/\` / \`tasks/\`): use \`cwd: '..'\` (cwd is workspace-relative / unix shell cd 模型 / '..' 上一层 = claw root)
   - exec: \`exec: { "command": "ls", "cwd": ".." }\`
   - read/write/ls: \`read: { "path": "MEMORY.md", "cwd": ".." }\`
   - search: \`search: { "query": "TODO", "cwd": ".." }\`
-- **Access other claw subdirs** (memory/, contract/, etc.): use \`cwd: '<subdir>'\`
-  - read: \`read: { "path": "x.md", "cwd": "memory" }\` (reads \`memory/x.md\`)
+- **Access claw root subdirs** (memory/, contract/, etc.): use \`cwd: '../<subdir>'\`
+  - read: \`read: { "path": "x.md", "cwd": "../memory" }\` (reads \`memory/x.md\`)
+  - exec: \`exec: { "command": "ls", "cwd": "../memory" }\`
+- **Stay in workspace subdir** (clawspace 下子目录): use \`cwd: '<subdir>'\`
+  - exec: \`exec: { "command": "make", "cwd": "build" }\` (runs at clawspace/build)
   - exec: \`exec: { "command": "ls", "cwd": "memory" }\`
 
 ## File Operation Guidelines

@@ -14,27 +14,37 @@ describe('resolveWorkspacePath', () => {
     expect(resolveWorkspacePath(ctx, 'foo.txt')).toBe('clawspace/foo.txt');
   });
 
-  it('cwd: ".." resolves to claw root', () => {
+  it('cwd: ".." escapes workspace to claw root (workspace-relative / phase 519)', () => {
     const ctx = mockCtx({ clawDir: '/c', workspaceDir: '/c/clawspace' });
     expect(resolveWorkspacePath(ctx, 'MEMORY.md', '..')).toBe('MEMORY.md');
   });
 
-  it('cwd: "memory" resolves to memory subdir (relative to clawDir / phase 518 align)', () => {
+  it('cwd: "../memory" resolves to claw root memory (phase 519)', () => {
     const ctx = mockCtx({ clawDir: '/c', workspaceDir: '/c/clawspace' });
-    expect(resolveWorkspacePath(ctx, 'x.md', 'memory')).toBe('memory/x.md');
+    expect(resolveWorkspacePath(ctx, 'x.md', '../memory')).toBe('memory/x.md');
   });
 
-  it('subagent cwd: "tasks/subagents/abc" resolves to temp dir (phase 518)', () => {
+  it('cwd: "subdir" stays in workspace (workspace-relative / phase 519)', () => {
     const ctx = mockCtx({ clawDir: '/c', workspaceDir: '/c/clawspace' });
-    expect(resolveWorkspacePath(ctx, 'temp.txt', 'tasks/subagents/abc')).toBe('tasks/subagents/abc/temp.txt');
+    expect(resolveWorkspacePath(ctx, 'foo.txt', 'subdir')).toBe('clawspace/subdir/foo.txt');
   });
 
-  it('subagent default base = subagents/<id>', () => {
+  it('cwd: "../tasks/subagents/<id>" resolves subagent temp dir (phase 519)', () => {
+    const ctx = mockCtx({ clawDir: '/c', workspaceDir: '/c/clawspace' });
+    expect(resolveWorkspacePath(ctx, 'foo.md', '../tasks/subagents/abc')).toBe('tasks/subagents/abc/foo.md');
+  });
+
+  it('absolute cwd passes through (phase 519)', () => {
+    const ctx = mockCtx({ clawDir: '/c', workspaceDir: '/c/clawspace' });
+    expect(resolveWorkspacePath(ctx, 'foo.txt', '/abs/path')).toBe('../abs/path/foo.txt');
+  });
+
+  it('subagent default base = clawspace (phase 518)', () => {
     const ctx = mockCtx({
       clawDir: '/c',
-      workspaceDir: '/c/tasks/subagents/abc',
+      workspaceDir: '/c/clawspace',  // phase 518: subagent default workspaceDir = clawspace
     });
-    expect(resolveWorkspacePath(ctx, 'foo.txt')).toBe('tasks/subagents/abc/foo.txt');
+    expect(resolveWorkspacePath(ctx, 'foo.txt')).toBe('clawspace/foo.txt');
   });
 
   it('absolute path passes through', () => {
