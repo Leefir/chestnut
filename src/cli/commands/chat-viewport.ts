@@ -3,9 +3,8 @@
  * motion 和 claw 共用
  */
 
-import * as fsNative from 'fs';
 import * as path from 'path';
-import chokidar from 'chokidar';
+import { createWatcher } from '../../foundation/file-watcher/index.js';
 
 import { createDirContext, createProcessManagerForCLI } from '../utils/factories.js';
 import { isAlive } from '../../foundation/process-exec/index.js';
@@ -449,7 +448,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
     const streamFile = path.join(clawsDir, clawId, STREAM_FILE);
 
     try {
-      const stat = fsNative.statSync(streamFile);
+      const stat = fs.statSync(streamFile);
       if (stat.size < track.fileSize) {
         // 旧 watcher 追踪归档 inode，需要替换（Bug 2 修复）
         const stale = clawWatchers.get(clawId);
@@ -473,17 +472,8 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
       }
       if (stat.size > track.fileSize) {
         const toRead = stat.size - track.fileSize;
-        const buf = Buffer.alloc(toRead);
-        const fd = fsNative.openSync(streamFile, 'r');
-        let bytesRead = 0;
-        try {
-          while (bytesRead < toRead) {
-            const n = fsNative.readSync(fd, buf, bytesRead, toRead - bytesRead, track.fileSize + bytesRead);
-            if (n === 0) break;
-            bytesRead += n;
-          }
-        } finally { fsNative.closeSync(fd); }
-        track.fileSize += bytesRead;
+        const buf = fs.readBytesSync(streamFile, track.fileSize, stat.size);
+        track.fileSize += buf.length;
 
         const chunk = track.leftover + buf.toString('utf-8');
         const lines = chunk.split('\n');
@@ -561,8 +551,8 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
   const refreshAllClawStatus = async () => {
     if (!isMotion) return;
     let clawIds: string[] = [];
-    try { clawIds = fsNative.readdirSync(clawsDir, { withFileTypes: true })
-      .filter(e => e.isDirectory())
+    try { clawIds = fs.listSync(clawsDir, { includeDirs: true })
+      .filter(e => e.isDirectory)
       .map(e => e.name); } catch { return; }
 
     // 清理已删除的 claw
@@ -696,7 +686,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
         return;
       }
       const clawDir = path.join(clawsDir, clawId);
-      if (!fsNative.existsSync(clawDir)) {
+      if (!fs.existsSync(clawDir)) {
         appendOutput('\x1b[31m', `[attach] claw "${clawId}" 不存在`);
       } else if (clawTrackMap.has(clawId)) {
         appendOutput('\x1b[2m', `[attach] ${clawId} 已在面板中`);
@@ -856,7 +846,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
       const interruptFile = path.join(options.agentDir, 'interrupt');
       pendingInterruptSource = 'esc';
       try {
-        fsNative.writeFileSync(interruptFile, '');
+        fs.writeAtomicSync(interruptFile, '');
       } catch { /* best-effort */ }
       mainUI.startSpinner('Interrupting...');
       // 5 秒超时保护：如果 daemon 没响应，强制清理
@@ -895,7 +885,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
     // 写入崩溃日志文件（terminal 关闭后仍可读）
     try {
       const stack = (err instanceof Error) ? err.stack : String(err);
-      fsNative.appendFileSync(crashLogPath, `\n[${new Date().toISOString()}] uncaught:\n${stack}\n`);
+      fs.appendSync(crashLogPath, `\n[${new Date().toISOString()}] uncaught:\n${stack}\n`);
     } catch { /* ignore */ }
     process.stderr.write(`[chat] uncaught error: ${err}\n`);
     try { tui.stop(); } catch { /* ignore */ }
@@ -909,18 +899,9 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
   const initOwnStateFromHistory = () => {
     if (isMotion) return;
     try {
-      const stat = fsNative.statSync(streamPath);
+      const stat = fs.statSync(streamPath);
       if (stat.size === 0) return;
-      const buf = Buffer.alloc(stat.size);
-      const fd = fsNative.openSync(streamPath, 'r');
-      try {
-        let read = 0;
-        while (read < stat.size) {
-          const n = fsNative.readSync(fd, buf, read, stat.size - read, read);
-          if (n === 0) break;
-          read += n;
-        }
-      } finally { fsNative.closeSync(fd); }
+      const buf = fs.readBytesSync(streamPath, 0, stat.size);
       const lines = buf.toString('utf-8').split('\n');
       lines.pop(); // 末尾不完整行
       for (const line of lines) {
@@ -953,19 +934,15 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
   tui.start();
 
   // Watch clawsDir，新契约出现时自动加入
-  let clawsDirWatcher: ReturnType<typeof chokidar.watch> | null = null;
+  let clawsDirWatcher: Watcher | null = null;
   if (clawsDir) {
-    clawsDirWatcher = chokidar.watch(clawsDir, {
-      depth: 2,
-      ignoreInitial: true,
-      persistent: true,
-    });
-    clawsDirWatcher.on('addDir', () => {
+    clawsDirWatcher = createWatcher(clawsDir, (event) => {
+      if (event.type !== 'addDir') return;
       // 重新扫描，加入尚未在面板中的有契约 claw
       try {
-        const entries = fsNative.readdirSync(clawsDir, { withFileTypes: true });
+        const entries = fs.listSync(clawsDir, { includeDirs: true });
         for (const e of entries) {
-          if (!e.isDirectory()) continue;
+          if (!e.isDirectory) continue;
           const clawId = e.name;
           if (clawTrackMap.has(clawId)) continue;
           const clawDir = path.join(clawsDir, clawId);
