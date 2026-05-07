@@ -3,7 +3,6 @@ import type { AuditLog } from '../../foundation/audit/index.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { AsyncTaskSystem } from '../async-task-system/index.js';
 import { ContractSystem } from '../contract/manager.js';
-import type { SkillSystem } from '../../foundation/skill-system/index.js';
 import { scheduleRetro } from './retro-scheduler.js';
 import { RETRO_AUDIT_EVENTS } from './retro-audit-events.js';
 import * as path from 'path';
@@ -19,7 +18,6 @@ export interface EvolutionSystemDeps {
   audit: AuditLog;
   taskSystem: AsyncTaskSystem;
   contractManager: ContractSystem;
-  skillRegistry?: SkillSystem;   // for SkillSystem.reload coordination
   retroSubagentTimeoutMs?: number;   // default 600000ms (10 min)
 }
 
@@ -30,18 +28,8 @@ export interface RetroResult {
     | 'skipped_index_missing'
     | 'subagent_timeout'
     | 'no_skill_output'
-    | 'reload_failed'
     | 'error';
   detail?: string;
-}
-
-export class EvolutionError extends Error {
-  readonly code: 'reload_failed' | 'unknown';
-  constructor(code: 'reload_failed' | 'unknown', message?: string) {
-    super(message);
-    this.code = code;
-    this.name = 'EvolutionError';
-  }
 }
 
 /** Motion 侧资源上下文（review_request 整合专用）。 */
