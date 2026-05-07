@@ -32,7 +32,12 @@ const RECENT_FAIL_RATIO_THRESHOLD = 0.5;
 
 export interface StreamReader {
   /** Start watching and emit new events. Throws if already started. */
-  start(): void;
+  /**
+   * Start watching the stream file.
+   * @param initialOffset - if provided, start reading from this byte offset (replays events from offset to end + tails new appends).
+   *                        if undefined (default), skip to file end (tail mode / only new appends).
+   */
+  start(initialOffset?: number): void;
   /** Stop watching. Idempotent. */
   stop(): Promise<void>;
   /** Whether the reader is currently watching. */
@@ -190,11 +195,13 @@ export function createStreamReader(
   };
 
   return {
-    start() {
+    start(initialOffset?: number) {
       if (started) throw new Error('StreamReader already started');
       started = true;
       active = true;
-      if (fs.existsSync(streamPath)) {
+      if (initialOffset !== undefined) {
+        offset = initialOffset;
+      } else if (fs.existsSync(streamPath)) {
         offset = fs.statSync(streamPath).size;
       } else {
         offset = 0;
@@ -203,6 +210,11 @@ export function createStreamReader(
           `path=${streamPath}`,
           'reason=start_existsSync_false',
         );
+      }
+      // If initialOffset given (catch-up mode / not file end) / read [offset, current size) immediately
+      // so caller catches up on existing events before tailing new appends.
+      if (initialOffset !== undefined && fs.existsSync(streamPath) && fs.statSync(streamPath).size > offset) {
+        readIncrement();
       }
       watcher = createWatcher(
         fs.resolve(streamPath),

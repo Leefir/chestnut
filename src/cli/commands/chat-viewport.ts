@@ -23,7 +23,7 @@ import { createViewportObservability } from './chat-viewport-observability.js';
 import type { StreamReader } from '../../foundation/stream/index.js';
 import { LOGS_DIR } from '../../types/paths.js';
 
-import { writeUserChat, fmtDuration } from './chat-viewport-utils.js';
+import { writeUserChat, fmtDuration, findRecentTurnStartOffset } from './chat-viewport-utils.js';
 import { createChatViewportWatcher } from './chat-viewport-watcher.js';
 import { type ClawTrack, makeClawTrack, buildClawLine } from './chat-viewport-claw-line.js';
 import { createMainTurnUI, type MainTurnUIDeps, type MainTurnUIController } from './main-turn-ui.js';
@@ -367,8 +367,12 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
   };
 
   // tail stream.jsonl
+  // 启动期 backward scan 找最近 turn_start byte offset / 用该 offset 启 reader →
+  // chat-viewport 启动慢于 daemon 时（PROCESS_SPAWN_CONFIRM_MS = 3000ms / daemon 50ms 已 emit turn_start + llm_start）
+  // 仍能 catch-up 当前 turn 的 events（如 llm_start → spinner 启动）。
   const streamReader = createStreamReader(fs, STREAM_FILE, (ev) => mainUI.withScope('main', () => handleEvent(ev)), options.audit, { persistent: false });
-  streamReader.start();
+  const recentTurnOffset = findRecentTurnStartOffset(fs, STREAM_FILE);
+  streamReader.start(recentTurnOffset);
 
   // Motion viewport：各 claw 步数追踪
   const isMotion = options.label === 'motion';
