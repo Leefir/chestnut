@@ -13,7 +13,7 @@ import type { ToolUseBlock, ToolResultBlock } from '../../types/message.js';
 import type { ExecContext, ToolResult } from '../../foundation/tool-protocol/index.js';
 import type { IToolExecutor, ToolRegistry } from '../../foundation/tools/executor.js';
 import type { StepCallbacks } from './types.js';
-import { safeCallback, safeCallbackAsync, parseToolInput, toToolResultBlock } from './utils.js';
+import { safeCallback, toToolResultBlock } from './utils.js';
 import { throwAbortError } from './abort-helpers.js';
 
 interface CategorizedCalls {
@@ -50,10 +50,10 @@ async function executeSequential(
   ctx: ExecContext,
   callbacks?: StepCallbacks,
 ): Promise<ToolResultBlock[]> {
+  // 注：onToolCall 已在 stream.ts:tool_use_start 时调（流式提前 emit / 不等 execute）
   const results: ToolResultBlock[] = [];
   for (const call of toolCalls) {
     if (ctx.signal?.aborted) throwAbortError(ctx.signal);
-    await safeCallbackAsync('onToolCall', async () => await callbacks?.onToolCall?.(call.name, call.id));
     const result = await executeSingleTool(call, executor, ctx);
     safeCallback('onToolResult', () => callbacks?.onToolResult?.(call.name, call.id, result));
     results.push(toToolResultBlock(call.id, result));
@@ -68,9 +68,9 @@ async function executeReadonlyAsync(
   results: Map<number, ToolResultBlock>,
   callbacks?: StepCallbacks,
 ): Promise<void> {
+  // 注：onToolCall 已在 stream.ts:tool_use_start 时调
   for (const { call, index } of group) {
     if (ctx.signal?.aborted) throwAbortError(ctx.signal);
-    await safeCallbackAsync('onToolCall', async () => await callbacks?.onToolCall?.(call.name, call.id));
     const result = await executeSingleTool(call, executor, ctx);
     safeCallback('onToolResult', () => callbacks?.onToolResult?.(call.name, call.id, result));
     results.set(index, toToolResultBlock(call.id, result));
@@ -91,19 +91,15 @@ async function executeReadonlySync(
     ({ call }) => (call.input as Record<string, unknown>)?.__parseError !== true
   );
 
+  // 注：onToolCall 已在 stream.ts:tool_use_start 时调
   for (const { call, index } of parseErrorCalls) {
     if (ctx.signal?.aborted) throwAbortError(ctx.signal);
-    await safeCallbackAsync('onToolCall', async () => await callbacks?.onToolCall?.(call.name, call.id));
     const result = await executeSingleTool(call, executor, ctx);
     safeCallback('onToolResult', () => callbacks?.onToolResult?.(call.name, call.id, result));
     results.set(index, toToolResultBlock(call.id, result));
   }
 
   if (cleanCalls.length === 0) return;
-
-  for (const { call } of cleanCalls) {
-    await safeCallbackAsync('onToolCall', async () => await callbacks?.onToolCall?.(call.name, call.id));
-  }
 
   const batch = cleanCalls.map(({ call }) => {
     const { async: _asyncMode, ...toolArgs } = call.input as Record<string, unknown>;
@@ -127,9 +123,9 @@ async function executeWriteCalls(
   results: Map<number, ToolResultBlock>,
   callbacks?: StepCallbacks,
 ): Promise<void> {
+  // 注：onToolCall 已在 stream.ts:tool_use_start 时调
   for (const { call, index } of group) {
     if (ctx.signal?.aborted) throwAbortError(ctx.signal);
-    await safeCallbackAsync('onToolCall', async () => await callbacks?.onToolCall?.(call.name, call.id));
     const result = await executeSingleTool(call, executor, ctx);
     safeCallback('onToolResult', () => callbacks?.onToolResult?.(call.name, call.id, result));
     results.set(index, toToolResultBlock(call.id, result));

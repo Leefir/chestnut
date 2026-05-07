@@ -130,6 +130,13 @@ export async function collectStreamResponse(
           flushToolUse(state);
           state.currentToolUse = { id: chunk.toolUse!.id, name: chunk.toolUse!.name, input: '' };
           state.stopReason = 'tool_use';
+          // 流式 tool_use_start 来时立即 emit onToolCall（chat-viewport 实时显示 tool icon / 不等 stream end + execute phase）
+          // 语义改：onToolCall = LLM 已识别 tool / 不是 execute 之前 / tool-execution.ts 不再重复调
+          // 用 safeCallback 守护：callback throw 不中断 stream loop（保 stream chunk 完整收 / tool_use_delta 等不丢）
+          {
+            const toolUseStart = chunk.toolUse!;
+            safeCallback('onToolCall', () => callbacks?.onToolCall?.(toolUseStart.name, toolUseStart.id));
+          }
           break;
         case 'tool_use_delta':
           if (state.currentToolUse && chunk.toolUse?.partialInput) {
