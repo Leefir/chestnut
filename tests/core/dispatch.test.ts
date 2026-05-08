@@ -124,7 +124,6 @@ Content.
 
       expect(mockWriteFile).toHaveBeenCalled();
       const call = mockWriteFile.mock.calls[0][2];
-      expect(call.intent).toBeDefined();
       expect(call.intent).toContain('follow up');
     });
 
@@ -147,7 +146,6 @@ Content.
 
       expect(mockWriteFile).toHaveBeenCalled();
       const call = mockWriteFile.mock.calls[0][2];
-      expect(call.intent).toBeDefined();
       expect(call.intent).toContain('follow up');
     });
 
@@ -168,7 +166,6 @@ Content.
       await tool.execute({ goal: 'follow up', mode: 'describing' }, ctx);
 
       const call = mockWriteFile.mock.calls[0][2];
-      expect(call.intent).toBeDefined();
       expect(call.intent).toContain('follow up');
     });
 
@@ -188,7 +185,6 @@ Content.
       await tool.execute({ goal: 'follow up', mode: 'describing' }, ctx);
 
       const call = mockWriteFile.mock.calls[0][2];
-      expect(call.intent).toBeDefined();
       expect(call.intent).toContain('follow up');
     });
 
@@ -200,7 +196,6 @@ Content.
 
       expect(mockWriteFile).toHaveBeenCalled();
       const call = mockWriteFile.mock.calls[0][2];
-      expect(call.intent).toBeDefined();
       expect(call.intent).toContain('standalone task');
     });
   });

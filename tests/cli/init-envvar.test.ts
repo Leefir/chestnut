@@ -32,19 +32,16 @@ const { loadGlobalConfig } = await import('../../src/foundation/config/index.js'
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
-let originalRoot: string | undefined;
 let tempDir: string;
 
 function setupTempDir() {
-  originalRoot = process.env.CLAWFORUM_ROOT;
   tempDir = path.join(tmpdir(), `clawforum-init-test-${randomUUID()}`);
   fs.mkdirSync(tempDir, { recursive: true });
-  process.env.CLAWFORUM_ROOT = tempDir;
+  vi.stubEnv('CLAWFORUM_ROOT', tempDir);
 }
 
 function teardownTempDir() {
-  if (originalRoot === undefined) delete process.env.CLAWFORUM_ROOT;
-  else process.env.CLAWFORUM_ROOT = originalRoot;
+  vi.unstubAllEnvs();
   fs.rmSync(tempDir, { recursive: true, force: true });
 }
 
@@ -55,14 +52,8 @@ const knownVars = [
   'DASHSCOPE_API_KEY',
 ];
 
-function clearKnownVars(): Record<string, string | undefined> {
-  const saved: Record<string, string | undefined> = {};
-  knownVars.forEach(v => { saved[v] = process.env[v]; delete process.env[v]; });
-  return saved;
-}
-
-function restoreKnownVars(saved: Record<string, string | undefined>) {
-  knownVars.forEach(v => { if (saved[v] !== undefined) process.env[v] = saved[v]; });
+function clearKnownVars(): void {
+  knownVars.forEach(v => vi.stubEnv(v, undefined as unknown as string));
 }
 
 // ── tests ──────────────────────────────────────────────────────────────────────
@@ -80,74 +71,53 @@ describe('initCommand — Branch 1: 扫描环境变量', () => {
   });
 
   it('检测到变量 → 选编号 → api_key 存为引用，运行时展开', async () => {
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-env-test';
+    vi.stubEnv('ANTHROPIC_API_KEY', 'sk-ant-env-test');
     // configMethod='1', pick='1'(第一个), model=''(→auto)
     rlAnswers.queue = ['1', '1', ''];
 
-    try {
-      await initCommand(true);
-      // loadGlobalConfig 在 env var 仍有效时调用，expandEnvVars 展开 ${ANTHROPIC_API_KEY}
-      const config = loadGlobalConfig();
-      expect(config.llm.primary.api_key).toBe('sk-ant-env-test');
-      expect(config.llm.primary.preset).toBe('anthropic');
-    } finally {
-      delete process.env.ANTHROPIC_API_KEY;
-    }
+    await initCommand(true);
+    // loadGlobalConfig 在 env var 仍有效时调用，expandEnvVars 展开 ${ANTHROPIC_API_KEY}
+    const config = loadGlobalConfig();
+    expect(config.llm.primary.api_key).toBe('sk-ant-env-test');
+    expect(config.llm.primary.preset).toBe('anthropic');
   });
 
   it('检测到变量 → 直接输入变量名 → api_key 存为引用，运行时展开', async () => {
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-env-test2';
+    vi.stubEnv('ANTHROPIC_API_KEY', 'sk-ant-env-test2');
     // configMethod='1', pick='ANTHROPIC_API_KEY', model=''(→auto)
     rlAnswers.queue = ['1', 'ANTHROPIC_API_KEY', ''];
 
-    try {
-      await initCommand(true);
-      const config = loadGlobalConfig();
-      expect(config.llm.primary.api_key).toBe('sk-ant-env-test2');
-    } finally {
-      delete process.env.ANTHROPIC_API_KEY;
-    }
+    await initCommand(true);
+    const config = loadGlobalConfig();
+    expect(config.llm.primary.api_key).toBe('sk-ant-env-test2');
   });
 
   it('未检测到变量 → 输入自定义变量名 → 变量在已知 preset 中 → api_key 存为引用', async () => {
-    const saved = clearKnownVars();
-    process.env.OPENAI_API_KEY = 'sk-openai-123';
+    clearKnownVars();
+    vi.stubEnv('OPENAI_API_KEY', 'sk-openai-123');
     // configMethod='1', varName='OPENAI_API_KEY', model=''(→auto)
     rlAnswers.queue = ['1', 'OPENAI_API_KEY', ''];
 
-    try {
-      await initCommand(true);
-      const config = loadGlobalConfig();
-      expect(config.llm.primary.api_key).toBe('sk-openai-123');
-      expect(config.llm.primary.preset).toBe('openai');
-    } finally {
-      delete process.env.OPENAI_API_KEY;
-      restoreKnownVars(saved);
-    }
+    await initCommand(true);
+    const config = loadGlobalConfig();
+    expect(config.llm.primary.api_key).toBe('sk-openai-123');
+    expect(config.llm.primary.preset).toBe('openai');
   });
 
   it('未检测到变量 → 变量名为空 → throws CliError', async () => {
-    const saved = clearKnownVars();
+    clearKnownVars();
     // configMethod='1', varName=''
     rlAnswers.queue = ['1', ''];
 
-    try {
-      await expect(initCommand(true)).rejects.toThrow('Variable name is required');
-    } finally {
-      restoreKnownVars(saved);
-    }
+    await expect(initCommand(true)).rejects.toThrow('Variable name is required');
   });
 
   it('检测到变量 → 输入无效（非编号非变量名格式）→ throws CliError', async () => {
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-xxx';
+    vi.stubEnv('ANTHROPIC_API_KEY', 'sk-ant-xxx');
     // configMethod='1', pick='sk-ant-api03-...'（key 格式，不是变量名）
     rlAnswers.queue = ['1', 'sk-ant-api03-invalid'];
 
-    try {
-      await expect(initCommand(true)).rejects.toThrow('Invalid input. Enter a number or a variable name');
-    } finally {
-      delete process.env.ANTHROPIC_API_KEY;
-    }
+    await expect(initCommand(true)).rejects.toThrow('Invalid input. Enter a number or a variable name');
   });
 });
 
