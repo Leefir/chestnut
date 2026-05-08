@@ -14,6 +14,8 @@
 export const LOGS_DIR = 'logs' as const;
 export const CONTRACT_DIR = 'contract' as const;
 export const DIALOG_DIR = 'dialog' as const;
+/** 顶层 claws 子目录 / 各 claw agent 目录的容器 */
+export const CLAWS_DIR = 'claws' as const;
 export const CLAWSPACE_DIR = 'clawspace' as const;
 export const STATUS_SUBDIR = 'status' as const; // 仅 subdir 域 / 与 STATUS_TOOL_NAME / cli cmd 'status' / git arg 'status' 命名区隔
 
@@ -80,6 +82,7 @@ export const CLAW_SUBDIRS = [
   CONTRACT_DIR,                // 旧 'contract'
   'skills',                    // phase370 已立 / 非 NEW（SKILLS_DIR_DEFAULT 字面量 / 避免循环依赖 skill-paths.ts → paths.ts）
   CLAWSPACE_DIR,               // 旧 'clawspace'
+  CLAWS_DIR,                   // NEW phase 544 / 旧 'claws'
   LOGS_DIR,                    // 旧 'logs'
   STATUS_SUBDIR,               // 旧 'status'
 ] as const;

@@ -7,7 +7,7 @@ import { TOOL_PROFILES } from '../../foundation/tools/profiles.js';
 import { InboxWriter } from '../../foundation/messaging/index.js';
 import { createSystemAudit } from '../../foundation/audit/index.js';
 import { DEFAULT_LLM_IDLE_TIMEOUT_MS } from '../../constants.js';
-import { CONTRACT_DIR } from '../../types/paths.js';
+import { CLAWS_DIR, CONTRACT_DIR } from '../../types/paths.js';
 import {
   RANDOM_DREAM_SYSTEM_PROMPT,
   buildRandomDreamPrompt,
@@ -128,15 +128,15 @@ function discoverWeightedContracts(
   fs: FileSystem,
   state: RandomDreamState,
 ): WeightedContract[] {
-  if (!fs.existsSync('claws')) return [];
+  if (!fs.existsSync(CLAWS_DIR)) return [];
 
   const processedIds = new Set(state.processedContractIds);
   const clawsSeen = new Set<string>();
   const contracts: WeightedContract[] = [];
 
-  for (const e of fs.listSync('claws', { includeDirs: true })) {
+  for (const e of fs.listSync(CLAWS_DIR, { includeDirs: true })) {
     const clawId = e.name;
-    const archiveDir = path.join('claws', clawId, CONTRACT_DIR, 'archive');
+    const archiveDir = path.join(CLAWS_DIR, clawId, CONTRACT_DIR, 'archive');
     if (!fs.existsSync(archiveDir)) continue;
 
     for (const ce of fs.listSync(archiveDir, { includeDirs: true })) {

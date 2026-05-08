@@ -8,7 +8,7 @@ import type { LLMOrchestratorConfig } from '../../foundation/llm-orchestrator/in
 import type { Message, ContentBlock, TextBlock, LLMResponse } from '../../types/message.js';
 import { InboxWriter } from '../../foundation/messaging/index.js';
 import { createSystemAudit } from '../../foundation/audit/index.js';
-import { DIALOG_DIR } from '../../types/paths.js';
+import { CLAWS_DIR, DIALOG_DIR } from '../../types/paths.js';
 import {
   DEEP_DREAM_SYSTEM_PROMPT,
   buildDreamInput,
@@ -260,10 +260,10 @@ async function runDeepDreamForClaw(
 
 export async function runDeepDream(opts: DeepDreamOptions): Promise<void> {
   const maxCompressionTokens = opts.maxCompressionTokens ?? 4000;
-  if (!opts.fs.existsSync('claws')) return;
+  if (!opts.fs.existsSync(CLAWS_DIR)) return;
 
-  const clawIds = opts.fs.listSync('claws', { includeDirs: true })
-    .filter(e => opts.fs.statSync(path.join('claws', e.name)).isDirectory)
+  const clawIds = opts.fs.listSync(CLAWS_DIR, { includeDirs: true })
+    .filter(e => opts.fs.statSync(path.join(CLAWS_DIR, e.name)).isDirectory)
     .map(e => e.name);
 
   if (clawIds.length === 0) return;
@@ -272,7 +272,7 @@ export async function runDeepDream(opts: DeepDreamOptions): Promise<void> {
 
   // 串行处理每个 claw
   for (const clawId of clawIds) {
-    const clawDir = path.join(opts.clawforumDir, 'claws', clawId);
+    const clawDir = path.join(opts.clawforumDir, CLAWS_DIR, clawId);
     const clawFs = new NodeFileSystem({ baseDir: clawDir });
     try {
       await runDeepDreamForClaw(clawId, clawDir, clawFs, llm, maxCompressionTokens, opts.audit);

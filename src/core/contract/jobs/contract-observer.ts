@@ -4,6 +4,7 @@ import type { AuditLog } from '../../../foundation/audit/index.js';
 import type { InboxMessageOptionsBase } from '../../../foundation/messaging/index.js';
 import { collectContractEvents } from './event-collector.js';
 import { CONTRACT_AUDIT_EVENTS } from '../audit-events.js';
+import { CLAWS_DIR } from '../../../types/paths.js';
 
 export interface ContractObserverOptions {
   clawforumDir: string;       // .clawforum/ 目录
@@ -28,7 +29,7 @@ export async function runContractObserver(options: ContractObserverOptions): Pro
   } catch { /* 首次运行 */ }
 
   // 扫描 claws/ 目录
-  const clawsDir = path.join(clawforumDir, 'claws');
+  const clawsDir = path.join(clawforumDir, CLAWS_DIR);
   let clawIds: string[];
   try {
     clawIds = fs.listSync(clawsDir, { includeDirs: true })
@@ -41,7 +42,7 @@ export async function runContractObserver(options: ContractObserverOptions): Pro
 
   for (const clawId of clawIds) {
     try {
-      const clawDir = path.join(clawforumDir, 'claws', clawId);
+      const clawDir = path.join(clawforumDir, CLAWS_DIR, clawId);
       const clawEvents = collectContractEvents(fs, clawDir, clawId, lastCheckTs);
       if (clawEvents.length > 0) {
         events.push(clawEvents.join('\n'));

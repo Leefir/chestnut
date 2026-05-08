@@ -27,6 +27,7 @@ import {
   TASKS_QUEUES_FAILED_DIR,
   TASKS_QUEUES_RESULTS_DIR,
   TASKS_SYNC_DIR,
+  CLAWSPACE_DIR,
 } from '../../types/paths.js';
 import type { StreamLog } from '../../foundation/stream/types.js';
 import type { DialogStore } from '../../foundation/dialog-store/index.js';
@@ -500,7 +501,7 @@ export class AsyncTaskSystem {
     return {
       clawId: task.parentClawId,
       clawDir: task.parentClawDir,
-      workspaceDir: path.join(task.parentClawDir, 'clawspace'),
+      workspaceDir: path.join(task.parentClawDir, CLAWSPACE_DIR),
       syncDir: path.join(task.parentClawDir, TASKS_SYNC_DIR),
       callerType: task.callerType ?? 'claw',
       fs: this.fs,
