@@ -33,10 +33,6 @@ export const lsTool: Tool = {
         type: 'string',
         description: 'Target claw ID (Motion only). e.g. { "path": "contract/archive", "claw": "claw1" }',
       },
-      async: {
-        type: 'boolean',
-        description: 'If true, run in background. Result delivered to inbox when complete. Use for large directories or non-blocking listings.',
-      },
     },
     required: [],
   },
@@ -121,7 +117,11 @@ export const lsTool: Tool = {
     const lines = limited.map(e => {
       const type = e.isDirectory ? '[DIR]' : '[FILE]';
       const size = e.isFile ? ` ${e.size} bytes` : '';
-      const displayPath = nodePath.relative(resolved, e.path) || '.';
+      // 跨 claw 分支：e.path 是相对 targetPath 的路径（targetFs baseDir = targetPath）/ 直接用
+      // 同 claw 分支：e.path 是相对 ctx.fs baseDir 的路径 / relative(resolved, ...) 转 user-facing 显示
+      const displayPath = clawParam !== undefined
+        ? (e.path || '.')
+        : (nodePath.relative(resolved, e.path) || '.');
       return `${type} ${displayPath}${size}`;
     });
 

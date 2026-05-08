@@ -936,12 +936,12 @@ describe('AsyncTaskSystem Tool Tasks', () => {
   describe('readonly tools supportsAsync', () => {
     it('read tool should have supportsAsync: false', () => {
       expect(readTool.supportsAsync).toBe(false);
-      expect(readTool.schema.properties).toHaveProperty('async');
+      expect(readTool.schema.properties).not.toHaveProperty('async');
     });
 
     it('ls tool should have supportsAsync: false', () => {
       expect(lsTool.supportsAsync).toBe(false);
-      expect(lsTool.schema.properties).toHaveProperty('async');
+      expect(lsTool.schema.properties).not.toHaveProperty('async');
     });
 
     it('search tool should have supportsAsync: true', () => {

@@ -7,9 +7,8 @@ describe('buildSubagentSystemPromptPrefix', () => {
       taskId: 'abc123',
       callerClawId: 'main-claw',
     });
-    expect(result).toContain('Your default workspace: `clawspace/`');
-    expect(result).toContain('shared with your caller "main-claw"');
-    expect(result).toContain('Your dedicated temp dir: `tasks/subagents/abc123/`');
+    expect(result).toContain('Your default cwd is the clawspace of your caller "main-claw"');
+    expect(result).toContain('Your dedicated temp dir: `../tasks/subagents/abc123/`');
     expect(result).toContain('recommended for ephemeral files');
   });
 
@@ -19,7 +18,7 @@ describe('buildSubagentSystemPromptPrefix', () => {
       callerClawId: 'caller',
     });
     expect(result).toContain('exec / read / write / search / ls');
-    expect(result).toContain('默认在 `clawspace/`');
+    expect(result).toContain('默认在 clawspace 目录');
     expect(result).toContain('访问其他 claw 用 read tools 的');
   });
 });

@@ -41,10 +41,6 @@ export const readTool: Tool = {
         type: 'string',
         description: 'Target claw ID (Motion only). e.g. { "path": "contract/xxx/progress.json", "claw": "claw1" }',
       },
-      async: {
-        type: 'boolean',
-        description: 'If true, run in background. Result delivered to inbox when complete. Use for large files or non-blocking reads.',
-      },
     },
     required: ['path'],
   },
