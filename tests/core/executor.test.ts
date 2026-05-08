@@ -74,7 +74,7 @@ describe('ToolExecutor', () => {
       expect(results[1].content).toBe('result-a');
     });
 
-    it('should silently filter out non-readonly tools, returning shorter array', async () => {
+    it('should return null for non-readonly tools in mixed batch', async () => {
       registry.register({
         name: 'write-tool',
         description: 'write',
@@ -92,14 +92,74 @@ describe('ToolExecutor', () => {
         async execute() { return { success: true, content: 'read-result' }; },
       });
 
-      // batch has 2 items but only 1 is readonly
+      // batch has 2 items: non-readonly returns null, readonly returns result
       const results = await executor.executeParallel(
         [{ toolName: 'write-tool', args: {} }, { toolName: 'read-tool', args: {} }],
         ctx,
       );
 
-      expect(results).toHaveLength(1);
-      expect(results[0].content).toBe('read-result');
+      expect(results).toHaveLength(2);
+      expect(results[0]).toBeNull();
+      expect(results[1]).not.toBeNull();
+      expect(results[1]!.content).toBe('read-result');
+    });
+
+    it('should return all results for all-readonly batch', async () => {
+      registry.register({
+        name: 'r1',
+        description: 'r1',
+        schema: { type: 'object', properties: {}, required: [] },
+
+        readonly: true,
+        async execute() { return { success: true, content: 'a' }; },
+      });
+      registry.register({
+        name: 'r2',
+        description: 'r2',
+        schema: { type: 'object', properties: {}, required: [] },
+
+        readonly: true,
+        async execute() { return { success: true, content: 'b' }; },
+      });
+
+      const results = await executor.executeParallel(
+        [{ toolName: 'r1', args: {} }, { toolName: 'r2', args: {} }],
+        ctx,
+      );
+
+      expect(results).toHaveLength(2);
+      expect(results.every(r => r !== null)).toBe(true);
+      expect(results[0]!.content).toBe('a');
+      expect(results[1]!.content).toBe('b');
+    });
+
+    it('should return null for non-readonly at any position', async () => {
+      registry.register({
+        name: 'read-tool',
+        description: 'read',
+        schema: { type: 'object', properties: {}, required: [] },
+
+        readonly: true,
+        async execute() { return { success: true, content: 'r' }; },
+      });
+      registry.register({
+        name: 'write-tool',
+        description: 'write',
+        schema: { type: 'object', properties: {}, required: [] },
+
+        readonly: false,
+        async execute() { return { success: true, content: 'w' }; },
+      });
+
+      const results = await executor.executeParallel(
+        [{ toolName: 'read-tool', args: {} }, { toolName: 'write-tool', args: {} }],
+        ctx,
+      );
+
+      expect(results).toHaveLength(2);
+      expect(results[0]).not.toBeNull();
+      expect(results[0]!.content).toBe('r');
+      expect(results[1]).toBeNull();
     });
 
     it('should return error result when readonly tool throws', async () => {
@@ -120,6 +180,88 @@ describe('ToolExecutor', () => {
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(false);
       expect(results[0].content).toContain('boom');
+    });
+  });
+
+  // Phase 534: validateArgs nested validation
+  describe('validateArgs', () => {
+    const nestedTool = {
+      name: 'nested-test',
+      description: 'Nested schema test',
+      schema: {
+        type: 'object' as const,
+        properties: {
+          items: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                count: { type: 'number' },
+              },
+              required: ['name'],
+            },
+          },
+          tag: { type: 'string' },
+        },
+        required: ['items'],
+      },
+      readonly: true,
+      async execute() { return { success: true, content: '' }; },
+    };
+
+    beforeEach(() => {
+      registry.register(nestedTool);
+    });
+
+    it('should validate nested array item types', () => {
+      const result = executor.validateArgs('nested-test', {
+        items: [{ name: 123 }],  // name should be string
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors?.[0]).toContain('items[0].name');
+      expect(result.errors?.[0]).toContain('should be string');
+    });
+
+    it('should validate nested object required fields', () => {
+      const result = executor.validateArgs('nested-test', {
+        items: [{ count: 1 }],  // missing required 'name'
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors?.[0]).toContain('items[0].name');
+      expect(result.errors?.[0]).toContain('Missing required');
+    });
+
+    it('should pass valid nested data', () => {
+      const result = executor.validateArgs('nested-test', {
+        items: [{ name: 'a', count: 1 }],
+        tag: 'x',
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('should pass empty array for array field', () => {
+      const result = executor.validateArgs('nested-test', {
+        items: [],
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('should report full path in nested errors', () => {
+      const result = executor.validateArgs('nested-test', {
+        items: [{ name: 'ok' }, { name: 42 }],  // items[1].name type mismatch
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors?.[0]).toMatch(/items\[1\]\.name.*should be string.*got number/);
+    });
+
+    it('should validate array type mismatch at top level', () => {
+      const result = executor.validateArgs('nested-test', {
+        items: 'not-an-array',
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors?.[0]).toContain('items');
+      expect(result.errors?.[0]).toContain('should be array');
     });
   });
 

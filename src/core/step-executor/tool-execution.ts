@@ -111,6 +111,12 @@ async function executeReadonlySync(
   for (let i = 0; i < cleanCalls.length; i++) {
     const { call, index } = cleanCalls[i];
     const result = parallelResults[i];
+    if (!result) {
+      const singleResult = await executeSingleTool(call, executor, ctx);
+      safeCallback('onToolResult', () => callbacks?.onToolResult?.(call.name, call.id, singleResult));
+      results.set(index, toToolResultBlock(call.id, singleResult));
+      continue;
+    }
     safeCallback('onToolResult', () => callbacks?.onToolResult?.(call.name, call.id, result));
     results.set(index, toToolResultBlock(call.id, result));
   }

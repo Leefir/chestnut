@@ -155,20 +155,84 @@ export class ToolExecutorImpl implements IToolExecutor {
   async executeParallel(
     batch: Array<{ toolName: string; args: Record<string, unknown> }>,
     ctx: ExecContext
-  ): Promise<ToolResult[]> {
-    const readOnlyCalls = batch.filter(({ toolName }) => {
+  ): Promise<(ToolResult | null)[]> {
+    const promises = batch.map(({ toolName, args }) => {
       const tool = this.registry.get(toolName);
-      return tool?.readonly === true;
-    });
-
-    const promises = readOnlyCalls.map(({ toolName, args }) =>
-      this.execute({ toolName, args, ctx }).catch(err => ({
+      if (tool?.readonly !== true) return Promise.resolve(null);
+      return this.execute({ toolName, args, ctx }).catch(err => ({
         success: false,
         content: err instanceof Error ? err.message : String(err),
-      } as ToolResult))
-    );
+      } as ToolResult));
+    });
 
     return Promise.all(promises);
+  }
+
+  /**
+   * Recursively validate a value against a schema property.
+   * Supports array items, nested objects, and primitives.
+   */
+  private validateValue(
+    value: unknown,
+    propSchema: Record<string, unknown>,
+    path: string,
+    errors: string[],
+  ): void {
+    if (!propSchema || typeof propSchema !== 'object' || !('type' in propSchema)) return;
+
+    const expectedType = (propSchema as { type: string }).type;
+
+    // Array: validate type + recursively validate items
+    if (expectedType === 'array') {
+      if (!Array.isArray(value)) {
+        errors.push(`Field "${path}" should be array, got ${typeof value}`);
+        return;
+      }
+      const itemSchema = (propSchema as { items?: Record<string, unknown> }).items;
+      if (itemSchema) {
+        for (let i = 0; i < value.length; i++) {
+          this.validateValue(value[i], itemSchema, `${path}[${i}]`, errors);
+        }
+      }
+      return;
+    }
+
+    // Object: validate type + recursively validate properties + required
+    if (expectedType === 'object') {
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        errors.push(`Field "${path}" should be object, got ${typeof value}`);
+        return;
+      }
+      const objValue = value as Record<string, unknown>;
+      const objProps = (propSchema as { properties?: Record<string, unknown> }).properties;
+      const objRequired = (propSchema as { required?: string[] }).required;
+
+      if (objRequired) {
+        for (const req of objRequired) {
+          if (!(req in objValue)) {
+            errors.push(`Missing required field: ${path}.${req}`);
+          }
+        }
+      }
+      if (objProps) {
+        for (const [key, val] of Object.entries(objProps)) {
+          if (key in objValue) {
+            this.validateValue(objValue[key], val as Record<string, unknown>, `${path}.${key}`, errors);
+          }
+        }
+      }
+      return;
+    }
+
+    // Primitive: string / number / boolean
+    const actualType = typeof value;
+    if (expectedType === 'string' && actualType !== 'string') {
+      errors.push(`Field "${path}" should be string, got ${actualType}`);
+    } else if (expectedType === 'number' && actualType !== 'number') {
+      errors.push(`Field "${path}" should be number, got ${actualType}`);
+    } else if (expectedType === 'boolean' && actualType !== 'boolean') {
+      errors.push(`Field "${path}" should be boolean, got ${actualType}`);
+    }
   }
 
   /**
@@ -204,15 +268,7 @@ export class ToolExecutorImpl implements IToolExecutor {
       }
       for (const [key, prop] of Object.entries(schema.properties)) {
         if (key in args && prop && typeof prop === 'object' && 'type' in prop) {
-          const actualType = typeof args[key];
-          const expectedType = (prop as { type: string }).type;
-          if (expectedType === 'string' && actualType !== 'string') {
-            errors.push(`Field "${key}" should be string, got ${actualType}`);
-          } else if (expectedType === 'number' && actualType !== 'number') {
-            errors.push(`Field "${key}" should be number, got ${actualType}`);
-          } else if (expectedType === 'boolean' && actualType !== 'boolean') {
-            errors.push(`Field "${key}" should be boolean, got ${actualType}`);
-          }
+          this.validateValue(args[key], prop as Record<string, unknown>, key, errors);
         }
       }
     } else {

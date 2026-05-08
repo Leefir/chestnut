@@ -561,7 +561,7 @@ describe('Tools', () => {
       expect(result.metadata?.async).toBe(true);
     });
 
-    it('should filter non-readonly tools in executeParallel', async () => {
+    it('should return null for non-readonly tools in executeParallel mixed batch', async () => {
       registry.register({
         name: 'read-op',
         description: 'Read',
@@ -589,7 +589,7 @@ describe('Tools', () => {
         fs: mockFs,
       });
 
-      // executeParallel only runs readonly tools; write-op is filtered out
+      // executeParallel returns null for non-readonly, result for readonly
       const results = await executor.executeParallel(
         [
           { toolName: 'read-op', args: {} },
@@ -598,8 +598,10 @@ describe('Tools', () => {
         ctx
       );
 
-      expect(results).toHaveLength(1);
-      expect(results[0].content).toBe('read-result');
+      expect(results).toHaveLength(2);
+      expect(results[0]).not.toBeNull();
+      expect(results[0]!.content).toBe('read-result');
+      expect(results[1]).toBeNull();
     });
   });
 });

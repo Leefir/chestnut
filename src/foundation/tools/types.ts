@@ -54,7 +54,7 @@ export interface IToolExecutor {
   executeParallel(
     batch: Array<{ toolName: string; args: Record<string, unknown> }>,
     ctx: ExecContext
-  ): Promise<ToolResult[]>;
+  ): Promise<(ToolResult | null)[]>;
   validateArgs(toolName: string, args: Record<string, unknown>): { valid: boolean; errors?: string[] };
 }
 
