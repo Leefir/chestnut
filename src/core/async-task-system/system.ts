@@ -266,6 +266,11 @@ export class AsyncTaskSystem {
       const task = JSON.parse(content) as SubAgentTask | ToolTask;
       if (task.kind !== 'subagent' && task.kind !== 'tool') return;
 
+      // β race fix (phase 556): cancel() may have raced ahead during fs.read
+      // await window. Re-check cancellingIds before push to prevent ghost
+      // dispatch. Sync gate from line 261-263 only catches pre-await races.
+      if (this.cancellingIds.has(taskId)) return;
+
       // task_started stream event triggered here (covers spawn direct write,
       // scheduleSubAgent, and startup recovery scan uniformly)
       this.parentStreamLog?.write({

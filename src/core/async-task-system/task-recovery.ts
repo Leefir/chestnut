@@ -103,16 +103,51 @@ export async function recoverTasks(deps: RecoveryDeps): Promise<void> {
                   // dead-letter: 转 failed
                   auditWriter?.write(TASK_AUDIT_EVENTS.RECOVERY_DEAD_LETTER, task.id,
                     `retries=${retryCount}`, 'action=move_to_failed');
-                  await fs.move(entry.path, `${TASKS_QUEUES_FAILED_DIR}/${task.id}.json`).catch(() => {
-                    fs.delete(entry.path).catch(() => {});
+                  await fs.move(entry.path, `${TASKS_QUEUES_FAILED_DIR}/${task.id}.json`).catch(async (moveErr) => {
+                    auditWriter?.write(
+                      TASK_AUDIT_EVENTS.RECOVERY_FAILED,
+                      task.id,
+                      'context=dead_letter_move_failed',
+                      `error=${moveErr instanceof Error ? moveErr.message : JSON.stringify(moveErr)}`,
+                    );
+                    await fs.delete(entry.path).catch((delErr) => {
+                      auditWriter?.write(
+                        TASK_AUDIT_EVENTS.RECOVERY_FAILED,
+                        task.id,
+                        'context=dead_letter_delete_failed',
+                        `error=${delErr instanceof Error ? delErr.message : JSON.stringify(delErr)}`,
+                      );
+                    });
+                  });
+                  // C2.a: cleanup retry counter file (best-effort with audit)
+                  await fs.delete(retryPath).catch((cleanupErr) => {
+                    auditWriter?.write(
+                      TASK_AUDIT_EVENTS.RECOVERY_FAILED,
+                      task.id,
+                      'context=dead_letter_retrypath_cleanup_failed',
+                      `error=${cleanupErr instanceof Error ? cleanupErr.message : JSON.stringify(cleanupErr)}`,
+                    );
                   });
                   return; // 不走后续 move to done
                 }
               }
 
               // 正常路径: move running → done
-              await fs.move(entry.path, `${TASKS_QUEUES_DONE_DIR}/${task.id}.json`).catch(() => {
-                fs.delete(entry.path).catch(() => {});
+              await fs.move(entry.path, `${TASKS_QUEUES_DONE_DIR}/${task.id}.json`).catch(async (moveErr) => {
+                auditWriter?.write(
+                  TASK_AUDIT_EVENTS.RECOVERY_FAILED,
+                  task.id,
+                  'context=done_move_failed',
+                  `error=${moveErr instanceof Error ? moveErr.message : JSON.stringify(moveErr)}`,
+                );
+                await fs.delete(entry.path).catch((delErr) => {
+                  auditWriter?.write(
+                    TASK_AUDIT_EVENTS.RECOVERY_FAILED,
+                    task.id,
+                    'context=done_delete_failed',
+                    `error=${delErr instanceof Error ? delErr.message : JSON.stringify(delErr)}`,
+                  );
+                });
               });
               auditWriter?.write(TASK_AUDIT_EVENTS.RECOVERED, task.id, 'reason=result_file_exists');
             } else {
