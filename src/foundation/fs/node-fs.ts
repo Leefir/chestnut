@@ -31,6 +31,34 @@ import {
   PermissionError,
 } from '../../types/errors.js';
 
+async function wrapENOENT<T>(
+  relativePath: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new FileNotFoundError(relativePath);
+    }
+    throw error;
+  }
+}
+
+function wrapENOENTSync<T>(
+  relativePath: string,
+  fn: () => T,
+): T {
+  try {
+    return fn();
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new FileNotFoundError(relativePath);
+    }
+    throw error;
+  }
+}
+
 /**
  * Node.js FileSystem implementation
  */
@@ -124,15 +152,7 @@ export class NodeFileSystem implements FileSystem {
   
   async read(relativePath: string): Promise<string> {
     const absolute = this.resolveAndCheck(relativePath, 'read');
-
-    try {
-      return await readFile(absolute);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        throw new FileNotFoundError(relativePath);
-      }
-      throw error;
-    }
+    return wrapENOENT(relativePath, () => readFile(absolute));
   }
 
   async writeAtomic(relativePath: string, content: string): Promise<void> {
@@ -157,15 +177,7 @@ export class NodeFileSystem implements FileSystem {
   
   async delete(relativePath: string): Promise<void> {
     const absolute = this.resolveAndCheck(relativePath, 'write');
-    
-    try {
-      await deleteFile(absolute);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        throw new FileNotFoundError(relativePath);
-      }
-      throw error;
-    }
+    return wrapENOENT(relativePath, () => deleteFile(absolute));
   }
   
   // ========================================================================
@@ -277,15 +289,7 @@ export class NodeFileSystem implements FileSystem {
     isDirectory: boolean;
   }> {
     const absolute = this.resolveAndCheck(relativePath, 'read');
-    
-    try {
-      return await stat(absolute);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        throw new FileNotFoundError(relativePath);
-      }
-      throw error;
-    }
+    return wrapENOENT(relativePath, () => stat(absolute));
   }
 
   async move(fromPath: string, toPath: string): Promise<void> {
@@ -295,7 +299,7 @@ export class NodeFileSystem implements FileSystem {
     // Ensure destination directory exists
     await ensureDir(path.dirname(toAbsolute));
 
-    await moveFile(fromAbsolute, toAbsolute);
+    return wrapENOENT(fromPath, () => moveFile(fromAbsolute, toAbsolute));
   }
 
   resolve(relativePath: string): string {
@@ -341,36 +345,23 @@ export class NodeFileSystem implements FileSystem {
 
   readSync(relativePath: string): string {
     const absolute = this.resolveAndCheck(relativePath, 'read');
-    try {
-      return fsSync.readFileSync(absolute, 'utf-8');
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        throw new FileNotFoundError(relativePath);
-      }
-      throw error;
-    }
+    return wrapENOENTSync(relativePath, () => fsSync.readFileSync(absolute, 'utf-8'));
   }
 
   readBytesSync(relativePath: string, start: number, end: number): Buffer {
     const absolute = this.resolveAndCheck(relativePath, 'read');
-    let fd: number;
-    try {
-      fd = fsSync.openSync(absolute, 'r');
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        throw new FileNotFoundError(relativePath);
+    return wrapENOENTSync(relativePath, () => {
+      const fd = fsSync.openSync(absolute, 'r');
+      try {
+        const length = end - start;
+        if (length <= 0) return Buffer.alloc(0);
+        const buf = Buffer.alloc(length);
+        const bytesRead = fsSync.readSync(fd, buf, 0, length, start);
+        return bytesRead === length ? buf : buf.subarray(0, bytesRead);
+      } finally {
+        fsSync.closeSync(fd);
       }
-      throw error;
-    }
-    try {
-      const length = end - start;
-      if (length <= 0) return Buffer.alloc(0);
-      const buf = Buffer.alloc(length);
-      const bytesRead = fsSync.readSync(fd, buf, 0, length, start);
-      return bytesRead === length ? buf : buf.subarray(0, bytesRead);
-    } finally {
-      fsSync.closeSync(fd);
-    }
+    });
   }
 
   appendSync(relativePath: string, content: string): void {
@@ -464,7 +455,7 @@ export class NodeFileSystem implements FileSystem {
     isDirectory: boolean;
   } {
     const absolute = this.resolveAndCheck(relativePath, 'read');
-    try {
+    return wrapENOENTSync(relativePath, () => {
       const s = fsSync.statSync(absolute);
       return {
         size: s.size,
@@ -473,23 +464,11 @@ export class NodeFileSystem implements FileSystem {
         isFile: s.isFile(),
         isDirectory: s.isDirectory(),
       };
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        throw new FileNotFoundError(relativePath);
-      }
-      throw error;
-    }
+    });
   }
 
   deleteSync(relativePath: string): void {
     const absolute = this.resolveAndCheck(relativePath, 'write');
-    try {
-      fsSync.unlinkSync(absolute);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        throw new FileNotFoundError(relativePath);
-      }
-      throw error;
-    }
+    return wrapENOENTSync(relativePath, () => fsSync.unlinkSync(absolute));
   }
 }

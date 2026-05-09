@@ -292,9 +292,9 @@ describe('DialogStore unit tests', () => {
   });
 
   it('archive: throws with ENOENT code when no current.json exists', async () => {
-    // initialize() catches this with: if (err?.code !== 'ENOENT') console.warn(...)
-    // 验证 code 确实是 ENOENT，确保 initialize() 的静默判断能正确生效
-    await expect(sm.archive()).rejects.toMatchObject({ code: 'ENOENT' });
+    // initialize() catches this with: if (err?.code !== 'ENOENT' && code !== 'FS_NOT_FOUND')
+    // 验证 code 确实是 FS_NOT_FOUND（move 现统一转 FileNotFoundError），确保 initialize() 的静默判断能正确生效
+    await expect(sm.archive()).rejects.toMatchObject({ code: 'FS_NOT_FOUND' });
   });
 
   it('archive: resets createdAt so next save() gets a fresh timestamp', async () => {
@@ -437,8 +437,8 @@ describe('DialogStore unit tests', () => {
   it('archive: writes session_archive_failed and still throws on move failure', async () => {
     const audit = { write: vi.fn() };
     const smArc = new DialogStore(nodeFs, 'dialog', audit, 'current.json', 'test-system-prompt', 'test-claw');
-    // no current.json exists → move will throw ENOENT
-    await expect(smArc.archive()).rejects.toMatchObject({ code: 'ENOENT' });
+    // no current.json exists → move will throw FileNotFoundError (FS_NOT_FOUND)
+    await expect(smArc.archive()).rejects.toMatchObject({ code: 'FS_NOT_FOUND' });
     expect(audit.write).toHaveBeenCalledWith(
       DIALOG_AUDIT_EVENTS.ARCHIVE_FAILED,
       expect.stringContaining('path='),
