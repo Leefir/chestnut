@@ -252,45 +252,80 @@ export class AsyncTaskSystem {
   }
 
   /**
+   * Sync dedup gate: check if taskId already exists in running, cancelling, or pending.
+   */
+  private _isDuplicate(taskId: string): boolean {
+    return this.runningTasks.has(taskId)
+        || this.cancellingIds.has(taskId)
+        || this.pendingQueue.some(t => t.id === taskId);
+  }
+
+  /**
+   * Async load + parse a pending task file. Returns null if kind is invalid.
+   */
+  private async _loadPendingTask(filePath: string): Promise<SubAgentTask | ToolTask | null> {
+    const content = await this.fs.read(filePath);
+    const task = JSON.parse(content) as SubAgentTask | ToolTask;
+    if (task.kind !== 'subagent' && task.kind !== 'tool') return null;
+    return task;
+  }
+
+  /**
+   * Enqueue a validated task (with cap check) and trigger dispatch.
+   * If pending queue is at max capacity, audit overflow and move file to failed/.
+   */
+  private async _enqueueAndDispatch(task: SubAgentTask | ToolTask): Promise<void> {
+    // T6: PENDING_QUEUE_MAX cap check
+    if (this.pendingQueue.length >= AsyncTaskSystem.PENDING_QUEUE_MAX) {
+      this.auditWriter.write(
+        TASK_AUDIT_EVENTS.PENDING_QUEUE_OVERFLOW,
+        task.id,
+        `queueLength=${this.pendingQueue.length}`,
+        `cap=${AsyncTaskSystem.PENDING_QUEUE_MAX}`,
+      );
+      // Move file to failed/ to prevent restart watcher race re-ingest
+      const pendingPath = `${TASKS_QUEUES_PENDING_DIR}/${task.id}.json`;
+      const failedPath = `${TASKS_QUEUES_FAILED_DIR}/${task.id}.json`;
+      await this.fs.move(pendingPath, failedPath).catch((moveErr) => {
+        auditError(this.auditWriter, TASK_AUDIT_EVENTS.MOVE_FAILED, moveErr, task.id, 'context=cap_overflow_move');
+      });
+      return;
+    }
+
+    // task_started stream event triggered here (covers spawn direct write,
+    // scheduleSubAgent, and startup recovery scan uniformly)
+    this.parentStreamLog?.write({
+      ts: Date.now(),
+      type: 'task_started',
+      taskId: task.id,
+      callerType: task.callerType ?? 'subagent',
+      silent: false,
+    });
+    this.pendingQueue.push(task);
+    this._dispatch();
+  }
+
+  /**
    * Ingest a single pending file: read, parse, dedupe, push, dispatch.
    * Shared by watcher callback and _initialScanPending.
    */
   private async _ingestPendingFile(filePath: string): Promise<void> {
     let taskId: string | undefined;
     try {
-      const fileName = path.basename(filePath, '.json');
-      taskId = fileName;
-      if (this.runningTasks.has(taskId)) return;
-      if (this.cancellingIds.has(taskId)) return;
-      if (this.pendingQueue.some(t => t.id === taskId)) return;
+      taskId = path.basename(filePath, '.json');
+      if (this._isDuplicate(taskId)) return;
 
-      const content = await this.fs.read(filePath);
-      const task = JSON.parse(content) as SubAgentTask | ToolTask;
-      if (task.kind !== 'subagent' && task.kind !== 'tool') return;
+      const task = await this._loadPendingTask(filePath);
+      if (!task) return;
 
       // β race fix (phase 556): cancel() may have raced ahead during fs.read
       // await window. Re-check cancellingIds before push to prevent ghost
-      // dispatch. Sync gate from line 261-263 only catches pre-await races.
+      // dispatch. Sync gate from _isDuplicate only catches pre-await races.
       if (this.cancellingIds.has(taskId)) return;
 
-      // task_started stream event triggered here (covers spawn direct write,
-      // scheduleSubAgent, and startup recovery scan uniformly)
-      this.parentStreamLog?.write({
-        ts: Date.now(),
-        type: 'task_started',
-        taskId,
-        callerType: task.callerType ?? 'subagent',
-        silent: false,
-      });
-      this.pendingQueue.push(task);
-      this._dispatch();
+      await this._enqueueAndDispatch(task);
     } catch (err) {
-      this.auditWriter.write(
-        TASK_AUDIT_EVENTS.PENDING_INGEST_FAILED,
-        taskId ?? '<unknown>',
-        `path=${filePath}`,
-        `reason=${formatErr(err)}`,
-      );
+      auditError(this.auditWriter, TASK_AUDIT_EVENTS.PENDING_INGEST_FAILED, err, taskId ?? '<unknown>', `path=${filePath}`);
     }
   }
 
