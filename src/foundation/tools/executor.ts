@@ -70,12 +70,31 @@ export class ToolExecutorImpl implements IToolExecutor {
     // 4. Async path: write fs pending file, watcher will ingest and dispatch
     if (options.async) {
       if (ctx.callerType !== 'claw') {
+        ctx.auditWriter?.write(
+          'tool_async_rejected',
+          toolName,
+          options.toolUseId ?? '',
+          `reason=caller_type`,
+          `caller=${ctx.callerType}`,
+        );
         return { success: false, content: 'Async mode is not available for subagents.' };
       }
       if (!tool.supportsAsync) {
+        ctx.auditWriter?.write(
+          'tool_async_rejected',
+          toolName,
+          options.toolUseId ?? '',
+          `reason=unsupported`,
+        );
         return { success: false, content: `Tool "${toolName}" does not support async mode.` };
       }
       if (!this.scheduleAsyncTool) {
+        ctx.auditWriter?.write(
+          'tool_async_rejected',
+          toolName,
+          options.toolUseId ?? '',
+          `reason=dispatch_unconfigured`,
+        );
         return { success: false, content: 'Async tool dispatch not configured.' };
       }
       const taskId = await this.scheduleAsyncTool({
@@ -156,6 +175,10 @@ export class ToolExecutorImpl implements IToolExecutor {
     batch: Array<{ toolName: string; args: Record<string, unknown> }>,
     ctx: ExecContext
   ): Promise<(ToolResult | null)[]> {
+    // Invariant: readonly tools are sync-only by design.
+    // executeParallel only invokes readonly tools (filter line 161 below); they
+    // never enter the async dispatch path, so toolUseId is intentionally not
+    // forwarded here. Enforced by tests/foundation/tools/readonly-supports-async-mutex.test.ts.
     const promises = batch.map(({ toolName, args }) => {
       const tool = this.registry.get(toolName);
       if (tool?.readonly !== true) return Promise.resolve(null);
