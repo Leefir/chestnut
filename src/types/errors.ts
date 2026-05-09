@@ -258,3 +258,15 @@ export class ConsecutiveMaxTokensToolUseError extends ClawError {
     );
   }
 }
+
+// ============================================================================
+// Programming bug detection (per Coding #5 / phase 342 / r40 反向 3 教训)
+// 用于 fail-fast：programming bug 不应被 catch 静默 / 应 surface to top-level
+// 4 类锁定 phase 342 / 改列表需用户拍板（业务语义边界）
+// ============================================================================
+
+export const PROGRAMMING_BUG_TYPES = [TypeError, ReferenceError, SyntaxError, RangeError] as const;
+
+export function isProgrammingBug(err: unknown): boolean {
+  return PROGRAMMING_BUG_TYPES.some(T => err instanceof T);
+}

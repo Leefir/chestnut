@@ -10,7 +10,7 @@ import type { FileSystem } from '../../foundation/fs/types.js';
 import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
 import type { AuditWriter } from '../../foundation/audit/index.js';
 import type { Contract, AcceptanceFailedNotification, LastFailedFeedback } from '../../types/contract.js';
-import { ToolError, ToolTimeoutError } from '../../types/errors.js';
+import { ToolError, ToolTimeoutError, isProgrammingBug } from '../../types/errors.js';
 import { exec } from '../../foundation/process-exec/index.js';
 import { ProcessExecError } from '../../foundation/process-exec/index.js';
 import { CONTRACT_SCRIPT_TIMEOUT_MS, DEFAULT_LLM_IDLE_TIMEOUT_MS, DEFAULT_MAX_STEPS } from '../../constants.js';
@@ -19,12 +19,6 @@ import type { ContractYaml, ProgressData, AcceptanceResult } from './types.js';
 import { withProgressLock, type LockContext } from './lock.js';
 import { runContractVerifier } from './verifier-job.js';
 import { CONTRACT_AUDIT_EVENTS } from './audit-events.js';
-
-const PROGRAMMING_BUG_TYPES = [TypeError, ReferenceError, SyntaxError, RangeError];
-
-function isProgrammingBug(err: unknown): boolean {
-  return PROGRAMMING_BUG_TYPES.some(T => err instanceof T);
-}
 
 export interface AcceptanceContext extends LockContext {
   clawDir: string;

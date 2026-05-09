@@ -34,7 +34,7 @@ export async function runContractVerifier(config: VerifierConfig): Promise<Verif
       agentId: config.agentId,
       resultDir: `${TASKS_SYNC_SPAWN_DIR}/${config.agentId}`,
       messageStore: createDialogStore(
-        config.fs as any,
+        config.fs,
         `${TASKS_SYNC_SPAWN_DIR}/${config.agentId}`,
         new NoopAuditWriter(),
         'messages.json',
@@ -45,7 +45,7 @@ export async function runContractVerifier(config: VerifierConfig): Promise<Verif
       syncDir: path.join(config.clawDir, TASKS_SYNC_DIR),
       llm: config.llm,
       registry,
-      fs: config.fs as any,
+      fs: config.fs,
       maxSteps: config.maxSteps,
       idleTimeoutMs: config.idleTimeoutMs,
       onIdleTimeout: config.onIdleTimeout,

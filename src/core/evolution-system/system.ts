@@ -11,7 +11,7 @@ import { createSystemAudit } from '../../foundation/audit/index.js';
 import { CLAWSPACE_DIR } from '../../types/paths.js';
 import { CONTRACT_AUDIT_EVENTS } from '../contract/audit-events.js';
 import type { Message } from '../../types/message.js';
-import { FileNotFoundError } from '../../types/errors.js';
+import { FileNotFoundError, isProgrammingBug } from '../../types/errors.js';
 
 export interface EvolutionSystemDeps {
   fs: FileSystem;
@@ -42,12 +42,6 @@ export interface MotionReviewContext {
   motionAudit: AuditLog;
   /** Claws 基础目录（解析目标 claw 路径：`path.resolve(clawsBaseDir, targetClaw)`）*/
   clawsBaseDir: string;
-}
-
-// Programming bug detection (per Coding #5 / phase342 / r40 反向 3 教训)
-const PROGRAMMING_BUG_TYPES = [TypeError, ReferenceError, SyntaxError, RangeError];
-function isProgrammingBug(err: unknown): boolean {
-  return PROGRAMMING_BUG_TYPES.some(T => err instanceof T);
 }
 
 const STATE_FILE_PATH = '.evolution-system-state.json';   // motion root
