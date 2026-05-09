@@ -23,11 +23,11 @@ export interface HeartbeatOptions {
  * Motion 心跳触发器
  */
 export class Heartbeat {
-  private baseDir: string;
-  private interval: number;
+  private readonly baseDir: string;
+  private readonly interval: number;
   private lastRun: number;
-  private fs?: FileSystem;
-  private audit?: AuditLog;
+  private readonly fs?: FileSystem;
+  private readonly audit?: AuditLog;
 
   constructor(baseDir: string, options: HeartbeatOptions = {}) {
     this.baseDir = baseDir;
