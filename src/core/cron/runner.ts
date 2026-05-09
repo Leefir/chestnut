@@ -39,6 +39,7 @@ export class CronRunner {
   private timer: ReturnType<typeof setInterval> | null = null;
   private lastRunKey = new Map<string, string>(); // jobName → runKey
   private running = new Set<string>();            // 防止同一 job 重叠执行
+  private cancelling = new Set<string>();         // timeout 已发但 handler 真 settle 前的二态
 
   constructor(
     private readonly jobs: CronJob[],
@@ -65,7 +66,7 @@ export class CronRunner {
     const now = new Date();
     for (const job of this.jobs) {
       if (!job.enabled) continue;
-      if (this.running.has(job.name)) continue; // 上次还没跑完，跳过
+      if (this.running.has(job.name) || this.cancelling.has(job.name)) continue; // 上次还没跑完 或 cancelling 中，跳过
       const key = this.computeRunKey(now, job.schedule);
       if (this.lastRunKey.get(job.name) === key) continue;
       this.lastRunKey.set(job.name, key);
@@ -99,11 +100,31 @@ export class CronRunner {
             `run_key=${key}`,
             `ms=${job.timeoutMs}`,
           );
-          // timeout 时强制清 running / 让下 tick 自然重试（D1c 中断可恢复 + handler 幂等假设）
+          // timeout 时强制清 running + 置 cancelling / 让下 tick 自然重试（D1c 中断可恢复 + handler 幂等假设）
           this.running.delete(job.name);
+          this.cancelling.add(job.name);
           resolve();
         }, job.timeoutMs);
       });
+
+      // 独立钩子：late settle 清 cancelling / late error 必 audit（context=late_after_timeout / ζ 复用 JOB_ERROR）
+      handlerPromise.then(
+        () => {
+          if (timedOut) this.cancelling.delete(job.name);
+        },
+        err => {
+          if (timedOut) {
+            this.audit.write(CRON_AUDIT_EVENTS.JOB_ERROR,
+              `job=${job.name}`,
+              `run_key=${key}`,
+              `err=${err instanceof Error ? err.message : String(err)}`,
+              'context=late_after_timeout',
+            );
+            this.cancelling.delete(job.name);
+          }
+          // 非 timedOut 时 race chain 路径已 audit JOB_ERROR / 此处不重 audit
+        }
+      );
 
       Promise.race([
         handlerPromise.then(() => 'settled' as const, err => ({ err })),
