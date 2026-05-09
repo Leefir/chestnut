@@ -15,6 +15,7 @@ import type { IToolExecutor, ToolRegistry } from '../../foundation/tools/executo
 import type { StepCallbacks } from './types.js';
 import { safeCallback, toToolResultBlock } from './utils.js';
 import { throwAbortError } from './abort-helpers.js';
+import { escapeForLog } from '../../foundation/tools/types.js';
 
 interface CategorizedCalls {
   readonlyAsync: { call: ToolUseBlock; index: number }[];
@@ -172,6 +173,13 @@ export async function executeSingleTool(
 
     // Input JSON failed to parse — return error immediately without calling the tool
     if (__parseError) {
+      ctx.auditWriter?.write(
+        'tool_input_parse_failed',
+        toolCall.name,
+        toolCall.id,
+        `reason=parse_error`,
+        `summary=${escapeForLog(String(__raw || ''))}`,
+      );
       return {
         success: false,
         content: `工具输入 JSON 解析失败，无法调用工具 "${toolCall.name}"。原始输入: ${String(__raw || '')}`,
