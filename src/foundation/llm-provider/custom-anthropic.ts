@@ -14,7 +14,7 @@ import {
   LLMRateLimitError,
   LLMTimeoutError,
 } from '../../types/errors.js';
-import { parseRetryAfter } from './_helpers.js';
+import { parseRetryAfter, throwHttpErrorResponse } from './_helpers.js';
 import type {
   ProviderConfig,
   LLMCallOptions,
@@ -105,7 +105,7 @@ export class CustomAnthropicAdapter extends BaseAnthropicAdapter {
       });
 
       if (!response.ok) {
-        await this.handleErrorResponse(response);
+        await throwHttpErrorResponse(this.name, response);
       }
 
       const data = await response.json() as AnthropicResponse;
@@ -146,7 +146,7 @@ export class CustomAnthropicAdapter extends BaseAnthropicAdapter {
         signal: abortHandle.signal,
       });
 
-      if (!response.ok) await this.handleErrorResponse(response);
+      if (!response.ok) await throwHttpErrorResponse(this.name, response);
 
       // 进入 stream 阶段：切换 timer 为总时长保护
       abortHandle.enterStreamPhase(STREAM_MAX_DURATION_MS);
@@ -281,36 +281,5 @@ export class CustomAnthropicAdapter extends BaseAnthropicAdapter {
     };
   }
 
-  /**
-   * Handle HTTP error responses
-   */
-  private async handleErrorResponse(response: Response): Promise<void> {
-    const status = response.status;
-    let errorText: string;
 
-    try {
-      const errorData = await response.json();
-      errorText = (errorData as { error?: { message?: string } }).error?.message ?? JSON.stringify(errorData);
-    } catch {
-      errorText = await response.text();
-    }
-
-    if (status === 429) {
-      // Try to extract retry-after header
-      const retryAfter = response.headers.get('retry-after');
-      throw new LLMRateLimitError(this.name, parseRetryAfter(retryAfter));
-    }
-
-    if (status >= 500) {
-      throw new LLMError(
-        `Provider ${this.name} server error (${status}): ${errorText}`,
-        { provider: this.name, status }
-      );
-    }
-
-    throw new LLMError(
-      `Provider ${this.name} error (${status}): ${errorText}`,
-      { provider: this.name, status }
-    );
-  }
 }
