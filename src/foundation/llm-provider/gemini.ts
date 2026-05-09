@@ -285,7 +285,9 @@ export class GeminiAdapter implements ProviderAdapter {
       }
     } finally {
       clearTimeout(idleTimer);
-      try { reader.releaseLock(); } catch {}
+      try { reader.releaseLock(); } catch (err) {
+        console.warn('[gemini] reader.releaseLock() failed during cleanup:', err);
+      }
     }
   }
 

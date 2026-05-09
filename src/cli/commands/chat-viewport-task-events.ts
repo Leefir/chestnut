@@ -44,7 +44,7 @@ export function createTaskEventHandler(deps: TaskEventHandlerDeps) {
       }
       case 'turn_end':
       case 'turn_error':
- case 'turn_interrupted':
+      case 'turn_interrupted':
         deps.stopTaskWatch(taskId);
         break;
       default:
