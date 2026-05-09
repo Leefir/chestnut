@@ -285,7 +285,8 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
         clawFsFactory: (clawDir: string) => new NodeFileSystem({ baseDir: clawDir }),
       };
       contractManager.onContractCompleted(async (contractId) => {
-        await evolutionSystem!.runRetroForContract(contractId, motionReviewContext);
+        if (!evolutionSystem) return; // P1.NPE guard (phase 620 / mirror phase 607 dream-trigger)
+        await evolutionSystem.runRetroForContract(contractId, motionReviewContext);
       });
     }
 
