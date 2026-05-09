@@ -50,6 +50,31 @@ export class NodeFileSystem implements FileSystem {
     relativePath: string, 
     operation: 'read' | 'write'
   ): string {
+    // Resolve symlinks to prevent traversal via symlinks (OS-level guard)
+    const realBase = (() => {
+      try { return realpathSync(this.options.baseDir); } catch { return this.options.baseDir; }
+    })();
+
+    // P0 hardening (phase 611): absolute path 显式 reject if outside baseDir
+    // path.normalize 不 strip 前缀 '/' / 依赖后续 realpath check 在 read+missing 路径有 fall-through gap
+    if (path.isAbsolute(relativePath)) {
+      const resolved = path.resolve(this.options.baseDir, relativePath);
+      const resolvedBase = path.resolve(this.options.baseDir);
+      const basePrefix = resolvedBase.endsWith(path.sep) ? resolvedBase : resolvedBase + path.sep;
+      const withinBase =
+        resolved === resolvedBase ||
+        resolved.startsWith(basePrefix);
+      if (!withinBase) {
+        throw new PermissionError(
+          `Path "${relativePath}" is absolute, must be relative to baseDir`,
+          { path: relativePath }
+        );
+      }
+      // Absolute path within baseDir: convert to relative for consistent resolution
+      relativePath = path.relative(this.options.baseDir, resolved);
+      if (relativePath === '') relativePath = '.';
+    }
+
     // Normalize path to prevent directory traversal
     const normalized = path.normalize(relativePath);
     
@@ -61,11 +86,6 @@ export class NodeFileSystem implements FileSystem {
     }
     
     const absolute = path.resolve(this.options.baseDir, normalized);
-
-    // Resolve symlinks to prevent traversal via symlinks (OS-level guard)
-    const realBase = (() => {
-      try { return realpathSync(this.options.baseDir); } catch { return this.options.baseDir; }
-    })();
 
     let realTarget: string | null = null;
     try {
@@ -232,12 +252,16 @@ export class NodeFileSystem implements FileSystem {
   // ========================================================================
   
   async exists(relativePath: string): Promise<boolean> {
+    let absolute: string;
     try {
-      const absolute = this.resolveAndCheck(relativePath, 'read');
-      return await exists(absolute);
-    } catch {
-      return false;
+      absolute = this.resolveAndCheck(relativePath, 'read');
+    } catch (err) {
+      if (err instanceof PermissionError) {
+        throw err;  // P1.5 hardening: 安全 signal 不静默 / D2+D11 align
+      }
+      return false;  // 其他（normalize 错等）视为不存在
     }
+    return await exists(absolute);
   }
   
   async isDirectory(relativePath: string): Promise<boolean> {

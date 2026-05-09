@@ -28,11 +28,11 @@ export async function sendCommand(
   const globalConfigPath = getGlobalConfigPath();
   const baseDir = path.dirname(globalConfigPath);
   const clawDir = path.join(baseDir, CLAWS_DIR, name);
-  const inboxPending = path.join(clawDir, 'inbox', 'pending');
-  const fs = new NodeFileSystem({ baseDir: '/' });
+  const fs = new NodeFileSystem({ baseDir: clawDir });
   const audit = createSystemAudit(fs, clawDir);
+  const inboxPendingRel = path.join('inbox', 'pending');
 
-  await new InboxWriter(fs, inboxPending, audit).write({
+  await new InboxWriter(fs, inboxPendingRel, audit).write({
     id: randomUUID(),
     type: 'user_inbox_message',
     from: 'user',
