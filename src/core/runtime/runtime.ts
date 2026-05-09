@@ -32,7 +32,7 @@ import { MaxStepsExceededError } from '../../types/errors.js';
 import { MOTION_CLAW_ID, DEFAULT_LLM_IDLE_TIMEOUT_MS, DEFAULT_MAX_STEPS, DEFAULT_MAX_CONCURRENT_TASKS } from '../../constants.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { Snapshot } from '../../foundation/snapshot/index.js';
-import type { InboxReader } from '../../foundation/messaging/inbox-reader.js';
+import type { InboxReader, InboxEntry } from '../../foundation/messaging/inbox-reader.js';
 import type { OutboxWriter } from '../../foundation/messaging/outbox-writer.js';
 import type { ExecContext } from '../../foundation/tool-protocol/index.js';
 import type { ToolRegistry, IToolExecutor } from '../../foundation/tools/executor.js';
@@ -292,22 +292,39 @@ export class Runtime {
     count: number;
     infos: InboxMessage[];
   }> {
-    let entries: import('../../foundation/messaging/inbox-reader.js').InboxEntry[];
-    try {
-      entries = await this.inboxReader.drainInbox();
-    } catch (err) {
-      if (err instanceof InboxListFailed || err instanceof InboxMoveFailed) {
-        // audit 已在 drainInbox / markDone / markFailed 内写；此处只需保守退出本轮
-        return { injected: [], sources: [], count: 0, infos: [] };
-      }
-      throw err; // 非预期错误继续冒泡
-    }
+    const entries = await this._drainEntriesOrEmpty();
     if (entries.length === 0) {
       return { injected: [], sources: [], count: 0, infos: [] };
     }
+    const { addressed, unaddressed } = this._splitAndAuditEntries(entries);
+    const truncated = await this._markDoneAndTruncate(addressed, unaddressed);
+    const { injected, sources } = await this._formatInjected(truncated);
+    return {
+      injected,
+      sources,
+      count: truncated.length,
+      infos: truncated.map(e => e.message),
+    };
+  }
 
-    const addressed: typeof entries = [];
-    const unaddressed: typeof entries = [];
+  private async _drainEntriesOrEmpty(): Promise<InboxEntry[]> {
+    try {
+      return await this.inboxReader.drainInbox();
+    } catch (err) {
+      if (err instanceof InboxListFailed || err instanceof InboxMoveFailed) {
+        // audit 已在 drainInbox 内写；此处只需保守退出本轮
+        return [];
+      }
+      throw err;
+    }
+  }
+
+  private _splitAndAuditEntries(entries: InboxEntry[]): {
+    addressed: InboxEntry[];
+    unaddressed: InboxEntry[];
+  } {
+    const addressed: InboxEntry[] = [];
+    const unaddressed: InboxEntry[] = [];
     for (const entry of entries) {
       const to = entry.message.to;
       if (!to || to === this.options.clawId) {
@@ -316,7 +333,6 @@ export class Runtime {
         unaddressed.push(entry);
       }
     }
-
     for (const { message, filePath } of addressed) {
       this.auditWriter.write(
         RUNTIME_AUDIT_EVENTS.INBOX_INJECT,
@@ -336,7 +352,13 @@ export class Runtime {
         `to=${message.to}`,
       );
     }
+    return { addressed, unaddressed };
+  }
 
+  private async _markDoneAndTruncate(
+    addressed: InboxEntry[],
+    unaddressed: InboxEntry[],
+  ): Promise<InboxEntry[]> {
     const allEntries = [...addressed, ...unaddressed];
     let processedCount = 0;
     for (const { filePath } of allEntries) {
@@ -352,16 +374,18 @@ export class Runtime {
         throw err;
       }
     }
+    // 截断 addressed 到 successfully markDone 数（防重复 inject）
+    return addressed.slice(0, Math.min(processedCount, addressed.length));
+  }
 
-    // 截断：只对 successfully markDone 的 addressed 消息 inject 给 LLM
-    // unaddressed 消息不进 LLM（仅 audit）/ 失败 unaddressed 重拉 unaffected
-    const addressedProcessed = Math.min(processedCount, addressed.length);
-    const truncatedAddressed = addressed.slice(0, addressedProcessed);
-
+  private async _formatInjected(addressed: InboxEntry[]): Promise<{
+    injected: Message[];
+    sources: Array<{ text: string; type: string }>;
+  }> {
     const systemParts: string[] = [];
     const userChatParts: string[] = [];
     const sources: Array<{ text: string; type: string }> = [];
-    for (const { message } of truncatedAddressed) {
+    for (const { message } of addressed) {
       const formatted = await this.formatInboxMessage(
         message.type,
         message.from,
@@ -378,18 +402,11 @@ export class Runtime {
         type: message.type,
       });
     }
-
     const allParts = [...systemParts, ...userChatParts];
     const injected: Message[] = allParts.length > 0
       ? [{ role: 'user', content: allParts.join('\n\n') }]
       : [];
-
-    return {
-      injected,
-      sources,
-      count: truncatedAddressed.length,
-      infos: truncatedAddressed.map(e => e.message),
-    };
+    return { injected, sources };
   }
 
   /**
@@ -401,17 +418,7 @@ export class Runtime {
     const tools = this.toolRegistry.formatForLLM(
       this.toolRegistry.getForProfile(this.options.toolProfile ?? 'full')
     );
-    let systemPrompt: string;
-    let identityHash: string;
-    if (this.options.systemPromptBuilder) {
-      // U3 (a): 自定义 builder fallback 走整段当 identity（兼容 phase 521 行为）
-      systemPrompt = await this.buildSystemPrompt();
-      identityHash = systemPrompt;
-    } else {
-      const r = await this.contextInjector.buildSystemPromptForRegime();
-      systemPrompt = r.full;
-      identityHash = r.identityHash;
-    }
+    const { systemPrompt, identityHash } = await this._resolveSystemPromptForRun();
 
     // 首个 LLM 输出 delta 时上报当前生效的 provider（确认 API 可用后才显示）
     let providerInfoEmitted = false;
@@ -687,16 +694,7 @@ export class Runtime {
     const messages = [...session.messages];
 
     // 2. Build systemPrompt (already includes AGENTS.md + MEMORY.md + skills + contract)
-    let systemPrompt: string;
-    let identityHash: string;
-    if (this.options.systemPromptBuilder) {
-      systemPrompt = await this.buildSystemPrompt();
-      identityHash = systemPrompt;
-    } else {
-      const r = await this.contextInjector.buildSystemPromptForRegime();
-      systemPrompt = r.full;
-      identityHash = r.identityHash;
-    }
+    const { systemPrompt, identityHash } = await this._resolveSystemPromptForRun();
 
     // 3. Append the user message
     messages.push({ role: 'user', content: userMessage });
@@ -873,6 +871,23 @@ export class Runtime {
   // ============================================================================
   // Private helpers
   // ============================================================================
+
+  /**
+   * Resolve systemPrompt + identityHash for a turn run.
+   * - If systemPromptBuilder is configured, use full prompt as identityHash (U3 (a) / phase 521 兼容).
+   * - Else, use contextInjector.buildSystemPromptForRegime() to get full + identityHash 分层。
+   */
+  private async _resolveSystemPromptForRun(): Promise<{
+    systemPrompt: string;
+    identityHash: string;
+  }> {
+    if (this.options.systemPromptBuilder) {
+      const systemPrompt = await this.buildSystemPrompt();
+      return { systemPrompt, identityHash: systemPrompt };
+    }
+    const r = await this.contextInjector.buildSystemPromptForRegime();
+    return { systemPrompt: r.full, identityHash: r.identityHash };
+  }
 
   private async ensureDirectories(clawDir: string): Promise<void> {
     // Use the shared constant (consistent with createCommand)
