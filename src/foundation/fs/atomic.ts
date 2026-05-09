@@ -106,8 +106,10 @@ export async function exists(filePath: string): Promise<boolean> {
   try {
     await fs.access(filePath);
     return true;
-  } catch {
-    return false;
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT') return false;
+    throw err;
   }
 }
 
@@ -138,7 +140,9 @@ export async function isDirectory(filePath: string): Promise<boolean> {
   try {
     const stats = await fs.stat(filePath);
     return stats.isDirectory();
-  } catch {
-    return false;
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT') return false;
+    throw err;
   }
 }
