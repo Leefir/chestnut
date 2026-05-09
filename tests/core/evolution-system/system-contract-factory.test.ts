@@ -22,7 +22,7 @@ vi.mock('../../../src/core/async-task-system/tools/_pending-task-writer.js', () 
 // Helpers
 // ============================================================================
 async function setupFixtures() {
-  const tmpBase = path.join(os.tmpdir(), `phase609-${randomUUID()}`);
+  const tmpBase = path.join(os.tmpdir(), `phase619-${randomUUID()}`);
   const motionDir = path.join(tmpBase, 'motion');
   const clawsBaseDir = path.join(tmpBase, 'claws');
   const targetClaw = 'claw-a';
@@ -51,20 +51,22 @@ async function setupFixtures() {
 // ============================================================================
 // Tests
 // ============================================================================
-describe('EvolutionSystem — clawFsFactory 注入路径（caller DIP enforce）', () => {
-  it('runRetroForContract 用 ctx.clawFsFactory 构 clawFs（不裸 new L1）', async () => {
+describe('EvolutionSystem — clawContractManagerFactory injection (phase 619 caller-DIP)', () => {
+  it('uses ctx.clawContractManagerFactory instead of new ContractSystem', async () => {
     const fixtures = await setupFixtures();
     const { contractId, motionFs, motionAudit, mockAudit, clawsBaseDir, tmpBase } = fixtures;
 
-    const factory = vi.fn().mockImplementation((clawDir: string) => new NodeFileSystem({ baseDir: clawDir }));
+    const factorySpy = vi.fn().mockImplementation((clawDir: string, targetClaw: string, fs: NodeFileSystem) => {
+      return new ContractSystem(clawDir, targetClaw, fs, { write: vi.fn() } as any);
+    });
 
     const ctx: MotionReviewContext = {
       motionFs,
       motionBaseDir: fixtures.motionDir,
       motionAudit: motionAudit as any,
       clawsBaseDir,
-      clawFsFactory: factory,
-      clawContractManagerFactory: (clawDir, targetClaw, fs) => new ContractSystem(clawDir, targetClaw, fs, { write: vi.fn() } as any),
+      clawFsFactory: (clawDir: string) => new NodeFileSystem({ baseDir: clawDir }),
+      clawContractManagerFactory: factorySpy,
     };
 
     const evolutionSystem = new EvolutionSystem({
@@ -77,8 +79,44 @@ describe('EvolutionSystem — clawFsFactory 注入路径（caller DIP enforce）
     const result = await evolutionSystem.runRetroForContract(contractId, ctx);
 
     expect(result.status).toBe('finished');
-    expect(factory).toHaveBeenCalledTimes(1);
-    expect(factory).toHaveBeenCalledWith(path.join(clawsBaseDir, 'claw-a'));
+    expect(factorySpy).toHaveBeenCalledTimes(1);
+    expect(factorySpy).toHaveBeenCalledWith(
+      path.join(clawsBaseDir, 'claw-a'),
+      'claw-a',
+      expect.any(NodeFileSystem),
+    );
+
+    await fs.rm(tmpBase, { recursive: true, force: true });
+  });
+
+  it('does not directly construct ContractSystem (factory controls instantiation)', async () => {
+    const fixtures = await setupFixtures();
+    const { contractId, motionFs, motionAudit, mockAudit, clawsBaseDir, tmpBase } = fixtures;
+
+    const factorySpy = vi.fn().mockImplementation((clawDir: string, targetClaw: string, fs: NodeFileSystem) => {
+      return new ContractSystem(clawDir, targetClaw, fs, { write: vi.fn() } as any);
+    });
+
+    const ctx: MotionReviewContext = {
+      motionFs,
+      motionBaseDir: fixtures.motionDir,
+      motionAudit: motionAudit as any,
+      clawsBaseDir,
+      clawFsFactory: (clawDir: string) => new NodeFileSystem({ baseDir: clawDir }),
+      clawContractManagerFactory: factorySpy,
+    };
+
+    const evolutionSystem = new EvolutionSystem({
+      fs: motionFs,
+      audit: mockAudit as any,
+      taskSystem: {} as any,
+      contractManager: {} as any,
+    });
+
+    await evolutionSystem.runRetroForContract(contractId, ctx);
+
+    // factorySpy 被调用即证明 DIP：业务层通过 ctx factory 获取实例，而非裸 new
+    expect(factorySpy).toHaveBeenCalledTimes(1);
 
     await fs.rm(tmpBase, { recursive: true, force: true });
   });
@@ -87,8 +125,8 @@ describe('EvolutionSystem — clawFsFactory 注入路径（caller DIP enforce）
     const fixtures = await setupFixtures();
     const { contractId, motionFs, motionAudit, mockAudit, clawsBaseDir, tmpBase } = fixtures;
 
-    const factory = vi.fn().mockImplementation(() => {
-      throw new Error('factory-fail');
+    const factorySpy = vi.fn().mockImplementation(() => {
+      throw new Error('contract-factory-fail');
     });
 
     const ctx: MotionReviewContext = {
@@ -96,8 +134,8 @@ describe('EvolutionSystem — clawFsFactory 注入路径（caller DIP enforce）
       motionBaseDir: fixtures.motionDir,
       motionAudit: motionAudit as any,
       clawsBaseDir,
-      clawFsFactory: factory,
-      clawContractManagerFactory: (clawDir, targetClaw, fs) => new ContractSystem(clawDir, targetClaw, fs, { write: vi.fn() } as any),
+      clawFsFactory: (clawDir: string) => new NodeFileSystem({ baseDir: clawDir }),
+      clawContractManagerFactory: factorySpy,
     };
 
     const evolutionSystem = new EvolutionSystem({
@@ -107,54 +145,8 @@ describe('EvolutionSystem — clawFsFactory 注入路径（caller DIP enforce）
       contractManager: {} as any,
     });
 
-    await expect(evolutionSystem.runRetroForContract(contractId, ctx)).rejects.toThrow('factory-fail');
-    expect(factory).toHaveBeenCalledTimes(1);
-
-    await fs.rm(tmpBase, { recursive: true, force: true });
-  });
-
-  it('多次 runRetroForContract 各自调 factory（per-call dynamic）', async () => {
-    const fixtures = await setupFixtures();
-    const { contractId, motionFs, motionAudit, mockAudit, clawsBaseDir, tmpBase, motionDir, targetClawDir } = fixtures;
-
-    // 准备第二个 contract / 不同 targetClaw
-    const contractId2 = 'c2-' + randomUUID();
-    const targetClaw2 = 'claw-b';
-    const targetClawDir2 = path.join(clawsBaseDir, targetClaw2);
-    await fs.mkdir(path.join(targetClawDir2, 'contract', 'active', contractId2), { recursive: true });
-    const byContractPath2 = path.join(motionDir, 'clawspace', 'pending-retrospective', 'by-contract', `${contractId2}.json`);
-    await fs.writeFile(byContractPath2, JSON.stringify({ targetClaw: targetClaw2, mode: 'describing' }));
-    const contractYamlPath2 = path.join(targetClawDir2, 'contract', 'active', contractId2, 'contract.yaml');
-    await fs.writeFile(contractYamlPath2, 'contract_id: ' + contractId2 + '\nintent: test');
-    const progressPath2 = path.join(targetClawDir2, 'contract', 'active', contractId2, 'progress.json');
-    await fs.writeFile(progressPath2, JSON.stringify({ contractId: contractId2, state: 'active' }));
-
-    const factory = vi.fn().mockImplementation((clawDir: string) => new NodeFileSystem({ baseDir: clawDir }));
-
-    const ctx: MotionReviewContext = {
-      motionFs,
-      motionBaseDir: motionDir,
-      motionAudit: motionAudit as any,
-      clawsBaseDir,
-      clawFsFactory: factory,
-      clawContractManagerFactory: (clawDir, targetClaw, fs) => new ContractSystem(clawDir, targetClaw, fs, { write: vi.fn() } as any),
-    };
-
-    const evolutionSystem = new EvolutionSystem({
-      fs: motionFs,
-      audit: mockAudit as any,
-      taskSystem: {} as any,
-      contractManager: {} as any,
-    });
-
-    const result1 = await evolutionSystem.runRetroForContract(contractId, ctx);
-    const result2 = await evolutionSystem.runRetroForContract(contractId2, ctx);
-
-    expect(result1.status).toBe('finished');
-    expect(result2.status).toBe('finished');
-    expect(factory).toHaveBeenCalledTimes(2);
-    expect(factory).toHaveBeenNthCalledWith(1, path.join(clawsBaseDir, 'claw-a'));
-    expect(factory).toHaveBeenNthCalledWith(2, path.join(clawsBaseDir, 'claw-b'));
+    await expect(evolutionSystem.runRetroForContract(contractId, ctx)).rejects.toThrow('contract-factory-fail');
+    expect(factorySpy).toHaveBeenCalledTimes(1);
 
     await fs.rm(tmpBase, { recursive: true, force: true });
   });

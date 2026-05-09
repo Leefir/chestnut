@@ -12,6 +12,7 @@ import { createSubAgent } from '../subagent/index.js';
 import { createDialogStore } from '../../foundation/dialog-store/index.js';
 import { DEFAULT_LLM_IDLE_TIMEOUT_MS } from '../../constants.js';
 import { TASK_AUDIT_EVENTS } from './audit-events.js';
+import { STREAM_TASK_EVENTS } from './stream-events.js';
 import { formatErr, auditError } from './_helpers.js';
 import { TASKS_QUEUES_RESULTS_DIR, TASKS_SUBAGENTS_DIR, TASKS_SYNC_DIR } from '../../types/paths.js';
 import { buildSubagentSystemPromptPrefix, DEFAULT_SUBAGENT_SYSTEM_PROMPT } from '../../prompts/subagent.js';
@@ -64,7 +65,7 @@ export async function executeSubAgentTask(
   };
 
   // 每次执行开头写分隔标记，方便区分多次尝试
-  writeTaskEvent({ type: 'task_attempt_start', taskId: task.id });
+  writeTaskEvent({ type: STREAM_TASK_EVENTS.TASK_ATTEMPT_START, taskId: task.id });
 
   try {
     // LLM is guaranteed by constructor (readonly non-null field)
