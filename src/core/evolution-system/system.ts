@@ -6,7 +6,7 @@ import { ContractSystem } from '../contract/manager.js';
 import { scheduleRetro } from './retro-scheduler.js';
 import { RETRO_AUDIT_EVENTS } from './retro-audit-events.js';
 import * as path from 'path';
-import { createSystemAudit } from '../../foundation/audit/index.js';
+
 import { CLAWSPACE_DIR } from '../../types/paths.js';
 import { CONTRACT_AUDIT_EVENTS } from '../contract/audit-events.js';
 import type { Message } from '../../types/message.js';
@@ -43,6 +43,9 @@ export interface MotionReviewContext {
   clawsBaseDir: string;
   /** 临时构建 target claw FileSystem 的 factory（assembly 注入 / 业务 0 触 L1 impl）*/
   clawFsFactory: (clawDir: string) => FileSystem;
+  /** 临时构建 target claw ContractSystem 的 factory（assembly 注入 / 业务 0 触 L4 ctor）。
+   *  factory 内部封装 createSystemAudit（避免 L2 audit instance leak 到业务）/ mirror phase 609 clawFsFactory 模板。 */
+  clawContractManagerFactory: (clawDir: string, targetClaw: string, fs: FileSystem) => ContractSystem;
 }
 
 const STATE_FILE_PATH = '.evolution-system-state.json';   // motion root
@@ -188,10 +191,10 @@ export class EvolutionSystem {
 
     // Part 2: contract YAML + skills + mining messages（daemon.ts:160-213 等价）
 
-    // 2.1 加载契约 YAML（临时 new ContractSystem for target claw，B.p175-2 登记）
+    // 2.1 加载契约 YAML（factory 注入 target claw ContractSystem / phase 619 caller-DIP enforce）
     const clawDir = path.join(ctx.clawsBaseDir, targetClaw);
     const clawFs = ctx.clawFsFactory(clawDir);
-    const clawContractManager = new ContractSystem(clawDir, targetClaw, clawFs, createSystemAudit(clawFs, clawDir));
+    const clawContractManager = ctx.clawContractManagerFactory(clawDir, targetClaw, clawFs);
 
     let contractYaml: string;
     try {

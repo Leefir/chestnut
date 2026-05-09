@@ -37,6 +37,7 @@ import { executeSubAgentTask } from './subagent-executor.js';
 import { executeToolTask } from './tool-executor.js';
 import { createWatcher, type Watcher } from '../../foundation/file-watcher/index.js';
 import { TASK_AUDIT_EVENTS } from './audit-events.js';
+import { STREAM_TASK_EVENTS } from './stream-events.js';
 import { formatErr, auditError } from './_helpers.js';
 import { writePendingSubagentTaskFile } from './tools/_pending-task-writer.js';
 import { writePendingToolTaskFile } from './tools/_pending-tool-task-writer.js';
@@ -295,7 +296,7 @@ export class AsyncTaskSystem {
     // scheduleSubAgent, and startup recovery scan uniformly)
     this.parentStreamLog?.write({
       ts: Date.now(),
-      type: 'task_started',
+      type: STREAM_TASK_EVENTS.TASK_STARTED,
       taskId: task.id,
       callerType: task.callerType ?? 'subagent',
       silent: false,

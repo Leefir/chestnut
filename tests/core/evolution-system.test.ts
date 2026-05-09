@@ -4,6 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 
+import { ContractSystem } from '../../src/core/contract/manager.js';
 import { EvolutionSystem } from '../../src/core/evolution-system/system.js';
 import type { MotionReviewContext } from '../../src/core/evolution-system/system.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
@@ -83,6 +84,7 @@ async function setupFixtures(): Promise<TestFixtures> {
     motionAudit,
     clawsBaseDir,
     clawFsFactory: (clawDir) => new NodeFileSystem({ baseDir: clawDir }),
+    clawContractManagerFactory: (clawDir, targetClaw, fs) => new ContractSystem(clawDir, targetClaw, fs, { write: vi.fn() } as any),
   };
 
   return { motionDir, clawsBaseDir, targetClawDir, contractId, ctx, evolutionSystem, mockAudit };
