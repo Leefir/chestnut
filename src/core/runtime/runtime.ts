@@ -1,9 +1,8 @@
 /**
  * Runtime - assembles all modules into a runnable Claw instance
  *
- * This is the final assembly layer for Phase 1, integrating the following modules into a unified runtime:
- * - Foundation: NodeFileSystem, LLMOrchestrator
- * - Core: Dialog, Tools, ReAct, Communication, Task, Skill, Contract
+ * Final assembly layer integrating L1-L4 modules into runnable Claw instance.
+ * 详 design/architecture.md + design/modules/l5_runtime.md。
  */
 
 import * as path from 'path';
@@ -59,6 +58,14 @@ function auditError(
   ...extras: string[]
 ): void {
   audit.write(event, ...extras, `reason=${formatErr(err)}`);
+}
+
+/** phase 521: 'last-turn' regime switch helper / 找最近 'user' role msg / 从那里切片 */
+function extractLastTurn(messages: Message[]): Message[] {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === 'user') return messages.slice(i);
+  }
+  return messages; // 0 user msg / 全继承
 }
 
 /**
@@ -165,10 +172,10 @@ export class Runtime {
       }
     });
 
-    // 5. Session repair（业务链路）
+    // 4. Session repair（业务链路）
     await this.repairSessionIfNeeded();
 
-    // 6. AsyncTaskSystem 业务动作（原则 #2 归属消费者；Assembly 只构造不调）
+    // 5. AsyncTaskSystem 业务动作（M#2 归属消费者 / Assembly 只构造不调）
     try {
       await this.taskSystem.initialize();
     } catch (e) {
@@ -182,10 +189,9 @@ export class Runtime {
       throw new Error(`Runtime: AsyncTaskSystem.startDispatch failed: ${formatErr(e)}`, { cause: e });
     }
 
-    // 7. DispatchTool 注册（候选 γ：结构性循环依赖妥协）
+    // 6. DispatchTool 注册（候选 γ：结构性循环依赖妥协 / l6_assembly §7）
     // NOTE: DispatchTool 闭包依赖 this.buildSystemPrompt / this.toolRegistry.formatForLLM
-    //       因 Assembly 构造期 Runtime 尚未 new，此 register 必须留在 Runtime 内
-    //       登记为 B 类偏差：design/modules/l6_assembly.md §7
+    //       Assembly 构造期 Runtime 尚未 new / 此 register 必须留在 Runtime 内
     const dispatchTool = new DispatchTool(
       () => this.buildSystemPrompt(),
       () => this.toolRegistry.formatForLLM(this.toolRegistry.getAll()),
@@ -950,13 +956,5 @@ export class Runtime {
     );
   }
 
-}
-
-/** phase 521: 'last-turn' strategy helper — 找最近 'user' role msg / 从那里切片 */
-function extractLastTurn(messages: Message[]): Message[] {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === 'user') return messages.slice(i);
-  }
-  return messages; // 0 user msg / 全继承
 }
 
