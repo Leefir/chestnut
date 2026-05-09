@@ -235,8 +235,8 @@ async function runDeepDreamForClaw(
     } catch (err) {
       audit.write(MEMORY_AUDIT_EVENTS.DEEP_DREAM_ERROR, `step=call_2`, `clawId=${clawId}`, `file=${sf.filename}`, `reason=${err instanceof Error ? err.message : String(err)}`);
       console.error(`[cron:deep-dream] ${clawId}: Call 2 failed for ${sf.filename}:`, err);
-      // 压缩失败不阻断流程，截取前 4000 chars 防 meta-compression 超上下文
-      compression = dreamOutput.slice(0, 4000);
+      // 压缩失败不阻断流程，截取前 maxCompressionTokens chars 防 meta-compression 超上下文
+      compression = dreamOutput.slice(0, maxCompressionTokens);
     }
 
     compressions.push(compression);

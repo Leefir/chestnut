@@ -172,7 +172,7 @@ clawCmd
       if (!validPriorities.includes(opts.priority)) {
         throw new CliError(`Invalid priority: ${opts.priority}. Must be one of: ${validPriorities.join(', ')}`);
       }
-      await sendCommand(name, message, { priority: opts.priority as any });
+      await sendCommand(name, message, { priority: opts.priority as 'critical' | 'high' | 'normal' | 'low' });
     } catch (error) {
       process.exitCode = handleCliError(error);
     }
