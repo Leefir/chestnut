@@ -6,11 +6,15 @@
  * 0 闭包依赖 / 接受 TaskEventHandlerDeps 参
  */
 
+import type { AuditLog } from '../../foundation/audit/index.js';
+import { VIEWPORT_AUDIT_EVENTS } from './viewport-audit-events.js';
+
 export interface TaskEventHandlerDeps {
   getTaskWatch: (taskId: string) => { silent: boolean } | undefined;
   showRecapStream: () => boolean;
   appendOutput: (color: string, text: string, wrap?: boolean, hangIndent?: string) => void;
   stopTaskWatch: (taskId: string) => void;
+  audit?: AuditLog;
 }
 
 export type TaskEvent = {
@@ -42,6 +46,14 @@ export function createTaskEventHandler(deps: TaskEventHandlerDeps) {
       case 'turn_error':
  case 'turn_interrupted':
         deps.stopTaskWatch(taskId);
+        break;
+      default:
+        deps.audit?.write(
+          VIEWPORT_AUDIT_EVENTS.UNKNOWN_EVENT,
+          `context=task_event`,
+          `type=${String(event.type)}`,
+          `taskId=${taskId}`,
+        );
         break;
     }
   };

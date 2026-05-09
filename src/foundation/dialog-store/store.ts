@@ -302,11 +302,20 @@ export class DialogStore {
               meta: { foundIn: 'archive', foundFile: entry.name },
             };
           }
-        } catch {
+        } catch (err) {
+          this.audit.write(
+            DIALOG_AUDIT_EVENTS.ARCHIVE_PARSE_FAILED,
+            `file=${entry.name}`,
+            `reason=${err instanceof Error ? err.message : String(err)}`,
+          );
           // 单个 archive 损坏跳过 / 继续找
         }
       }
-    } catch {
+    } catch (err) {
+      this.audit.write(
+        DIALOG_AUDIT_EVENTS.ARCHIVE_DIR_FAILED,
+        `reason=${err instanceof Error ? err.message : String(err)}`,
+      );
       // archive dir 失败 / 走最终抛错
     }
 

@@ -12,4 +12,6 @@ export const DIALOG_AUDIT_EVENTS = {
   RECOVERED: 'session_recovered',
   ARCHIVE_FAILED: 'session_archive_failed',
   ARCHIVE_READ_FAILED: 'session_archive_read_failed',
+  ARCHIVE_PARSE_FAILED: 'session_archive_parse_failed',
+  ARCHIVE_DIR_FAILED: 'session_archive_dir_failed',
 } as const;

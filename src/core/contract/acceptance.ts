@@ -140,9 +140,10 @@ export async function completeSubtaskSync(
     } catch (err) {
       ctx.audit.write(
         CONTRACT_AUDIT_EVENTS.MOVE_ARCHIVE_FAILED,
-        `err=${err instanceof Error ? err.message : String(err)}`,
+        `context=ContractSystem._completeSubtaskSync`,
+        `message=moveToArchive failed; contract stays in active/`,
+        `error=${err instanceof Error ? err.message : String(err)}`,
       );
-      ctx.audit.write(CONTRACT_AUDIT_EVENTS.MOVE_ARCHIVE_FAILED, `context=${'ContractSystem._completeSubtaskSync'}`, `message=${'moveToArchive failed; contract stays in active/'}`, `error=${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

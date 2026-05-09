@@ -359,7 +359,6 @@ export class ContractSystem {
       );
     }
     this.audit.write(CONTRACT_AUDIT_EVENTS.CREATED, contractId, `subtasks=${contractYaml.subtasks.length}`, `title=${contractYaml.title}`);
-    this.audit.write(CONTRACT_AUDIT_EVENTS.CREATED, `contractId=${contractId}`);
     return contractId;
   }
 

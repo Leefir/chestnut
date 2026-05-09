@@ -853,7 +853,9 @@ describe('ContractSystem', () => {
 
       expect(mockAudit.write).toHaveBeenCalledWith(
         CONTRACT_AUDIT_EVENTS.MOVE_ARCHIVE_FAILED,
-        expect.stringContaining('disk full'),
+        expect.stringContaining('context=ContractSystem._completeSubtaskSync'),
+        expect.stringContaining('message=moveToArchive failed; contract stays in active/'),
+        expect.stringContaining('error=disk full'),
       );
       moveSpy.mockRestore();
     });
@@ -1184,7 +1186,9 @@ describe('ContractSystem', () => {
 
       expect(mockAudit.write).toHaveBeenCalledWith(
         CONTRACT_AUDIT_EVENTS.CREATED,
-        expect.stringContaining(`contractId=${contractId}`),
+        contractId,
+        expect.stringContaining('subtasks=1'),
+        expect.stringContaining('title=AuditLog Lifecycle Test'),
       );
     });
 

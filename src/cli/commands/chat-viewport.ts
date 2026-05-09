@@ -305,6 +305,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
     showRecapStream: () => showRecapStream,
     appendOutput,
     stopTaskWatch,
+    audit: options.audit,
   });
 
   // 处理一个 stream event
