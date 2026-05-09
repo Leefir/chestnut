@@ -988,7 +988,7 @@ describe('ContractSystem — background acceptance error handling', () => {
     await new Promise(r => setTimeout(r, 100));
 
     expect(auditEvents.some(e => e.type === 'contract_unexpected_async_throw')).toBe(false);
-    expect(auditEvents.some(e => e.type === 'contract_acceptance_reset_failed')).toBe(true);
+    expect(auditEvents.some(e => e.type === 'contract_acceptance_background_failed')).toBe(true);
 
     await cleanupTempDir(rootDir);
   });

@@ -192,9 +192,21 @@ export async function runAcceptancePipeline(
           `error=${err instanceof Error ? err.message : String(err)}`,
           `stack=${err instanceof Error ? err.stack ?? '' : ''}`,
         );
+      } else {
+        ctx.audit.write(
+          CONTRACT_AUDIT_EVENTS.ACCEPTANCE_BACKGROUND_FAILED,
+          `contractId=${contractId}`,
+          `subtaskId=${subtaskId}`,
+          `error=${err instanceof Error ? err.message : String(err)}`,
+        );
       }
-      ctx.audit.write(CONTRACT_AUDIT_EVENTS.ACCEPTANCE_RESET_FAILED, `context=ContractSystem.backgroundAcceptance`, `contractId=${contractId}`, `subtaskId=${subtaskId}`, `error=${err instanceof Error ? err.message : String(err)}`);
-      return writeAcceptanceError(ctx, contractId, subtaskId, err);
+      writeAcceptanceError(ctx, contractId, subtaskId, err).catch(inboxErr => {
+        ctx.audit.write(
+          CONTRACT_AUDIT_EVENTS.ACCEPTANCE_RESET_FAILED,
+          `context=ContractSystem.backgroundAcceptance.writeError`,
+          `error=${inboxErr instanceof Error ? inboxErr.message : String(inboxErr)}`,
+        );
+      });
     });
 
   return { passed: false, feedback: '', async: true };
@@ -238,12 +250,12 @@ export async function runAcceptanceInBackground(
     }
   }
 
-  await ctx.withProgressLock(contractId, async () => {
+  const outcome = await ctx.withProgressLock(contractId, async (): Promise<{ allCompleted: boolean; passed: boolean } | null> => {
     const progress = await ctx.getProgress(contractId);
     const subtask = progress.subtasks[subtaskId];
     if (!subtask) {
       ctx.audit.write(CONTRACT_AUDIT_EVENTS.PROGRESS_CORRUPTED, `context=ContractSystem._runAcceptanceInBackground`, `contractId=${contractId}`, `subtaskId=${subtaskId}`, `error=subtask missing from progress after in_progress mark`);
-      return;
+      return null;
     }
 
     if (result.passed) {
@@ -276,24 +288,7 @@ export async function runAcceptanceInBackground(
       await ctx.saveProgress(contractId, progress);
       writeAcceptanceInbox(ctx, contractId, subtaskId, 'passed', allCompleted);
 
-      if (allCompleted) {
-        try {
-          await ctx.moveContractToArchive(contractId);
-          ctx.audit.write(
-            CONTRACT_AUDIT_EVENTS.COMPLETED,
-            contractId,
-            `title=${contractYaml.title}`,
-            `claw=${ctx.clawId}`,
-          );
-          await ctx.emitContractCompleted(contractId);
-        } catch (err) {
-          ctx.audit.write(
-            CONTRACT_AUDIT_EVENTS.MOVE_ARCHIVE_FAILED,
-            `err=${err instanceof Error ? err.message : String(err)}`,
-          );
-          ctx.audit.write(CONTRACT_AUDIT_EVENTS.MOVE_ARCHIVE_FAILED, `context=${'ContractSystem._runAcceptanceInBackground'}`, `message=${'moveToArchive failed; contract stays in active/'}`, `error=${err instanceof Error ? err.message : String(err)}`);
-        }
-      }
+      return { allCompleted, passed: true };
     } else {
       subtask.retry_count = (subtask.retry_count || 0) + 1;
       subtask.last_failed_feedback = {
@@ -352,8 +347,30 @@ export async function runAcceptanceInBackground(
           `claw=${ctx.clawId}`,
         );
       }
+      return { allCompleted: false, passed: false };
     }
   });
+
+  // archive 拆出 lock（mirror completeSubtaskSync pattern / 0 lock holding 长 IO）
+  if (outcome?.passed && outcome.allCompleted) {
+    try {
+      await ctx.moveContractToArchive(contractId);
+      ctx.audit.write(
+        CONTRACT_AUDIT_EVENTS.COMPLETED,
+        contractId,
+        `title=${contractYaml.title}`,
+        `claw=${ctx.clawId}`,
+      );
+      await ctx.emitContractCompleted(contractId);
+    } catch (err) {
+      ctx.audit.write(
+        CONTRACT_AUDIT_EVENTS.MOVE_ARCHIVE_FAILED,
+        `context=ContractSystem._runAcceptanceInBackground`,
+        `message=moveToArchive failed; contract stays in active/`,
+        `error=${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
 }
 
 export async function runScriptAcceptance(
