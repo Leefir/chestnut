@@ -14,7 +14,7 @@ import {
   LLMRateLimitError,
   LLMTimeoutError,
 } from '../../types/errors.js';
-import { parseRetryAfter } from './_helpers.js';
+import { parseRetryAfter, throwHttpErrorResponse } from './_helpers.js';
 import type {
   ProviderConfig,
   LLMCallOptions,
@@ -158,7 +158,7 @@ export class GeminiAdapter implements ProviderAdapter {
           signal: abortHandle.signal,
         }
       );
-      if (!response.ok) await this.handleErrorResponse(response);
+      if (!response.ok) await throwHttpErrorResponse(this.name, response);
       const data = await response.json() as GeminiResponse;
       return this.parseResponse(data);
     } catch (error) {
@@ -187,7 +187,7 @@ export class GeminiAdapter implements ProviderAdapter {
           signal: abortHandle.signal,
         }
       );
-      if (!response.ok) await this.handleErrorResponse(response);
+      if (!response.ok) await throwHttpErrorResponse(this.name, response);
       // 进入 stream 阶段：切换 timer 为总时长保护
       abortHandle.enterStreamPhase(STREAM_MAX_DURATION_MS);
       yield* this.parseSSEStream(response, abortHandle, timeout);
@@ -336,25 +336,5 @@ export class GeminiAdapter implements ProviderAdapter {
     };
   }
 
-  private async handleErrorResponse(response: Response): Promise<void> {
-    const status = response.status;
-    let errorText: string;
 
-    try {
-      const errorData = await response.json() as { error?: { message?: string; status?: string } };
-      // Gemini error format: { error: { code, message, status } }
-      errorText = errorData.error?.message ?? JSON.stringify(errorData);
-    } catch {
-      errorText = await response.text();
-    }
-
-    if (status === 429) {
-      const retryAfter = response.headers.get('retry-after');
-      throw new LLMRateLimitError(this.name, parseRetryAfter(retryAfter));
-    }
-    if (status >= 500) {
-      throw new LLMError(`Server error (${status}): ${errorText}`, { provider: this.name });
-    }
-    throw new LLMError(`Request failed (${status}): ${errorText}`, { provider: this.name });
-  }
 }
