@@ -8,4 +8,4 @@
  */
 
 // Tool profile for tool permission management
-export type ToolProfile = 'full' | 'readonly' | 'subagent' | 'miner' | 'dream' | 'verifier';
+export type ToolProfile = 'full' | 'readonly' | 'subagent' | 'miner';

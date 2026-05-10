@@ -41,8 +41,10 @@ describe('Tools', () => {
       expect(TOOL_PROFILES.subagent).not.toContain('spawn');
     });
 
-    it('should define correct tools for dream profile', () => {
-      expect(TOOL_PROFILES.dream).toEqual(['read', 'search', 'ls', 'memory_search']);
+    it('should define correct tools for miner profile', () => {
+      expect(TOOL_PROFILES.miner).toContain('read');
+      expect(TOOL_PROFILES.miner).toContain('write');
+      expect(TOOL_PROFILES.miner).not.toContain('send');
     });
   });
 
