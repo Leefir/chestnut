@@ -345,14 +345,14 @@ describe('StepExecutor', () => {
     expect(emptyReasons).toEqual(['end_turn']);
   });
 
-  it('empty response without callback falls back to console.warn', async () => {
+  it('empty response without callback silently skips', async () => {
     const llm = makeStreamLLM([{ type: 'done', stopReason: 'end_turn' }]);
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     await executeStep({
       messages: [], systemPrompt: '', llm, tools: [],
       executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
     });
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('empty response'));
+    expect(warnSpy).not.toHaveBeenCalled();
     warnSpy.mockRestore();
   });
 
@@ -409,7 +409,7 @@ describe('StepExecutor', () => {
     expect(unknownReasons).toEqual(['custom_reason']);
   });
 
-  it('unknown stop_reason without callback falls back to console.warn', async () => {
+  it('unknown stop_reason without callback silently skips', async () => {
     const llm = makeStreamLLM([
       { type: 'text_delta', delta: 'hello' },
       { type: 'done', stopReason: 'custom_reason' },
@@ -419,7 +419,7 @@ describe('StepExecutor', () => {
       messages: [], systemPrompt: '', llm, tools: [],
       executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
     });
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown stop_reason'));
+    expect(warnSpy).not.toHaveBeenCalled();
     warnSpy.mockRestore();
   });
 
@@ -437,38 +437,26 @@ describe('StepExecutor', () => {
     expect(reasons).toEqual(['tool_use']);
   });
 
-  it('tool_use with zero parseable calls without callback falls back to console.warn', async () => {
+  it('tool_use with zero parseable calls without callback requires onUnparseableToolUse', async () => {
     const llm = makeStreamLLM([
       { type: 'done', stopReason: 'tool_use' },
     ]);
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const result = await executeStep({
+    await expect(executeStep({
       messages: [], systemPrompt: '', llm, tools: [],
       executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
-    });
-    expect(result.kind).toBe('final');
-    if (result.kind === 'final') {
-      expect(result.stopReason).toBe('no_tool');
-    }
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('tool_use stop_reason but no parseable'));
-    warnSpy.mockRestore();
+    })).rejects.toThrow(TypeError);
   });
 
-  it('tool_use with zero parseable calls with only onEmptyResponse still falls back to console.warn', async () => {
+  it('tool_use with zero parseable calls with only onEmptyResponse still requires onUnparseableToolUse', async () => {
     const llm = makeStreamLLM([
       { type: 'done', stopReason: 'tool_use' },
     ]);
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const emptyReasons: string[] = [];
-    const result = await executeStep({
+    await expect(executeStep({
       messages: [], systemPrompt: '', llm, tools: [],
       executor: makeExecutor({}), registry: makeRegistry({}), ctx: makeCtx(),
       callbacks: { onEmptyResponse: (r) => emptyReasons.push(r) },
-    });
-    expect(result.kind).toBe('final');
-    expect(emptyReasons).toEqual(['tool_use']);
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('tool_use stop_reason but no parseable'));
-    warnSpy.mockRestore();
+    })).rejects.toThrow(TypeError);
   });
 
   it('LLM stream error emits onLLMResult with error and rethrows', async () => {

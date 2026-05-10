@@ -28,7 +28,7 @@ export interface StepCallbacks {
   onProviderFailed?: (provider: string, model: string, error: string) => void;
   onEmptyResponse?: (stopReason: string) => void;
   onUnknownStopReason?: (stopReason: string) => void;
-  onUnparseableToolUse?: (stopReason: string) => void;
+  onUnparseableToolUse: (stopReason: string) => void;
 }
 
 export interface StepInput {

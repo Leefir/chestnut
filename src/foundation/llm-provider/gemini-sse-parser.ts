@@ -26,7 +26,8 @@ export async function* parseGeminiSSEStream(
   response: Response,
   handle: CombinedAbortHandle,
   idleTimeoutMs: number,
-  providerName: string = 'wrong-name',
+  providerName: string,
+  onStreamParseError?: (event: { provider: string; raw: string; error: string }) => void,
 ): AsyncIterableIterator<StreamChunk> {
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
@@ -52,7 +53,14 @@ export async function* parseGeminiSSEStream(
         if (!data || data === '[DONE]') continue;
 
         let event: GeminiResponse & { error?: { code?: number; message?: string; status?: string } };
-        try { event = JSON.parse(data); } catch { continue; }
+        try { event = JSON.parse(data); } catch (e) {
+          onStreamParseError?.({
+            provider: providerName,
+            raw: data.slice(0, 100),
+            error: e instanceof Error ? e.message : String(e),
+          });
+          continue;
+        }
 
         // SSE-level error (no candidates, top-level error object)
         if (event.error && !event.candidates) {

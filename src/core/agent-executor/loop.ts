@@ -38,7 +38,7 @@ export interface ReactOptions {
   onLLMResult?: (info: LLMCallInfo) => void;
   onEmptyResponse?: (stopReason: string) => void;
   onUnknownStopReason?: (stopReason: string) => void;
-  onUnparseableToolUse?: (stopReason: string) => void;
+  onUnparseableToolUse: (stopReason: string) => void;
 }
 
 export interface ReactResult {

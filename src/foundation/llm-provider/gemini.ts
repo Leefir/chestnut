@@ -51,6 +51,7 @@ export class GeminiAdapter implements ProviderAdapter {
   readonly model: string;
   private readonly config: ProviderConfig;
   private readonly baseUrl: string;
+  onStreamParseError?: (event: { provider: string; raw: string; error: string }) => void;
 
   constructor(config: ProviderConfig) {
     this.config = config;
@@ -130,7 +131,7 @@ export class GeminiAdapter implements ProviderAdapter {
       if (!response.ok) await throwHttpErrorResponse(this.name, response);
       // 进入 stream 阶段：切换 timer 为总时长保护
       abortHandle.enterStreamPhase(STREAM_MAX_DURATION_MS);
-      yield* parseGeminiSSEStream(response, abortHandle, timeout, this.name);
+      yield* parseGeminiSSEStream(response, abortHandle, timeout, this.name, this.onStreamParseError);
     } catch (error) {
       const classified = classifyFetchAbortError(error, options.signal, timeout, this.name);
       if (classified) throw classified;
