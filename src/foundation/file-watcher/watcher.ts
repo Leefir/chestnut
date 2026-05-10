@@ -8,16 +8,38 @@ import { watch as chokidarWatch, type FSWatcher } from 'chokidar';
 import type { Watcher, WatchEvent, WatchEventType, WatcherErrorContext } from './types.js';
 
 /**
- * Chokidar-based watcher implementation
- */
-/**
  * Fallback poller consecutive failure limit. Mirror reader.ts CONSECUTIVE_PARSE_FAIL_LIMIT
  * pattern. After N consecutive callback throws, the fallback poller is disabled and the
  * watcher notifies caller via onError(err, 'fallback_disabled'). Caller decides recovery.
+ *
+ * Value: 5 = empirical（mirror stream/reader.ts:25 CONSECUTIVE_PARSE_FAIL_LIMIT 同模板 / 平衡
+ * transient FS error 容忍 vs 系统真坏立 fail-loud / 调小过敏 / 调大延迟 fail-loud）
  */
 const FALLBACK_CONSECUTIVE_FAIL_LIMIT = 5;
 
+/**
+ * Fallback poll interval (ms) for macOS FSEvents 'immediate' stability mode.
+ * Only enabled when chokidar 'immediate' mode 用 stability === 'immediate' 路径 +
+ * macOS（FSEvents coalescing 50-200ms 物理下界 / 加 fallback poll 兜底潜在事件丢失）.
+ *
+ * Value: 500ms = empirical 平衡 latency vs CPU（< macOS FSEvents 上界 / > Linux inotify
+ * 物理下界 / 用户可经 createWatcher options.fallbackPollMs 自定义）
+ */
 const DEFAULT_FALLBACK_POLL_MS = 500;
+
+/**
+ * Chokidar awaitWriteFinish stability threshold (ms).
+ * 等待 file write 停止 N ms 视为「写完成」/ 防 partial-write 触发 read 提前.
+ * Value: 100ms = chokidar README 推荐起步值 / 平衡 file-write-burst 检测 vs delivery latency.
+ */
+const CHOKIDAR_STABILITY_THRESHOLD_MS = 100;
+
+/**
+ * Chokidar awaitWriteFinish poll interval (ms).
+ * file size 监测频率 / 检 stability 收敛.
+ * Value: 50ms = chokidar 默认 / < stability threshold / 保 poll 至少 2 次内 detect stability.
+ */
+const CHOKIDAR_POLL_INTERVAL_MS = 50;
 
 class ChokidarWatcher implements Watcher {
   private active = true;
@@ -120,7 +142,10 @@ export function createWatcher(
     ignored: options?.ignored,
     awaitWriteFinish: options?.stability === 'immediate'
       ? false
-      : { stabilityThreshold: 100, pollInterval: 50 },
+      : {
+          stabilityThreshold: CHOKIDAR_STABILITY_THRESHOLD_MS,
+          pollInterval: CHOKIDAR_POLL_INTERVAL_MS,
+        },
   });
 
   // Map chokidar events to our format
