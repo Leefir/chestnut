@@ -29,7 +29,7 @@ import {
   TASKS_SYNC_DIR,
   CLAWSPACE_DIR,
 } from '../../types/paths.js';
-import type { StreamLog } from '../../foundation/stream/types.js';
+import type { StreamLog } from '../../foundation/stream/index.js';
 import type { DialogStore } from '../../foundation/dialog-store/index.js';
 import { sendFallbackError } from './result-delivery.js';
 import { recoverTasks } from './task-recovery.js';

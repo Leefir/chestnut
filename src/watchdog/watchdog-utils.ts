@@ -17,7 +17,7 @@ import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import type { FileSystem } from '../foundation/fs/types.js';
 import type { AuditLog } from '../foundation/audit/index.js';
 import { readAll, STREAM_FILE } from '../foundation/stream/index.js';
-import { LLM_OUTPUT_EVENTS } from '../foundation/stream/types.js';
+import { LLM_OUTPUT_EVENTS } from '../foundation/stream/index.js';
 import { CONTRACT_DIR } from '../types/paths.js';
 
 // Parse stream.jsonl, return the timestamp of the last event and the last error message

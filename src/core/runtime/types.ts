@@ -5,13 +5,13 @@
 
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
-import type { LLMOrchestratorConfig } from '../../foundation/llm-orchestrator/types.js';
+import type { LLMOrchestratorConfig } from '../../foundation/llm-orchestrator/index.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { Snapshot } from '../../foundation/snapshot/index.js';
 import type { DialogStore } from '../../foundation/dialog-store/index.js';
 import type { InboxReader, OutboxWriter } from '../../foundation/messaging/index.js';
 import type { ToolRegistry } from '../../foundation/tools/index.js';
-import type { IToolExecutor } from '../../foundation/tools/executor.js';
+import type { IToolExecutor } from '../../foundation/tools/index.js';
 import type { ContextInjector } from '../dialog/injector.js';
 import type { ContractSystem } from '../contract/index.js';
 import type { AsyncTaskSystem } from '../async-task-system/index.js';

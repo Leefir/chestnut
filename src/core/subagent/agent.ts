@@ -5,7 +5,7 @@
  */
 
 import { runReact } from '../agent-executor/loop.js';
-import { ToolExecutor } from '../../foundation/tools/executor.js';
+import { ToolExecutor } from '../../foundation/tools/index.js';
 import type { ToolRegistry } from '../../foundation/tools/index.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
@@ -19,7 +19,7 @@ import { oneLine } from '../../types/utils.js';
 import type { Message } from '../../types/message.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { SUBAGENT_AUDIT_EVENTS, REACT_LOOP_AUDIT_EVENTS } from './audit-events.js';
-import type { StreamLog } from '../../foundation/stream/types.js';
+import type { StreamLog } from '../../foundation/stream/index.js';
 import type { CallerType } from '../../foundation/tool-protocol/caller-type.js';
 import type { DialogStore } from '../../foundation/dialog-store/index.js';
 import { callerTypeToProfile } from '../../foundation/tool-protocol/caller-type.js';

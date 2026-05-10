@@ -10,7 +10,7 @@
 import type { Message, ToolDefinition } from '../../types/message.js';
 import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
 import type { ExecContext, ToolResult } from '../../foundation/tool-protocol/index.js';
-import type { IToolExecutor, ToolRegistry } from '../../foundation/tools/executor.js';
+import type { IToolExecutor, ToolRegistry } from '../../foundation/tools/index.js';
 import { runAgent } from './agent-executor.js';
 import type { StepCallbacks, LLMCallInfo } from '../step-executor/step-executor.js';
 

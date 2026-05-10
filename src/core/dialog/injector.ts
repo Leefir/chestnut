@@ -13,7 +13,7 @@ import type { FileSystem } from '../../foundation/fs/types.js';
 import type { Message } from '../../types/message.js';
 import type { Contract } from '../../types/contract.js';
 import type { SessionData } from '../../foundation/dialog-store/index.js';
-import type { SkillSystem } from '../../foundation/skill-system/registry.js';
+import type { SkillSystem } from '../../foundation/skill-system/index.js';
 import type { ContractSystem } from '../contract/manager.js';
 import { FileNotFoundError } from '../../types/errors.js';
 import { DIALOG_AUDIT_EVENTS } from '../../foundation/dialog-store/audit-events.js';
