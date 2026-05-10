@@ -11,11 +11,11 @@
 
 import type { ToolUseBlock, ToolResultBlock } from '../../types/message.js';
 import type { ExecContext, ToolResult } from '../../foundation/tool-protocol/index.js';
-import type { IToolExecutor, ToolRegistry } from '../../foundation/tools/executor.js';
+import type { IToolExecutor, ToolRegistry } from '../../foundation/tools/index.js';
 import type { StepCallbacks } from './types.js';
 import { safeCallback, toToolResultBlock } from './utils.js';
 import { throwAbortError } from './abort-helpers.js';
-import { escapeForLog } from '../../foundation/tools/types.js';
+import { escapeForLog } from '../../foundation/tools/index.js';
 
 interface CategorizedCalls {
   readonlyAsync: { call: ToolUseBlock; index: number }[];
