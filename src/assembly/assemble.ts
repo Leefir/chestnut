@@ -466,8 +466,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
         maxSteps,
         toolProfile,
         toolTimeoutMs,
-        subagentMaxSteps,
-        maxConcurrentTasks: maxConcurrent,
+
         idleTimeoutMs,
         dependencies,
       });
