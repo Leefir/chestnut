@@ -2,7 +2,7 @@
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { AsyncTaskSystem } from '../async-task-system/index.js';
-import { ContractSystem } from '../contract/manager.js';
+import { ContractSystem } from '../contract/index.js';
 import { scheduleRetro } from './retro-scheduler.js';
 import { RETRO_AUDIT_EVENTS } from './retro-audit-events.js';
 import * as path from 'path';

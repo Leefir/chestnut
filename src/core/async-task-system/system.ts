@@ -18,7 +18,7 @@ import type { CallerType } from '../../foundation/tool-protocol/caller-type.js';
 import type { ToolResult, Tool } from '../../foundation/tool-protocol/index.js';
 import type { Message, ToolDefinition } from '../../types/message.js';
 import type { OutboxWriter } from '../../foundation/messaging/index.js';
-import type { ContractSystem } from '../contract/manager.js';
+import type { ContractSystem } from '../contract/index.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import {
   TASKS_QUEUES_PENDING_DIR,
@@ -29,7 +29,7 @@ import {
   TASKS_SYNC_DIR,
   CLAWSPACE_DIR,
 } from '../../types/paths.js';
-import type { StreamLog } from '../../foundation/stream/types.js';
+import type { StreamLog } from '../../foundation/stream/index.js';
 import type { DialogStore } from '../../foundation/dialog-store/index.js';
 import { sendFallbackError } from './result-delivery.js';
 import { recoverTasks } from './task-recovery.js';

@@ -25,7 +25,7 @@ import path from 'path';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import { type AuditLog, createSystemAudit, AUDIT_FILE } from '../../foundation/audit/index.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
-import type { ProcessManager } from '../../foundation/process-manager/manager.js';
+import type { ProcessManager } from '../../foundation/process-manager/index.js';
 import { createAgentProcessManager } from '../../foundation/process-manager/agent-factory.js';
 import { getClawforumRoot } from '../../foundation/config/index.js';
 

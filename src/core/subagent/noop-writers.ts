@@ -1,4 +1,4 @@
-import type { StreamEvent, StreamLog } from '../../foundation/stream/types.js';
+import type { StreamEvent, StreamLog } from '../../foundation/stream/index.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 
 export class NoopStreamWriter implements StreamLog {

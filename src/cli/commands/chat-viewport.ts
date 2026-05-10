@@ -13,7 +13,7 @@ import stringWidth from 'string-width';
 import { wrapLine, fitLine } from '../utils/string.js';
 import { OUTPUT_LINES_CAP } from '../../constants.js';
 import type { CallerType } from '../../foundation/tool-protocol/caller-type.js';
-import type { Watcher } from '../../foundation/file-watcher/types.js';
+import type { Watcher } from '../../foundation/file-watcher/index.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { VIEWPORT_AUDIT_EVENTS } from './viewport-audit-events.js';
 import { createStreamReader, STREAM_FILE } from '../../foundation/stream/index.js';

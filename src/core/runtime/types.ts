@@ -5,7 +5,7 @@
 
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
-import type { LLMOrchestratorConfig } from '../../foundation/llm-orchestrator/types.js';
+import type { LLMOrchestratorConfig } from '../../foundation/llm-orchestrator/index.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { Snapshot } from '../../foundation/snapshot/index.js';
 import type { DialogStore } from '../../foundation/dialog-store/index.js';

@@ -5,8 +5,8 @@ import { createAuditWriter, createSystemAudit, type AuditLog } from '../foundati
 import { SNAPSHOT_IGNORE_PATTERNS, createSnapshot } from '../foundation/snapshot/index.js';
 import type { Snapshot } from '../foundation/snapshot/index.js';
 import { createStreamWriter } from '../foundation/stream/index.js';
-import type { StreamWriter } from '../foundation/stream/writer.js';
-import type { ProcessManager } from '../foundation/process-manager/manager.js';
+import type { StreamWriter } from '../foundation/stream/index.js';
+import type { ProcessManager } from '../foundation/process-manager/index.js';
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 
 import { createAgentProcessManager } from '../foundation/process-manager/agent-factory.js';
@@ -18,7 +18,7 @@ import { ASSEMBLY_AUDIT_EVENTS } from './audit-events.js';
 import { CLAWS_DIR } from '../types/paths.js';
 import { createToolRegistry, type ToolRegistry } from '../foundation/tools/index.js';
 import { createToolExecutor } from '../foundation/tools/index.js';
-import type { IToolExecutor } from '../foundation/tools/types.js';
+import type { IToolExecutor } from '../foundation/tools/index.js';
 import { writePendingToolTaskFile } from '../core/async-task-system/tools/_pending-tool-task-writer.js';
 import { createSkillSystem, SkillSystem } from '../foundation/skill-system/index.js';
 import { SKILLS_DIR_DEFAULT } from '../foundation/skill-system/skill-paths.js';
@@ -30,7 +30,7 @@ import { createAsyncTaskSystem } from '../core/async-task-system/index.js';
 import type { AsyncTaskSystem } from '../core/async-task-system/system.js';
 import { dispatchContractExtractPostProcessor } from '../core/async-task-system/post-processors/dispatch-contract-extract.js';
 import { createContextInjector, type ContextInjector } from '../core/dialog/index.js';
-import { ExecContextImpl } from '../foundation/tools/context.js';
+import { ExecContextImpl } from '../foundation/tools/index.js';
 import type { ExecContext } from '../foundation/tool-protocol/index.js';
 import { createFileTools } from '../foundation/file-tool/index.js';
 import { createCommandTools } from '../foundation/command-tool/index.js';
@@ -58,9 +58,9 @@ import { buildLLMConfig } from '../foundation/config/index.js';
 import { DEFAULT_MAX_STEPS, DEFAULT_MAX_CONCURRENT_TASKS } from '../constants.js';
 
 import type { AssembleConfig, Instances } from './index.js';
-import { createGateway } from '../core/gateway/gateway.js';
-import type { Gateway } from '../core/gateway/types.js';
-import { createAskUserTool } from '../core/gateway/ask-user-tool.js';
+import { createGateway } from '../core/gateway/index.js';
+import type { Gateway } from '../core/gateway/index.js';
+import { createAskUserTool } from '../core/gateway/index.js';
 import { createStreamReader, STREAM_FILE, findRecentTurnStartOffset } from '../foundation/stream/index.js';
 import { DIALOG_DIR, TASKS_SYNC_DIR } from '../types/paths.js';
 
@@ -462,6 +462,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
         maxSteps,
         toolProfile,
         toolTimeoutMs,
+
         idleTimeoutMs,
         dependencies,
       });
