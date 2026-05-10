@@ -23,8 +23,16 @@ vi.mock('readline', () => ({
   createInterface: vi.fn(() => mockRl),
 }));
 
-vi.spyOn(process, 'exit').mockImplementation((_code?: string | number | null | undefined) => {
-  throw new Error(`process.exit(${_code})`);
+let processExitSpy: ReturnType<typeof vi.spyOn>;
+
+beforeEach(() => {
+  processExitSpy = vi.spyOn(process, 'exit').mockImplementation((_code?: string | number | null | undefined) => {
+    throw new Error(`process.exit(${_code})`);
+  });
+});
+
+afterEach(() => {
+  processExitSpy.mockRestore();
 });
 
 const { initCommand } = await import('../../src/cli/commands/init.js');

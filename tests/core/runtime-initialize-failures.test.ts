@@ -11,7 +11,7 @@
  *（tests/helpers/runtime-deps.ts）消除类型绕过。独立 phase 处理。
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import * as path from 'path';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
@@ -26,6 +26,10 @@ import { InboxReader } from '../../src/foundation/messaging/index.js';
 
 import { OutboxWriter } from '../../src/foundation/messaging/index.js';
 import { INBOX_PENDING_DIR, INBOX_DONE_DIR, INBOX_FAILED_DIR } from '../../src/types/paths.js';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('Runtime.initialize() failure audits', () => {
   async function makeDeps(clawDir: string, overrides: { sessionManager?: DialogStore; inboxReader?: InboxReader } = {}) {

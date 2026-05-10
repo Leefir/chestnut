@@ -9,16 +9,17 @@ import { FileNotFoundError } from '../../src/types/errors.js';
 describe('AuditWriter', () => {
   let tmpDir: string;
   let nodeFs: NodeFileSystem;
-  const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-test-'));
     nodeFs = new NodeFileSystem({ baseDir: tmpDir });
-    consoleErrorSpy.mockClear();
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
+    consoleErrorSpy.mockRestore();
   });
 
   it('writes a TSV line with timestamp, type and cols', () => {

@@ -380,6 +380,11 @@ describe('startDaemonLoop - interrupt audit', () => {
 // ─── iteration audit ───────────────────────────────────────────────────────────
 
 describe('startDaemonLoop - iteration audit', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
   it('chain reaction triggers daemon_loop_iteration type=chain with chain_total', async () => {
     vi.useFakeTimers();
     const mockAudit = { write: vi.fn() };

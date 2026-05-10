@@ -45,7 +45,7 @@ describe('ProcessManager - spawn defaults', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
     cleanupTempDirSync(tempDir);
   });
 
