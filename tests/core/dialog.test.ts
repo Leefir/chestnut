@@ -73,7 +73,7 @@ describe('Dialog', () => {
       
       // Archive directory should have the file
       const entries = await nodeFs.list(DIALOG_ARCHIVE_DIR);
-      expect(entries.length).toBeGreaterThan(0);
+      expect(entries).toHaveLength(1);
       expect(entries[0].name).toMatch(/\.json$/);
     });
 

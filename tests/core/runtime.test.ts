@@ -1080,7 +1080,7 @@ Test message`;
       expect(retryLLM.call).toHaveBeenCalledTimes(1);
       const callArg = retryLLM.call.mock.calls[0][0];
       // The session messages from the first chat() exchange are included
-      expect(callArg.messages.length).toBeGreaterThan(0);
+      expect(callArg.messages.map((m: any) => m.role)).toEqual(['user', 'assistant']);
     });
 
     it('cleans up AbortController even when _runReact throws', async () => {
@@ -1650,7 +1650,7 @@ Test message`;
       expect(sessionLoadedIndex).toBeGreaterThan(daemonStopIndex);
 
       // 验证 session_loaded 确实被写入了
-      expect(sessionLoadedIndex).toBeGreaterThanOrEqual(0);
+      expect(sessionLoadedIndex).not.toBe(-1);
     });
   });
 

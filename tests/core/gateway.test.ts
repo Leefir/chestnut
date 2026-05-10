@@ -292,9 +292,9 @@ describe('Gateway', () => {
     const connDroppedIdx = order.findIndex((s) => s.startsWith('broadcast:connection_dropped'));
     const transportCloseIdx = order.indexOf('transport.close');
 
-    expect(streamStopIdx).toBeGreaterThanOrEqual(0);
-    expect(connDroppedIdx).toBeGreaterThanOrEqual(0);
-    expect(transportCloseIdx).toBeGreaterThanOrEqual(0);
+    expect(streamStopIdx).not.toBe(-1);
+    expect(connDroppedIdx).not.toBe(-1);
+    expect(transportCloseIdx).not.toBe(-1);
     expect(streamStopIdx).toBeLessThan(connDroppedIdx);
     expect(connDroppedIdx).toBeLessThan(transportCloseIdx);
   });

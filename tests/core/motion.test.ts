@@ -122,7 +122,7 @@ describe('MotionRuntime', () => {
       const soulIndex = prompt.indexOf('SOUL_CONTENT');
       const memoryIndex = prompt.indexOf('MEMORY_CONTENT');
 
-      expect(agentsIndex).toBeGreaterThanOrEqual(0);
+      expect(agentsIndex).not.toBe(-1);
       expect(soulIndex).toBeGreaterThan(agentsIndex);
       expect(memoryIndex).toBeGreaterThan(soulIndex);
     });
