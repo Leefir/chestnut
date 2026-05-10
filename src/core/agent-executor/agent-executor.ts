@@ -84,8 +84,9 @@ export async function runAgent(input: AgentInput): Promise<AgentResult> {
         if (consecutiveParseErrors >= maxConsecutiveParseErrors) {
           // 从最近一条 assistant 消息的 tool_use blocks 提取工具名（为错误消息保留上下文）
           const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
-          const toolNames = Array.isArray(lastAssistant?.content)
-            ? lastAssistant!.content
+          const lastContent = lastAssistant?.content;
+          const toolNames = Array.isArray(lastContent)
+            ? lastContent
                 .filter((b): b is { type: 'tool_use'; name: string } => (b as { type?: string }).type === 'tool_use')
                 .map(b => b.name)
                 .join(', ')

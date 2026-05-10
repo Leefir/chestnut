@@ -19,6 +19,9 @@ export interface AnthropicResponse {
 }
 
 export function parseAnthropicResponse(data: AnthropicResponse): LLMResponse {
+  if (!Array.isArray(data.content)) {
+    throw new Error('Invalid response: content must be array');
+  }
   const content = data.content as ContentBlock[];
 
   return {
