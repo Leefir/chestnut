@@ -5,34 +5,10 @@ import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 import { createDirContext } from '../../src/cli/utils/factories.js';
 import { createStreamReader, STREAM_FILE, type StreamEvent, type StreamReader } from '../../src/foundation/stream/index.js';
 import { makeAudit } from '../helpers/audit.js';
+import { waitFor } from '../helpers/wait-for.js';
 import { VIEWPORT_AUDIT_EVENTS } from '../../src/cli/commands/viewport-audit-events.js';
 import { STREAM_AUDIT_EVENTS } from '../../src/foundation/stream/audit-events.js';
 import { createMainTurnUI, createTaskEventHandler, type MainTurnUIController } from '../../src/cli/commands/chat-viewport.js';
-
-const TIMEOUT_MS = 10000;
-
-function waitFor(condition: () => boolean, timeoutMs = TIMEOUT_MS): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const start = Date.now();
-    let lastError: unknown = null;
-    const tick = () => {
-      try {
-        if (condition()) { resolve(); return; }
-      } catch (err) {
-        lastError = err;       // 捕获 / 不吞
-      }
-      if (Date.now() - start > timeoutMs) {
-        const errMsg = lastError instanceof Error
-          ? `waitFor timed out (last predicate error: ${lastError.message})`
-          : 'waitFor timed out';
-        reject(new Error(errMsg));
-        return;
-      }
-      setTimeout(tick, 20);
-    };
-    tick();
-  });
-}
 
 async function appendJsonl(p: string, ev: object) {
   await nativeFs.appendFile(p, JSON.stringify({ ts: Date.now(), ...ev }) + '\n');
@@ -322,14 +298,14 @@ describe('chat-viewport 主 UI 并发隔离（phase162 streamReader）', () => {
     await appendJsonl(mainStreamPath, { type: 'turn_start' });
     await appendJsonl(mainStreamPath, { type: 'llm_start' });
     await appendJsonl(mainStreamPath, { type: 'text_delta', delta: 'hello' });
-    await waitFor(() => mainUI.getSuffix().includes('hello'));
+    await waitFor(() => mainUI.getSuffix().includes('hello'), 10000);
     expect(mainUI.getSuffix()).toContain('hello');
 
     // task stream：tool_call → tool_result → turn_end（subagent 活动）
     await appendJsonl(taskStreamPath, { type: 'tool_call', name: 'read_file' });
     await appendJsonl(taskStreamPath, { type: 'tool_result', success: true, step: 1, maxSteps: 3, summary: 'ok' });
     await appendJsonl(taskStreamPath, { type: 'turn_end' });
-    await waitFor(() => taskAppended.length >= 2);
+    await waitFor(() => taskAppended.length >= 2, 10000);
 
     // 关键断言：task 事件过后主 suffix 不被清空
     expect(mainUI.getSuffix()).toContain('hello');

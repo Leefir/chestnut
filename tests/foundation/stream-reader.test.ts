@@ -6,31 +6,8 @@ import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import { StreamWriter, createStreamReader, STREAM_FILE, type StreamReader, type StreamEvent } from '../../src/foundation/stream/index.js';
 import { makeAudit } from '../helpers/audit.js';
+import { waitFor } from '../helpers/wait-for.js';
 import { STREAM_AUDIT_EVENTS } from '../../src/foundation/stream/audit-events.js';
-
-const TIMEOUT_MS = 10000;
-
-function waitFor(condition: () => boolean | Promise<boolean>, timeoutMs = TIMEOUT_MS): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const start = Date.now();
-    const check = async () => {
-      try {
-        if (await condition()) {
-          resolve();
-          return;
-        }
-      } catch {
-        // continue polling
-      }
-      if (Date.now() - start > timeoutMs) {
-        reject(new Error('waitFor timed out'));
-        return;
-      }
-      setTimeout(check, 20);
-    };
-    check();
-  });
-}
 
 describe('StreamReader', () => {
   let tempDir: string;
@@ -67,7 +44,7 @@ describe('StreamReader', () => {
     const ev: StreamEvent = { ts: Date.now(), type: 'test', value: 42 };
     writer.write(ev);
 
-    await waitFor(() => events.length === 1);
+    await waitFor(() => events.length === 1, 10000);
     expect(events[0]).toMatchObject({ type: 'test', value: 42 });
   });
 
@@ -88,7 +65,7 @@ describe('StreamReader', () => {
 
     writer.write({ ts: 4, type: 'new' });
 
-    await waitFor(() => events.length === 1);
+    await waitFor(() => events.length === 1, 10000);
     expect(events[0].type).toBe('new');
   });
 
@@ -104,7 +81,7 @@ describe('StreamReader', () => {
       writer.write({ ts: i, type: 'batch', idx: i });
     }
 
-    await waitFor(() => events.length === 5);
+    await waitFor(() => events.length === 5, 10000);
     expect(events.map(e => (e as StreamEvent & { idx: number }).idx)).toEqual([0, 1, 2, 3, 4]);
   });
 
@@ -119,13 +96,13 @@ describe('StreamReader', () => {
 
     // write a valid event first
     writer.write({ ts: 1, type: 'before' });
-    await waitFor(() => events.length === 1);
+    await waitFor(() => events.length === 1, 10000);
 
     // append an invalid JSON line followed by a valid one directly via fs
     fs.appendSync('stream.jsonl', 'this is not json\n');
     fs.appendSync('stream.jsonl', JSON.stringify({ ts: 2, type: 'after' }) + '\n');
 
-    await waitFor(() => events.length === 2);
+    await waitFor(() => events.length === 2, 10000);
     expect(events[1].type).toBe('after');
     expect(auditEvents.some(e => e[0] === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED)).toBe(true);
   });
@@ -146,7 +123,7 @@ describe('StreamReader', () => {
     writer.write({ ts: 1, type: 'first' });
     writer.write({ ts: 2, type: 'second' });
 
-    await waitFor(() => events.length === 1);
+    await waitFor(() => events.length === 1, 10000);
     expect(events[0].type).toBe('second');
     expect(auditEvents.some(e => e[0] === STREAM_AUDIT_EVENTS.READER_CALLBACK_FAILED)).toBe(true);
   });
@@ -181,7 +158,7 @@ describe('StreamReader', () => {
     writer.write({ ts: 2, type: 'msg', text: '测试中文增量读取' });
     writer.write({ ts: 3, type: 'msg', text: '哈喽 🎯' });
 
-    await waitFor(() => events.length === 3);
+    await waitFor(() => events.length === 3, 10000);
 
     expect(events[0]).toMatchObject({ type: 'msg', text: '你好世界' });
     expect(events[1]).toMatchObject({ type: 'msg', text: '测试中文增量读取' });
@@ -215,7 +192,7 @@ describe('StreamReader', () => {
 
     nativeAppend(streamAbs, Buffer.concat([charRest, suffix]));
 
-    await waitFor(() => events.length === 1);
+    await waitFor(() => events.length === 1, 10000);
     expect(events[0]).toMatchObject({ type: 't', text: '中' });
 
     const parseFailed = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED);
@@ -242,7 +219,7 @@ describe('StreamReader', () => {
     expect(events.length).toBe(0);
 
     nativeAppend(streamAbs, Buffer.concat([emojiHalf2, suffix]));
-    await waitFor(() => events.length === 1);
+    await waitFor(() => events.length === 1, 10000);
     expect(events[0]).toMatchObject({ type: 't', text: '🎯' });
 
     const parseFailed = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED);
@@ -265,7 +242,7 @@ describe('StreamReader', () => {
 
     await waitFor(() =>
       auditRec.events.some(([t]) => t === STREAM_AUDIT_EVENTS.READER_CORRUPT)
-    );
+    , 10000);
 
     const corruptEvents = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_CORRUPT);
     expect(corruptEvents.length).toBe(1);
@@ -307,7 +284,7 @@ describe('StreamReader', () => {
 
     await waitFor(() =>
       auditRec.events.some(([t]) => t === STREAM_AUDIT_EVENTS.READER_CORRUPT)
-    );
+    , 10000);
 
     const corruptEvents = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_CORRUPT);
     expect(corruptEvents.length).toBe(1);
