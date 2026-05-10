@@ -123,7 +123,7 @@ export const ClawConfigSchema = z.object({
     primary: LLMProviderSchema.optional(),
   }).optional(),
   max_steps: z.number().min(1).max(1000).optional(),
-  tool_profile: z.enum(['full', 'readonly', 'subagent', 'dream']).default('full'),
+  tool_profile: z.enum(['full', 'readonly', 'subagent']).default('full'),
   subagent_max_steps: z.number().min(1).max(200).optional(),
   max_concurrent_tasks: z.number().min(1).max(20).default(3),
 });
@@ -132,4 +132,4 @@ export type ClawGlobalConfig = z.infer<typeof ClawGlobalConfigSchema>;
 export type ClawConfig = z.infer<typeof ClawConfigSchema>;
 
 // Tool profile for tool permission management
-export type ToolProfile = 'full' | 'readonly' | 'subagent' | 'dream';
+export type ToolProfile = 'full' | 'readonly' | 'subagent';
