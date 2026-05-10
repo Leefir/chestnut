@@ -75,8 +75,8 @@ describe('UnixDomainSocketTransport', () => {
     transport = new UnixDomainSocketTransport();
     await transport.listen({ socketPath: makeSocketPath() });
     await transport.close();
-    await transport.close(); // second close is no-op
-    expect(true).toBe(true);
+    // second close is no-op (idempotent / 0 throw)
+    await expect(transport.close()).resolves.toBeUndefined();
   });
 
   it('accepts a client connection and fires onConnect', async () => {

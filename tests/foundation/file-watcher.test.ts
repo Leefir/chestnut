@@ -17,21 +17,39 @@ describe('FileWatcher', () => {
     await fsp.rm(tmpDir, { recursive: true, force: true });
   });
 
+  async function waitForCount(arr: unknown[], n: number, timeoutMs = 5000): Promise<void> {
+    const start = Date.now();
+    while (arr.length < n) {
+      if (Date.now() - start > timeoutMs) {
+        throw new Error(`waitForCount timeout: got ${arr.length}/${n}`);
+      }
+      await new Promise(r => setTimeout(r, 10));
+    }
+  }
+
+  function waitForReady<T>(setupWatcher: (onReady: () => void) => T): Promise<T> {
+    return new Promise((resolve) => {
+      let watcher: T;
+      const onReady = () => resolve(watcher);
+      watcher = setupWatcher(onReady);
+    });
+  }
+
   it('callback receives add/change/unlink events', async () => {
     const events: { type: string; path: string }[] = [];
-    const watcher = createWatcher(
-      path.join(tmpDir, 'watch.txt'),
-      (ev) => events.push({ type: ev.type, path: path.basename(ev.path) }),
-      { stability: 'immediate' },
+    const watcher = await waitForReady((onReady) =>
+      createWatcher(
+        path.join(tmpDir, 'watch.txt'),
+        (ev) => events.push({ type: ev.type, path: path.basename(ev.path) }),
+        { stability: 'immediate', onReady },
+      ),
     );
 
-    await new Promise(r => setTimeout(r, 300));
-
     fsSync.writeFileSync(path.join(tmpDir, 'watch.txt'), 'hello');
-    await new Promise(r => setTimeout(r, 100));
+    await waitForCount(events, 1);
 
     fsSync.writeFileSync(path.join(tmpDir, 'watch.txt'), 'world');
-    await new Promise(r => setTimeout(r, 100));
+    await waitForCount(events, 2);
 
     await watcher.close();
 
@@ -41,26 +59,29 @@ describe('FileWatcher', () => {
 
   it('callback error triggers onError(err, "callback") and continues', async () => {
     const errors: { err: Error; context: string }[] = [];
+    const callbackTicks: number[] = [];
     let callCount = 0;
-    const watcher = createWatcher(
-      path.join(tmpDir, 'watch.txt'),
-      (ev) => {
-        callCount++;
-        if (callCount === 1) throw new Error('callback boom');
-      },
-      {
-        stability: 'immediate',
-        onError: (err, context) => errors.push({ err, context }),
-      },
+    const watcher = await waitForReady((onReady) =>
+      createWatcher(
+        path.join(tmpDir, 'watch.txt'),
+        (ev) => {
+          callCount++;
+          callbackTicks.push(callCount);
+          if (callCount === 1) throw new Error('callback boom');
+        },
+        {
+          stability: 'immediate',
+          onReady,
+          onError: (err, context) => errors.push({ err, context }),
+        },
+      ),
     );
 
-    await new Promise(r => setTimeout(r, 300));
-
     fsSync.writeFileSync(path.join(tmpDir, 'watch.txt'), 'first');
-    await new Promise(r => setTimeout(r, 100));
+    await waitForCount(errors, 1);
 
     fsSync.writeFileSync(path.join(tmpDir, 'watch.txt'), 'second');
-    await new Promise(r => setTimeout(r, 100));
+    await waitForCount(callbackTicks, 2);
 
     await watcher.close();
 
@@ -80,7 +101,7 @@ describe('FileWatcher', () => {
       },
     );
 
-    await new Promise(r => setTimeout(r, 500));
+    await waitForCount(errors, 1);
     await watcher.close();
 
     expect(errors.some(e => e.context === 'ready' && e.err.message === 'ready boom')).toBe(true);
@@ -98,6 +119,7 @@ describe('FileWatcher', () => {
       },
     );
 
+    // chokidar error is async-triggered; no deterministic signal, use physical sleep
     await new Promise(r => setTimeout(r, 500));
     await watcher.close();
 
@@ -122,6 +144,7 @@ describe('FileWatcher', () => {
       },
     );
 
+    // async error trigger; physical sleep as no deterministic signal
     await new Promise(r => setTimeout(r, 500));
     await watcher.close();
 
@@ -220,7 +243,7 @@ describe('FileWatcher', () => {
       { stability: 'immediate', fallbackPollMs: 50 },
     );
 
-    await new Promise(r => setTimeout(r, 150));
+    await waitForCount(events, 1);
 
     expect(events.length).toBeGreaterThanOrEqual(1);
     expect(events.every(e => e.type === 'change')).toBe(true);

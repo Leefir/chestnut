@@ -31,6 +31,7 @@ describe('Heartbeat', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     cleanupTempDirSync(tempDir);
   });
 
@@ -105,9 +106,12 @@ describe('Heartbeat', () => {
     it('should generate unique filenames for multiple fires', async () => {
       heartbeat = createTestHeartbeat(tempDir, 1);
 
+      vi.useFakeTimers({ shouldAdvanceTime: false });
+      vi.setSystemTime(new Date(2026, 0, 1, 0, 0, 0, 0));
       heartbeat.fire();
-      await new Promise(resolve => setTimeout(resolve, 50)); // 确保不同时间戳
+      vi.setSystemTime(new Date(2026, 0, 1, 0, 0, 0, 100)); // +100ms 确保不同时间戳
       heartbeat.fire();
+      vi.useRealTimers();
 
       const inboxDir = path.join(tempDir, 'motion', 'inbox', 'pending');
       const files = fs.readdirSync(inboxDir).filter(f => f.endsWith('.md'));
@@ -129,8 +133,10 @@ describe('Heartbeat', () => {
       fs.unlinkSync(path.join(inboxDir, files[0]));
 
       // 第二次 fire 应该生成新文件
-      await new Promise(resolve => setTimeout(resolve, 50));
+      vi.useFakeTimers({ shouldAdvanceTime: false });
+      vi.setSystemTime(new Date(2026, 0, 1, 0, 0, 1, 0)); // +1s 确保不同时间戳
       heartbeat.fire();
+      vi.useRealTimers();
       files = fs.readdirSync(inboxDir).filter(f => f.endsWith('.md'));
       expect(files.length).toBe(1);
     });
