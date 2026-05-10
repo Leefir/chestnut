@@ -3,7 +3,7 @@ import type { FileSystem } from '../../foundation/fs/types.js';
 import { MEMORY_AUDIT_EVENTS } from './audit-events.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { AsyncTaskSystem } from '../async-task-system/system.js';
-import { TOOL_PROFILES } from '../../foundation/tools/profiles.js';
+import { TOOL_PROFILES } from '../../foundation/tools/index.js';
 import { InboxWriter } from '../../foundation/messaging/index.js';
 import { createSystemAudit } from '../../foundation/audit/index.js';
 import { DEFAULT_LLM_IDLE_TIMEOUT_MS } from '../../constants.js';

@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod';
-import type { LLMOrchestratorConfig } from '../llm-orchestrator/types.js';
+import type { LLMOrchestratorConfig } from '../llm-orchestrator/index.js';
 import type { ProviderConfig } from '../llm-provider/types.js';
 import { resolvePreset } from '../llm-provider/presets.js';
 import {

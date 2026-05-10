@@ -5,7 +5,7 @@
 
 import type { ContentBlock } from '../../types/message.js';
 import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
-import type { LLMCallOptions } from '../../foundation/llm-orchestrator/types.js';
+import type { LLMCallOptions } from '../../foundation/llm-orchestrator/index.js';
 import type { LLMResponse } from '../../types/message.js';
 import type { StepCallbacks } from './types.js';
 import { safeCallback, parseToolInput } from './utils.js';

@@ -3,7 +3,7 @@ import { isAlive } from '../../foundation/process-exec/index.js';
 import { getContractCreatedMs } from '../../core/contract/index.js';
 import { LLM_OUTPUT_EVENTS } from '../../foundation/stream/types.js';
 import { STREAM_FILE } from '../../foundation/stream/index.js';
-import type { Watcher } from '../../foundation/file-watcher/types.js';
+import type { Watcher } from '../../foundation/file-watcher/index.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { createChatViewportWatcher } from './chat-viewport-watcher.js';

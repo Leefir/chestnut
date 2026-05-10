@@ -6,7 +6,7 @@
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { createWatcher } from '../../foundation/file-watcher/index.js';
-import type { Watcher } from '../../foundation/file-watcher/types.js';
+import type { Watcher } from '../../foundation/file-watcher/index.js';
 import { VIEWPORT_AUDIT_EVENTS } from './viewport-audit-events.js';
 
 export type { Watcher };

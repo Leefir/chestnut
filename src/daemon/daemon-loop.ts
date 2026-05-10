@@ -21,7 +21,7 @@ import type { Runtime, StreamCallbacks } from '../core/runtime/index.js';
 import type { InboxMessage } from '../types/messaging.js';
 import type { StreamWriter, StreamLog } from '../foundation/stream/index.js';
 import { createWatcher } from '../foundation/file-watcher/index.js';
-import type { Watcher } from '../foundation/file-watcher/types.js';
+import type { Watcher } from '../foundation/file-watcher/index.js';
 import type { AuditLog } from '../foundation/audit/index.js';
 import { MESSAGING_AUDIT_EVENTS } from '../foundation/messaging/audit-events.js';
 import { DAEMON_AUDIT_EVENTS, LOOP_ITERATION_TYPES, LOOP_INTERRUPT_CAUSES } from './audit-events.js';
