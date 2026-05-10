@@ -20,6 +20,7 @@ import type { StreamChunk } from '../../src/foundation/llm-orchestrator/types.js
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 import { makeAudit } from '../helpers/audit.js';
 import { createTestTaskSystem } from '../helpers/task-system.js';
+import { waitFor } from '../helpers/wait-for.js';
 import { TASK_AUDIT_EVENTS } from '../../src/core/async-task-system/audit-events.js';
 import { SUBAGENT_AUDIT_EVENTS } from '../../src/core/subagent/audit-events.js';
 
@@ -43,18 +44,6 @@ async function* responseToStreamChunks(response: LLMResponse): AsyncIterableIter
     }
   }
   yield { type: 'done' };
-}
-
-async function waitFor(
-  condition: () => boolean | Promise<boolean>,
-  timeoutMs = 5000,
-): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (await condition()) return;
-    await new Promise(r => setTimeout(r, 10));
-  }
-  throw new Error(`waitFor timed out after ${timeoutMs}ms`);
 }
 
 function createMockLLM(responses: LLMResponse[]): LLMOrchestrator {

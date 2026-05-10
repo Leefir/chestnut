@@ -25,6 +25,7 @@ import { lsTool } from '../../src/foundation/file-tool/ls.js';
 import { searchTool } from '../../src/foundation/file-tool/search.js';
 import { makeAudit } from '../helpers/audit.js';
 import { makeTaskSystemDeps } from '../helpers/task-system.js';
+import { waitFor } from '../helpers/wait-for.js';
 import { writePendingToolTaskFile } from '../../src/core/async-task-system/tools/_pending-tool-task-writer.js';
 import { TASKS_QUEUES_PENDING_DIR } from '../../src/types/paths.js';
 
@@ -102,23 +103,6 @@ const createMockFs = () => ({
   ensureDir: vi.fn().mockResolvedValue(undefined),
   isDirectory: vi.fn().mockResolvedValue(false),
 });
-
-/**
- * Poll until condition is true or timeout.
- * Throws if condition is not met within timeoutMs.
- */
-async function waitFor(
-  condition: () => boolean | Promise<boolean>,
-  timeoutMs = 5000,
-  intervalMs = 10,
-): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (await condition()) return;
-    await new Promise(r => setTimeout(r, intervalMs));
-  }
-  throw new Error(`waitFor timed out after ${timeoutMs}ms`);
-}
 
 describe('AsyncTaskSystem Tool Tasks', () => {
   let taskSystem: AsyncTaskSystem;
