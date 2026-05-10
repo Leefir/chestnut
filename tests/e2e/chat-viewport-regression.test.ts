@@ -245,9 +245,9 @@ describe('chat-viewport regression baseline', () => {
     const chunkC = all.subarray(splitB);
 
     appendStreamRaw(fx, chunkA);
-    await new Promise(r => setTimeout(r, 120));
+    await waitForEvents(fx, 1);
     appendStreamRaw(fx, chunkB);
-    await new Promise(r => setTimeout(r, 120));
+    await waitForEvents(fx, 2);
     appendStreamRaw(fx, chunkC);
 
     await waitForEvents(fx, 3);
@@ -267,26 +267,25 @@ describe('chat-viewport regression baseline', () => {
     const fx = await bootstrapFixture();
 
     await appendStreamEvent(fx, { type: 'turn_start' });
-    await new Promise(r => setTimeout(r, 150));
+    await waitForEvents(fx, 1);
 
     await appendStreamEvent(fx, { type: 'llm_start' });
     await waitForEvents(fx, 2);
-    await new Promise(r => setTimeout(r, 150));
+    await waitForAudit(fx, VIEWPORT_AUDIT_EVENTS.SPINNER_LIFECYCLE, 1);
 
     await appendStreamEvent(fx, { type: 'text_delta', delta: '你好世界' });
     await waitForEvents(fx, 3);
-    await new Promise(r => setTimeout(r, 150));
+    await waitForAudit(fx, VIEWPORT_AUDIT_EVENTS.SPINNER_LIFECYCLE, 2);
 
     await appendStreamEvent(fx, { type: 'tool_call', name: 'exec' });
     await waitForEvents(fx, 4);
-    await new Promise(r => setTimeout(r, 150));
+    await waitForAudit(fx, VIEWPORT_AUDIT_EVENTS.SPINNER_LIFECYCLE, 3);
 
     await appendStreamEvent(fx, { type: 'tool_result', name: 'exec', success: true });
     await waitForEvents(fx, 5);
-    await new Promise(r => setTimeout(r, 150));
+    await waitForAudit(fx, VIEWPORT_AUDIT_EVENTS.SPINNER_LIFECYCLE, 4);
 
     await appendStreamEvent(fx, { type: 'turn_end' });
-    await new Promise(r => setTimeout(r, 200));
     await waitForEvents(fx, 6);
 
     fx.observability.recordShutdown('stream_end');
@@ -430,7 +429,8 @@ describe('chat-viewport regression baseline', () => {
     const receivedBeforeCorrupt = fx.receivedEvents.length;
 
     await appendStreamEvent(fx, { type: 'post_corrupt_probe', ts: 999 });
-    await new Promise(r => setTimeout(r, 200));
+    await new Promise(r => setImmediate(r));
+    await new Promise(r => setImmediate(r));
 
     expect(fx.receivedEvents.length).toBe(receivedBeforeCorrupt);
     expect(
@@ -483,27 +483,26 @@ describe('chat-viewport regression baseline', () => {
 
     await appendStreamEvent(fx, { type: 'turn_start' });
     await waitForEvents(fx, 1);
-    await new Promise(r => setTimeout(r, 100));
 
     const tLlmStart = Date.now(); // sanity: 测试线程 wall clock（不再参与断言）
     await appendStreamEvent(fx, { type: 'llm_start' });
     await waitForEvents(fx, 2);
-    await new Promise(r => setTimeout(r, 100));
+    await waitForAudit(fx, VIEWPORT_AUDIT_EVENTS.SPINNER_LIFECYCLE, 1);
 
     const tTextDelta = Date.now(); // sanity
     await appendStreamEvent(fx, { type: 'text_delta', delta: '你好' });
     await waitForEvents(fx, 3);
-    await new Promise(r => setTimeout(r, 100));
+    await waitForAudit(fx, VIEWPORT_AUDIT_EVENTS.SPINNER_LIFECYCLE, 2);
 
     const tToolCall = Date.now(); // sanity
     await appendStreamEvent(fx, { type: 'tool_call', name: 'exec' });
     await waitForEvents(fx, 4);
-    await new Promise(r => setTimeout(r, 100));
+    await waitForAudit(fx, VIEWPORT_AUDIT_EVENTS.SPINNER_LIFECYCLE, 3);
 
     const tToolResult = Date.now(); // sanity
     await appendStreamEvent(fx, { type: 'tool_result', name: 'exec', success: true });
     await waitForEvents(fx, 5);
-    await new Promise(r => setTimeout(r, 100));
+    await waitForAudit(fx, VIEWPORT_AUDIT_EVENTS.SPINNER_LIFECYCLE, 4);
 
     await appendStreamEvent(fx, { type: 'turn_end' });
     await waitForEvents(fx, 6);
