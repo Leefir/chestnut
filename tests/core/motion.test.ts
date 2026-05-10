@@ -1,4 +1,6 @@
 /**
+
+import type { RuntimeTestInternals } from '../helpers/runtime-test-internals.js';
  * MotionRuntime 单元测试
  *
  * 覆盖场景:
@@ -88,7 +90,7 @@ describe('MotionRuntime', () => {
 
       // Act
       await runtime.initialize();
-      const prompt = await (runtime as any).buildSystemPrompt();
+      const prompt = await (runtime as unknown as RuntimeTestInternals).buildSystemPrompt();
 
       // Assert
       expect(prompt).toContain('## Agent Role');
@@ -114,7 +116,7 @@ describe('MotionRuntime', () => {
 
       // Act
       await runtime.initialize();
-      const prompt = await (runtime as any).buildSystemPrompt();
+      const prompt = await (runtime as unknown as RuntimeTestInternals).buildSystemPrompt();
 
       // Assert: 验证顺序
       const agentsIndex = prompt.indexOf('AGENTS_CONTENT');
@@ -142,7 +144,7 @@ describe('MotionRuntime', () => {
 
       // Act & Assert: 不应抛出错误
       await runtime.initialize();
-      const prompt = await (runtime as any).buildSystemPrompt();
+      const prompt = await (runtime as unknown as RuntimeTestInternals).buildSystemPrompt();
       expect(prompt).toContain('AGENTS_CONTENT');
       expect(prompt).not.toContain('SOUL_CONTENT');
     });
@@ -164,7 +166,7 @@ describe('MotionRuntime', () => {
 
       // Act & Assert
       await runtime.initialize();
-      const prompt = await (runtime as any).buildSystemPrompt();
+      const prompt = await (runtime as unknown as RuntimeTestInternals).buildSystemPrompt();
       expect(prompt).toContain('AGENTS_CONTENT');
       expect(prompt).toContain('SOUL_CONTENT');
       expect(prompt).not.toContain('REVIEW_CONTENT');
@@ -186,7 +188,7 @@ describe('MotionRuntime', () => {
 
       // Act & Assert
       await runtime.initialize();
-      const prompt = await (runtime as any).buildSystemPrompt();
+      const prompt = await (runtime as unknown as RuntimeTestInternals).buildSystemPrompt();
       expect(prompt).toContain('SOUL_CONTENT');
       expect(prompt).not.toContain('AGENTS_CONTENT');
     });
@@ -208,7 +210,7 @@ describe('MotionRuntime', () => {
 
       // Act
       await runtime.initialize();
-      const prompt = await (runtime as any).buildSystemPrompt();
+      const prompt = await (runtime as unknown as RuntimeTestInternals).buildSystemPrompt();
 
       // Assert: AGENTS 后面应该直接是 skills/contract（没有 SOUL）
       expect(prompt).toContain('AGENTS_CONTENT');
@@ -258,7 +260,7 @@ describe('MotionRuntime', () => {
 
       await runtime.initialize();
 
-      const toolNames = (runtime as any).toolRegistry.getAll().map((t: any) => t.name);
+      const toolNames = (runtime as unknown as RuntimeTestInternals).toolRegistry.getAll().map((t: any) => t.name);
       expect(toolNames).not.toContain('send');
     });
   });

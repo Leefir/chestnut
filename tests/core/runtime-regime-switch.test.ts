@@ -1,4 +1,6 @@
 /**
+
+import type { RuntimeTestInternals } from '../helpers/runtime-test-internals.js';
  * Runtime regime switch tests — phase 521 + phase 539
  *
  * Covers L5.G1-G4 + phase 539 identity-only diff:
@@ -117,7 +119,7 @@ describe('Runtime regime switch (phase 521)', () => {
     await runtime.initialize();
     // Spy AFTER initialize to exclude startup archive
     const archiveSpy = vi.spyOn(deps.sessionManager, 'archive').mockResolvedValue(undefined);
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     // Mock buildSystemPromptForRegime so _runReact gets a consistent value
     vi.spyOn(deps.contextInjector, 'buildSystemPromptForRegime').mockResolvedValue({ full: 'prompt-A', identityHash: 'identity-A' });
@@ -145,7 +147,7 @@ describe('Runtime regime switch (phase 521)', () => {
     await runtime.initialize();
     // Spy AFTER initialize to exclude startup archive
     const archiveSpy = vi.spyOn(deps.sessionManager, 'archive').mockResolvedValue(undefined);
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     vi.spyOn(deps.contextInjector, 'buildSystemPromptForRegime').mockResolvedValue({ full: 'same-prompt', identityHash: 'same-identity' });
 
@@ -176,7 +178,7 @@ describe('Runtime regime switch (phase 521)', () => {
     await runtime.initialize();
     // archiveSpy AFTER initialize to exclude startup archive
     const archiveSpy = vi.spyOn(deps.sessionManager, 'archive').mockResolvedValue(undefined);
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     // Turn 1: identity A; Turn 2: identity B (regime change)
     vi.spyOn(deps.contextInjector, 'buildSystemPromptForRegime')
@@ -212,7 +214,7 @@ describe('Runtime regime switch (phase 521)', () => {
     ]);
 
     await runtime.initialize();
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     vi.spyOn(deps.contextInjector, 'buildSystemPromptForRegime')
       .mockResolvedValueOnce({ full: 'system-prompt-A', identityHash: 'identity-A' })
@@ -246,7 +248,7 @@ describe('Runtime regime switch (phase 521)', () => {
     ]);
 
     await runtime.initialize();
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     // Manually seed messages to simulate multi-turn history
     // [user A, assistant A, user B, assistant B]
@@ -290,7 +292,7 @@ describe('Runtime regime switch (phase 521)', () => {
     ]);
 
     await runtime.initialize();
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     // Seed messages with an incomplete tool_use at the end
     const seededMessages: Message[] = [
@@ -335,7 +337,7 @@ describe('Runtime regime switch (phase 521)', () => {
     ]);
 
     await runtime.initialize();
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     // Seed 5 messages: [user, assistant, user, assistant, user]
     // last-turn should inherit from last user = 1 message (just the last user)
@@ -398,7 +400,7 @@ describe('phase 539: identity-only diff', () => {
 
     await runtime.initialize();
     const archiveSpy = vi.spyOn(deps.sessionManager, 'archive').mockResolvedValue(undefined);
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     // Turn 1: full includes memory-v1, identityHash = agents+skills (no memory)
     // Turn 2: full includes memory-v2, identityHash same = agents+skills
@@ -429,7 +431,7 @@ describe('phase 539: identity-only diff', () => {
 
     await runtime.initialize();
     const archiveSpy = vi.spyOn(deps.sessionManager, 'archive').mockResolvedValue(undefined);
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     // Turn 1: contract with subtask unchecked
     // Turn 2: contract with subtask checked
@@ -461,7 +463,7 @@ describe('phase 539: identity-only diff', () => {
 
     await runtime.initialize();
     const archiveSpy = vi.spyOn(deps.sessionManager, 'archive').mockResolvedValue(undefined);
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     // Turn 1: contract title='A' goal='X'
     // Turn 2: contract title='B' goal='Y'
@@ -495,7 +497,7 @@ describe('phase 539: identity-only diff', () => {
 
     await runtime.initialize();
     const archiveSpy = vi.spyOn(deps.sessionManager, 'archive').mockResolvedValue(undefined);
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     // Turn 1: AGENTS.md = "v1"
     // Turn 2: AGENTS.md = "v2"
@@ -528,7 +530,7 @@ describe('phase 539: identity-only diff', () => {
 
     await runtime.initialize();
     const archiveSpy = vi.spyOn(deps.sessionManager, 'archive').mockResolvedValue(undefined);
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     // Turn 1: skills = "S1"
     // Turn 2: skills = "S1\nS2"
@@ -566,7 +568,7 @@ describe('phase 539: identity-only diff', () => {
     ]);
 
     await runtime.initialize();
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     vi.spyOn(deps.contextInjector, 'buildSystemPromptForRegime')
       .mockResolvedValueOnce({ full: 'system-prompt-A', identityHash: 'identity-A' })
@@ -614,7 +616,7 @@ describe('phase 539: identity-only diff', () => {
     ]);
 
     await runtime.initialize();
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     vi.spyOn(deps.contextInjector, 'buildSystemPromptForRegime')
       .mockResolvedValueOnce({ full: 'system-prompt-A', identityHash: 'identity-A' })
@@ -662,7 +664,7 @@ describe('phase 539: identity-only diff', () => {
 
     await runtime.initialize();
     const archiveSpy = vi.spyOn(deps.sessionManager, 'archive').mockResolvedValue(undefined);
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     // Mock buildSystemPrompt so the fallback path gets different prompts
     vi.spyOn(runtime as any, 'buildSystemPrompt')

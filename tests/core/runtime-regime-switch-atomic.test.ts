@@ -1,4 +1,6 @@
 /**
+
+import type { RuntimeTestInternals } from '../helpers/runtime-test-internals.js';
  * Runtime regime switch atomicity tests — phase 600 / A.regime-switch-atomicity
  *
  * Covers:
@@ -122,10 +124,10 @@ describe('Runtime regime switch atomicity (phase 600 / A.regime-switch-atomicity
 
     await runtime.initialize();
     vi.spyOn(deps.sessionManager, 'archive').mockResolvedValue(undefined);
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     // Capture old session manager reference AFTER initialize
-    const oldSessionManager = (runtime as any).sessionManager;
+    const oldSessionManager = (runtime as unknown as RuntimeTestInternals).sessionManager;
 
     vi.spyOn(deps.contextInjector, 'buildSystemPromptForRegime')
       .mockResolvedValueOnce({ full: 'system-prompt-A', identityHash: 'identity-A' })
@@ -135,9 +137,9 @@ describe('Runtime regime switch atomicity (phase 600 / A.regime-switch-atomicity
     await runtime.chat('Message 2');
 
     // sessionManager should still be the old one because save threw before commit
-    expect((runtime as any).sessionManager).toBe(oldSessionManager);
+    expect((runtime as unknown as RuntimeTestInternals).sessionManager).toBe(oldSessionManager);
     // lastIdentityHash should NOT be updated (D7 自愈)
-    expect((runtime as any).lastIdentityHash).toBe('identity-A');
+    expect((runtime as unknown as RuntimeTestInternals).lastIdentityHash).toBe('identity-A');
   });
 
   it('step 6 save throws → recovery file dump 到 dialog dir', async () => {
@@ -166,7 +168,7 @@ describe('Runtime regime switch atomicity (phase 600 / A.regime-switch-atomicity
 
     await runtime.initialize();
     vi.spyOn(deps.sessionManager, 'archive').mockResolvedValue(undefined);
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     // Seed messages to verify recovery content
     const seededMessages: Message[] = [
@@ -231,7 +233,7 @@ describe('Runtime regime switch atomicity (phase 600 / A.regime-switch-atomicity
 
     await runtime.initialize();
     vi.spyOn(deps.sessionManager, 'archive').mockResolvedValue(undefined);
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     // Mock systemFs.writeAtomic to throw ONLY on recovery path
     const originalWriteAtomic = deps.systemFs.writeAtomic.bind(deps.systemFs);
@@ -291,7 +293,7 @@ describe('Runtime regime switch atomicity (phase 600 / A.regime-switch-atomicity
 
     await runtime.initialize();
     vi.spyOn(deps.sessionManager, 'archive').mockResolvedValue(undefined);
-    (runtime as any).llm = mockLLM;
+    (runtime as unknown as RuntimeTestInternals).llm = mockLLM;
 
     // Seed messages
     const seededMessages: Message[] = [
@@ -308,9 +310,9 @@ describe('Runtime regime switch atomicity (phase 600 / A.regime-switch-atomicity
     await runtime.chat('Message 2');
 
     // sessionManager should be the new one
-    expect((runtime as any).sessionManager).toBe(capturedNewSessionManager);
+    expect((runtime as unknown as RuntimeTestInternals).sessionManager).toBe(capturedNewSessionManager);
     // lastIdentityHash should be updated
-    expect((runtime as any).lastIdentityHash).toBe('identity-B');
+    expect((runtime as unknown as RuntimeTestInternals).lastIdentityHash).toBe('identity-B');
 
     // Audit success
     const regimeSwitchCall = auditSpy.mock.calls.find(c => c[0] === RUNTIME_AUDIT_EVENTS.REGIME_SWITCH);
