@@ -20,4 +20,6 @@ export const LLM_AUDIT_EVENTS = {
   STREAM_PARSE_ERROR: 'llm_stream_parse_error',
   TOOL_ARG_PARSE_ERROR: 'llm_tool_arg_parse_error',
   IDLE_FAILOVER_TRIGGERED: 'llm_idle_failover_triggered',
+  STREAM_IDLE_PROBE_ATTEMPTED: 'llm_stream_idle_probe_attempted',
+  STREAM_IDLE_PROBE_SUCCEEDED: 'llm_stream_idle_probe_succeeded',
 } as const;

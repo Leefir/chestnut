@@ -17,11 +17,12 @@ function createMockSink() {
   return { sink, emitted };
 }
 
-function createMockProvider(name: string, streamImpl?: () => AsyncGenerator<StreamChunk>): ProviderAdapter {
+function createMockProvider(name: string, streamImpl?: () => AsyncGenerator<StreamChunk>, callImpl?: () => Promise<any>): ProviderAdapter {
   return {
     name,
     model: 'mock-model',
     async call() {
+      if (callImpl) return callImpl();
       return {
         content: [{ type: 'text', text: `Response from ${name}` }],
         stop_reason: 'end_turn',
@@ -92,7 +93,7 @@ describe('LLMOrchestratorImpl timeout distinction (Phase 538)', () => {
     expect(passedOptions.signal).toBeDefined();
   });
 
-  it('stream() streamIdleTimeoutMs 命中 → 触发 idle_failover_triggered', async () => {
+  it('stream() streamIdleTimeoutMs 命中 → probe 失败 → 触发 idle_failover_triggered', async () => {
     const { sink, emitted } = createMockSink();
     const primary = createMockProvider('primary', async function* (opts: { signal?: AbortSignal }) {
       yield { type: 'text_delta', delta: 'first' };
@@ -106,6 +107,11 @@ describe('LLMOrchestratorImpl timeout distinction (Phase 538)', () => {
         });
       });
       yield { type: 'done' };
+    }, async () => {
+      // probe 失败（network/timeout）→ failover
+      const err = new Error('probe timeout');
+      err.name = 'AbortError';
+      throw err;
     });
 
     const service = new LLMOrchestratorImpl({
@@ -118,7 +124,7 @@ describe('LLMOrchestratorImpl timeout distinction (Phase 538)', () => {
 
     const chunks: StreamChunk[] = [];
     try {
-      for await (const chunk of service.stream({ messages: [], streamIdleTimeoutMs: 50 })) {
+      for await (const chunk of service.stream({ messages: [], streamIdleTimeoutMs: 50, streamIdleProbeTimeoutMs: 50 })) {
         chunks.push(chunk);
       }
     } catch {
@@ -128,7 +134,10 @@ describe('LLMOrchestratorImpl timeout distinction (Phase 538)', () => {
     // 至少收到第一个 chunk
     expect(chunks.some((c) => c.type === 'text_delta' && c.delta === 'first')).toBe(true);
 
-    // idle_failover_triggered 事件应被 emit
+    // probe attempted 事件应被 emit
+    expect(emitted.some((e) => e.type === 'stream_idle_probe_attempted')).toBe(true);
+
+    // idle_failover_triggered 事件应被 emit（probe 失败 → failover）
     const idleEvents = emitted.filter((e) => e.type === 'idle_failover_triggered');
     expect(idleEvents.length).toBeGreaterThanOrEqual(1);
   });

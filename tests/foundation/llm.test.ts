@@ -709,12 +709,14 @@ describe('LLM Service', () => {
         getProviderInfo: () => ({ name: 'fallback', model: 'fallback-model' }),
       };
 
+      const emittedEvents: any[] = [];
       const service = new LLMOrchestratorImpl({
         primary: primaryAdapter as any,
         fallbacks: [fallbackAdapter as any],
         maxAttempts: 1,
         retryDelayMs: 10,
-      events: { emit: () => {} },
+        circuitBreaker: { failureThreshold: 1, resetTimeoutMs: 30_000 },
+        events: { emit: (e) => emittedEvents.push(e) },
       });
 
       const chunks: StreamChunk[] = [];
@@ -728,6 +730,9 @@ describe('LLM Service', () => {
       // 应收到 fallback 的内容
       expect(chunks.some(c => c.type === 'text_delta' && c.delta === 'Fallback')).toBe(true);
       expect(chunks.some(c => c.type === 'done')).toBe(true);
+
+      // ⚓5 α default doc invariant: 0-chunk → onFailure (conservative miss-detect)
+      expect(emittedEvents.some(e => e.type === 'breaker_opened' && e.provider === 'primary')).toBe(true);
     });
 
     it('should throw LLMAllProvidersFailedError when all providers yield 0 chunks', async () => {

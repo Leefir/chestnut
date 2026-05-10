@@ -161,6 +161,9 @@ export interface LLMCallOptions {
    *  call() 路径解析为 hardTimeoutMs / stream() 路径解析为 streamIdleTimeoutMs
    *  兼容期 1 r / 推 r66+ 删 */
   idleTimeoutMs?: number;
+
+  /** ⚓4 ε probe timeout after stream idle, default 5000ms */
+  streamIdleProbeTimeoutMs?: number;
 }
 
 /**
@@ -207,6 +210,8 @@ export type LLMEvent =
   | { type: 'stream_parse_error'; provider: string; raw: string; error: string }
   | { type: 'tool_arg_parse_error'; provider: string; toolName: string; rawArgs: string; error: string }
   | { type: 'idle_failover_triggered'; provider: string; ms: number }
+  | { type: 'stream_idle_probe_attempted'; provider: string; timeoutMs: number }
+  | { type: 'stream_idle_probe_succeeded'; provider: string }
   | { type: 'context_exceeded_failover'; provider: string; stopReason: string };
 
 /**

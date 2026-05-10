@@ -12,6 +12,7 @@ import {
   LLMError,
   LLMAllProvidersFailedError,
   LLMTimeoutError,
+  LLMRateLimitError,
 } from '../../types/errors.js';
 
 import type {
@@ -351,12 +352,38 @@ export class LLMOrchestratorImpl implements LLMOrchestrator {
           if (isUserAbort) throw err;
 
           if (isIdleTimeout) {
+            // ⚓4 ε ratified by phase 628 user binary: probe-then-decide
+            // (per design/modules/l2_llm_orchestrator.md §B.stream-idle-failover-vs-retry-symmetry / phase 637 兑现)
+            // - probe success → idle 是 transient lull / retry same provider stream
+            // - probe failure (network/timeout) → failover next provider
+            // - probe auth/model 错 → throw user-facing reconfigure
+            const probeTimeoutMs = options.streamIdleProbeTimeoutMs ?? 5_000;
+            this.events.emit({
+              type: 'stream_idle_probe_attempted',
+              provider: adapter.name,
+              timeoutMs: probeTimeoutMs,
+            });
+            const probe = await this._minimalProbe(adapter, probeTimeoutMs);
+            if (probe.ok) {
+              this.events.emit({
+                type: 'stream_idle_probe_succeeded',
+                provider: adapter.name,
+              });
+              continue; // retry same provider stream within retry loop（复用 maxAttempts budget）
+            }
+            if (probe.reason === 'auth_or_model') {
+              // probe auth/model 错 = 用户配置问题 / throw 给 caller decide
+              throw probe.error;
+            }
+            // probe network/timeout → failover next provider（既有 idle_failover 路径）
             this.events.emit({
               type: 'idle_failover_triggered',
               provider: adapter.name,
               ms: options.idleTimeoutMs!,
             });
-            lastError = new Error(`Idle timeout after ${options.idleTimeoutMs}ms`);
+            lastError = new Error(
+              `Idle timeout after ${options.idleTimeoutMs}ms (probe failed: ${probe.error.message})`,
+            );
             break; // exit retry loop → outer loop continues to next provider
           }
 
@@ -397,6 +424,9 @@ export class LLMOrchestratorImpl implements LLMOrchestrator {
       }
 
       if (success && !hasYielded) {
+        // ⚓5 α default ratified by phase 628 user binary (default accepted):
+        // 0-chunk → onFailure (conservative miss-detect / D5 redundant defense)
+        // (per design/modules/l2_llm_orchestrator.md §B.stream-zero-chunk-breaker-sensitivity / phase 637 兑现)
         // Stream completed normally but produced nothing — treat as failure
         const wasOpen = breaker?.isOpen();
         breaker?.onFailure();
@@ -455,25 +485,54 @@ export class LLMOrchestratorImpl implements LLMOrchestrator {
   }
   
   /**
+   * Minimal probe: single non-stream call with explicit timeout.
+   * Distinguishes transient network/timeout errors from auth/model config issues.
+   */
+  private async _minimalProbe(
+    provider: LLMProvider,
+    timeoutMs: number,
+  ): Promise<{ ok: true } | { ok: false; reason: 'network_timeout' | 'auth_or_model'; error: Error }> {
+    const probeCtrl = new AbortController();
+    const probeTimer = setTimeout(() => probeCtrl.abort(), timeoutMs);
+    try {
+      await provider.call({
+        messages: [{ role: 'user', content: 'Hi' }],
+        maxTokens: 1,
+        signal: probeCtrl.signal,
+      });
+      return { ok: true };
+    } catch (err) {
+      const e = err as Error;
+      // network/timeout 类（含 abort）→ transient
+      if (
+        probeCtrl.signal.aborted ||
+        e.name === 'AbortError' ||
+        e instanceof LLMTimeoutError ||
+        e instanceof LLMRateLimitError
+      ) {
+        return { ok: false, reason: 'network_timeout', error: e };
+      }
+      // 其他（含 auth/model 配置错）→ 非 transient 用户配置问题
+      return { ok: false, reason: 'auth_or_model', error: e };
+    } finally {
+      clearTimeout(probeTimer);
+    }
+  }
+
+  /**
    * Health check - quick validation that provider is reachable
    */
   async healthCheck(): Promise<boolean> {
     const adapters = [this.primary, ...this.fallbacks];
+    const timeoutMs = 10_000; // healthCheck 默 10s（与既有 caller 0 timeout 行为等价）
     for (const adapter of adapters) {
-      try {
-        // Make a minimal request (low token count)
-        await adapter.call({
-          messages: [{ role: 'user', content: 'Hi' }],
-          maxTokens: 1,
-        });
-        return true;
-      } catch (err) {
-        this.events.emit({
-          type: 'healthcheck_failed',
-          provider: adapter.name,
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
+      const result = await this._minimalProbe(adapter, timeoutMs);
+      if (result.ok) return true;
+      this.events.emit({
+        type: 'healthcheck_failed',
+        provider: adapter.name,
+        error: result.error.message,
+      });
     }
     return false;
   }

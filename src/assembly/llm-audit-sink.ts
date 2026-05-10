@@ -56,6 +56,14 @@ export function createLLMAuditSink(audit: AuditLog): LLMEventSink {
               `ms=${event.ms}`,
             );
             break;
+          case 'stream_idle_probe_attempted':
+            audit.write(LLM_AUDIT_EVENTS.STREAM_IDLE_PROBE_ATTEMPTED,
+              `provider=${event.provider}`, `timeoutMs=${event.timeoutMs}`);
+            break;
+          case 'stream_idle_probe_succeeded':
+            audit.write(LLM_AUDIT_EVENTS.STREAM_IDLE_PROBE_SUCCEEDED,
+              `provider=${event.provider}`);
+            break;
         }
       } catch (err) {
         // Error isolation: audit failure must not interrupt LLM path
