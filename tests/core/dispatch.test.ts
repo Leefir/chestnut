@@ -12,6 +12,7 @@ import { dispatchContractExtractPostProcessor } from '../../src/core/async-task-
 import { ExecContextImpl } from '../../src/foundation/tools/context.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import type { Message } from '../../src/types/message.js';
+import type { LLMOrchestrator } from '../../src/foundation/llm-orchestrator/index.js';
 
 const { mockWriteFile } = vi.hoisted(() => ({
   mockWriteFile: vi.fn(),
@@ -57,7 +58,7 @@ describe('DispatchTool', () => {
       profile: 'full',
       callerType,
       fs: mockFs,
-      llm: {} as any,
+      llm: {} as unknown as LLMOrchestrator,  // not exercised - dispatch tool routes to TaskSystem
       originClawId: options?.originClawId,
       dialogMessages: options?.dialogMessages,
     });
@@ -424,7 +425,7 @@ Content.
         profile: 'full',
         callerType: 'claw',
         fs: mockFs,
-        llm: {} as any,
+        llm: {} as unknown as LLMOrchestrator,  // not exercised in this test scope
         auditWriter: auditWriter as any,
         dialogMessages: [{ role: 'user' as const, content: 'test' }],
       });
@@ -448,7 +449,7 @@ Content.
         profile: 'full',
         callerType: 'claw',
         fs: mockFs,
-        llm: {} as any,
+        llm: {} as unknown as LLMOrchestrator,  // not exercised in this test scope
         auditWriter: auditWriter as any,
         dialogMessages: [],
       });

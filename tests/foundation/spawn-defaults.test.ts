@@ -156,22 +156,24 @@ describe('ProcessManager - spawn defaults', () => {
       // Pre-create logs dir
       fs.mkdirSync(path.join(clawDir, 'logs'), { recursive: true });
 
-      // Set a test env var
+      // Set test env var with try-finally guard (cleanup even if assertion fails)
+      const prevValue = process.env.TEST_INHERITANCE;
       process.env.TEST_INHERITANCE = 'test-value';
+      try {
+        await pm.spawn('inherit-claw', {
+          command: 'node',
+          args: ['/path/to/daemon-entry.js', 'inherit-claw'],
+          logFile,
+        });
 
-      await pm.spawn('inherit-claw', {
-        command: 'node',
-        args: ['/path/to/daemon-entry.js', 'inherit-claw'],
-        logFile,
-      });
+        const spawnCall = vi.mocked(spawn).mock.calls[0];
+        const options = spawnCall[2] as any;
 
-      const spawnCall = vi.mocked(spawn).mock.calls[0];
-      const options = spawnCall[2] as any;
-
-      expect(options.env).toHaveProperty('TEST_INHERITANCE', 'test-value');
-
-      // Cleanup
-      delete process.env.TEST_INHERITANCE;
+        expect(options.env).toHaveProperty('TEST_INHERITANCE', 'test-value');
+      } finally {
+        if (prevValue === undefined) delete process.env.TEST_INHERITANCE;
+        else process.env.TEST_INHERITANCE = prevValue;
+      }
     });
   });
 });

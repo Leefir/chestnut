@@ -523,8 +523,12 @@ describe('chat-viewport regression baseline', () => {
     }
 
     // 同时钟域计算：deliveryTimestamps 与 spinner start/stop 同 callback clock
-    const tcLlmStart = fx.deliveryTimestamps.find(d => d.type === 'llm_start')!.ts;
-    const tcTextDelta = fx.deliveryTimestamps.find(d => d.type === 'text_delta')!.ts;
+    const tcLlmStartEntry = fx.deliveryTimestamps.find(d => d.type === 'llm_start');
+    const tcTextDeltaEntry = fx.deliveryTimestamps.find(d => d.type === 'text_delta');
+    expect(tcLlmStartEntry).toBeDefined();
+    expect(tcTextDeltaEntry).toBeDefined();
+    const tcLlmStart = tcLlmStartEntry!.ts;
+    const tcTextDelta = tcTextDeltaEntry!.ts;
     const expectedThinking = tcTextDelta - tcLlmStart;
 
     const stopThinking = stopRows.find(row => {
@@ -538,8 +542,12 @@ describe('chat-viewport regression baseline', () => {
     );
     expect(Math.abs(elapsedThinking - expectedThinking)).toBeLessThanOrEqual(1);
 
-    const tcToolCall = fx.deliveryTimestamps.find(d => d.type === 'tool_call')!.ts;
-    const tcToolResult = fx.deliveryTimestamps.find(d => d.type === 'tool_result')!.ts;
+    const tcToolCallEntry = fx.deliveryTimestamps.find(d => d.type === 'tool_call');
+    const tcToolResultEntry = fx.deliveryTimestamps.find(d => d.type === 'tool_result');
+    expect(tcToolCallEntry).toBeDefined();
+    expect(tcToolResultEntry).toBeDefined();
+    const tcToolCall = tcToolCallEntry!.ts;
+    const tcToolResult = tcToolResultEntry!.ts;
     const expectedExec = tcToolResult - tcToolCall;
 
     const stopExec = stopRows.find(row => {

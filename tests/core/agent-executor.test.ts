@@ -13,6 +13,7 @@ import type { StreamChunk } from '../../src/foundation/llm-orchestrator/types.js
 import type { LLMResponse, Message } from '../../src/types/message.js';
 import type { ExecContext, ToolResult } from '../../src/foundation/tool-protocol/index.js';
 import type { IToolExecutor, ToolRegistry } from '../../src/foundation/tools/executor.js';
+import type { FileSystem } from '../../src/foundation/fs/types.js';
 
 // ── Mock factories ──────────────────────────────────────────────────────────
 
@@ -62,7 +63,7 @@ function makeCtx(): ExecContext {
     clawId: 'test-claw',
     clawDir: '/test',
     profile: 'full',
-    fs: {} as any,
+    fs: {} as unknown as FileSystem,  // not exercised in this test scope (agent-executor doesn't access fs directly)
     stepNumber: 0,
     maxSteps: 20,
     getElapsedMs: () => 0,
