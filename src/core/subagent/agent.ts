@@ -322,6 +322,7 @@ export class SubAgent {
           onToolResult: (name, toolUseId, result, step, maxSteps) => {
             streamCallbacks.onToolResult?.(name, toolUseId, result, step, maxSteps);
           },
+          onUnparseableToolUse: () => {},
           onStepComplete: async () => {
             try {
               const entry = JSON.stringify({

@@ -44,8 +44,7 @@ export async function executeStep(input: StepInput): Promise<StepResult> {
   const { response, llmInfo } = await runLLMCall(llm, callOptions, llmStartTime, callbacks);
 
   if (response.content.length === 0) {
-    if (callbacks?.onEmptyResponse) callbacks.onEmptyResponse(response.stop_reason);
-    else console.warn(`[step-executor] LLM returned empty response (stop_reason=${response.stop_reason})`);
+    callbacks?.onEmptyResponse?.(response.stop_reason);
   }
 
   if (response.stop_reason === 'tool_use') return handleToolUseStop(response, input, llmInfo);
@@ -58,8 +57,7 @@ export async function executeStep(input: StepInput): Promise<StepResult> {
 
   if (response.stop_reason === 'max_tokens') return handleMaxTokensStop(response, input, llmInfo, maxTokens);
 
-  if (callbacks?.onUnknownStopReason) callbacks.onUnknownStopReason(response.stop_reason);
-  else console.warn(`[step-executor] Unknown stop_reason: "${response.stop_reason}", treating as end_turn`);
+  callbacks?.onUnknownStopReason?.(response.stop_reason);
   const text = extractText(response.content);
   appendAssistantMessage(messages, response.content);
   return { kind: 'final', stopReason: 'unknown', finalText: text };

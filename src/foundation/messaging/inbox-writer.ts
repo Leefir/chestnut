@@ -72,10 +72,10 @@ export class InboxWriter {
       timestamp: now.toISOString(),
     };
 
-    const content = encodeInbox(message, opts.extraFields);
     this.fs.ensureDirSync(this.inboxDir);
     const filename = `${timestamp}_${priority}_${uuid8}.md`;
     try {
+      const content = encodeInbox(message, opts.extraFields);
       this.fs.writeAtomicSync(path.join(this.inboxDir, filename), content);
     } catch (e) {
       const reason = e instanceof Error ? e.message : String(e);

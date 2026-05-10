@@ -21,8 +21,7 @@ export async function handleToolUseStop(
   if (toolCalls.length === 0) {
     const text = extractText(response.content);
     appendAssistantMessage(messages, response.content);
-    if (callbacks?.onUnparseableToolUse) callbacks.onUnparseableToolUse(response.stop_reason);
-    else console.warn(`[step-executor] LLM returned tool_use stop_reason but no parseable tool calls, treating as no_tool`);
+    callbacks!.onUnparseableToolUse(response.stop_reason);
     return { kind: 'final', stopReason: 'no_tool', finalText: text };
   }
   appendAssistantMessage(messages, response.content);
@@ -30,6 +29,7 @@ export async function handleToolUseStop(
   let parseErrorCount = 0;
   const trackingCallbacks: import('./types.js').StepCallbacks = {
     ...callbacks,
+    onUnparseableToolUse: callbacks ? callbacks.onUnparseableToolUse : () => {},
     onToolResult: (name, id, result) => {
       if (result.metadata?.parseError === true) parseErrorCount++;
       callbacks?.onToolResult?.(name, id, result);

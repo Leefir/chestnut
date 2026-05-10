@@ -761,6 +761,9 @@ export class Runtime {
           // Incremental session save
           await this.sessionManager.save(messages);
         },
+        onUnparseableToolUse: (stopReason) => {
+          this.auditWriter.write(RUNTIME_AUDIT_EVENTS.LLM_UNPARSEABLE_TOOL_USE, `stop_reason=${stopReason}`);
+        },
       });
 
       // Save the final session
