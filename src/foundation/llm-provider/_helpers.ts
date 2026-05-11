@@ -1,4 +1,4 @@
-import { LLMError, LLMRateLimitError } from '../../types/errors.js';
+import { LLMError, LLMRateLimitError, LLMAuthError, LLMModelNotFoundError } from '../../types/errors.js';
 
 /**
  * Parse HTTP error response and throw the appropriate LLMError subclass.
@@ -28,6 +28,16 @@ export async function throwHttpErrorResponse(
     errorText = errorData.error?.message ?? JSON.stringify(errorData);
   } catch {
     errorText = await cloned.text();
+  }
+
+  // phase 735 step 2: 401/403/404 分类（permanent / 0 retry）
+  if (status === 401 || status === 403) {
+    throw new LLMAuthError(provider, status, errorText);
+  }
+  if (status === 404) {
+    // model 名称 derive 自 errorText（如 "model 'xxx' not found"）/ fallback 'unknown'
+    const modelMatch = errorText.match(/model\s+['"]?([\w.-]+)['"]?/i);
+    throw new LLMModelNotFoundError(provider, modelMatch?.[1] ?? 'unknown');
   }
 
   if (status === 429) {
