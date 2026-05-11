@@ -636,7 +636,11 @@ export class LLMOrchestratorImpl implements LLMOrchestrator {
 
     const trackAPromise: Promise<AResult> = (async () => {
       try {
-        for await (const chunk of primaryIter) {
+        // Manual next() to avoid for-await...return triggering iterator.return()
+        // which would terminate the generator and prevent post-race drain.
+        while (true) {
+          const { done, value: chunk } = await primaryIter.next();
+          if (done) break;
           if (isContentChunk(chunk)) return { winner: 'A', chunk };
           // skip metadata chunks (done/reset/thinking_signature/etc.)
         }
