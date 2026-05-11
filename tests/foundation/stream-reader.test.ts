@@ -6,21 +6,22 @@ import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import { StreamWriter, createStreamReader, STREAM_FILE, type StreamReader, type StreamEvent } from '../../src/foundation/stream/index.js';
 import { makeAudit } from '../helpers/audit.js';
-import { waitFor } from '../helpers/wait-for.js';
+import { createEventCollector } from '../helpers/event-collector.js';
 import { STREAM_AUDIT_EVENTS } from '../../src/foundation/stream/audit-events.js';
+import type { AuditLog } from '../../src/foundation/audit/index.js';
 
 describe('StreamReader', () => {
   let tempDir: string;
   let fs: NodeFileSystem;
   let writer: StreamWriter;
   let reader: StreamReader | null = null;
-  const events: StreamEvent[] = [];
+  const ec = createEventCollector<StreamEvent>();
 
   beforeEach(async () => {
     tempDir = await createTempDir();
     fs = new NodeFileSystem({ baseDir: tempDir });
     writer = new StreamWriter(fs, makeAudit().audit);
-    events.length = 0;
+    ec.reset();
   });
 
   afterEach(async () => {
@@ -30,24 +31,24 @@ describe('StreamReader', () => {
     }
     writer.close();
     await cleanupTempDir(tempDir);
-    events.length = 0;
+    ec.reset();
   });
 
   it('should receive new events after start', async () => {
     writer.open();
-    reader = createStreamReader(fs, STREAM_FILE, (ev) => events.push(ev), makeAudit().audit);
+    reader = createStreamReader(fs, STREAM_FILE, ec.onEvent, makeAudit().audit);
     reader.start();
 
     // chokidar ready probe: write sentinel + waitFor arrival + reset (replaces blind 300ms)
     writer.write({ ts: -1, type: '__sentinel__' });
-    await waitFor(() => events.length >= 1, 5000);
-    events.length = 0;
+    await ec.whenCount(1);
+    ec.reset();
 
     const ev: StreamEvent = { ts: Date.now(), type: 'test', value: 42 };
     writer.write(ev);
 
-    await waitFor(() => events.length === 1, 10000);
-    expect(events[0]).toMatchObject({ type: 'test', value: 42 });
+    await ec.whenCount(1);
+    expect(ec.events[0]).toMatchObject({ type: 'test', value: 42 });
   });
 
   it('should not replay existing content', async () => {
@@ -56,59 +57,59 @@ describe('StreamReader', () => {
     writer.write({ ts: 2, type: 'old2' });
     writer.write({ ts: 3, type: 'old3' });
 
-    reader = createStreamReader(fs, STREAM_FILE, (ev) => events.push(ev), makeAudit().audit);
+    reader = createStreamReader(fs, STREAM_FILE, ec.onEvent, makeAudit().audit);
     reader.start();
 
     // chokidar ready probe: write sentinel + waitFor arrival + reset (replaces blind 150ms)
     writer.write({ ts: 4, type: '__sentinel__' });
-    await waitFor(() => events.length >= 1, 5000);
-    events.length = 0;
+    await ec.whenCount(1);
+    ec.reset();
 
     writer.write({ ts: 5, type: 'new' });
 
-    await waitFor(() => events.length === 1, 10000);
-    expect(events[0].type).toBe('new');
+    await ec.whenCount(1);
+    expect(ec.events[0].type).toBe('new');
   });
 
   it('should receive multiple batched events in order', async () => {
     writer.open();
-    reader = createStreamReader(fs, STREAM_FILE, (ev) => events.push(ev), makeAudit().audit);
+    reader = createStreamReader(fs, STREAM_FILE, ec.onEvent, makeAudit().audit);
     reader.start();
 
     // chokidar ready probe: write sentinel + waitFor arrival + reset (replaces blind 300ms)
     writer.write({ ts: -1, type: '__sentinel__' });
-    await waitFor(() => events.length >= 1, 5000);
-    events.length = 0;
+    await ec.whenCount(1);
+    ec.reset();
 
     for (let i = 0; i < 5; i++) {
       writer.write({ ts: i, type: 'batch', idx: i });
     }
 
-    await waitFor(() => events.length === 5, 10000);
-    expect(events.map(e => (e as StreamEvent & { idx: number }).idx)).toEqual([0, 1, 2, 3, 4]);
+    await ec.whenCount(5);
+    expect(ec.events.map(e => (e as StreamEvent & { idx: number }).idx)).toEqual([0, 1, 2, 3, 4]);
   });
 
   it('should isolate JSON parse errors and keep processing', async () => {
     const { audit, events: auditEvents } = makeAudit();
     writer.open();
-    reader = createStreamReader(fs, STREAM_FILE, (ev) => events.push(ev), audit);
+    reader = createStreamReader(fs, STREAM_FILE, ec.onEvent, audit);
     reader.start();
 
     // chokidar ready probe: write sentinel + waitFor arrival + reset (replaces blind 300ms)
     writer.write({ ts: -1, type: '__sentinel__' });
-    await waitFor(() => events.length >= 1, 5000);
-    events.length = 0;
+    await ec.whenCount(1);
+    ec.reset();
 
     // write a valid event first
     writer.write({ ts: 1, type: 'before' });
-    await waitFor(() => events.length === 1, 10000);
+    await ec.whenCount(1);
 
     // append an invalid JSON line followed by a valid one directly via fs
     fs.appendSync('stream.jsonl', 'this is not json\n');
     fs.appendSync('stream.jsonl', JSON.stringify({ ts: 2, type: 'after' }) + '\n');
 
-    await waitFor(() => events.length === 2, 10000);
-    expect(events[1].type).toBe('after');
+    await ec.whenCount(2);
+    expect(ec.events[1].type).toBe('after');
     expect(auditEvents.some(e => e[0] === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED)).toBe(true);
   });
 
@@ -119,7 +120,7 @@ describe('StreamReader', () => {
     reader = createStreamReader(fs, STREAM_FILE, (ev) => {
       callCount++;
       if (callCount === 1) throw new Error('cb boom');
-      events.push(ev);
+      ec.onEvent(ev);
     }, audit);
     reader.start();
 
@@ -129,13 +130,13 @@ describe('StreamReader', () => {
     writer.write({ ts: 1, type: 'first' });
     writer.write({ ts: 2, type: 'second' });
 
-    await waitFor(() => events.length === 1, 10000);
-    expect(events[0].type).toBe('second');
+    await ec.whenCount(1);
+    expect(ec.events[0].type).toBe('second');
     expect(auditEvents.some(e => e[0] === STREAM_AUDIT_EVENTS.READER_CALLBACK_FAILED)).toBe(true);
   });
 
   it('should enforce start/stop lifecycle', async () => {
-    reader = createStreamReader(fs, STREAM_FILE, (ev) => events.push(ev), makeAudit().audit);
+    reader = createStreamReader(fs, STREAM_FILE, ec.onEvent, makeAudit().audit);
 
     expect(reader.isActive()).toBe(false);
 
@@ -155,23 +156,23 @@ describe('StreamReader', () => {
   it('多行中文事件增量写入时，每行都通过 onEvent 到达', async () => {
     writer.open();
     const auditRec = makeAudit();
-    reader = createStreamReader(fs, STREAM_FILE, (ev) => events.push(ev), auditRec.audit);
+    reader = createStreamReader(fs, STREAM_FILE, ec.onEvent, auditRec.audit);
     reader.start();
 
     // chokidar ready probe: write sentinel + waitFor arrival + reset (replaces blind 300ms)
     writer.write({ ts: -1, type: '__sentinel__' });
-    await waitFor(() => events.length >= 1, 5000);
-    events.length = 0;
+    await ec.whenCount(1);
+    ec.reset();
 
     writer.write({ ts: 1, type: 'msg', text: '你好世界' });
     writer.write({ ts: 2, type: 'msg', text: '测试中文增量读取' });
     writer.write({ ts: 3, type: 'msg', text: '哈喽 🎯' });
 
-    await waitFor(() => events.length === 3, 10000);
+    await ec.whenCount(3);
 
-    expect(events[0]).toMatchObject({ type: 'msg', text: '你好世界' });
-    expect(events[1]).toMatchObject({ type: 'msg', text: '测试中文增量读取' });
-    expect(events[2]).toMatchObject({ type: 'msg', text: '哈喽 🎯' });
+    expect(ec.events[0]).toMatchObject({ type: 'msg', text: '你好世界' });
+    expect(ec.events[1]).toMatchObject({ type: 'msg', text: '测试中文增量读取' });
+    expect(ec.events[2]).toMatchObject({ type: 'msg', text: '哈喽 🎯' });
 
     const parseFailed = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED);
     expect(parseFailed.length).toBe(0);
@@ -180,13 +181,13 @@ describe('StreamReader', () => {
   it('chunk 边界落在单个 UTF-8 字符字节中间时，StringDecoder 跨 read 复原', async () => {
     writer.open();
     const auditRec = makeAudit();
-    reader = createStreamReader(fs, STREAM_FILE, (ev) => events.push(ev), auditRec.audit);
+    reader = createStreamReader(fs, STREAM_FILE, ec.onEvent, auditRec.audit);
     reader.start();
 
     // chokidar ready probe: write sentinel + waitFor arrival + reset (replaces blind 300ms)
     writer.write({ ts: -1, type: '__sentinel__' });
-    await waitFor(() => events.length >= 1, 5000);
-    events.length = 0;
+    await ec.whenCount(1);
+    ec.reset();
 
     const prefix = Buffer.from('{"ts":1,"type":"t","text":"', 'utf-8');
     const charFirstByte = Buffer.from([0xe4]);
@@ -199,14 +200,14 @@ describe('StreamReader', () => {
 
     // inverse waitFor: assert no event emitted within 200ms (partial UTF-8 boundary)
     await new Promise(r => setTimeout(r, 200));
-    expect(events.length).toBe(0);
+    expect(ec.events.length).toBe(0);
     const partial_parseFailed = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED);
     expect(partial_parseFailed.length).toBe(0);
 
     nativeAppend(streamAbs, Buffer.concat([charRest, suffix]));
 
-    await waitFor(() => events.length === 1, 10000);
-    expect(events[0]).toMatchObject({ type: 't', text: '中' });
+    await ec.whenCount(1);
+    expect(ec.events[0]).toMatchObject({ type: 't', text: '中' });
 
     const parseFailed = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED);
     expect(parseFailed.length).toBe(0);
@@ -215,13 +216,13 @@ describe('StreamReader', () => {
   it('chunk 边界落在 4 字节 emoji 字节中间时，StringDecoder 跨 read 复原', async () => {
     writer.open();
     const auditRec = makeAudit();
-    reader = createStreamReader(fs, STREAM_FILE, (ev) => events.push(ev), auditRec.audit);
+    reader = createStreamReader(fs, STREAM_FILE, ec.onEvent, auditRec.audit);
     reader.start();
 
     // chokidar ready probe: write sentinel + waitFor arrival + reset (replaces blind 300ms)
     writer.write({ ts: -1, type: '__sentinel__' });
-    await waitFor(() => events.length >= 1, 5000);
-    events.length = 0;
+    await ec.whenCount(1);
+    ec.reset();
 
     const prefix = Buffer.from('{"ts":1,"type":"t","text":"', 'utf-8');
     const emojiHalf1 = Buffer.from([0xf0, 0x9f]);
@@ -233,11 +234,11 @@ describe('StreamReader', () => {
     nativeAppend(streamAbs, Buffer.concat([prefix, emojiHalf1]));
     // inverse waitFor: assert no event emitted within 200ms (emoji boundary)
     await new Promise(r => setTimeout(r, 200));
-    expect(events.length).toBe(0);
+    expect(ec.events.length).toBe(0);
 
     nativeAppend(streamAbs, Buffer.concat([emojiHalf2, suffix]));
-    await waitFor(() => events.length === 1, 10000);
-    expect(events[0]).toMatchObject({ type: 't', text: '🎯' });
+    await ec.whenCount(1);
+    expect(ec.events[0]).toMatchObject({ type: 't', text: '🎯' });
 
     const parseFailed = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED);
     expect(parseFailed.length).toBe(0);
@@ -246,13 +247,20 @@ describe('StreamReader', () => {
   it('连续 ≥5 行畸形 JSON 触发 STREAM_READER_CORRUPT（trigger=consecutive_fail） + 停订阅', async () => {
     writer.open();
     const auditRec = makeAudit();
-    reader = createStreamReader(fs, STREAM_FILE, (ev) => events.push(ev), auditRec.audit);
+    const auditEc = createEventCollector<[string, ...(string | number)[]]>();
+    const wrappedAudit: AuditLog = {
+      write: (type: string, ...cols: (string | number)[]) => {
+        auditEc.onEvent([type, ...cols]);
+        auditRec.audit.write(type, ...cols);
+      },
+    };
+    reader = createStreamReader(fs, STREAM_FILE, ec.onEvent, wrappedAudit);
     reader.start();
 
     // chokidar ready probe: write sentinel + waitFor arrival + reset (replaces blind 300ms)
     writer.write({ ts: -1, type: '__sentinel__' });
-    await waitFor(() => events.length >= 1, 5000);
-    events.length = 0;
+    await ec.whenCount(1);
+    ec.reset();
 
     const streamAbs = nativePath.join(tempDir, STREAM_FILE);
     for (let i = 0; i < 5; i++) {
@@ -261,9 +269,9 @@ describe('StreamReader', () => {
       await new Promise(r => setTimeout(r, 50));
     }
 
-    await waitFor(() =>
-      auditRec.events.some(([t]) => t === STREAM_AUDIT_EVENTS.READER_CORRUPT)
-    , 10000);
+    await auditEc.whenPredicate((events) =>
+      events.some(([t]) => t === STREAM_AUDIT_EVENTS.READER_CORRUPT)
+    );
 
     const corruptEvents = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_CORRUPT);
     expect(corruptEvents.length).toBe(1);
@@ -282,19 +290,26 @@ describe('StreamReader', () => {
     writer.write({ ts: 999, type: 'post_corrupt', text: 'should_not_arrive' });
     // inverse waitFor: assert no event emitted within 200ms (post-corrupt stop)
     await new Promise(r => setTimeout(r, 200));
-    expect(events.find(e => (e as any).type === 'post_corrupt')).toBeUndefined();
+    expect(ec.events.find(e => (e as any).type === 'post_corrupt')).toBeUndefined();
   });
 
   it('近 RECENT_WINDOW 次 parse 中 fail 占比 > 50% 触发 STREAM_READER_CORRUPT（trigger=ratio_high）', async () => {
     writer.open();
     const auditRec = makeAudit();
-    reader = createStreamReader(fs, STREAM_FILE, (ev) => events.push(ev), auditRec.audit);
+    const auditEc = createEventCollector<[string, ...(string | number)[]]>();
+    const wrappedAudit: AuditLog = {
+      write: (type: string, ...cols: (string | number)[]) => {
+        auditEc.onEvent([type, ...cols]);
+        auditRec.audit.write(type, ...cols);
+      },
+    };
+    reader = createStreamReader(fs, STREAM_FILE, ec.onEvent, wrappedAudit);
     reader.start();
 
     // chokidar ready probe: write sentinel + waitFor arrival + reset (replaces blind 300ms)
     writer.write({ ts: -1, type: '__sentinel__' });
-    await waitFor(() => events.length >= 1, 5000);
-    events.length = 0;
+    await ec.whenCount(1);
+    ec.reset();
 
     const streamAbs = nativePath.join(tempDir, STREAM_FILE);
 
@@ -308,9 +323,9 @@ describe('StreamReader', () => {
       await new Promise(r => setTimeout(r, 50));
     }
 
-    await waitFor(() =>
-      auditRec.events.some(([t]) => t === STREAM_AUDIT_EVENTS.READER_CORRUPT)
-    , 10000);
+    await auditEc.whenPredicate((events) =>
+      events.some(([t]) => t === STREAM_AUDIT_EVENTS.READER_CORRUPT)
+    );
 
     const corruptEvents = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_CORRUPT);
     expect(corruptEvents.length).toBe(1);
