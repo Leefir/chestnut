@@ -573,7 +573,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
           options.audit.write(
             VIEWPORT_AUDIT_EVENTS.TASK_STREAM_STALE_CLEANUP,
             `taskId=${taskId}`,
-            `idleMs=${now - tw.lastEventMs}`,
+            `idle_ms=${now - tw.lastEventMs}`,
           );
         } catch { /* audit self-failure tolerated */ }
       }

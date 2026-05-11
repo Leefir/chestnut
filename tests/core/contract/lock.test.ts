@@ -54,7 +54,7 @@ describe('acquireLock', () => {
     // audit LOCK_SCHEMA_INVALID 被调用
     expect(mockAudit.write).toHaveBeenCalledWith(
       'contract_lock_schema_invalid',
-      expect.stringMatching(/^lockPath=/),
+      expect.stringMatching(/^path=/),
       expect.stringMatching(/^raw=/),
     );
 
@@ -115,7 +115,7 @@ describe('acquireLock', () => {
 
     expect(mockAudit.write).toHaveBeenCalledWith(
       'contract_lock_schema_invalid',
-      expect.stringMatching(/^lockPath=/),
+      expect.stringMatching(/^path=/),
       expect.stringMatching(/^raw=/),
     );
   }, 2000);

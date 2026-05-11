@@ -41,7 +41,7 @@ describe('CronRunner timeout escalation', () => {
       'cron_handler_timeout',
       'job=hang',
       expect.stringContaining('run_key='),
-      'ms=100',
+      'timeout_ms=100',
     );
     expect((runner as unknown as { running: Set<string> }).running.has('hang')).toBe(false);
     expect((runner as unknown as { cancelling: Set<string> }).cancelling.has('hang')).toBe(true);
@@ -96,7 +96,7 @@ describe('CronRunner timeout escalation', () => {
       CRON_AUDIT_EVENTS.JOB_ERROR,
       'job=thrower',
       expect.stringContaining('run_key='),
-      'err=test',
+      'error=test',
     );
     const timeoutCalls = audit.write.mock.calls.filter(
       (c: unknown[]) => c[0] === 'cron_handler_timeout'
