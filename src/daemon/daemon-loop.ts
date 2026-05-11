@@ -105,6 +105,23 @@ function createStreamCallbacks(sink: StreamLog): StreamCallbacks {
     },
     onProviderFailed: (info: { provider: string; model: string; error: string }) => {
       sink.write({ ts: Date.now(), type: 'provider_failed', ...info });
+      // Phase 737: heuristic permanent error detection for viewport banner
+      const errorLower = info.error.toLowerCase();
+      const isPermanent = /401|403|404|auth|quota|credit|insufficient|model not found|deprecated/.test(errorLower);
+      if (isPermanent) {
+        const hint = /quota|credit|insufficient/.test(errorLower)
+          ? 'check_quota'
+          : (/model|404/.test(errorLower) ? 'switch_primary' : 'rotate_api_key');
+        sink.write({
+          ts: Date.now(),
+          type: 'provider_attempt_failed',
+          provider: info.provider,
+          attempt: 0,
+          error: info.error,
+          errorClass: 'permanent',
+          userActionHint: hint,
+        });
+      }
     },
   };
 }

@@ -423,6 +423,28 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
         break;
       }
 
+      case 'provider_attempt_failed': {
+        const providerName = event.provider as string;
+        const errorClass = event.errorClass as string | undefined;
+        const userActionHint = event.userActionHint as string | undefined;
+        const errorMsg = event.error as string;
+        if (errorClass === 'permanent') {
+          const hintZh = userActionHint === 'rotate_api_key' ? '检查或更新 API key'
+            : userActionHint === 'switch_primary' ? '检查 model 名或切换首选供应商'
+            : userActionHint === 'wait_retry_after' ? '等限流冷却或换 primary'
+            : userActionHint === 'check_quota' ? '检查配额或充值'
+            : '请查看 audit log 详情';
+          const classZh = errorClass === 'permanent' ? 'auth/quota/model 错'
+            : errorClass === 'transient' ? '网络/服务暂时不可用'
+            : errorClass === 'rate_limit' ? '触发限流'
+            : errorClass === 'abort' ? '中断'
+            : '未知错误';
+          const shortErr = typeof errorMsg === 'string' && errorMsg.length > 60 ? errorMsg.slice(0, 57) + '...' : errorMsg;
+          appendOutput('\x1b[31m', `⚠ ${providerName} ${classZh}（${shortErr}）/ 已 failover / 建议${hintZh}`);
+        }
+        break;
+      }
+
       case 'provider_failed': {
         const providerName = event.provider as string;
         const providerModel = event.model as string;
