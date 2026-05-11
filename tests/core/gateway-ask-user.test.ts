@@ -372,6 +372,7 @@ describe('Gateway askUser', () => {
 });
 
 describe('createAskUserTool', () => {
+  // forwarding test: tool body 仅调 gateway.askUser(question, ctx) / failure path 由 Gateway.askUser unit tests 覆盖
   it('calls gateway.askUser with question and ctx', async () => {
     const mockGateway = {
       askUser: vi.fn().mockResolvedValue({ success: true, content: 'ok' }),
