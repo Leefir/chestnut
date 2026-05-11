@@ -13,6 +13,7 @@ import {
   LLMError,
   LLMRateLimitError,
   LLMTimeoutError,
+  LLMNetworkError,
 } from '../../types/errors.js';
 import { parseRetryAfter } from './_helpers.js';
 import type {
@@ -100,6 +101,12 @@ export class AnthropicAdapter extends BaseAnthropicAdapter {
     }
     if (errName === 'APIConnectionTimeoutError') {
       return new LLMTimeoutError(this.name, timeoutMs);
+    }
+    if (errName === 'APIConnectionError') {
+      return new LLMNetworkError(
+        this.name,
+        error instanceof Error ? error : new Error(String(error)),
+      );
     }
     if (errName === 'APIError') {
       const apiErr = error as { status?: number; message: string };
