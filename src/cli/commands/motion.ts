@@ -217,7 +217,7 @@ export async function chatCommand(): Promise<void> {
           logFile: path.join(motionDir, LOGS_DIR, 'daemon.log'),
           env: { ...process.env, CLAWFORUM_ROOT: getWorkspaceRoot() } as Record<string, string | undefined>,
         });
-        console.log(`Started (PID: ${pid})`);
+        console.log(`✓ Started (PID: ${pid})`);
         await new Promise(resolve => setTimeout(resolve, PROCESS_SPAWN_CONFIRM_MS));
       }
       // 确保 watchdog 在运行（idempotent）
@@ -249,7 +249,7 @@ export async function stopCommand(deps?: { audit?: AuditLog }): Promise<void> {
   const stopped = await pm.stop('motion');
   if (stopped) {
     audit?.write(CLI_AUDIT_EVENTS.MOTION_STOP, `status=success`);
-    console.log('Stopped Motion daemon');
+    console.log('✓ Stopped Motion daemon');
   } else {
     audit?.write(CLI_AUDIT_EVENTS.MOTION_STOP, `status=failed`);
     console.log('Failed to stop Motion');

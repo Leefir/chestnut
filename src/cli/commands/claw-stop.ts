@@ -37,7 +37,7 @@ export async function stopCommand(name: string, deps?: { audit?: AuditLog }): Pr
   const success = await processManager.stop(name);
   if (success) {
     audit?.write(CLI_AUDIT_EVENTS.CLAW_STOP, `name=${name}`, `status=success`);
-    console.log(`Stopped Claw "${name}"`);
+    console.log(`✓ Stopped Claw "${name}"`);
   } else {
     audit?.write(CLI_AUDIT_EVENTS.CLAW_STOP, `name=${name}`, `status=failed`);
     throw new CliError(`Failed to stop Claw "${name}"`);

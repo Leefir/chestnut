@@ -44,7 +44,7 @@ export async function createCommand(name: string, deps?: { audit?: AuditLog }): 
   fs.writeFileSync(agentsMdPath, agentsTemplate);
   
   audit?.write(CLI_AUDIT_EVENTS.CLAW_CREATE, `name=${name}`);
-  console.log(`Created Claw "${name}"`);
+  console.log(`✓ Created Claw "${name}"`);
   console.log(`  Location: ${clawDir}`);
   console.log(`\nNext step: clawforum claw chat ${name}`);
 }

@@ -452,6 +452,10 @@ skillCmd
 
 skillCmd.on('command:*', (ops) => {
   console.error(`error: unknown command '${ops[0]}'\n`);
+  console.error('Available commands:');
+  for (const c of skillCmd.commands) {
+    console.error(`  ${c.name().padEnd(12)}  ${c.description()}`);
+  }
   process.exitCode = 1;
 });
 
