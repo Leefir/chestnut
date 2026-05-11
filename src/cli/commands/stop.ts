@@ -16,18 +16,21 @@ import { PROCESS_MANAGER_AUDIT_EVENTS } from '../../foundation/process-manager/a
 import { createProcessManagerForCLI } from '../utils/factories.js';
 import { CLAWS_DIR } from '../../types/paths.js';
 import { fileURLToPath } from 'url';
+import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 
-export async function stopAllCommand(): Promise<void> {
+export async function stopAllCommand(deps?: { audit?: AuditLog }): Promise<void> {
   loadGlobalConfig();
 
   // motion-level audit（α 模板复用 / 同 daemon-entry shim / fail-soft）
-  let audit: AuditLog | null = null;
-  try {
-    const motionDir = getMotionDir();
-    const motionFs = new NodeFileSystem({ baseDir: motionDir });
-    audit = createSystemAudit(motionFs, motionDir);
-  } catch {
-    audit = null;  // audit 构造失败 / fallback null / 后续 audit?.write 软降级
+  let audit: AuditLog | null = deps?.audit ?? null;
+  if (!audit) {
+    try {
+      const motionDir = getMotionDir();
+      const motionFs = new NodeFileSystem({ baseDir: motionDir });
+      audit = createSystemAudit(motionFs, motionDir);
+    } catch {
+      audit = null;  // audit 构造失败 / fallback null / 后续 audit?.write 软降级
+    }
   }
 
   // 1. Stop watchdog first (prevents it from restarting motion)
@@ -68,6 +71,7 @@ export async function stopAllCommand(): Promise<void> {
     fs.writeFileSync(cleanStopFile, String(Date.now()), 'utf-8');
   } catch { /* best-effort */ }
 
+  audit?.write(CLI_AUDIT_EVENTS.DAEMON_STOP, `scope=all`);
   console.log('Done.');
 
   // Cleanup: pgrep兜底，清理残留的daemon-entry.js孤儿进程

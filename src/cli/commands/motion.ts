@@ -23,6 +23,8 @@ import { createDirContext, createProcessManagerForCLI } from '../utils/factories
 import { SNAPSHOT_IGNORE_PATTERNS } from '../../foundation/snapshot/index.js';
 import { LOGS_DIR, STATUS_SUBDIR, CLAWS_DIR } from '../../types/paths.js';
 import { SKILLS_DIR_DEFAULT, BUNDLED_SKILLS_DIR_NAME } from '../../foundation/skill-system/skill-paths.js';
+import type { AuditLog } from '../../foundation/audit/index.js';
+import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 
 // Get current file directory (ESM compatible)
 const __filename = fileURLToPath(import.meta.url);
@@ -122,7 +124,8 @@ async function writeTemplate(filePath: string, content: string): Promise<boolean
 /**
  * motion init - create Motion configuration directory and template files
  */
-export async function initCommand(silent = false): Promise<void> {
+export async function initCommand(silent = false, deps?: { audit?: AuditLog }): Promise<void> {
+  const audit = deps?.audit;
   const motionDir = getMotionDir();
   const motionConfigDir = getMotionConfigDir();
   
@@ -174,6 +177,7 @@ export async function initCommand(silent = false): Promise<void> {
   }
 
   // Output results
+  audit?.write(CLI_AUDIT_EVENTS.MOTION_INIT);
   console.log('\n✓ Motion initialized successfully');
   if (!silent) {
     console.log(`\nYou can now run: clawforum motion chat`);
@@ -229,16 +233,24 @@ export async function chatCommand(): Promise<void> {
 /**
  * motion stop - 停止 Motion 守护进程
  */
-export async function stopCommand(): Promise<void> {
+export async function stopCommand(deps?: { audit?: AuditLog }): Promise<void> {
+  const audit = deps?.audit;
   loadGlobalConfig();
   const pm = createProcessManagerForCLI();
 
   if (!pm.isAlive('motion')) {
+    audit?.write(CLI_AUDIT_EVENTS.MOTION_STOP, `status=not_running`);
     console.log('Motion is not running');
     return;
   }
 
   console.log('Stopping Motion daemon...');
   const stopped = await pm.stop('motion');
-  console.log(stopped ? 'Stopped Motion daemon' : 'Failed to stop Motion');
+  if (stopped) {
+    audit?.write(CLI_AUDIT_EVENTS.MOTION_STOP, `status=success`);
+    console.log('Stopped Motion daemon');
+  } else {
+    audit?.write(CLI_AUDIT_EVENTS.MOTION_STOP, `status=failed`);
+    console.log('Failed to stop Motion');
+  }
 }

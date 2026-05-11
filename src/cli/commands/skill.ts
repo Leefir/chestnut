@@ -12,6 +12,8 @@ import { CLAWSPACE_DIR } from '../../types/paths.js';
 import { SKILLS_DIR_DEFAULT } from '../../foundation/skill-system/skill-paths.js';
 import { DISPATCH_SKILLS_SUBDIR } from '../../core/evolution-system/index.js';
 import { getClawDir } from '../../foundation/config/index.js';
+import type { AuditLog } from '../../foundation/audit/index.js';
+import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 
 /**
  * Copy directory recursively
@@ -35,7 +37,8 @@ async function copyDir(src: string, dest: string): Promise<void> {
  * - Copy to root/skills/{skillName}/
  * - Sync to motion/clawspace/dispatch-skills/{skillName}/
  */
-export async function skillInstallUserCommand(sourcePath: string): Promise<void> {
+export async function skillInstallUserCommand(sourcePath: string, deps?: { audit?: AuditLog }): Promise<void> {
+  const audit = deps?.audit;
   const root = process.env.CLAWFORUM_ROOT ?? process.cwd();
   const absSource = path.resolve(sourcePath);
 
@@ -52,6 +55,7 @@ export async function skillInstallUserCommand(sourcePath: string): Promise<void>
   const destUser = path.join(root, SKILLS_DIR_DEFAULT, skillName);
   const userExists = fsNative.existsSync(destUser);
   await copyDir(absSource, destUser);
+  audit?.write(CLI_AUDIT_EVENTS.SKILL_INSTALL, `mode=user`, `skill=${skillName}`);
   console.log(`${userExists ? 'Updated' : 'Installed'} skills/${skillName}`);
 
   // 2. Sync to motion/clawspace/dispatch-skills/{skillName}/
@@ -67,7 +71,8 @@ export async function skillInstallUserCommand(sourcePath: string): Promise<void>
  * - Copy from motion/clawspace/dispatch-skills/{skillName}/
  * - To clawDir/skills/{skillName}/
  */
-export async function skillInstallClawCommand(clawId: string, skillName: string): Promise<void> {
+export async function skillInstallClawCommand(clawId: string, skillName: string, deps?: { audit?: AuditLog }): Promise<void> {
+  const audit = deps?.audit;
   // Phase 537 — traversal guard for both identifier params
   if (
     typeof clawId !== 'string' || clawId === '' || clawId === '.' || clawId.startsWith('.') ||
@@ -96,5 +101,6 @@ export async function skillInstallClawCommand(clawId: string, skillName: string)
   }
 
   await copyDir(source, dest);
+  audit?.write(CLI_AUDIT_EVENTS.SKILL_INSTALL, `mode=claw`, `claw=${clawId}`, `skill=${skillName}`);
   console.log(`Installed ${skillName} to claw ${clawId}`);
 }

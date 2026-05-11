@@ -237,6 +237,7 @@ export async function waitForTaskResult(
     await new Promise(r => setTimeout(r, pollIntervalMs));
   }
 
+  audit?.write(MEMORY_AUDIT_EVENTS.RANDOM_DREAM_WARNING, `reason=poll_timeout`, `taskId=${taskId}`);
   console.warn(`[cron:random-dream] timeout waiting for task ${taskId}`);
   return null;
 }

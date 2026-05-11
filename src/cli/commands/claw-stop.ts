@@ -9,8 +9,11 @@ import {
 } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import { createDirContext, createProcessManagerForCLI } from '../utils/factories.js';
+import type { AuditLog } from '../../foundation/audit/index.js';
+import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 
-export async function stopCommand(name: string): Promise<void> {
+export async function stopCommand(name: string, deps?: { audit?: AuditLog }): Promise<void> {
+  const audit = deps?.audit;
   loadGlobalConfig();
   
   if (!clawExists(name)) {
@@ -30,11 +33,13 @@ export async function stopCommand(name: string): Promise<void> {
   }
 
   console.log(`Stopping Claw "${name}"...`);
-  
+
   const success = await processManager.stop(name);
   if (success) {
+    audit?.write(CLI_AUDIT_EVENTS.CLAW_STOP, `name=${name}`, `status=success`);
     console.log(`Stopped Claw "${name}"`);
   } else {
+    audit?.write(CLI_AUDIT_EVENTS.CLAW_STOP, `name=${name}`, `status=failed`);
     throw new CliError(`Failed to stop Claw "${name}"`);
   }
 }

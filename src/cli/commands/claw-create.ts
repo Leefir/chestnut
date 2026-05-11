@@ -9,8 +9,11 @@ import {
 } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import { buildAgentsMdTemplate } from '../../prompts/index.js';
+import type { AuditLog } from '../../foundation/audit/index.js';
+import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 
-export async function createCommand(name: string): Promise<void> {
+export async function createCommand(name: string, deps?: { audit?: AuditLog }): Promise<void> {
+  const audit = deps?.audit;
   // Load global config (ensures initialized)
   loadGlobalConfig();
   
@@ -40,6 +43,7 @@ export async function createCommand(name: string): Promise<void> {
   const agentsTemplate = buildAgentsMdTemplate(name);
   fs.writeFileSync(agentsMdPath, agentsTemplate);
   
+  audit?.write(CLI_AUDIT_EVENTS.CLAW_CREATE, `name=${name}`);
   console.log(`Created Claw "${name}"`);
   console.log(`  Location: ${clawDir}`);
   console.log(`\nNext step: clawforum claw chat ${name}`);
