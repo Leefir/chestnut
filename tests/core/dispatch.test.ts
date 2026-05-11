@@ -71,7 +71,11 @@ describe('DispatchTool', () => {
 
     expect(result.success).toBe(true);
     expect(result.content).toContain('task-123');
-    expect(mockWriteFile).toHaveBeenCalled();
+    expect(mockWriteFile).toHaveBeenCalledTimes(1);
+    expect(mockWriteFile.mock.calls[0][2]).toMatchObject({
+      intent: expect.stringContaining('do something'),
+      kind: 'subagent',
+    });
   });
 
   it('should pass postProcessor field to scheduleSubAgent', async () => {
@@ -124,9 +128,10 @@ Content.
 
       await tool.execute({ goal: 'follow up', mode: 'describing' }, ctx);
 
-      expect(mockWriteFile).toHaveBeenCalled();
-      const call = mockWriteFile.mock.calls[0][2];
-      expect(call.intent).toContain('follow up');
+      expect(mockWriteFile).toHaveBeenCalledTimes(1);
+      expect(mockWriteFile.mock.calls[0][2]).toMatchObject({
+        intent: expect.stringContaining('follow up'),
+      });
     });
 
     it('should capture dispatchToolUseId when dispatch is not the last tool_use block (multi tool_use)', async () => {
@@ -146,9 +151,10 @@ Content.
 
       await tool.execute({ goal: 'follow up', mode: 'describing' }, ctx);
 
-      expect(mockWriteFile).toHaveBeenCalled();
-      const call = mockWriteFile.mock.calls[0][2];
-      expect(call.intent).toContain('follow up');
+      expect(mockWriteFile).toHaveBeenCalledTimes(1);
+      expect(mockWriteFile.mock.calls[0][2]).toMatchObject({
+        intent: expect.stringContaining('follow up'),
+      });
     });
 
     it('should still capture dispatchToolUseId when dispatch is the last tool_use block (backward-compat)', async () => {
@@ -196,9 +202,10 @@ Content.
 
       await tool.execute({ goal: 'standalone task' }, ctx);
 
-      expect(mockWriteFile).toHaveBeenCalled();
-      const call = mockWriteFile.mock.calls[0][2];
-      expect(call.intent).toContain('standalone task');
+      expect(mockWriteFile).toHaveBeenCalledTimes(1);
+      expect(mockWriteFile.mock.calls[0][2]).toMatchObject({
+        intent: expect.stringContaining('standalone task'),
+      });
     });
   });
 
@@ -236,8 +243,10 @@ Content.
 
       await tool.execute({ goal: 'do something' }, ctx);
 
-      expect(mockWriteFile).toHaveBeenCalled();
-      expect(mockWriteFile.mock.calls[0][2].originClawId).toBe('motion');
+      expect(mockWriteFile).toHaveBeenCalledTimes(1);
+      expect(mockWriteFile.mock.calls[0][2]).toMatchObject({
+        originClawId: 'motion',
+      });
     });
 
     it('should inherit originClawId when originClawId already set', async () => {
@@ -250,9 +259,11 @@ Content.
 
       await tool.execute({ goal: 'nested dispatch' }, ctx);
 
-      expect(mockWriteFile).toHaveBeenCalled();
+      expect(mockWriteFile).toHaveBeenCalledTimes(1);
       // 应该继承，不被覆盖
-      expect(mockWriteFile.mock.calls[0][2].originClawId).toBe('motion');
+      expect(mockWriteFile.mock.calls[0][2]).toMatchObject({
+        originClawId: 'motion',
+      });
     });
 
     it('should use clawId as originClawId when originClawId not set', async () => {
@@ -262,9 +273,11 @@ Content.
 
       await tool.execute({ goal: 'claw task' }, ctx);
 
-      expect(mockWriteFile).toHaveBeenCalled();
+      expect(mockWriteFile).toHaveBeenCalledTimes(1);
       // 应该使用 clawId 作为 originClawId
-      expect(mockWriteFile.mock.calls[0][2].originClawId).toBe('claw1');
+      expect(mockWriteFile.mock.calls[0][2]).toMatchObject({
+        originClawId: 'claw1',
+      });
     });
   });
 
