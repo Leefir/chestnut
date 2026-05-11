@@ -517,9 +517,11 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
   // Motion viewport：各 claw 步数追踪
   const isMotion = options.label === 'motion';
   const clawsDir = isMotion ? path.join(options.agentDir, '..', CLAWS_DIR) : '';
+  // NEW fs instance for clawsDir scan（motion fs baseDir=motionDir / 不接受 clawsDir 绝对路径 / 创建 dedicated clawsFs baseDir=clawsDir）
+  const clawsFs = isMotion && clawsDir ? createDirContext(clawsDir).fs : fs;
   const clawTrackMap = new Map<string, ClawTrack>();
   const clawManager = createClawManager({
-    fs, pm, audit: options.audit, isMotion, clawsDir, clawTrackMap,
+    fs: clawsFs, pm, audit: options.audit, isMotion, clawsDir, clawTrackMap,
     updateClawPanel,
     requestRender: () => tui.requestRender(),
   });
@@ -735,13 +737,15 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
   if (clawsDir) {
     const rescanClawsDir = () => {
       try {
-        const entries = fs.listSync(clawsDir, { includeDirs: true });
+        // clawsFs baseDir = clawsDir / 用相对路径 '.' 列 clawsDir 自身
+        const entries = clawsFs.listSync('.', { includeDirs: true });
         for (const e of entries) {
           if (!e.isDirectory) continue;
           const clawId = e.name;
           if (clawTrackMap.has(clawId)) continue;
           const clawDir = path.join(clawsDir, clawId);
-          const contractMs = getContractCreatedMs(fs, clawDir);
+          // getContractCreatedMs 用 clawsFs (baseDir=clawsDir) / 传相对路径 clawId
+          const contractMs = getContractCreatedMs(clawsFs, clawId);
           if (contractMs !== null) {
             const t = makeClawTrack();
             t.hasContract = true;
@@ -771,6 +775,25 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
   // 兜底：SIGINT 退出（终端未进 raw mode 时 Ctrl+C 转为 SIGINT）
   const sigintHandler = () => resolveExit();
   process.on('SIGINT', sigintHandler);
+  // SIGTERM 退出（clawforum stop 发送 / 让 stop 命令能 kill viewport process）
+  const sigtermHandler = () => resolveExit();
+  process.on('SIGTERM', sigtermHandler);
+
+  // viewport pid 文件注册：写到 <clawforumDir>/viewports/<pid>.pid / stop 命令 read + kill + delete
+  // 用 node fsNative 直写 / 因为 viewports/ 在 motion baseDir 之外（NodeFileSystem 拒绝 baseDir 外路径）
+  const clawforumDir = path.resolve(options.agentDir, '..');
+  const viewportPidDir = path.join(clawforumDir, 'viewports');
+  const viewportPidFile = path.join(viewportPidDir, `${process.pid}.pid`);
+  try {
+    const fsNative = await import('fs');
+    fsNative.mkdirSync(viewportPidDir, { recursive: true });
+    fsNative.writeFileSync(
+      viewportPidFile,
+      JSON.stringify({ pid: process.pid, label: options.label, agentDir: options.agentDir, startedAt: new Date().toISOString() }),
+    );
+  } catch {
+    // pid file 写失败 软降级 / 仍允许 viewport 运行 / stop 命令无法 kill 此 viewport（user 仍可手动 Ctrl+C）
+  }
 
   try {
     await exitPromise;
@@ -779,6 +802,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
     turnTracker.destroy();
     process.stdout.off('resize', onResize);
     process.removeListener('SIGINT', sigintHandler);
+    process.removeListener('SIGTERM', sigtermHandler);
     process.removeListener('uncaughtException', uncaughtHandler);
     process.removeListener('unhandledRejection', uncaughtHandler);
     mainUI.stopSpinner();
@@ -792,6 +816,11 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
     if (clawScanInterval) clearInterval(clawScanInterval);
     for (const tw of taskWatchMap.values()) await tw.streamReader?.stop();
     taskWatchMap.clear();
+    // 删 viewport pid 文件（best-effort / 异常进程退出可能 leak / stop 命令容错）
+    try {
+      const fsNative = await import('fs');
+      fsNative.unlinkSync(viewportPidFile);
+    } catch { /* leak tolerated / stop 容错 stale pid file */ }
     tui.stop();
     await terminal.drainInput();
     process.stdin.pause();
