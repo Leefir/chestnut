@@ -483,7 +483,13 @@ describe('ContractSystem', () => {
   // === Phase 22 C1+C2: completeSubtask allCompleted path ===
 
   it('should return allCompleted=true and archive contract when last subtask completes', async () => {
-    const contractId = await manager.create(makeContractYaml({
+    const onNotifySpy = vi.fn();
+    const testManager = new ContractSystem(
+      clawDir, 'test-claw', nodeFs, { write: vi.fn() } as any, undefined, createToolRegistry()
+    );
+    testManager.setOnNotify(onNotifySpy);
+
+    const contractId = await testManager.create(makeContractYaml({
       title: 'AllCompleted Test',
       goal: 'Test',
       deliverables: [],
@@ -491,7 +497,7 @@ describe('ContractSystem', () => {
       acceptance: [],
     }));
 
-    const result = await manager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'done' });
+    const result = await testManager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'done' });
 
     expect(result.passed).toBe(true);
     expect(result.allCompleted).toBe(true);
@@ -501,6 +507,16 @@ describe('ContractSystem', () => {
     await expect(fs.access(archivePath)).resolves.not.toThrow();
     const activePath = path.join(clawDir, 'contract', 'active', contractId);
     await expect(fs.access(activePath)).rejects.toThrow();
+
+    // phase 738: contract_completed notify emitted on archive success
+    const completedEvents = onNotifySpy.mock.calls.filter(
+      (call: any[]) => call[0] === 'contract_completed'
+    );
+    expect(completedEvents).toHaveLength(1);
+    expect(completedEvents[0][1]).toMatchObject({
+      contractId: expect.any(String),
+      title: 'AllCompleted Test',
+    });
   });
 
   it('should not set allCompleted when subtasks remain', async () => {
@@ -748,9 +764,11 @@ describe('ContractSystem', () => {
 
     it('writes CONTRACT_MOVE_ARCHIVE_FAILED audit when moveToArchive fails on completion', async () => {
       const mockAudit = { write: vi.fn() };
+      const onNotifySpy = vi.fn();
       const testManager = new ContractSystem(
         clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry()
       );
+      testManager.setOnNotify(onNotifySpy);
 
       const contractId = await testManager.create(makeContractYaml({
         title: 'Test',
@@ -768,6 +786,13 @@ describe('ContractSystem', () => {
         expect.stringContaining('message=moveToArchive failed; contract stays in active/'),
         expect.stringContaining('error=disk full'),
       );
+
+      // phase 738 reverse 3: contract_completed notify NOT emitted on archive failure
+      const completedEvents = onNotifySpy.mock.calls.filter(
+        (call: any[]) => call[0] === 'contract_completed'
+      );
+      expect(completedEvents).toHaveLength(0);
+
       moveSpy.mockRestore();
     });
   });
