@@ -17,6 +17,7 @@ import { ContractSystem } from '../../src/core/contract/manager.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { CONTRACT_AUDIT_EVENTS } from '../../src/core/contract/audit-events.js';
 import { waitFor } from '../helpers/wait-for.js';
+import { createToolRegistry } from '../../src/foundation/tools/index.js';
 
 vi.mock('child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('child_process')>();
@@ -56,7 +57,7 @@ describe('ContractSystem', () => {
 
     nodeFs = new NodeFileSystem({ baseDir: clawDir });
     const mockAudit = { write: vi.fn() };
-    manager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+    manager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
   });
 
   it('should create contract with running status and todo subtasks', async () => {
@@ -451,7 +452,7 @@ describe('ContractSystem', () => {
   it('should audit cleanup failure when unlinking stale lock fails (EACCES)', async () => {
     const mockAudit = { write: vi.fn() };
     const testManager = new ContractSystem(
-      clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, undefined, mockAudit as any
+      clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry()
     );
 
     const contractId = await testManager.create({
@@ -502,7 +503,7 @@ describe('ContractSystem', () => {
   it('should NOT audit when stale lock is already gone (ENOENT)', async () => {
     const mockAudit = { write: vi.fn() };
     const testManager = new ContractSystem(
-      clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, undefined, mockAudit as any
+      clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry()
     );
 
     const contractId = await testManager.create({
@@ -600,7 +601,7 @@ describe('ContractSystem', () => {
   describe('monitor error reporting', () => {
     it('should log error to monitor when loadActive finds corrupted progress.json', async () => {
       const mockAudit = { write: vi.fn() };
-      const monitorManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+      const monitorManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
       // 写入损坏的 progress.json
       const contractId = 'corrupt-contract';
@@ -620,7 +621,7 @@ describe('ContractSystem', () => {
 
     it('should log error to monitor when loadPaused finds corrupted progress.json', async () => {
       const mockAudit = { write: vi.fn() };
-      const monitorManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+      const monitorManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
       const contractId = 'corrupt-paused-contract';
       const contractDir = path.join(clawDir, 'contract', 'paused', contractId);
@@ -639,7 +640,7 @@ describe('ContractSystem', () => {
 
     it('should log warn to monitor when unknown subtaskId is used in completeSubtask', async () => {
       const mockAudit = { write: vi.fn() };
-      const monitorManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+      const monitorManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
       const contractId = await monitorManager.create({
         schema_version: 1,
@@ -677,7 +678,7 @@ describe('ContractSystem', () => {
       });
 
       const mockAudit = { write: vi.fn() };
-      const failManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+      const failManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
       await expect(failManager.create({
         schema_version: 1,
         title: 'Test',
@@ -742,7 +743,7 @@ describe('ContractSystem', () => {
       await fs.writeFile(scriptPath, 'echo ok\n', { mode: 0o644 });
 
       const mockAudit = { write: vi.fn() };
-      const testManager = new ContractSystem(testClawDir, 'test-claw', new NodeFileSystem({ baseDir: testClawDir }), mockAudit as any);
+      const testManager = new ContractSystem(testClawDir, 'test-claw', new NodeFileSystem({ baseDir: testClawDir }), mockAudit as any, undefined, createToolRegistry());
       // @ts-expect-error - runScriptAcceptance is private
       const result = await testManager.runScriptAcceptance('task-1.sh', path.join(testClawDir, 'acceptance'));
 
@@ -754,7 +755,7 @@ describe('ContractSystem', () => {
     it('writes CONTRACT_ARCHIVE_STARTED audit when auto-archiving existing contract', async () => {
       const mockAudit = { write: vi.fn() };
       const testManager = new ContractSystem(
-        clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, undefined, mockAudit as any
+        clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry()
       );
 
       const contract1 = await testManager.create({
@@ -793,7 +794,7 @@ describe('ContractSystem', () => {
 
       const mockAudit = { write: vi.fn() };
       const failManager = new ContractSystem(
-        clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, undefined, mockAudit as any
+        clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry()
       );
 
       await expect(failManager.create({
@@ -816,7 +817,7 @@ describe('ContractSystem', () => {
     it('writes CONTRACT_NOTIFY_FAILED audit when onNotify throws during create', async () => {
       const mockAudit = { write: vi.fn() };
       const testManager = new ContractSystem(
-        clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, undefined, mockAudit as any
+        clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry()
       );
 
       testManager.setOnNotify(() => {
@@ -842,7 +843,7 @@ describe('ContractSystem', () => {
     it('writes CONTRACT_MOVE_ARCHIVE_FAILED audit when moveToArchive fails on completion', async () => {
       const mockAudit = { write: vi.fn() };
       const testManager = new ContractSystem(
-        clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, undefined, mockAudit as any
+        clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry()
       );
 
       const contractId = await testManager.create({
@@ -871,7 +872,7 @@ describe('ContractSystem', () => {
   describe('moveToArchive and audit consistency', () => {
     it('should NOT write audit when moveToArchive fails', async () => {
       const mockAudit = { write: vi.fn() };
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, undefined, mockAudit as any);
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
       // Create contract with no-op acceptance (no script_file/prompt_file = no acceptance)
       const contractId = await testManager.create({
@@ -909,7 +910,7 @@ describe('ContractSystem', () => {
 
     it('should write audit when moveToArchive succeeds', async () => {
       const mockAudit = { write: vi.fn() };
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, undefined, mockAudit as any);
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
       const contractId = await testManager.create({
         schema_version: 1,
@@ -936,7 +937,7 @@ describe('ContractSystem', () => {
   describe('LLM acceptance', () => {
     it('should reset subtask to todo when verifier throws exception', async () => {
       const mockAudit = { write: vi.fn() };
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
       // Create contract with LLM acceptance
       const contractId = await testManager.create({
@@ -999,7 +1000,7 @@ describe('ContractSystem', () => {
   describe('escalation writes escalated_at', () => {
     it('should set escalated_at after reaching max retries', async () => {
       const mockAudit = { write: vi.fn() };
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
       const contractId = await testManager.create({
         schema_version: 1,
@@ -1053,7 +1054,7 @@ describe('ContractSystem', () => {
 
     it('should not set escalated_at before reaching max retries', async () => {
       const mockAudit = { write: vi.fn() };
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
       const contractId = await testManager.create({
         schema_version: 1,
@@ -1175,7 +1176,7 @@ describe('ContractSystem', () => {
   describe('phase239 audit lifecycle events', () => {
     it('writes CONTRACT_CREATED audit on contract creation', async () => {
       const mockAudit = { write: vi.fn() };
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
       const contractId = await testManager.create({
         schema_version: 1 as const,
@@ -1197,7 +1198,7 @@ describe('ContractSystem', () => {
 
     it('writes CONTRACT_ACCEPTANCE_STARTED audit when async acceptance begins', async () => {
       const mockAudit = { write: vi.fn() };
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
       // Create contract with script acceptance (triggers async background acceptance)
       const contractId = await testManager.create({
@@ -1229,7 +1230,7 @@ describe('ContractSystem', () => {
 
     it('writes CONTRACT_UPDATED audit on subtask completion', async () => {
       const mockAudit = { write: vi.fn() };
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
       const contractId = await testManager.create({
         schema_version: 1 as const,
@@ -1255,7 +1256,7 @@ describe('ContractSystem', () => {
   describe('fire-and-forget 失败状态机（phase 468 / feedback driven）', () => {
     it('LLM judged failed → cause=llm_rejected + reset todo + retry_count++', async () => {
       const mockAudit = { write: vi.fn() };
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
       const contractId = await testManager.create({
         schema_version: 1,
@@ -1298,7 +1299,7 @@ describe('ContractSystem', () => {
 
     it('programming bug throw → cause=programming_bug + reset todo', async () => {
       const mockAudit = { write: vi.fn() };
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
       const contractId = await testManager.create({
         schema_version: 1,
@@ -1343,7 +1344,7 @@ describe('ContractSystem', () => {
     it('subagent timeout → cause=subagent_timeout + reset todo', async () => {
       const { ToolTimeoutError } = await import('../../src/types/errors.js');
       const mockAudit = { write: vi.fn() };
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
       const contractId = await testManager.create({
         schema_version: 1,
@@ -1381,7 +1382,7 @@ describe('ContractSystem', () => {
 
     it('onNotify acceptance_failed payload schema = AcceptanceFailedNotification', async () => {
       const mockAudit = { write: vi.fn() };
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
       const onNotifySpy = vi.fn();
       testManager.setOnNotify(onNotifySpy);
 
@@ -1431,7 +1432,7 @@ describe('ContractSystem', () => {
 
     it('max_retries 后 subtask 仍 todo（不进 failed）', async () => {
       const mockAudit = { write: vi.fn() };
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
       const contractId = await testManager.create({
         schema_version: 1,
@@ -1488,7 +1489,7 @@ describe('ContractSystem', () => {
     it('retry_count 跨多次失败递增', async () => {
       const { ToolTimeoutError } = await import('../../src/types/errors.js');
       const mockAudit = { write: vi.fn() };
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
       const contractId = await testManager.create({
         schema_version: 1,

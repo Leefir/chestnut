@@ -19,6 +19,7 @@ import { loadActiveContract } from '../../../src/core/contract/discovery.js';
 import { collectContractEvents } from '../../../src/core/contract/jobs/event-collector.js';
 import type { FileSystem } from '../../../src/foundation/fs/types.js';
 import type { AuditLog } from '../../../src/foundation/audit/index.js';
+import { createToolRegistry } from '../../../src/foundation/tools/index.js';
 
 let tmpDir: string;
 let clawDir: string;
@@ -46,7 +47,7 @@ afterEach(async () => {
 describe('getProgress schema check', () => {
   it('throws on corrupt schema (missing contract_id)', async () => {
     const mockAudit = { write: vi.fn() };
-    const manager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+    const manager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
     const contractId = await manager.create({
       schema_version: 1 as const,
@@ -72,7 +73,7 @@ describe('getProgress schema check', () => {
 
   it('throws on null subtasks', async () => {
     const mockAudit = { write: vi.fn() };
-    const manager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any);
+    const manager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
     const contractId = await manager.create({
       schema_version: 1 as const,
