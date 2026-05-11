@@ -62,8 +62,8 @@ export async function outboxCommand(
       } catch (err) {
         console.warn(`[outbox] Failed to move ${fileName} to done: ${err instanceof Error ? err.message : String(err)}`);
       }
-    } catch {
-      // skip on read failure
+    } catch (err) {
+      console.warn(`[outbox] Failed to read ${fileName}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

@@ -1,4 +1,5 @@
 import * as path from 'path';
+import { FileNotFoundError } from '../../types/errors.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { MEMORY_AUDIT_EVENTS } from './audit-events.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
@@ -58,7 +59,7 @@ function loadRandomDreamState(fs: FileSystem, audit: AuditLog): RandomDreamState
     ) as RandomDreamState;
   } catch (err) {
     // FileNotFoundError 首启良性 / silent
-    if (err instanceof Error && err.name === 'FileNotFoundError') {
+    if (err instanceof FileNotFoundError) {
       return { processedContractIds: [] };
     }
     // 其他 IO 错（parse 损坏 / 权限 / 等）必 audit + 返空 resilient
