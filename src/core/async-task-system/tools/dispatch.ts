@@ -6,7 +6,7 @@ import { DISPATCH_SKILLS_PATH as DISPATCH_SKILLS_DIR } from '../../evolution-sys
 import type { ToolRegistry } from '../../../foundation/tools/index.js';
 import { DEFAULT_LLM_IDLE_TIMEOUT_MS, DEFAULT_MAX_STEPS } from '../../../constants.js';
 import { buildDescribingUserMessage, buildMinerSystemPrompt, buildMiningUserMessage } from '../../../prompts/index.js';
-import { AskMotionTool } from './ask-motion.js';
+import { ASK_MOTION_TOOL_NAME, ASK_MOTION_TOOL_DESCRIPTION, ASK_MOTION_TOOL_SCHEMA } from './ask-motion.js';
 import { writePendingSubagentTaskFile } from './_pending-task-writer.js';
 import { DISPATCH_AUDIT_EVENTS } from './dispatch-audit-events.js';
 
@@ -153,18 +153,17 @@ export class DispatchTool implements Tool {
     }
 
     // miner 使用专属工具列表（miner profile + ask_motion）；describer 用 Motion 完整列表确保 KV cache 命中
-    const askMotionInstance = isMining
-      ? new AskMotionTool(
-          ctx.llm!,
-          this.getSystemPrompt.bind(this),
-          this.getToolsForLLM.bind(this),
-          [...dispatcherMessages],  // Motion 上下文快照
-        )
-      : null;
+    const askMotionContext = isMining
+      ? {
+          motionSystemPrompt: await this.getSystemPrompt(),    // await 早绑定 / pure string
+          motionToolsForLLM: this.getToolsForLLM(),            // pure array snapshot
+          motionMessages: [...dispatcherMessages],             // pure array snapshot
+        }
+      : undefined;
     const toolsForLLM = isMining
       ? [
           ...this.getToolsForProfile('miner'),
-          { name: askMotionInstance!.name, description: askMotionInstance!.description, input_schema: askMotionInstance!.schema },
+          { name: ASK_MOTION_TOOL_NAME, description: ASK_MOTION_TOOL_DESCRIPTION, input_schema: ASK_MOTION_TOOL_SCHEMA },
         ]
       : this.getToolsForLLM();
 
@@ -183,7 +182,7 @@ export class DispatchTool implements Tool {
         parentClawId: ctx.clawId,
         originClawId: ctx.originClawId ?? ctx.clawId,
         callerType,                    // 'describer' 或 'miner'
-        extraTools: askMotionInstance ? [askMotionInstance] : undefined,
+        askMotionContext,
         postProcessor: 'dispatch-contract-extract',  // 声明式 post-processor
         mainContextSnapshot,
         systemPrompt,                            // phase 546: 透传 caller-side specialized prompt（mining: buildMinerSystemPrompt / describing: this.getSystemPrompt()）

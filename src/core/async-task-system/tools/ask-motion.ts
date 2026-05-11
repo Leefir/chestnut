@@ -7,24 +7,28 @@ import { ASK_MOTION_TOOL_NAME } from '../../../foundation/tools/tool-names.js';
 import { formatErr } from '../_helpers.js';
 export { ASK_MOTION_TOOL_NAME };
 
-export class AskMotionTool implements Tool {
-  readonly name = ASK_MOTION_TOOL_NAME;
-  readonly description = `向 Motion 分身提问，获取 Motion 对用户意图、背景、偏好的判断。
+export const ASK_MOTION_TOOL_DESCRIPTION = `向 Motion 分身提问，获取 Motion 对用户意图、背景、偏好的判断。
 分身继承 Motion 完整上下文（系统提示 + 当前对话历史），多轮问答自动累积。
 适用场景：用户意图模糊、不确定目标 claw、需确认优先级或约束等。`;
+
+export const ASK_MOTION_TOOL_SCHEMA = {
+  type: 'object',
+  properties: {
+    question: {
+      type: 'string',
+      description: '向 Motion 分身提出的问题',
+    },
+  },
+  required: ['question'],
+};
+
+export class AskMotionTool implements Tool {
+  readonly name = ASK_MOTION_TOOL_NAME;
+  readonly description = ASK_MOTION_TOOL_DESCRIPTION;
   readonly readonly = false;
   readonly idempotent = false;
 
-  readonly schema = {
-    type: 'object',
-    properties: {
-      question: {
-        type: 'string',
-        description: '向 Motion 分身提出的问题',
-      },
-    },
-    required: ['question'],
-  };
+  readonly schema = ASK_MOTION_TOOL_SCHEMA;
 
   private readonly cloneHistory: Message[] = [];
 

@@ -12,6 +12,7 @@ import { DEFAULT_LLM_IDLE_TIMEOUT_MS } from '../../constants.js';
 import { TASK_AUDIT_EVENTS } from './audit-events.js';
 import { STREAM_TASK_EVENTS } from './stream-events.js';
 import { formatErr, auditError } from './_helpers.js';
+import { AskMotionTool } from './tools/ask-motion.js';
 import { TASKS_QUEUES_RESULTS_DIR, TASKS_SUBAGENTS_DIR, TASKS_SYNC_DIR } from '../../types/paths.js';
 import { buildSubagentSystemPromptPrefix, DEFAULT_SUBAGENT_SYSTEM_PROMPT } from '../../prompts/subagent.js';
 import { sendResult, sendFallbackError } from './result-delivery.js';
@@ -68,12 +69,23 @@ export async function executeSubAgentTask(
   try {
     // LLM is guaranteed by constructor (readonly non-null field)
 
-    // Build per-task registry filtered by caller profile + extraTools
+    // Build per-task registry filtered by caller profile + askMotionContext 重建
     const subagentProfile = callerTypeToProfile(task.callerType ?? 'subagent');
     const effectiveRegistry = (() => {
       const r = createToolRegistry();
       for (const t of registry.getForProfile(subagentProfile)) r.register(t);
-      for (const t of task.extraTools ?? []) r.register(t);
+
+      // phase 699: askMotionContext 重建 AskMotionTool 实例（cross-process schema / 同 phase 432+438 fs-driven 模板）
+      if (task.askMotionContext) {
+        const askMotion = new AskMotionTool(
+          llm,
+          () => Promise.resolve(task.askMotionContext!.motionSystemPrompt),
+          () => task.askMotionContext!.motionToolsForLLM,
+          task.askMotionContext!.motionMessages,
+        );
+        r.register(askMotion);
+      }
+
       return r;
     })();
 

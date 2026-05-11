@@ -68,7 +68,15 @@ export interface SubAgentTask {
   createdAt: string;
   callerType?: CallerType;
   originClawId?: string;                   // 创建链路源头，传给子 SubAgent
-  extraTools?: Tool[];                    // per-task 额外工具，不污染全局 registry
+  /**
+   * AskMotionTool 重建上下文（仅 mining mode dispatch / phase 699）
+   * 跨 fs/进程 boundary 必为纯数据 / 同 phase 432+438 fs-driven schema 模板
+   */
+  askMotionContext?: {
+    motionSystemPrompt: string;
+    motionToolsForLLM: ToolDefinition[];
+    motionMessages: Message[];
+  };
   postProcessor?: string;            // 声明式 post-processor 名称（registry lookup）
   mainContextSnapshot?: { clawId: string; toolUseId: string };  // NEW marker mode
   systemPrompt?: string;                 // phase 546 internal field：caller-side specialized system prompt（agent 不可见 / 与 phase 470 砍 agent-facing spawn schema 不冲突 / fall-back DEFAULT_SUBAGENT_SYSTEM_PROMPT）
