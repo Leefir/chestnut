@@ -41,7 +41,7 @@ export async function acquireLock(ctx: LockContext, lockPath: string): Promise<v
         ) {
           ctx.audit.write(
             CONTRACT_AUDIT_EVENTS.LOCK_SCHEMA_INVALID,
-            `lockPath=${lockPath}`,
+            `path=${lockPath}`,
             `raw=${raw.slice(0, 100)}`,
           );
           throw new Error('lock schema invalid');
@@ -103,7 +103,7 @@ export async function releaseLock(ctx: LockContext, lockPath: string): Promise<v
   try {
     await ctx.fs.delete(lockPath);
   } catch (e) {
-    ctx.audit.write(CONTRACT_AUDIT_EVENTS.LOCK_UNLINK_FAILED, `context=ContractSystem.releaseLock`, `lockPath=${lockPath}`, `error=${e instanceof Error ? e.message : String(e)}`);
+    ctx.audit.write(CONTRACT_AUDIT_EVENTS.LOCK_UNLINK_FAILED, `context=ContractSystem.releaseLock`, `path=${lockPath}`, `error=${e instanceof Error ? e.message : String(e)}`);
   }
 }
 

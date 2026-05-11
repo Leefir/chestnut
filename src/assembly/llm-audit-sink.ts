@@ -13,7 +13,7 @@ export function createLLMAuditSink(audit: AuditLog): LLMEventSink {
             break;
           case 'retry_scheduled':
             audit.write(LLM_AUDIT_EVENTS.RETRY_SCHEDULED,
-              `provider=${event.provider}`, `attempt=${event.attempt}`, `backoffMs=${event.backoffMs}`);
+              `provider=${event.provider}`, `attempt=${event.attempt}`, `backoff_ms=${event.backoffMs}`);
             break;
           case 'provider_exhausted':
             audit.write(LLM_AUDIT_EVENTS.PROVIDER_EXHAUSTED,
@@ -58,7 +58,7 @@ export function createLLMAuditSink(audit: AuditLog): LLMEventSink {
             break;
           case 'stream_idle_probe_attempted':
             audit.write(LLM_AUDIT_EVENTS.STREAM_IDLE_PROBE_ATTEMPTED,
-              `provider=${event.provider}`, `timeoutMs=${event.timeoutMs}`);
+              `provider=${event.provider}`, `timeout_ms=${event.timeoutMs}`);
             break;
           case 'stream_idle_probe_succeeded':
             audit.write(LLM_AUDIT_EVENTS.STREAM_IDLE_PROBE_SUCCEEDED,

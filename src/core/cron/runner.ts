@@ -75,7 +75,7 @@ export class CronRunner {
         this.audit.write(CRON_AUDIT_EVENTS.HANDLER_STUCK,
           `job=${name}`,
           `ticks=${ticks}`,
-          `timeoutMs=${job?.timeoutMs ?? 'unknown'}`,
+          `timeout_ms=${job?.timeoutMs ?? 'unknown'}`,
         );
         this.cancelling.delete(name);
         this.cancellingTicks.delete(name);
