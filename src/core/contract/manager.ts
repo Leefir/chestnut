@@ -33,6 +33,7 @@ import { type AuditLog } from '../../foundation/audit/index.js';
 import type { ToolRegistry } from '../../foundation/tools/index.js';
 import { CONTRACT_AUDIT_EVENTS } from './audit-events.js';
 import { CONTRACT_ACTIVE_DIR, CONTRACT_PAUSED_DIR, CONTRACT_ARCHIVE_DIR } from '../../types/paths.js';
+import { UUID_SHORT_LEN } from '../../constants.js';
 
 import type {
   ContractYaml, ProgressData, AcceptanceResult, VerifierConfig, VerifierResult,
@@ -263,7 +264,7 @@ export class ContractSystem {
   // ============================================================================
 
   async create(contractYaml: ContractYaml): Promise<string> {
-    const contractId = contractYaml.id || `${Date.now()}-${randomUUID().slice(0, 8)}`;
+    const contractId = contractYaml.id || `${Date.now()}-${randomUUID().slice(0, UUID_SHORT_LEN)}`;
 
     if (!contractYaml.subtasks || contractYaml.subtasks.length === 0) {
       throw new Error('Contract must have at least one subtask');
