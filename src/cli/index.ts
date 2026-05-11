@@ -36,6 +36,8 @@ import { configCommand } from './commands/config.js';
 import { stopAllCommand } from './commands/stop.js';
 import { statusCommand } from './commands/status.js';
 import { LOGS_DIR } from '../types/paths.js';
+import { createDirContext } from './utils/factories.js';
+import { getClawforumRoot, getClawDir, loadGlobalConfig } from '../foundation/config/index.js';
 
 
 
@@ -53,7 +55,8 @@ program
   .description('Stop all clawforum processes (watchdog → motion → claws)')
   .action(async () => {
     try {
-      await stopAllCommand();
+      const { audit } = createDirContext(getClawforumRoot());
+      await stopAllCommand({ audit });
     } catch (error) {
       process.exitCode = handleCliError(error);
     }
@@ -77,7 +80,8 @@ program
   .description('Start the system (initializes if needed) and open Motion chat')
   .action(async () => {
     try {
-      await startCommand();
+      const { audit } = createDirContext(getClawforumRoot());
+      await startCommand({ audit });
     } catch (error) {
       process.exitCode = handleCliError(error);
     }
@@ -89,7 +93,8 @@ program
   .description('Initialize clawforum workspace')
   .action(async () => {
     try {
-      await initCommand();
+      const { audit } = createDirContext(getClawforumRoot());
+      await initCommand(false, { audit });
     } catch (error) {
       process.exitCode = handleCliError(error);
     }
@@ -106,7 +111,9 @@ clawCmd
   .description('Create a new Claw')
   .action(async (name: string) => {
     try {
-      await createCommand(name);
+      loadGlobalConfig();
+      const { audit } = createDirContext(getClawDir(name));
+      await createCommand(name, { audit });
     } catch (error) {
       process.exitCode = handleCliError(error);
     }
@@ -130,7 +137,9 @@ clawCmd
   .description('Stop Claw daemon')
   .action(async (name: string) => {
     try {
-      await stopCommand(name);
+      loadGlobalConfig();
+      const { audit } = createDirContext(getClawDir(name));
+      await stopCommand(name, { audit });
     } catch (error) {
       process.exitCode = handleCliError(error);
     }
@@ -185,7 +194,9 @@ clawCmd
   .option('--limit <n>', 'Max messages to read (default: 1)', '1')
   .action(async (name: string, opts: { limit: string }) => {
     try {
-      await outboxCommand(name, { limit: parseInt(opts.limit, 10) });
+      loadGlobalConfig();
+      const { audit } = createDirContext(getClawDir(name));
+      await outboxCommand(name, { limit: parseInt(opts.limit, 10) }, { audit });
     } catch (error) {
       process.exitCode = handleCliError(error);
     }
@@ -266,7 +277,8 @@ motionCmd
   .description('Initialize Motion configuration')
   .action(async () => {
     try {
-      await motionInitCommand();
+      const { audit } = createDirContext(getClawforumRoot());
+      await motionInitCommand(false, { audit });
     } catch (error) {
       process.exitCode = handleCliError(error);
     }
@@ -290,7 +302,8 @@ motionCmd
   .description('Stop Motion daemon')
   .action(async () => {
     try {
-      await motionStopCommand();
+      const { audit } = createDirContext(getClawforumRoot());
+      await motionStopCommand({ audit });
     } catch (error) {
       process.exitCode = handleCliError(error);
     }
@@ -355,12 +368,14 @@ contractCmd
   .option('--dir <path>', 'Directory containing contract.yaml and acceptance/ folder')
   .action(async (opts: { claw: string; file?: string; dir?: string }) => {
     try {
+      loadGlobalConfig();
+      const { audit } = createDirContext(getClawDir(opts.claw));
       if (opts.file && opts.dir) {
         throw new CliError('--file and --dir are mutually exclusive');
       } else if (opts.file) {
-        await contractCreateCommand(opts.claw, opts.file);
+        await contractCreateCommand(opts.claw, opts.file, { audit });
       } else if (opts.dir) {
-        await contractCreateFromDirCommand(opts.claw, opts.dir);
+        await contractCreateFromDirCommand(opts.claw, opts.dir, { audit });
       } else {
         throw new CliError('must provide --file or --dir');
       }
@@ -419,12 +434,15 @@ skillCmd
         if (!opts.skill) {
           throw new CliError('--skill <name> is required with --claw');
         }
-        await skillInstallClawCommand(opts.claw, opts.skill);
+        loadGlobalConfig();
+        const { audit } = createDirContext(getClawDir(opts.claw));
+        await skillInstallClawCommand(opts.claw, opts.skill, { audit });
       } else {
         if (!source) {
           throw new CliError('source path is required');
         }
-        await skillInstallUserCommand(source);
+        const { audit } = createDirContext(getClawforumRoot());
+        await skillInstallUserCommand(source, { audit });
       }
     } catch (error) {
       process.exitCode = handleCliError(error);

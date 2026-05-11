@@ -22,6 +22,8 @@ import {
   INIT_LLM_IDLE_TIMEOUT_MS,
 } from '../../constants.js';
 import { LOGS_DIR } from '../../types/paths.js';
+import type { AuditLog } from '../../foundation/audit/index.js';
+import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 
 // Known providers shown in "Select provider" list (excludes generic custom-* entries)
 const PROVIDER_LIST = [
@@ -37,7 +39,8 @@ const PROVIDER_LIST = [
   'qwen-coder',
 ];
 
-export async function initCommand(silent = false): Promise<void> {
+export async function initCommand(silent = false, deps?: { audit?: AuditLog }): Promise<void> {
+  const audit = deps?.audit;
   // Check if already initialized
   if (isInitialized()) {
     console.log('✓ Already initialized (.clawforum/config.yaml exists)');
@@ -333,6 +336,7 @@ export async function initCommand(silent = false): Promise<void> {
     const logsDir = path.join(getWorkspaceRoot(), '.clawforum', LOGS_DIR);
     fs.mkdirSync(logsDir, { recursive: true });
 
+    audit?.write(CLI_AUDIT_EVENTS.INIT_DONE);
     console.log('\n✓ Initialized successfully!');
     if (!silent) {
       console.log('\nNext steps:');

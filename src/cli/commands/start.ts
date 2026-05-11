@@ -27,6 +27,8 @@ import { InboxWriter } from '../../foundation/messaging/index.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
 import { PROCESS_SPAWN_CONFIRM_MS } from '../../foundation/process-manager/index.js';
 import { CliError } from '../errors.js';
+import type { AuditLog } from '../../foundation/audit/index.js';
+import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 import { startCommand as watchdogStart, isWatchdogAlive } from '../../watchdog/watchdog.js';
 import { LOGS_DIR } from '../../types/paths.js';
 
@@ -320,15 +322,16 @@ async function promptReconfigure(rl: readline.Interface, errorType: LLMErrorType
   }
 }
 
-export async function startCommand(): Promise<void> {
+export async function startCommand(deps?: { audit?: AuditLog }): Promise<void> {
+  const audit = deps?.audit;
   try {
-    await _start();
+    await _start(audit);
   } catch (error) {
     throw new CliError('clawforum start failed: ' + (error instanceof Error ? error.message : String(error)));
   }
 }
 
-async function _start(): Promise<void> {
+async function _start(audit?: AuditLog): Promise<void> {
   // Step 1: workspace init
   const wasFirstRun = !isInitialized();
   if (wasFirstRun) {
@@ -457,6 +460,7 @@ async function _start(): Promise<void> {
     }
   }
 
+  audit?.write(CLI_AUDIT_EVENTS.DAEMON_START);
   // Step 5: 打开 chat
   await motionChatCommand();
 }

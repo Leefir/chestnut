@@ -14,7 +14,8 @@ import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import { getClawDir } from '../../foundation/config/index.js';
 import { notifySystem } from '../../foundation/messaging/index.js';
 import { STREAM_AUDIT_EVENTS } from '../../foundation/stream/audit-events.js';
-import { createSystemAudit } from '../../foundation/audit/index.js';
+import { createSystemAudit, type AuditLog } from '../../foundation/audit/index.js';
+import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 import { STREAM_FILE } from '../../foundation/stream/index.js';
 import { CONTRACT_DIR } from '../../types/paths.js';
 
@@ -76,7 +77,8 @@ export function notifyContractCreated(clawDir: string, clawId: string, contractI
 /**
  * Create a contract for a claw
  */
-export async function contractCreateCommand(clawId: string, filePath: string): Promise<void> {
+export async function contractCreateCommand(clawId: string, filePath: string, deps?: { audit?: AuditLog }): Promise<void> {
+  const audit = deps?.audit;
   const yamlContent = await fs.readFile(filePath, 'utf-8');
   const contract = parseAndValidateContractYaml(yamlContent);
 
@@ -85,6 +87,7 @@ export async function contractCreateCommand(clawId: string, filePath: string): P
   const manager = new ContractSystem(clawDir, clawId, clawFs, createSystemAudit(clawFs, clawDir));
 
   const contractId = await manager.create(contract);
+  audit?.write(CLI_AUDIT_EVENTS.CONTRACT_CREATE, `claw=${clawId}`, `contract=${contractId}`, `mode=file`);
   console.log(`Contract created: ${contractId} for claw ${clawId}`);
 
   notifyContractCreated(clawDir, clawId, contractId, contract);
@@ -93,7 +96,8 @@ export async function contractCreateCommand(clawId: string, filePath: string): P
 /**
  * Create a contract from a directory containing contract.yaml + acceptance/
  */
-export async function contractCreateFromDirCommand(clawId: string, dirPath: string): Promise<void> {
+export async function contractCreateFromDirCommand(clawId: string, dirPath: string, deps?: { audit?: AuditLog }): Promise<void> {
+  const audit = deps?.audit;
   const absDir = path.resolve(dirPath);
 
   const yamlContent = await fs.readFile(path.join(absDir, 'contract.yaml'), 'utf-8');
@@ -104,6 +108,7 @@ export async function contractCreateFromDirCommand(clawId: string, dirPath: stri
   const manager = new ContractSystem(clawDir, clawId, clawFs, createSystemAudit(clawFs, clawDir));
 
   const contractId = await manager.create(contract);
+  audit?.write(CLI_AUDIT_EVENTS.CONTRACT_CREATE, `claw=${clawId}`, `contract=${contractId}`, `mode=dir`);
   console.log(`Contract created: ${contractId} for claw ${clawId}`);
 
   // Copy acceptance/ 目录（若存在）

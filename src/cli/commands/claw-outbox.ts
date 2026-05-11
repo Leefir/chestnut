@@ -7,11 +7,15 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { getClawDir } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
+import type { AuditLog } from '../../foundation/audit/index.js';
+import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 
 export async function outboxCommand(
   name: string,
-  options?: { limit?: number }
+  options?: { limit?: number },
+  deps?: { audit?: AuditLog },
 ): Promise<void> {
+  const audit = deps?.audit;
   // Outbox drain is a pure filesystem operation — we don't require config.yaml.
   // Motion's outbox scanner reports any claw dir containing pending/*.md, so the
   // CLI must be able to drain the same set, including orphan claws that have
@@ -38,6 +42,7 @@ export async function outboxCommand(
   }
 
   if (files.length === 0) {
+    audit?.write(CLI_AUDIT_EVENTS.CLAW_OUTBOX_DRAIN_DONE, `claw=${name}`, `count=0`);
     console.log('outbox is empty');
     return;
   }
@@ -46,6 +51,8 @@ export async function outboxCommand(
   const limit = options?.limit ?? 1;
   const toRead = files.slice(0, limit);
   const remaining = files.length - toRead.length;
+
+  audit?.write(CLI_AUDIT_EVENTS.CLAW_OUTBOX_DRAIN_START, `claw=${name}`, `limit=${limit}`);
 
   // Read and output
   const results: string[] = [];
@@ -72,6 +79,8 @@ export async function outboxCommand(
     console.log(content);
     console.log('---');
   }
+
+  audit?.write(CLI_AUDIT_EVENTS.CLAW_OUTBOX_DRAIN_DONE, `claw=${name}`, `count=${results.length}`, `remaining=${remaining}`);
 
   if (remaining > 0) {
     console.log(`(${remaining} more unread message(s))`);
