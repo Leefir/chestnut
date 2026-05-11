@@ -11,6 +11,7 @@ import type {
 import {
   LLMError,
   LLMTimeoutError,
+  LLMNetworkError,
 } from '../../types/errors.js';
 import { parseRetryAfter, throwHttpErrorResponse } from './_helpers.js';
 import type {
@@ -106,7 +107,11 @@ export class GeminiAdapter implements ProviderAdapter {
       const classified = classifyFetchAbortError(error, options.signal, timeout, this.name);
       if (classified) throw classified;
       if (error instanceof LLMError) throw error;
-      throw new LLMError(`LLM call failed: ${(error as Error).message}`, { provider: this.name });
+      if (error instanceof Error && error.name === 'AbortError') throw error;
+      throw new LLMNetworkError(
+        this.name,
+        error instanceof Error ? error : new Error(String(error)),
+      );
     } finally {
       cleanup();
     }
@@ -136,7 +141,11 @@ export class GeminiAdapter implements ProviderAdapter {
       const classified = classifyFetchAbortError(error, options.signal, timeout, this.name);
       if (classified) throw classified;
       if (error instanceof LLMError) throw error;
-      throw new LLMError(`LLM stream failed: ${(error as Error).message}`, { provider: this.name });
+      if (error instanceof Error && error.name === 'AbortError') throw error;
+      throw new LLMNetworkError(
+        this.name,
+        error instanceof Error ? error : new Error(String(error)),
+      );
     } finally {
       cleanup();
     }
