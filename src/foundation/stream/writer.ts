@@ -43,6 +43,19 @@ export class StreamWriter implements StreamLog {
         );
       }
     }
+    // NEW (phase 743 step B): ensure STREAM_FILE exists for chokidar single-file watch reliability
+    // Reason: chokidar 'add' on new file appearing is unreliable on CI overlayfs / tmpfs inotify
+    //         creating empty file at open ensures chokidar watches existing path + 'change' on subsequent write is reliable
+    // Resource ownership: STREAM_FILE is owned by StreamWriter (M#3) / writer business semantic (M#1+M#2)
+    if (!this.fs.existsSync(STREAM_FILE)) {
+      this.fs.writeAtomicSync(STREAM_FILE, '');
+      this.audit.write(
+        STREAM_AUDIT_EVENTS.WRITER_OPEN_CREATED_EMPTY,
+        `path=${STREAM_FILE}`,
+        'reason=ensure_reader_watcher_compat',
+      );
+    }
+
     this.pruneArchives();
     this.isOpen = true;
     if (archiveFailed) {

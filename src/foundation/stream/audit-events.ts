@@ -9,6 +9,7 @@ export const STREAM_AUDIT_EVENTS = {
   APPEND_FAILED: 'stream_append_failed',
   ARCHIVE_FAILED: 'stream_archive_failed',
   ARCHIVE_PRUNE_FAILED: 'stream_archive_prune_failed',
+  WRITER_OPEN_CREATED_EMPTY: 'stream_writer_open_created_empty',
   READER_CALLBACK_FAILED: 'stream_reader_callback_failed',
   READER_FILE_MISSING: 'stream_reader_file_missing',
   READER_PARSE_FAILED: 'stream_reader_parse_failed',
