@@ -6,6 +6,7 @@ import { createDirContext } from '../../src/cli/utils/factories.js';
 import {
   createStreamReader,
   STREAM_FILE,
+  StreamWriter,
   type StreamReader,
   type StreamEvent,
 } from '../../src/foundation/stream/index.js';
@@ -73,10 +74,16 @@ async function setupFixture(options?: { agentDirPrefix?: string }): Promise<Regr
   const agentDir = await createTempDir(options?.agentDirPrefix ?? 'phase165-viewport-');
   const streamPath = nativePath.join(agentDir, STREAM_FILE);
   const auditPath = nativePath.join(agentDir, AUDIT_FILE);
-  await nativeFs.writeFile(streamPath, '');
 
   const { fs, audit: realAudit } = createDirContext(agentDir);
   const audit = wrapAuditCapture(realAudit);
+
+  // NEW (phase 759 step B / M#3+M#7+D7 align): fixture 经 StreamWriter own 路径 ensure stream file exists
+  // phase 743 step B writer.open() 创空文件 + emit WRITER_OPEN_CREATED_EMPTY audit
+  // 让 chokidar 监视已存 path / 后续 nativeFs.appendFile 'change' 在 CI 可靠
+  // Reason: fixture 是 createStreamReader caller / 按 phase 743 step D jsdoc warning 落实 ensure file pattern
+  const writer = new StreamWriter(fs, audit.writer);
+  writer.open();
   const observability = createViewportObservability({ audit: audit.writer });
 
   const mainUI = createMainTurnUI({
