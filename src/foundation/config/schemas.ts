@@ -11,7 +11,6 @@ import {
   DEFAULT_RETRY_DELAY_MS,
   DEFAULT_LLM_RETRY_ATTEMPTS,
   DEFAULT_TOOL_TIMEOUT_MS,
-  DEFAULT_LLM_IDLE_TIMEOUT_MS,
   WATCHDOG_INTERVAL_MS,
   DEFAULT_DISK_WARNING_MB,
   CLAW_INACTIVITY_TIMEOUT_MS,
@@ -20,6 +19,7 @@ import {
   DEFAULT_MAX_CONCURRENT_TASKS,
 } from '../../constants.js';
 import { DEFAULT_MAX_STEPS } from '../../core/agent-executor/index.js';
+import { DEFAULT_LLM_IDLE_TIMEOUT_MS } from '../llm-orchestrator/index.js';
 
 // API format code → preset id (for manual entry)
 export const FORMAT_MAP: Record<string, string> = {

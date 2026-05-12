@@ -8,7 +8,7 @@ import { createToolRegistry } from '../../foundation/tools/index.js';
 import type { ToolRegistry } from '../../foundation/tools/index.js';
 import { createSubAgent, NoopAuditWriter } from '../subagent/index.js';
 import { createDialogStore } from '../../foundation/dialog-store/index.js';
-import { DEFAULT_LLM_IDLE_TIMEOUT_MS } from '../../constants.js';
+import { DEFAULT_LLM_IDLE_TIMEOUT_MS } from '../../foundation/llm-orchestrator/index.js';
 import { TASK_AUDIT_EVENTS } from './audit-events.js';
 import { STREAM_TASK_EVENTS } from './stream-events.js';
 import { formatErr, auditError } from './_helpers.js';

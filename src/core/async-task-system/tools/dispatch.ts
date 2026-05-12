@@ -4,7 +4,7 @@ import type { Message, ToolDefinition } from '../../../types/message.js';
 import { createSkillSystem } from '../../../foundation/skill-system/index.js';
 import { DISPATCH_SKILLS_PATH as DISPATCH_SKILLS_DIR } from '../../evolution-system/index.js';
 import type { ToolRegistry } from '../../../foundation/tools/index.js';
-import { DEFAULT_LLM_IDLE_TIMEOUT_MS } from '../../../constants.js';
+import { DEFAULT_LLM_IDLE_TIMEOUT_MS } from '../../../foundation/llm-orchestrator/index.js';
 import { buildDescribingUserMessage, buildMinerSystemPrompt, buildMiningUserMessage } from '../../../prompts/index.js';
 import { ASK_MOTION_TOOL_NAME, ASK_MOTION_TOOL_DESCRIPTION, ASK_MOTION_TOOL_SCHEMA } from './ask-motion.js';
 import { writePendingSubagentTaskFile } from './_pending-task-writer.js';
