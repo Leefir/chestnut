@@ -7,7 +7,7 @@
 
 import type { Tool, ToolResult, ExecContext } from '../../../foundation/tool-protocol/index.js';
 
-import { SPAWN_DEFAULT_TIMEOUT_S, DEFAULT_MAX_STEPS } from '../../../constants.js';
+import { SPAWN_DEFAULT_TIMEOUT_S } from '../../../constants.js';
 import { writePendingSubagentTaskFile } from './_pending-task-writer.js';
 
 /**
@@ -49,7 +49,7 @@ export const spawnTool: Tool = {
     const timeoutMs = typeof args.timeoutMs === 'number' ? args.timeoutMs : SPAWN_DEFAULT_TIMEOUT_S * 1000;
     const maxSteps = typeof args.maxSteps === 'number'
       ? args.maxSteps
-      : (ctx.subagentMaxSteps ?? ctx.maxSteps ?? DEFAULT_MAX_STEPS);
+      : (ctx.subagentMaxSteps ?? ctx.maxSteps);
 
     // 装配 mainContextSnapshot from ctx.currentToolUseId
     const mainContextSnapshot = ctx.clawId && ctx.currentToolUseId

@@ -13,7 +13,7 @@ import type { LLMOrchestrator } from '../llm-orchestrator/index.js';
 import type { ToolProfile } from '../../types/config.js';
 import type { ExecContext } from '../tool-protocol/index.js';
 import path from 'path';
-import { MOTION_CLAW_ID, DEFAULT_MAX_STEPS } from '../../constants.js';
+import { MOTION_CLAW_ID } from '../../constants.js';
 
 
 import type { Message } from '../../types/message.js';
@@ -53,7 +53,7 @@ export interface ExecContextImplOptions {
   llm?: LLMOrchestrator;
   
   /** Maximum allowed steps (ReAct loop limit) */
-  maxSteps?: number;
+  maxSteps: number;
   
   /** Optional abort signal */
   signal?: AbortSignal;
@@ -137,9 +137,9 @@ export class ExecContextImpl implements ExecContext {
     this.callerType = options.callerType ?? 'claw';
     this.fs = options.fs;
     this.llm = options.llm;
-    this.maxSteps = options.maxSteps ?? DEFAULT_MAX_STEPS;
+    this.maxSteps = options.maxSteps;
     this.signal = options.signal;
-    this.subagentMaxSteps = options.subagentMaxSteps ?? options.maxSteps ?? DEFAULT_MAX_STEPS;
+    this.subagentMaxSteps = options.subagentMaxSteps ?? options.maxSteps;
     this.dialogMessages = options.dialogMessages;
     this.originClawId = options.originClawId;
     this.auditWriter = options.auditWriter;

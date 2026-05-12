@@ -14,7 +14,7 @@ import { ToolTimeoutError } from '../../types/errors.js';
 import { IdleTimeoutSignal, PriorityInboxInterrupt, UserInterrupt } from '../../types/signals.js';
 import type { AbortReason } from '../../foundation/llm-provider/index.js';
 import { makeExternalAbortError } from '../../foundation/llm-provider/index.js';
-import { SUBAGENT_TIMEOUT_MS, DEFAULT_MAX_STEPS } from '../../constants.js';
+import { SUBAGENT_TIMEOUT_MS } from '../../constants.js';
 import { oneLine } from '../../types/utils.js';
 import type { Message } from '../../types/message.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
@@ -34,7 +34,7 @@ export interface SubAgentOptions {
   llm: LLMOrchestrator;
   registry: ToolRegistry;
   fs: FileSystem;
-  maxSteps?: number;
+  maxSteps: number;
   timeoutMs?: number;
   signal?: AbortSignal;
   toolsForLLM?: ToolDefinition[];  // Pre-filtered tool list for LLM, overrides registry.getAll()
@@ -96,7 +96,7 @@ export class SubAgent {
     this.llm = options.llm;
     this.registry = options.registry;
     this.fs = options.fs;
-    this.maxSteps = options.maxSteps ?? DEFAULT_MAX_STEPS;
+    this.maxSteps = options.maxSteps;
     this.maxConsecutiveParseErrors = options.maxConsecutiveParseErrors;
     this.maxConsecutiveMaxTokensToolUse = options.maxConsecutiveMaxTokensToolUse;
     this.timeoutMs = options.timeoutMs ?? SUBAGENT_TIMEOUT_MS; // 5 min default
@@ -292,6 +292,7 @@ export class SubAgent {
           executor,
           ctx: executor.getExecContext(executorProfile, {
             clawId: this.agentId,
+            maxSteps: this.maxSteps,
             signal: timeoutController.signal,
             callerType,
             originClawId: this.originClawId,

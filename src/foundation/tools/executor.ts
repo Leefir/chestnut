@@ -7,7 +7,7 @@
 
 import * as path from 'path';
 import { ExecContextImpl, cloneExecContext } from './context.js';
-import { DEFAULT_MAX_STEPS } from '../../constants.js';
+
 import {
   ToolNotFoundError,
   ToolTimeoutError,
@@ -339,7 +339,7 @@ export class ToolExecutor extends ToolExecutorImpl {
    */
   getExecContext(
     profile: ToolProfile,
-    options: { clawId: string; maxSteps?: number; signal?: AbortSignal; callerType?: CallerType; originClawId?: string }
+    options: { clawId: string; maxSteps: number; signal?: AbortSignal; callerType?: CallerType; originClawId?: string }
   ): ExecContextImpl {
     return new ExecContextImpl({
       clawId: options.clawId,
@@ -351,7 +351,7 @@ export class ToolExecutor extends ToolExecutorImpl {
       callerType: options.callerType ?? 'claw',
       fs: this.fs,
       llm: this.llm,
-      maxSteps: options.maxSteps ?? DEFAULT_MAX_STEPS,
+      maxSteps: options.maxSteps,
       signal: options.signal,
       subagentMaxSteps: this.subagentMaxSteps,
       originClawId: options.originClawId,
