@@ -9,6 +9,7 @@ import { getClawDir } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { CLI_AUDIT_EVENTS } from '../audit-events.js';
+import { MESSAGING_AUDIT_EVENTS } from '../../foundation/messaging/audit-events.js';
 
 export async function outboxCommand(
   name: string,
@@ -66,7 +67,19 @@ export async function outboxCommand(
       try {
         await fs.promises.mkdir(doneDir, { recursive: true });
         await fs.promises.rename(filePath, path.join(doneDir, `${Date.now()}_${fileName}`));
+        audit?.write(
+          MESSAGING_AUDIT_EVENTS.OUTBOX_DELIVERED,
+          `claw=${name}`,
+          `file=${fileName}`,
+          `deliveredAt=${Date.now()}`,
+        );
       } catch (err) {
+        audit?.write(
+          MESSAGING_AUDIT_EVENTS.OUTBOX_DELIVERED,
+          `claw=${name}`,
+          `file=${fileName}`,
+          `error=${err instanceof Error ? err.message : String(err)}`,
+        );
         console.warn(`[outbox] Failed to move ${fileName} to done: ${err instanceof Error ? err.message : String(err)}`);
       }
     } catch (err) {
