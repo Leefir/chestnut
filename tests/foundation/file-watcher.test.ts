@@ -200,7 +200,7 @@ describe('FileWatcher', () => {
     await expect(watcher.close()).resolves.toBeUndefined();
   });
 
-  // === fallback poll（phase469 / macOS + immediate only）===
+  // === fallback poll（phase 352 / 469 / 760 — cross-platform immediate mode）===
 
   it('macOS immediate mode enables fallback poll with default 500ms', async () => {
     const platformSpy = vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin');
@@ -253,7 +253,7 @@ describe('FileWatcher', () => {
     setSpy.mockRestore();
   });
 
-  it('non-macOS platform does not enable fallback poll even in immediate mode', async () => {
+  it('Linux immediate mode enables fallback poll (phase 760 cross-platform)', async () => {
     const platformSpy = vi.spyOn(process, 'platform', 'get').mockReturnValue('linux');
     const setSpy = vi.spyOn(globalThis, 'setInterval');
 
@@ -263,7 +263,7 @@ describe('FileWatcher', () => {
       { stability: 'immediate' },
     );
 
-    expect(setSpy).not.toHaveBeenCalled();
+    expect(setSpy).toHaveBeenCalledWith(expect.any(Function), 500);
 
     await watcher.close();
     platformSpy.mockRestore();

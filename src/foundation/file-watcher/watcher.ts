@@ -18,12 +18,14 @@ import type { Watcher, WatchEvent, WatchEventType, WatcherErrorContext } from '.
 const FALLBACK_CONSECUTIVE_FAIL_LIMIT = 5;
 
 /**
- * Fallback poll interval (ms) for macOS FSEvents 'immediate' stability mode.
- * Only enabled when chokidar 'immediate' mode 用 stability === 'immediate' 路径 +
- * macOS（FSEvents coalescing 50-200ms 物理下界 / 加 fallback poll 兜底潜在事件丢失）.
+ * Fallback poll interval (ms) / chokidar native-watcher silent stall 兜底.
  *
- * Value: 500ms = empirical 平衡 latency vs CPU（< macOS FSEvents 上界 / > Linux inotify
- * 物理下界 / 用户可经 createWatcher options.fallbackPollMs 自定义）
+ * Cross-platform fallback poll for chokidar 'immediate' mode callers:
+ * - macOS: FSEvents coalescing 50-200ms 物理下界 (phase 352 / phase 469)
+ * - Linux CI: tmpfs/overlayfs inotify silent stall (phase 760)
+ * - Windows: ReadDirectoryChangesW edge cases
+ *
+ * Value: 500ms 物理下界 / 用户可经 createWatcher options.fallbackPollMs 自定义
  */
 const DEFAULT_FALLBACK_POLL_MS = 500;
 
@@ -143,8 +145,8 @@ export function createWatcher(
     persistent?: boolean;
     /**
      * Fallback poll interval (ms) / override default 500ms.
-     * Only enabled when `stability === 'immediate'` on macOS.
-     * Ignored on other platforms or in 'stable' mode.
+     * Only enabled when `stability === 'immediate'`.
+     * Ignored in 'stable' mode.
      */
     fallbackPollMs?: number;
   }
@@ -205,11 +207,10 @@ export function createWatcher(
     try { options?.onError?.(e, 'watch'); } catch { /* swallow */ }
   });
 
-  // Fallback poll for macOS FSEvents silent stall (phase352 / phase469)
+  // Fallback poll for chokidar native-watcher silent stall (cross-platform, phase 352 / 469 / 760)
+  // macOS FSEvents + Linux CI inotify + Windows ReadDirectoryChangesW silent stall 同型治理
   let fallbackTimer: ReturnType<typeof setInterval> | null = null;
-  const enableFallback =
-    process.platform === 'darwin' &&
-    options?.stability === 'immediate';
+  const enableFallback = options?.stability === 'immediate';
   if (enableFallback) {
     const intervalMs = options?.fallbackPollMs ?? DEFAULT_FALLBACK_POLL_MS;
     let consecutiveCallbackFails = 0;
