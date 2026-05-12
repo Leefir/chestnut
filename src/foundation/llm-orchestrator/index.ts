@@ -40,3 +40,5 @@ export interface LLMOrchestrator {
   close(): Promise<void>;
 }
 
+export { DEFAULT_LLM_IDLE_TIMEOUT_MS } from './defaults.js';
+
