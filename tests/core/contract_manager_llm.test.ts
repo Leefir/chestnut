@@ -76,7 +76,7 @@ import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 import { CONTRACT_AUDIT_EVENTS } from '../../src/core/contract/audit-events.js';
 import { InboxWriter } from '../../src/foundation/messaging/index.js';
 
-import { DEFAULT_MAX_STEPS } from '../../src/constants.js';
+import { DEFAULT_MAX_STEPS } from '../../src/core/agent-executor/index.js';
 import { makeContractYaml } from '../helpers/contract-yaml.js';
 import { createToolRegistry } from '../../src/foundation/tools/index.js';
 
