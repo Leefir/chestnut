@@ -43,14 +43,8 @@ export const SUBAGENT_TIMEOUT_MS = 300000;
 export const SPAWN_DEFAULT_TIMEOUT_S = 300;
 
 /**
- * Default idle timeout for LLM calls: abort if no token output for this duration (ms)
- * User configurable via .clawforum/config.yaml: motion.llm_idle_timeout_ms (default: 60000)
+ * DEFAULT_LLM_IDLE_TIMEOUT_MS phase 748 物理迁 src/foundation/llm-orchestrator/defaults.ts
  */
-/**
- * Default idle timeout for LLM calls when value missing in user config (ms)
- * - Schema fallback (when user config不写)
- */
-export const DEFAULT_LLM_IDLE_TIMEOUT_MS = 60000;
 
 /**
  * Initial idle timeout written to user config by `init` command (ms)
