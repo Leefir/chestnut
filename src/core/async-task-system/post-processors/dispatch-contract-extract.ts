@@ -1,7 +1,7 @@
 import type { PostProcessor } from './types.js';
 import { DISPATCH_AUDIT_EVENTS } from '../tools/dispatch-audit-events.js';
 import { formatErr } from '../_helpers.js';
-import { AUDIT_MESSAGE_MAX_CHARS } from '../../../constants.js';
+import { AUDIT_MESSAGE_MAX_CHARS } from '../../../foundation/audit/index.js';
 
 /**
  * dispatch-contract-extract PostProcessor

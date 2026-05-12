@@ -7,7 +7,7 @@
 import type { StreamChunk } from './types.js';
 import type { CombinedAbortHandle } from './abort-helper.js';
 import { LLMError, LLMRateLimitError } from '../../types/errors.js';
-import { AUDIT_MESSAGE_MAX_CHARS } from '../../constants.js';
+import { AUDIT_MESSAGE_MAX_CHARS } from '../audit/index.js';
 
 export type StreamParseErrorCallback = (event: {
   provider: string;

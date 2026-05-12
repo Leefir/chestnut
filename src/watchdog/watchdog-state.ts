@@ -6,7 +6,7 @@
 import * as path from 'path';
 import { getClawforumDir, getClawforumFs, getAuditWriter, lastInactivityNotified, inactivityNotifyCount } from './watchdog-context.js';
 import { WATCHDOG_AUDIT_EVENTS } from './audit-events.js';
-import { AUDIT_MESSAGE_MAX_CHARS } from '../constants.js';
+import { AUDIT_MESSAGE_MAX_CHARS } from '../foundation/audit/index.js';
 
 interface WatchdogState {
   version?: number;  // v0 = absent (legacy), v1 = current
