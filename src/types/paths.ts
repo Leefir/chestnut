@@ -47,8 +47,8 @@ export const TASKS_QUEUES_RUNNING_DIR = 'tasks/queues/running';
 export const TASKS_QUEUES_DONE_DIR = 'tasks/queues/done';
 /** tasks/queues/failed (NEW const / 原硬编码 'tasks/failed') */
 export const TASKS_QUEUES_FAILED_DIR = 'tasks/queues/failed';
-/** tasks/queues/results — async subagent lifecycle dir / 子代理不可见 */
-export const TASKS_QUEUES_RESULTS_DIR = 'tasks/queues/results';
+// TASKS_QUEUES_RESULTS_DIR / TASKS_SUBAGENTS_DIR 物理迁 async-task-system 自治 own
+// 见 src/core/async-task-system/dirs.ts (phase 745)
 
 /** tasks/sync/exec — exec_overflow scratch（CommandTool own subdir / phase 511 加）*/
 export const TASKS_SYNC_EXEC_DIR = 'tasks/sync/exec';
@@ -59,9 +59,6 @@ export const TASKS_SYNC_SPAWN_DIR = 'tasks/sync/spawn';
 
 /** tasks/sync — sync 根目录（phase 536 / 替代硬编码 'tasks/sync'）*/
 export const TASKS_SYNC_DIR = 'tasks/sync';
-
-/** tasks/subagents — 子代理临时工作区集合（per-subagent dir / phase 512 加）*/
-export const TASKS_SUBAGENTS_DIR = 'tasks/subagents';
 
 /** inbox/pending 目录相对路径 */
 export const INBOX_PENDING_DIR = 'inbox/pending';
@@ -89,11 +86,11 @@ export const CLAW_SUBDIRS = [
   TASKS_QUEUES_RUNNING_DIR,
   TASKS_QUEUES_DONE_DIR,
   TASKS_QUEUES_FAILED_DIR,
-  TASKS_QUEUES_RESULTS_DIR,
+  'tasks/queues/results',
   TASKS_SYNC_EXEC_DIR,
   TASKS_SYNC_WRITE_DIR,
   TASKS_SYNC_SPAWN_DIR,
-  TASKS_SUBAGENTS_DIR,
+  'tasks/subagents',
   'memory',                    // 不抽 const / 字面量保留 / B.p380-1 信号登记
   CONTRACT_DIR,                // 旧 'contract'
   'skills',                    // phase370 已立 / 非 NEW（SKILLS_DIR_DEFAULT 字面量 / 避免循环依赖 skill-paths.ts → paths.ts）
