@@ -22,3 +22,4 @@ export const ASK_CALLER_TOOL_NAME = 'ask_caller' as const;
 export const DISPATCH_TOOL_NAME = 'dispatch' as const;
 export const EDIT_TOOL_NAME = 'edit' as const;
 export const MULTI_EDIT_TOOL_NAME = 'multi_edit' as const;
+export const SHADOW_TOOL_NAME = 'shadow' as const;

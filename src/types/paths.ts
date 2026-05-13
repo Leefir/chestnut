@@ -52,6 +52,8 @@ export const TASKS_SYNC_WRITE_DIR = 'tasks/sync/write';
 export const TASKS_SYNC_SUBAGENT_DIR = 'tasks/sync/subagent';
 /** tasks/sync/spawn — spawn 工具自身 sync 路径（phase 766 命名复活，per-tool dir 对称设计落地） */
 export const TASKS_SYNC_SPAWN_DIR = 'tasks/sync/spawn';
+/** tasks/sync/shadow — shadow 工具自身 sync 路径（phase 767 加，per-tool dir 对称设计落地） */
+export const TASKS_SYNC_SHADOW_DIR = 'tasks/sync/shadow';
 
 /** tasks/sync — sync 根目录（phase 536 / 替代硬编码 'tasks/sync'）*/
 export const TASKS_SYNC_DIR = 'tasks/sync';
@@ -87,6 +89,7 @@ export const CLAW_SUBDIRS = [
   TASKS_SYNC_WRITE_DIR,
   TASKS_SYNC_SUBAGENT_DIR,
   TASKS_SYNC_SPAWN_DIR,
+  TASKS_SYNC_SHADOW_DIR,
   'tasks/subagents',
   'memory',                    // 不抽 const / 字面量保留 / B.p380-1 信号登记
   'contract',                  // CONTRACT_DIR phase 746 物理迁 src/core/contract/dirs.ts
