@@ -8,13 +8,13 @@
 import type { Tool, ToolResult, ExecContext } from '../../../foundation/tool-protocol/index.js';
 
 import { SPAWN_DEFAULT_TIMEOUT_S } from '../../../constants.js';
-import { writePendingSubagentTaskFile } from './_pending-task-writer.js';
+import { writePendingSubagentTaskFile } from '../../async-task-system/index.js';
 
 /**
  * Spawn tool implementation
  *
- * 直接写 tasks/queues/pending/ 文件，由 watcher 异步调度。
- * 不再依赖 AsyncTaskSystem 实例。
+ * phase 763：从 async-task-system/tools/spawn.ts 迁至 spawn-system 模块（M#1 业务语义独立）。
+ * 直接写 tasks/queues/pending/ 文件，由 async-task-system watcher 异步调度。
  */
 import { SPAWN_TOOL_NAME } from '../../../foundation/tools/tool-names.js';
 import { formatErr } from '../_helpers.js';

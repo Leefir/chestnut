@@ -39,3 +39,6 @@ clawspace/
 # TypeScript incremental build info (pre-commit hook)
 .tsbuildinfo
 .tsbuildinfo.test
+
+# Design docs (untracked, kept outside repo)
+design/

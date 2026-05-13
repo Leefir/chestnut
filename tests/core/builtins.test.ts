@@ -16,7 +16,7 @@ import { setPermissionCheckerFactory } from '../../src/foundation/file-tool/perm
 import { createClawPermissionChecker } from '../../src/core/permissions/claw-permissions.js';
 import { memorySearchTool } from '../../src/core/memory/tools/memory_search.js';
 import { execTool } from '../../src/foundation/command-tool/index.js';
-import { spawnTool } from '../../src/core/async-task-system/tools/spawn.js';
+import { spawnTool } from '../../src/core/spawn-system/index.js';
 import { ExecContextImpl } from '../../src/foundation/tools/context.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import { OutboxWriter } from '../../src/foundation/messaging/index.js';

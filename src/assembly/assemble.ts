@@ -35,7 +35,7 @@ import type { ExecContext } from '../foundation/tool-protocol/index.js';
 import { createFileTools } from '../foundation/file-tool/index.js';
 import { createCommandTools } from '../foundation/command-tool/index.js';
 import { createClawPermissionChecker } from '../core/permissions/claw-permissions.js';
-import { spawnTool } from '../core/async-task-system/tools/spawn.js';
+import { spawnTool } from '../core/spawn-system/index.js';
 import { cleanupOrphanedTemp } from './cleanup.js';
 import { createInboxReader, createOutboxWriter, notifyInbox, InboxWriter } from '../foundation/messaging/index.js';
 import { createDoneTool } from '../core/contract/index.js';
