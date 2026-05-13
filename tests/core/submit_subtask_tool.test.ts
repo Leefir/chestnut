@@ -1,7 +1,7 @@
 /**
- * done tool 测试 — allCompleted 分支 (Phase 22 C1+C2)
+ * submit_subtask tool 测试 — allCompleted 分支 (Phase 22 C1+C2)
  *
- * 测试 done.ts 中：
+ * 测试 submit-subtask.ts 中：
  * - result.allCompleted=true → "All subtasks complete!" (不再查 loadActive)
  * - result.allCompleted=false → 显示剩余列表
  */
@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { makeContractYaml } from '../helpers/contract-yaml.js';
-import { createDoneTool } from '../../src/core/contract/index.js';
+import { createSubmitSubtaskTool } from '../../src/core/contract/index.js';
 import { ContractSystem } from '../../src/core/contract/manager.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import * as os from 'os';
@@ -26,10 +26,10 @@ function makeCtx() {
   } as any;
 }
 
-describe('doneTool', () => {
+describe('submitSubtaskTool', () => {
   let manager: ContractSystem;
   let nodeFs: NodeFileSystem;
-  let doneTool: ReturnType<typeof createDoneTool>;
+  let submitSubtaskTool: ReturnType<typeof createSubmitSubtaskTool>;
 
   beforeEach(async () => {
     testDir = path.join(
@@ -42,7 +42,7 @@ describe('doneTool', () => {
     nodeFs = new NodeFileSystem({ baseDir: clawDir });
     const mockAudit = { write: vi.fn() };
     manager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
-    doneTool = createDoneTool(manager);
+    submitSubtaskTool = createSubmitSubtaskTool(manager);
   });
 
   afterEach(async () => {
@@ -60,7 +60,7 @@ describe('doneTool', () => {
     }));
 
     const ctx = makeCtx();
-    const result = await doneTool.execute({ subtask: 't1', evidence: 'done' }, ctx);
+    const result = await submitSubtaskTool.execute({ subtask: 't1', evidence: 'done' }, ctx);
 
     expect(result.success).toBe(true);
     expect(result.content).toContain('All subtasks complete!');
@@ -79,7 +79,7 @@ describe('doneTool', () => {
     }));
 
     const ctx = makeCtx();
-    const result = await doneTool.execute({ subtask: 't1', evidence: 'done' }, ctx);
+    const result = await submitSubtaskTool.execute({ subtask: 't1', evidence: 'done' }, ctx);
 
     expect(result.success).toBe(true);
     expect(result.content).not.toContain('All subtasks complete!');
@@ -91,7 +91,7 @@ describe('doneTool', () => {
   it('should return error when no active contract', async () => {
     // ContractSystem exists but no contract created
     const ctx = makeCtx();
-    const result = await doneTool.execute({ subtask: 't1', evidence: 'done' }, ctx);
+    const result = await submitSubtaskTool.execute({ subtask: 't1', evidence: 'done' }, ctx);
     expect(result.success).toBe(false);
     expect(result.content).toContain('No active contract');
   });
@@ -106,7 +106,7 @@ describe('doneTool', () => {
     }));
 
     const ctx = makeCtx();
-    const result = await doneTool.execute({ subtask: 'nonexistent', evidence: 'done' }, ctx);
+    const result = await submitSubtaskTool.execute({ subtask: 'nonexistent', evidence: 'done' }, ctx);
 
     expect(result.success).toBe(false);
     expect(result.content).toContain('rejected');

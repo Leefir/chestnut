@@ -21,7 +21,7 @@ export {
   type ContractYaml,
 } from './types.js';
 
-export { createDoneTool, DONE_TOOL_NAME } from './tools/done.js';
+export { createSubmitSubtaskTool, SUBMIT_SUBTASK_TOOL_NAME } from './tools/submit-subtask.js';
 
 export { getContractCreatedMs } from './utils.js';
 export { collectContractEvents } from './jobs/event-collector.js';

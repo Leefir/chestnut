@@ -38,7 +38,7 @@ import { createClawPermissionChecker } from '../core/permissions/claw-permission
 import { spawnTool } from '../core/spawn-system/index.js';
 import { cleanupOrphanedTemp } from './cleanup.js';
 import { createInboxReader, createOutboxWriter, notifyInbox, InboxWriter } from '../foundation/messaging/index.js';
-import { createDoneTool } from '../core/contract/index.js';
+import { createSubmitSubtaskTool } from '../core/contract/index.js';
 import { createStatusTool } from '../core/status-service/index.js';
 import { createSkillTool } from '../foundation/skill-system/tools/skill.js';
 import { createSendTool } from '../foundation/messaging/tools/send.js';
@@ -321,7 +321,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
 
     // 注入工具属性（避免通过 ExecContext 传业务依赖）
     // done 注册：phase360 后 done 业务归 ContractSystem / 不再经 registerBuiltinTools / Assembly 显式注册
-    toolRegistry.register(createDoneTool(contractManager));
+    toolRegistry.register(createSubmitSubtaskTool(contractManager));
     toolRegistry.register(createStatusTool(contractManager));   // phase 446: builtins/index.ts 不再 register / Assembly 显式（同 phase 440 send + phase 442 skill 模板）
 
     // skill 注册：phase442 后 skill 业务归 SkillSystem / 不再经 registerBuiltinTools / Assembly 显式注册

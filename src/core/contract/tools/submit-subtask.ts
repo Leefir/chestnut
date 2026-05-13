@@ -1,5 +1,5 @@
 /**
- * done tool - Mark subtask as complete and trigger acceptance
+ * submit_subtask tool - Mark subtask as complete and trigger acceptance
  * 
  * This tool is used by Claws to signal completion of a subtask,
  * which triggers the acceptance process defined in the contract.
@@ -13,12 +13,12 @@ import type { ContractSystem } from '../manager.js';
  * 
  * Requires contractManager to be injected before use.
  */
-import { DONE_TOOL_NAME } from '../../../foundation/tools/tool-names.js';
-export { DONE_TOOL_NAME };
+import { SUBMIT_SUBTASK_TOOL_NAME } from '../../../foundation/tools/tool-names.js';
+export { SUBMIT_SUBTASK_TOOL_NAME };
 
-export function createDoneTool(contractManager: ContractSystem): Tool {
+export function createSubmitSubtaskTool(contractManager: ContractSystem): Tool {
   return {
-    name: DONE_TOOL_NAME,
+    name: SUBMIT_SUBTASK_TOOL_NAME,
     description: 'Mark a subtask as complete and submit it for acceptance verification. ' +
       'Acceptance runs asynchronously — the result (pass or reject) will be ' +
       'delivered to your inbox. Check inbox for feedback before proceeding.',

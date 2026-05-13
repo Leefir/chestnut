@@ -11,6 +11,7 @@ export const SEARCH_TOOL_NAME = 'search' as const;
 export const LS_TOOL_NAME = 'ls' as const;
 export const SEND_TOOL_NAME = 'send' as const;
 export const DONE_TOOL_NAME = 'done' as const;
+export const SUBMIT_SUBTASK_TOOL_NAME = 'submit_subtask' as const;
 export const SKILL_TOOL_NAME = 'skill' as const;
 export const EXEC_TOOL_NAME = 'exec' as const;
 export const STATUS_TOOL_NAME = 'status' as const;
