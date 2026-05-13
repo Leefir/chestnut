@@ -35,10 +35,10 @@ export function createSubagentCommand(): Command {
 
   cmd
     .command('step <n> <id>')
-    .description('Show full detail of a single turn')
+    .description('Show full detail of a single turn (n = "N" for whole turn, "N.x" for slot x)')
     .requiredOption('-c, --claw <claw>', 'Claw to query')
     .action(async (n: string, id: string, opts: { claw: string }) => {
-      await subagentStepCommand(parseInt(n, 10), id, opts.claw);
+      await subagentStepCommand(n, id, opts.claw);
     });
 
   return cmd;

@@ -36,6 +36,12 @@ const POSITIONAL_ARG_MAP: Record<string, string> = {
   WebSearch: 'query',
   ToolSearch: 'query',
   NotebookEdit: 'notebook_path',
+  // clawforum subagent tools
+  exec: 'command',
+  skill: 'name',
+  ask_motion: 'question',
+  write: 'path',
+  read: 'path',
 };
 
 function truncate(s: string, n: number): string {
@@ -49,8 +55,8 @@ function truncateSingleLine(s: string, n: number): string {
   return single.slice(0, n) + '...';
 }
 
-function formatValue(v: unknown, maxLen = 30): string {
-  if (typeof v === 'string') return `"${truncate(v, maxLen)}"`;
+function formatValue(v: unknown, maxLen = 40): string {
+  if (typeof v === 'string') return `"${truncateSingleLine(v, maxLen)}"`;
   if (typeof v === 'number' || typeof v === 'boolean' || v === null) return String(v);
   const json = JSON.stringify(v);
   if (json.length <= maxLen) return json;
@@ -86,14 +92,14 @@ function renderResult(result: ToolResultBlock | undefined): string {
   const content = result.content;
   if (result.is_error) {
     const lines = content.split('\n');
-    if (lines.length > 1) return `→ ERR "${truncateSingleLine(content, 40)}" (${lines.length} lines)`;
-    return `→ ERR "${truncateSingleLine(content, 40)}"`;
+    if (lines.length > 1) return `→ ERR ${truncateSingleLine(content, 60)} (${lines.length} lines)`;
+    return `→ ERR ${truncateSingleLine(content, 60)}`;
   }
   if (content === '' || content.trim() === '') return '→ ok';
   const lines = content.split('\n');
-  if (lines.length > 1) return `→ "${truncateSingleLine(content, 40)}" (${lines.length} lines)`;
-  if (content.length < 40) return `→ "${content}"`;
-  return `→ "${truncateSingleLine(content, 40)}"`;
+  if (lines.length > 1) return `→ ${truncateSingleLine(content, 60)} (${lines.length} lines)`;
+  if (content.length <= 60) return `→ ${content}`;
+  return `→ ${truncateSingleLine(content, 60)}`;
 }
 
 // ─── Message parsing ─────────────────────────────────────────
@@ -161,26 +167,30 @@ function collectToolResults(userMsg: Message | undefined): Map<string, ToolResul
 
 // ─── Steps (summary) rendering ───────────────────────────────
 
+function slotLetter(idx: number): string {
+  // 0 -> 'a', 1 -> 'b', ...
+  return String.fromCharCode(97 + idx);
+}
+
 function renderSteps(turns: Turn[]): string {
-  const lines: string[] = [];
-  // Header
-  lines.push(`  TURN  TOOL(args)                                                              → RESULT`);
+  const lines: string[] = ['TURN  CALL  RESULT'];
 
   for (const turn of turns) {
     // text-only turns
     if (turn.toolUses.length === 0 && turn.texts.length > 0) {
       const text = turn.texts.join(' ');
-      const summary = `(text)  "${truncate(text, 80)}"`;
-      lines.push(`  ${String(turn.num).padEnd(4)}  ${summary.padEnd(78)}`);
+      lines.push(`${turn.num}  (text) "${truncateSingleLine(text, 80)}"`);
+      continue;
     }
 
     // tool_use turns
-    for (const tu of turn.toolUses) {
+    const multi = turn.toolUses.length > 1;
+    turn.toolUses.forEach((tu, idx) => {
       const argsStr = renderArgs(tu.name, tu.input);
       const result = renderResult(turn.toolResults.get(tu.id));
-      const toolCol = `${argsStr}`.padEnd(78);
-      lines.push(`  ${String(turn.num).padEnd(4)}  ${toolCol}  ${result}`);
-    }
+      const turnLabel = multi ? `${turn.num}.${slotLetter(idx)}` : String(turn.num);
+      lines.push(`${turnLabel}  ${argsStr}  ${result}`);
+    });
   }
 
   return lines.join('\n');
@@ -188,37 +198,71 @@ function renderSteps(turns: Turn[]): string {
 
 // ─── Step (full detail) rendering ────────────────────────────
 
-function indentMultiline(text: string, indent: string): string {
-  return text.split('\n').map((line, i) => (i === 0 ? line : indent + line)).join('\n');
+function marker(label: string): string {
+  return `=== ${label} ===`;
 }
 
-function renderStepFull(turn: Turn): string {
-  let out = `turn ${turn.num}  (${turn.toolUses.length} tool_use)\n\n`;
-
-  // text blocks
-  for (const text of turn.texts) {
-    out += `  assistant (text):\n    ${indentMultiline(text, '    ')}\n\n`;
-  }
-
-  // thinking blocks
-  for (const thinking of turn.thinkings) {
-    out += `  assistant (thinking):\n    ${indentMultiline(thinking, '    ')}\n\n`;
-  }
-
-  // tool_use + tool_result pairs
-  turn.toolUses.forEach((tu, idx) => {
-    out += `  tool_use ${idx + 1}/${turn.toolUses.length}  ${tu.name}\n`;
-    for (const [k, v] of Object.entries(tu.input)) {
-      const valueStr = indentMultiline(formatValueFull(v), '                  ');
-      out += `    ${k.padEnd(11)}: ${valueStr}\n`;
+function renderArgsFull(input: Record<string, unknown>): string {
+  // Single-line args: `key: value` flush left.
+  // Multi-line args: `key:` on its own line, payload indented 2 spaces (YAML block-scalar style)
+  // so payload lines that look like `word: value` don't get confused with peer args.
+  const parts: string[] = [];
+  for (const [k, v] of Object.entries(input)) {
+    const valStr = formatValueFull(v);
+    if (!valStr.includes('\n')) {
+      parts.push(`${k}: ${valStr}`);
+    } else {
+      const indented = valStr.split('\n').map(line => `  ${line}`).join('\n');
+      parts.push(`${k}:\n${indented}`);
     }
+  }
+  return parts.join('\n\n');
+}
+
+function renderToolUseSections(tu: ToolUseBlock, result: ToolResultBlock | undefined, slotLabel: string): string[] {
+  const sections: string[] = [];
+  const callHeader = slotLabel ? `call ${slotLabel}: ${tu.name}` : `call: ${tu.name}`;
+  const argsBody = renderArgsFull(tu.input);
+  sections.push(argsBody ? `${marker(callHeader)}\n\n${argsBody}` : marker(callHeader));
+
+  const resultLabel = slotLabel ? `result ${slotLabel}` : 'result';
+  if (!result) {
+    sections.push(marker(`${resultLabel}: (pending)`));
+  } else if (result.is_error) {
+    sections.push(`${marker(`${resultLabel}: ERR`)}\n\n${result.content}`);
+  } else {
+    sections.push(`${marker(resultLabel)}\n\n${result.content}`);
+  }
+  return sections;
+}
+
+function renderStepFull(turn: Turn, slotIdx?: number): string {
+  if (slotIdx !== undefined) {
+    if (slotIdx < 0 || slotIdx >= turn.toolUses.length) {
+      throw new CliError(`slot ${slotLetter(slotIdx)} out of range (turn ${turn.num} has ${turn.toolUses.length} tool_use)`);
+    }
+    const tu = turn.toolUses[slotIdx];
+    const slotLabel = turn.toolUses.length > 1 ? `${turn.num}.${slotLetter(slotIdx)}` : String(turn.num);
     const result = turn.toolResults.get(tu.id);
-    if (result) {
-      out += `  tool_result:\n    ${indentMultiline(result.content, '    ')}\n\n`;
-    }
+    const sections = [`turn ${slotLabel}`, ...renderToolUseSections(tu, result, '')];
+    return sections.join('\n\n') + '\n';
+  }
+
+  const sections: string[] = [`turn ${turn.num}`];
+  for (const thinking of turn.thinkings) {
+    sections.push(`${marker('thinking')}\n\n${thinking}`);
+  }
+  for (const text of turn.texts) {
+    sections.push(`${marker('text')}\n\n${text}`);
+  }
+  const multi = turn.toolUses.length > 1;
+  turn.toolUses.forEach((tu, idx) => {
+    const slotLabel = multi ? slotLetter(idx) : '';
+    const result = turn.toolResults.get(tu.id);
+    sections.push(...renderToolUseSections(tu, result, slotLabel));
   });
 
-  return out;
+  return sections.join('\n\n') + '\n';
 }
 
 // ─── Resolve result dir ──────────────────────────────────────
@@ -262,7 +306,16 @@ export async function subagentStepsCommand(id: string, clawId: string): Promise<
   }
 }
 
-export async function subagentStepCommand(n: number, id: string, clawId: string): Promise<void> {
+function parseStepRef(s: string): { turn: number; slot?: number } {
+  // Accept "N" or "N.x" (x a single lowercase letter).
+  const m = /^(\d+)(?:\.([a-z]))?$/.exec(s);
+  if (!m) throw new CliError(`invalid step ref "${s}" (expected N or N.x)`);
+  const turn = parseInt(m[1], 10);
+  const slot = m[2] ? m[2].charCodeAt(0) - 97 : undefined;
+  return { turn, slot };
+}
+
+export async function subagentStepCommand(n: string, id: string, clawId: string): Promise<void> {
   try {
     const clawDir = resolveClawDir(clawId);
     if (!fs.existsSync(clawDir)) {
@@ -277,13 +330,14 @@ export async function subagentStepCommand(n: number, id: string, clawId: string)
       return;
     }
 
-    if (n < 1 || n > turns.length) {
-      console.error(`step ${n} out of range (total turns: ${turns.length})`);
+    const ref = parseStepRef(n);
+    if (ref.turn < 1 || ref.turn > turns.length) {
+      console.error(`step ${ref.turn} out of range (total turns: ${turns.length})`);
       process.exitCode = 1;
       return;
     }
 
-    console.log(renderStepFull(turns[n - 1]));
+    console.log(renderStepFull(turns[ref.turn - 1], ref.slot));
   } catch (error) {
     process.exitCode = handleCliError(error);
   }
