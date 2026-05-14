@@ -15,7 +15,6 @@ export const shadowTool: Tool = {
   description: 'Create a one-shot shadow of yourself with full context inheritance. ' +
     'Shadow runs synchronously and returns its result inline. ' +
     'Use when you need an equally capable copy to handle a task without polluting your context window. ' +
-    'Specify form: A (full inheritance with tool_result synthesis) or B (trimmed prefix with user message). ' +
     'You cannot call shadow from within shadow (no recursion).',
   schema: {
     type: 'object',
@@ -23,11 +22,6 @@ export const shadowTool: Tool = {
       task: {
         type: 'string',
         description: 'The task for the shadow to perform.',
-      },
-      form: {
-        type: 'string',
-        enum: ['A', 'B'],
-        description: 'Form A: full session inheritance with synthetic tool_result. Form B: prefix trimmed before duplicate tool_use with fresh user message instruction. A/B testing required by shadow design.',
       },
       timeoutMs: {
         type: 'number',
@@ -38,7 +32,7 @@ export const shadowTool: Tool = {
         description: 'Maximum ReAct steps (default: subagent max_steps).',
       },
     },
-    required: ['task', 'form'],
+    required: ['task'],
   },
   readonly: false,
   idempotent: false,
@@ -55,12 +49,10 @@ export const shadowTool: Tool = {
     }
 
     const task = String(args.task ?? '');
-    const form = args.form === 'A' || args.form === 'B' ? args.form : null;
     if (!task) return { success: false, content: 'shadow: task is required', error: 'missing_task' };
-    if (!form) return { success: false, content: "shadow: form must be 'A' or 'B'", error: 'missing_form' };
 
     return runShadow({
-      task, form,
+      task,
       timeoutMs: typeof args.timeoutMs === 'number' ? args.timeoutMs : undefined,
       maxSteps: typeof args.maxSteps === 'number' ? args.maxSteps : undefined,
       ctx,

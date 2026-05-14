@@ -2,11 +2,10 @@
  * shadow tool integration tests (phase 767)
  *
  * Coverage:
- * - missing task / form validation
+ * - missing task validation
  * - recursion rejection (ctx.isShadow)
  * - missing main context (no mainDialogStore)
- * - Form A path via runShadow
- * - Form B path via runShadow
+ * - shadow path via runShadow
  * - spawn async=true rejected from within shadow (phase 766 defense)
  * - dispatch rejected from within shadow (phase 767 defense)
  * - failure returns tool_result with error metadata
@@ -126,23 +125,10 @@ describe('shadow tool (phase 767)', () => {
 
   describe('input validation', () => {
     it('rejects when task is missing', async () => {
-      const result = await shadowTool.execute({ form: 'A' }, baseCtx);
+      const result = await shadowTool.execute({}, baseCtx);
       expect(result.success).toBe(false);
       expect(result.error).toBe('missing_task');
       expect(mockRunSubagent).not.toHaveBeenCalled();
-    });
-
-    it('rejects when form is missing', async () => {
-      const result = await shadowTool.execute({ task: 'test' }, baseCtx);
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('missing_form');
-      expect(mockRunSubagent).not.toHaveBeenCalled();
-    });
-
-    it('rejects invalid form value', async () => {
-      const result = await shadowTool.execute({ task: 'test', form: 'C' }, baseCtx);
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('missing_form');
     });
   });
 
@@ -158,7 +144,7 @@ describe('shadow tool (phase 767)', () => {
         isShadow: true,
       });
 
-      const result = await shadowTool.execute({ task: 'test', form: 'A' }, shadowCtx);
+      const result = await shadowTool.execute({ task: 'test' }, shadowCtx);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('shadow_recursion_rejected');
@@ -183,7 +169,7 @@ describe('shadow tool (phase 767)', () => {
         currentToolUseId: 'tu-1',
       });
 
-      const result = await shadowTool.execute({ task: 'test', form: 'A' }, ctxNoState);
+      const result = await shadowTool.execute({ task: 'test' }, ctxNoState);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('no_main_context');
@@ -209,21 +195,21 @@ describe('shadow tool (phase 767)', () => {
         toolsForLLM: [],
       });
 
-      const result = await shadowTool.execute({ task: 'test', form: 'A' }, ctxNoToolUseId);
+      const result = await shadowTool.execute({ task: 'test' }, ctxNoToolUseId);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('no_main_context');
     });
   });
 
-  describe('Form A path', () => {
-    it('calls runSubagent with messages from synthesizeFormA', async () => {
-      mockRunSubagent.mockResolvedValue({ text: 'form A result' });
+  describe('shadow path', () => {
+    it('calls runSubagent with messages from synthesizeFormB', async () => {
+      mockRunSubagent.mockResolvedValue({ text: 'shadow result' });
 
-      const result = await shadowTool.execute({ task: 'test task', form: 'A' }, baseCtx);
+      const result = await shadowTool.execute({ task: 'test task' }, baseCtx);
 
       expect(result.success).toBe(true);
-      expect(result.content).toBe('form A result');
+      expect(result.content).toBe('shadow result');
       expect(mockRunSubagent).toHaveBeenCalledOnce();
 
       const callArgs = mockRunSubagent.mock.calls[0][0];
@@ -239,7 +225,7 @@ describe('shadow tool (phase 767)', () => {
     it('returns done capturedResult when available', async () => {
       mockRunSubagent.mockResolvedValue({ text: 'fallback', capturedResult: { result: 'structured result' } });
 
-      const result = await shadowTool.execute({ task: 'test', form: 'A' }, baseCtx);
+      const result = await shadowTool.execute({ task: 'test' }, baseCtx);
 
       expect(result.success).toBe(true);
       expect(result.content).toBe('structured result');
@@ -247,26 +233,11 @@ describe('shadow tool (phase 767)', () => {
     });
   });
 
-  describe('Form B path', () => {
-    it('calls runSubagent with messages from synthesizeFormB', async () => {
-      mockRunSubagent.mockResolvedValue({ text: 'form B result' });
-
-      const result = await shadowTool.execute({ task: 'test task', form: 'B' }, baseCtx);
-
-      expect(result.success).toBe(true);
-      expect(result.content).toBe('form B result');
-      expect(mockRunSubagent).toHaveBeenCalledOnce();
-
-      const callArgs = mockRunSubagent.mock.calls[0][0];
-      expect(callArgs.isShadow).toBe(true);
-    });
-  });
-
   describe('failure handling', () => {
     it('returns tool_result with error metadata on runSubagent failure', async () => {
       mockRunSubagent.mockRejectedValue(new Error('subagent crashed'));
 
-      const result = await shadowTool.execute({ task: 'fail test', form: 'A' }, baseCtx);
+      const result = await shadowTool.execute({ task: 'fail test' }, baseCtx);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('unknown');
@@ -284,7 +255,7 @@ describe('shadow tool (phase 767)', () => {
       err.name = 'ToolTimeoutError';
       mockRunSubagent.mockRejectedValue(err);
 
-      const result = await shadowTool.execute({ task: 'timeout test', form: 'A' }, baseCtx);
+      const result = await shadowTool.execute({ task: 'timeout test' }, baseCtx);
 
       expect(result.error).toBe('timeout');
     });

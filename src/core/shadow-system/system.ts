@@ -13,13 +13,12 @@ import { UUID_SHORT_LEN } from '../../constants.js';
 import { runSubagent } from '../subagent/index.js';
 import { DEFAULT_MAX_STEPS } from '../agent-executor/index.js';
 import { SHADOW_AUDIT_EVENTS } from './audit-events.js';
-import { synthesizeFormA, synthesizeFormB, formatErr } from './_helpers.js';
+import { synthesizeFormB, formatErr } from './_helpers.js';
 import type { BuildShadowInstructionArgs } from '../../prompts/shadow.js';
 import { createToolRegistry } from '../../foundation/tools/index.js';
 
 export interface RunShadowOptions {
   task: string;
-  form: 'A' | 'B';
   timeoutMs?: number;
   maxSteps?: number;
   ctx: ExecContext;
@@ -42,7 +41,7 @@ export async function runShadow(opts: RunShadowOptions): Promise<ToolResult> {
   const resultDir = path.join(opts.ctx.clawDir, TASKS_SYNC_SHADOW_DIR, shadowId);
   const spawnedAt = new Date().toISOString();
 
-  opts.ctx.auditWriter?.write(SHADOW_AUDIT_EVENTS.STARTED, shadowId, `form=${opts.form}`, opts.task.slice(0, 100));
+  opts.ctx.auditWriter?.write(SHADOW_AUDIT_EVENTS.STARTED, shadowId, opts.task.slice(0, 100));
 
   // 取 main session in-memory 状态（phase 769：改读 ctx，不读 DialogStore 磁盘，避 sync 时序 bug）
   if (
@@ -73,30 +72,21 @@ export async function runShadow(opts: RunShadowOptions): Promise<ToolResult> {
       spawnedByClawId: opts.ctx.clawId,
       toolUseId: opts.ctx.currentToolUseId,
       task: opts.task,
-      form: opts.form,
     };
-    if (opts.form === 'A') {
-      synthesizedMessages = synthesizeFormA({
-        mainMessages,
-        toolUseId: opts.ctx.currentToolUseId,
-        instructionArgs,
-      });
-    } else {
-      const lastAssistantIdx = findLastAssistantWithToolUse(mainMessages, opts.ctx.currentToolUseId);
-      if (lastAssistantIdx < 0) {
-        return {
-          success: false,
-          content: `[clawforum shadow] marker not found in in-memory messages: toolUseId=${opts.ctx.currentToolUseId}`,
-          error: 'marker_not_found',
-        };
-      }
-      const mainMessagesBeforeMarker = mainMessages.slice(0, lastAssistantIdx);
-      synthesizedMessages = synthesizeFormB({
-        mainMessagesBeforeMarker,
-        instructionArgs,
-      });
+    const lastAssistantIdx = findLastAssistantWithToolUse(mainMessages, opts.ctx.currentToolUseId);
+    if (lastAssistantIdx < 0) {
+      return {
+        success: false,
+        content: `[clawforum shadow] marker not found in in-memory messages: toolUseId=${opts.ctx.currentToolUseId}`,
+        error: 'marker_not_found',
+      };
     }
-    opts.ctx.auditWriter?.write(SHADOW_AUDIT_EVENTS.PREFIX_RESTORED, shadowId, `form=${opts.form}`);
+    const mainMessagesBeforeMarker = mainMessages.slice(0, lastAssistantIdx);
+    synthesizedMessages = synthesizeFormB({
+      mainMessagesBeforeMarker,
+      instructionArgs,
+    });
+    opts.ctx.auditWriter?.write(SHADOW_AUDIT_EVENTS.PREFIX_RESTORED, shadowId);
   } catch (err) {
     const errMsg = formatErr(err);
     opts.ctx.auditWriter?.write(SHADOW_AUDIT_EVENTS.FAILED, shadowId, 'prefix_restore_failed', errMsg);
@@ -141,7 +131,7 @@ export async function runShadow(opts: RunShadowOptions): Promise<ToolResult> {
     return {
       success: true,
       content: finalResult,
-      metadata: { shadowId, form: opts.form, source: capturedResult ? 'done' : 'text' },
+      metadata: { shadowId, source: capturedResult ? 'done' : 'text' },
     };
   } catch (err) {
     const errMsg = formatErr(err);
@@ -150,7 +140,7 @@ export async function runShadow(opts: RunShadowOptions): Promise<ToolResult> {
       success: false,
       content: `[clawforum shadow] execution failed: ${errMsg}`,
       error: classifyError(err),
-      metadata: { shadowId, form: opts.form, shadowAuditPath: `${resultDir}/audit.tsv` },
+      metadata: { shadowId, shadowAuditPath: `${resultDir}/audit.tsv` },
     };
   }
 }

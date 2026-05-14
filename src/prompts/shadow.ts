@@ -3,7 +3,7 @@
  *
  * phase 767 NEW
  * shadow 工具角色 wrapper 文本，shadow design plan D4 ratify。
- * Form A 用作合成 tool_result content，Form B 用作合成 user message content。
+ * Shadow wrapper 文本（phase 770 Form A 弃用后仅 Form B 用作合成 user message content）。
  * 文本不进系统提示词（C1 cache 命中保护），不可改 schema 字段（C2 cache 命中保护）。
  * 调整时确认是 const 文本变化（一次性影响后续所有 shadow，archive 不影响）。
  */
@@ -18,7 +18,6 @@ export interface BuildShadowInstructionArgs {
   spawnedByClawId: string;
   toolUseId: string;
   task: string;
-  form: 'A' | 'B';
 }
 
 export function buildShadowInstruction(args: BuildShadowInstructionArgs): string {
@@ -27,7 +26,6 @@ export function buildShadowInstruction(args: BuildShadowInstructionArgs): string
 Session metadata:
 - role: shadow
 - shadow_id: ${args.shadowId}
-- form: ${args.form}
 - spawned_at: ${args.spawnedAt}
 - spawned_by: ${args.spawnedByClawId} at tool_use ${args.toolUseId}
 
