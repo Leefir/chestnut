@@ -125,7 +125,7 @@ escalation:
 完成证据：{{evidence}}
 \`\`\`
 
-可用变量：\`{{evidence}}\`（done 时填写的描述）、\`{{subtask_description}}\`、\`{{artifacts}}\`。
+可用变量：\`{{evidence}}\`（submit_subtask 时填写的描述）、\`{{subtask_description}}\`、\`{{artifacts}}\`。
 
 **关键规则**：
 - \`subtasks\` 必须是数组（\`- id: ...\` 列表），不能是对象映射（\`<subtask-id>: { description: ... }\` 格式系统拒绝）

@@ -50,7 +50,7 @@ escalation:
 完成证据：{{evidence}}
 ```
 
-可用变量：`{{evidence}}`（done 时填写的描述）、`{{subtask_description}}`、`{{artifacts}}`。
+可用变量：`{{evidence}}`（submit_subtask 时填写的描述）、`{{subtask_description}}`、`{{artifacts}}`。
 
 **重要**：
 - 每个有产出文件的子任务，description 里必须写明路径（`clawspace/<contract-slug>/<文件名>`）。Claw 依赖这个路径决定把文件写到哪里。

@@ -21,17 +21,17 @@ When a contract is assigned to you, or daemon restarts: call \`status\` first to
 
 | 状态 | 判断标准 | 动作 |
 |------|---------|------|
-| **可验收** | 子任务要求的产出已实际完成，认为可以接受验收 | 调 \`done\` |
+| **可验收** | 子任务要求的产出已实际完成，认为可以接受验收 | 调 \`submit_subtask\` |
 | **阻塞** | 缺少外部信息或资源，无法推进到可验收状态 | 调 \`send question\`，结束本轮等待回复 |
 | **失败** | 已穷尽所有可行方案，仍无法完成 | 调 \`send error\`，说明原因 |
 
-调用 \`done\` 会发起验收流程。验收通过则子任务完成；**验收不通过会收到驳回反馈**，根据反馈修复后再次调用 \`done\`。
+调用 \`submit_subtask\` 会发起验收流程。验收通过则子任务完成；**验收不通过会收到驳回反馈**，根据反馈修复后再次调用 \`submit_subtask\`。
 
-**\`done\` 表示"我认为可以验收了"，不表示"我试过了但没成功"。** 如果产出尚不存在，不能调 \`done\`。
+**\`submit_subtask\` 表示"我认为可以验收了"，不表示"我试过了但没成功"。** 如果产出尚不存在，不能调 \`submit_subtask\`。
 
 调用格式：
 \`\`\`
-done: { "subtask": "<subtask-id>", "evidence": "<产出路径或可验证的完成摘要>" }
+submit_subtask: { "subtask": "<subtask-id>", "evidence": "<产出路径或可验证的完成摘要>" }
 \`\`\`
 
 evidence 要能证明产出已达成——文件写入时填路径，命令执行时填关键输出。
@@ -58,9 +58,9 @@ send: {
 \`\`\`
 Motion 会检查该文件并基于记录寻找新方法或调整任务。
 
-**If done returns "X subtask(s) remaining"**: do NOT end the turn — immediately continue to the next subtask in the list. Only end the turn when done returns "All subtasks complete!".
+**If submit_subtask returns "X subtask(s) remaining"**: do NOT end the turn — immediately continue to the next subtask in the list. Only end the turn when submit_subtask returns "All subtasks complete!".
 
-**When done returns "All subtasks complete!"**: the system automatically notifies Motion. Do NOT send a manual \`result\` message — it would be a duplicate.
+**When submit_subtask returns "All subtasks complete!"**: the system automatically notifies Motion. Do NOT send a manual \`result\` message — it would be a duplicate.
 
 **Warning: do not directly modify progress.json** — writing the file directly bypasses the acceptance and notification mechanism, and Motion will not receive a completion notification.
 
