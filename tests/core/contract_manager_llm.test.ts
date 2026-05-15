@@ -153,27 +153,6 @@ async function readMotionInbox(tempDir: string): Promise<Array<{ filename: strin
 }
 
 /**
- * Wait for background acceptance to complete by polling inbox for new files.
- * All acceptance paths (pass/reject/error) write an inbox message as their final step.
- */
-async function waitForAcceptance(
-  tempDir: string,
-  expectedCount = 1,
-  timeoutMs = 5000,
-): Promise<void> {
-  const inboxDir = path.join(tempDir, 'inbox', 'pending');
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    try {
-      const files = await fs.readdir(inboxDir);
-      if (files.filter(f => f.endsWith('.md')).length >= expectedCount) return;
-    } catch {}
-    await new Promise(r => setTimeout(r, 10));
-  }
-  throw new Error(`waitForAcceptance timed out after ${timeoutMs}ms`);
-}
-
-/**
  * Wait for ACCEPTANCE_BACKGROUND_DONE audit event for a specific contract/subtask.
  * Replaces fs polling for deterministic background completion detection.
  */
@@ -269,7 +248,7 @@ describe('ContractSystem Acceptance Flow', () => {
       });
 
       expect(result.async).toBe(true);
-      await waitForAcceptance(tempDir);
+      await waitForAcceptanceDone(auditEmitter, contractId, 'task-1');
 
       const inbox = await readClawInbox(tempDir);
       const rejections = inbox.filter(m => m.content.includes('acceptance_rejection'));
@@ -337,7 +316,7 @@ describe('ContractSystem Acceptance Flow', () => {
         evidence: 'test evidence',
       });
 
-      await waitForAcceptance(tempDir);
+      await waitForAcceptanceDone(auditEmitter, contractId, 'task-1');
 
       const progressPath = path.join(tempDir, 'contract', 'active', contractId, 'progress.json');
       const progress = JSON.parse(await fs.readFile(progressPath, 'utf-8'));
@@ -364,7 +343,7 @@ describe('ContractSystem Acceptance Flow', () => {
         evidence: 'test evidence',
       });
       expect(result.async).toBe(true);
-      await waitForAcceptance(tempDir);
+      await waitForAcceptanceDone(auditEmitter, contractId, 'task-1');
 
       const inbox = await readClawInbox(tempDir);
       const rejections = inbox.filter(m => m.content.includes('acceptance_rejection'));
@@ -382,7 +361,7 @@ describe('ContractSystem Acceptance Flow', () => {
       }));
 
       await manager.completeSubtask({ contractId, subtaskId: 'task-1', evidence: 'e' });
-      await waitForAcceptance(tempDir);
+      await waitForAcceptanceDone(auditEmitter, contractId, 'task-1');
 
       expect(logSpy).toHaveBeenCalledWith(
         CONTRACT_AUDIT_EVENTS.ACCEPTANCE_RESET_FAILED,
@@ -453,7 +432,7 @@ describe('ContractSystem Acceptance Flow', () => {
         evidence: 'test evidence',
       });
 
-      await waitForAcceptance(tempDir);
+      await waitForAcceptanceDone(auditEmitter, contractId, 'task-1');
 
       const progressPath = path.join(tempDir, 'contract', 'active', contractId, 'progress.json');
       const progress = JSON.parse(await fs.readFile(progressPath, 'utf-8'));
@@ -478,7 +457,7 @@ describe('ContractSystem Acceptance Flow', () => {
         evidence: 'test evidence',
       });
 
-      await waitForAcceptance(tempDir);
+      await waitForAcceptanceDone(auditEmitter, contractId, 'task-1');
 
       const inbox = await readClawInbox(tempDir);
       const rejections = inbox.filter(m => m.content.includes('acceptance_rejection'));
@@ -500,7 +479,7 @@ describe('ContractSystem Acceptance Flow', () => {
         evidence: 'test evidence',
       });
       expect(result.async).toBe(true);
-      await waitForAcceptance(tempDir);
+      await waitForAcceptanceDone(auditEmitter, contractId, 'task-1');
 
       const inbox = await readClawInbox(tempDir);
       const rejections = inbox.filter(m => m.content.includes('acceptance_rejection'));
@@ -525,7 +504,7 @@ describe('ContractSystem Acceptance Flow', () => {
         evidence: 'test evidence',
       });
       expect(result.async).toBe(true);
-      await waitForAcceptance(tempDir);
+      await waitForAcceptanceDone(auditEmitter, contractId, 'task-1');
 
       const inbox = await readClawInbox(tempDir);
       const rejections = inbox.filter(m => m.content.includes('acceptance_rejection'));
@@ -543,7 +522,7 @@ describe('ContractSystem Acceptance Flow', () => {
       }));
 
       await manager.completeSubtask({ contractId, subtaskId: 'task-1', evidence: 'e' });
-      await waitForAcceptance(tempDir);
+      await waitForAcceptanceDone(auditEmitter, contractId, 'task-1');
 
       expect(logSpy).toHaveBeenCalledWith(
         CONTRACT_AUDIT_EVENTS.ACCEPTANCE_RESET_FAILED,
@@ -619,7 +598,7 @@ describe('ContractSystem Acceptance Flow', () => {
       mockSubAgentRun.mockResolvedValue('I reviewed the evidence but cannot determine a verdict.');
 
       await manager.completeSubtask({ contractId, subtaskId: 'task-1', evidence: 'done' });
-      await waitForAcceptance(tempDir);
+      await waitForAcceptanceDone(auditEmitter, contractId, 'task-1');
 
       // 应以 rejected 写入 inbox，内容含 "无法解析 JSON"
       const inbox = await readClawInbox(tempDir);
@@ -655,7 +634,7 @@ describe('ContractSystem Acceptance Flow', () => {
       });
 
       await manager.completeSubtask({ contractId, subtaskId: 'task-1', evidence: 'done' });
-      await waitForAcceptance(tempDir);
+      await waitForAcceptanceDone(auditEmitter, contractId, 'task-1');
 
       // auditWriter 应收到 acceptance_timeout 日志
       const auditWriter = (manager as any).audit;
@@ -727,7 +706,7 @@ describe('ContractSystem Acceptance Flow', () => {
       execFileMockBehavior = 'success';
 
       await manager.completeSubtask({ contractId, subtaskId: 'task-1', evidence: 'done' });
-      await waitForAcceptance(tempDir);
+      await waitForAcceptanceDone(auditEmitter, contractId, 'task-1');
 
       const auditWriter = (manager as any).audit;
       expect(auditWriter.write).toHaveBeenCalledWith(
@@ -790,7 +769,7 @@ describe('ContractSystem Acceptance Flow', () => {
       execFileMockBehavior = 'success';
 
       await manager.completeSubtask({ contractId, subtaskId: 'task-1', evidence: 'done' });
-      await waitForAcceptance(tempDir);
+      await waitForAcceptanceDone(auditEmitter, contractId, 'task-1');
 
       const inbox = await readClawInbox(tempDir);
       expect(inbox).toHaveLength(1);
@@ -827,7 +806,7 @@ describe('ContractSystem Acceptance Flow', () => {
       execFileMockStderr = 'file not found';
 
       await manager.completeSubtask({ contractId, subtaskId: 'task-1', evidence: 'done' });
-      await waitForAcceptance(tempDir);
+      await waitForAcceptanceDone(auditEmitter, contractId, 'task-1');
 
       const inbox = await readClawInbox(tempDir);
       expect(inbox).toHaveLength(1);
