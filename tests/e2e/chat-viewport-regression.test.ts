@@ -102,9 +102,9 @@ async function setupFixture(options?: { agentDirPrefix?: string }): Promise<Regr
       fs,
       STREAM_FILE,
       (ev) => {
-        deliveryTimestamps.push({ type: ev.type, ts: performance.now() });
         ec.onEvent(ev);
         handleEventShim(ev, mainUI, observability);
+        deliveryTimestamps.push({ type: ev.type, ts: performance.now() });
       },
       audit.writer,
       { persistent: false, onReady: () => resolve(r) },
