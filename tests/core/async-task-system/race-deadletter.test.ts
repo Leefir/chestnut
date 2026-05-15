@@ -13,7 +13,8 @@ import type { AuditLog } from '../../../src/foundation/audit/index.js';
 
 vi.mock('../../../src/core/async-task-system/result-delivery.js', () => ({
   sendResult: vi.fn(),
-  sendFallbackError: vi.fn().mockResolvedValue(undefined),
+  sendFallbackError: vi.fn().mockRejectedValue(new Error('fallback failed')),
+  SENT_MARKER: (taskId: string) => `tasks/queues/results/${taskId}/result.txt.sent`,
 }));
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

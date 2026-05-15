@@ -355,7 +355,7 @@ describe('Task System + SubAgent', () => {
 
     it('should write task_completed err to audit when subagent times out', async () => {
       await taskSystem.shutdown(100);
-      const { audit, events } = makeAudit();
+      const { audit, events, emitter } = makeAudit();
       taskSystem = createTestTaskSystem(tempDir, mockFs, audit, createAbortableHangingMockLLM());
       await taskSystem.initialize();
       taskSystem.startDispatch();
@@ -381,6 +381,10 @@ describe('Task System + SubAgent', () => {
       expect(mdFiles.length).toBeGreaterThan(0);
       const inboxContent = await fs.readFile(path.join(inboxDir, mdFiles[0]), 'utf-8');
       expect(inboxContent).toContain('"is_error":true');
+
+      // phase 789: sendResult 末尾写 SENT_MARKER 引入额外 async 延迟，
+      // 显式等待 task_completed 避免 race（与 phase 779 Step C 同型）
+      await waitForAuditEvent(emitter, events, TASK_AUDIT_EVENTS.TASK_COMPLETED);
 
       // audit 中应有 task_completed err 事件
       expect(events).toEqual(

@@ -10,6 +10,23 @@ import { TASKS_QUEUES_RESULTS_DIR } from './dirs.js';
 import type { SubAgentTask, ToolTask } from './system.js';
 import type { ToolResult } from '../../foundation/tool-protocol/index.js';
 
+export const SENT_MARKER = (taskId: string): string =>
+  `${TASKS_QUEUES_RESULTS_DIR}/${taskId}/result.txt.sent`;
+
+async function writeSentMarker(fs: FileSystem, auditWriter: AuditLog, taskId: string): Promise<void> {
+  try {
+    await fs.writeAtomic(SENT_MARKER(taskId), '1');
+  } catch (markerErr) {
+    // 不 throw：marker 写失败仅影响 future recovery 重发（small race window），不影响当前 inbox 投递成功
+    auditWriter.write(
+      TASK_AUDIT_EVENTS.RESULT_WRITE_FAILED,
+      taskId,
+      'context=sent_marker_persist_failed',
+      `error=${formatErr(markerErr)}`,
+    );
+  }
+}
+
 /**
  * Send tool task result to parent claw's inbox
  * Large outputs are offloaded to TASKS_QUEUES_RESULTS_DIR/{taskId}.txt
@@ -160,6 +177,8 @@ export async function sendResult(
       });
       try {
         await new InboxWriter(fs, INBOX_PENDING_DIR, auditWriter).write({ ...baseMsg, content: inlineContent });
+        // phase 789: inline fallback success 也算 inbox 已投递 → 写 SENT_MARKER
+        await writeSentMarker(fs, auditWriter, task.id);
         return;
       } catch (inlineErr) {
         auditWriter.write(
@@ -175,6 +194,10 @@ export async function sendResult(
     auditWriter.write(TASK_AUDIT_EVENTS.INBOX_WRITE_FAILED, task.id, `error=${errMsg}`);
     throw err;  // Re-throw to allow caller fallback
   }
+  // phase 789 (audit-2026-05-14 P0.19): inbox 主路径 success → 原子写 SENT_MARKER
+  // SENT_MARKER 是「父 inbox 已投递关于本 task 的至少一条通知」的 idempotency token
+  // crash recovery 检 marker 决定是否跳重发
+  await writeSentMarker(fs, auditWriter, task.id);
 }
 
 /**
@@ -198,4 +221,13 @@ export async function sendFallbackError(
     timestamp: new Date().toISOString(),
   };
   await new InboxWriter(fs, INBOX_PENDING_DIR, auditWriter).write(msg);
+
+  // phase 789 (audit-2026-05-14 P0.20): SubAgentTask fallback inbox success → 写 SENT_MARKER
+  // 防止 next recovery 重发 sendResult 导致父 inbox 收 fallback + real result 双投递
+  // ToolTask 不写（无 SENT_MARKER 语义 / _recoverToolTask 仅 re-queue）
+  if (task.kind === 'subagent') {
+    const resultsDir = `${TASKS_QUEUES_RESULTS_DIR}/${task.id}`;
+    await fs.ensureDir(resultsDir).catch(() => { /* dir 可能已存 / 无害 */ });
+    await writeSentMarker(fs, auditWriter, task.id);
+  }
 }

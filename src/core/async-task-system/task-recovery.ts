@@ -11,13 +11,12 @@ import { TASKS_QUEUES_RESULTS_DIR, TASKS_SUBAGENTS_DIR } from './dirs.js';
 import { TASK_AUDIT_EVENTS } from './audit-events.js';
 import { formatErr } from './_helpers.js';
 import { FileNotFoundError } from '../../types/errors.js';
-import { sendFallbackError, sendResult } from './result-delivery.js';
+import { sendFallbackError, sendResult, SENT_MARKER } from './result-delivery.js';
 
 const RETRY_COUNT_PATH = (taskId: string) =>
   `${TASKS_QUEUES_RESULTS_DIR}/${taskId}/result.txt.retry-count`;
 const MAX_RECOVERY_RETRIES = 3;
-const SENT_MARKER = (taskId: string) =>
-  `${TASKS_QUEUES_RESULTS_DIR}/${taskId}/result.txt.sent`;
+// SENT_MARKER 迁 result-delivery.ts（写者归属 / phase 789）
 
 /** M9: 闭包 ≥ 4 依赖 → deps interface */
 export interface RecoverTasksDeps {
@@ -122,13 +121,27 @@ async function _recoverWithResult(
   const resultContent = await fs.read(resultPath);
   const resultSent = await sendResult(fs, auditWriter, task, resultContent, false)
     .then(() => true)
-    .catch((e) => {
+    .catch(async (e) => {
       auditWriter.write(TASK_AUDIT_EVENTS.RECOVERY_FAILED, task.id, 'context=resend_result_failed', `error=${formatErr(e)}`);
-      sendFallbackError(fs, auditWriter, task, 'Result resend failed after recovery').catch(() => {});
-      return false;
+      // phase 789 (audit-2026-05-14 P0.20): await sendFallbackError + 视作 sent
+      // 防止 fallback 成功后 next startup 重试 sendResult 导致父 inbox 双投递
+      // sendFallbackError 内会写 SENT_MARKER（phase 789 invariant）
+      try {
+        await sendFallbackError(fs, auditWriter, task, 'Result resend failed after recovery');
+        return true;  // fallback delivered = inbox-written 视作 sent
+      } catch (fallbackErr) {
+        auditWriter.write(
+          TASK_AUDIT_EVENTS.RECOVERY_FAILED,
+          task.id,
+          'context=fallback_send_failed',
+          `error=${formatErr(fallbackErr)}`,
+        );
+        return false;  // both failed → retry next startup
+      }
     });
 
   if (resultSent) {
+    // phase 789: sendResult 内已写过此 marker，本处是 defensive idempotent backup
     await fs.writeAtomic(SENT_MARKER(task.id), '1').catch((e) => {
       auditWriter.write(
         TASK_AUDIT_EVENTS.RECOVERY_FAILED,
