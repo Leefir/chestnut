@@ -11,7 +11,6 @@ import type { Message } from '../../types/message.js';
 import { TASKS_SYNC_SHADOW_DIR } from '../../types/paths.js';
 import { UUID_SHORT_LEN } from '../../constants.js';
 import { runSubagent } from '../subagent/index.js';
-import { DEFAULT_MAX_STEPS } from '../agent-executor/index.js';
 import { SHADOW_AUDIT_EVENTS } from './audit-events.js';
 import { synthesizeFormB, formatErr } from './_helpers.js';
 import type { BuildShadowInstructionArgs } from '../../prompts/shadow.js';
@@ -123,7 +122,7 @@ export async function runShadow(opts: RunShadowOptions): Promise<ToolResult> {
       systemPrompt: restoredSystemPrompt,
       messages: synthesizedMessages,
       resultDir,
-      maxSteps: opts.maxSteps ?? opts.ctx.subagentMaxSteps ?? DEFAULT_MAX_STEPS,
+      maxSteps: opts.maxSteps ?? opts.ctx.subagentMaxSteps ?? opts.ctx.maxSteps,
       timeoutMs: opts.timeoutMs ?? 300_000,
       resultTool: 'done',
       isShadow: true,

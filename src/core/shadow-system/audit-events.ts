@@ -8,6 +8,5 @@ export const SHADOW_AUDIT_EVENTS = {
   FINISHED: 'shadow_finished',
   FAILED: 'shadow_failed',
   PREFIX_RESTORED: 'shadow_prefix_restored',
-  CACHE_USAGE: 'shadow_cache_usage',
   RECURSION_REJECTED: 'shadow_recursion_rejected',
 } as const;

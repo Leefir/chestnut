@@ -12,7 +12,6 @@ import { TASKS_SYNC_SPAWN_DIR } from '../../types/paths.js';
 import { UUID_SHORT_LEN } from '../../constants.js';
 import { runSubagent } from '../subagent/index.js';
 import { DEFAULT_SUBAGENT_SYSTEM_PROMPT } from '../../prompts/subagent.js';
-import { DEFAULT_MAX_STEPS } from '../agent-executor/index.js';
 import { SPAWN_AUDIT_EVENTS } from './audit-events.js';
 import { formatErr } from './_helpers.js';
 import { createToolRegistry } from '../../foundation/tools/index.js';
@@ -59,7 +58,7 @@ export async function runSpawnSync(opts: RunSpawnSyncOptions): Promise<ToolResul
       prompt: opts.intent,
       systemPrompt: DEFAULT_SUBAGENT_SYSTEM_PROMPT,
       resultDir,
-      maxSteps: opts.maxSteps ?? opts.ctx.subagentMaxSteps ?? DEFAULT_MAX_STEPS,
+      maxSteps: opts.maxSteps ?? opts.ctx.subagentMaxSteps ?? opts.ctx.maxSteps,
       timeoutMs: opts.timeoutMs,
     });
 
