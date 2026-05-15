@@ -74,10 +74,10 @@ export interface RunSubagentResult {
 }
 
 export async function runSubagent(opts: RunSubagentOptions): Promise<RunSubagentResult> {
-  const workspaceDir = path.join(opts.clawDir, TASKS_SUBAGENTS_DIR, opts.agentId);
+  const subagentWorkspaceDir = path.join(opts.clawDir, TASKS_SUBAGENTS_DIR, opts.agentId);
 
   await opts.fs.ensureDir(opts.resultDir);
-  await opts.fs.ensureDir(workspaceDir);
+  await opts.fs.ensureDir(subagentWorkspaceDir);
 
   // audit + stream writer 自治创建（M#3 SubAgent 模块 own sync subagent disk schema）
   const auditWriter = createAuditWriter(opts.fs, `${opts.resultDir}/audit.tsv`);
@@ -95,7 +95,7 @@ export async function runSubagent(opts: RunSubagentOptions): Promise<RunSubagent
   // tools for LLM — caller 可 override；默认用 registry 全量（caller 已负责 profile filter）
   const toolsForLLM = opts.toolsForLLM ?? opts.registry.formatForLLM(opts.registry.getAll());
 
-  // workspace shared with caller workspace dir 路径决策（mirror async / verifier 既有 phase 518 决策）
+  // workspace shared with caller workspaceDir 路径决策（mirror async / verifier 既有 phase 518 决策）
   const sharedWorkspaceDir = path.join(opts.clawDir, 'clawspace');
 
   const agent = new SubAgent({
