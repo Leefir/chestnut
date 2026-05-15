@@ -36,11 +36,11 @@ export const multiEditTool: Tool = {
     properties: {
       path: {
         type: 'string',
-        description: 'File path (default base: workspace dir)',
+        description: 'File path (default base: workspace root)',
       },
       cwd: {
         type: 'string',
-        description: 'Override base for path resolution (relative to workspace root, or absolute, with ".." to escape workspace to claw root). Default: agent workspace dir.',
+        description: 'Override base for path resolution (relative to workspace root, or absolute, with ".." to escape workspace to claw root). Default: workspace root.',
       },
       edits: {
         type: 'array',

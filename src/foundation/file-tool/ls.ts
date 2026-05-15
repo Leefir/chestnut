@@ -24,11 +24,11 @@ export const lsTool: Tool = {
     properties: {
       path: {
         type: 'string',
-        description: 'Directory path to list (default base: workspace dir)',
+        description: 'Directory path to list (default base: workspace root)',
       },
       cwd: {
         type: 'string',
-        description: 'Override base for path resolution (relative to workspace root, or absolute, with ".." to escape workspace to claw root). Default: agent workspace dir.',
+        description: 'Override base for path resolution (relative to workspace root, or absolute, with ".." to escape workspace to claw root). Default: workspace root.',
       },
       claw: {
         type: 'string',

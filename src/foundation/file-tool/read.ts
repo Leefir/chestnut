@@ -24,7 +24,7 @@ export const readTool: Tool = {
     properties: {
       path: {
         type: 'string',
-        description: 'File path (default base: workspace dir)',
+        description: 'File path (default base: workspace root)',
       },
       cwd: {
         type: 'string',

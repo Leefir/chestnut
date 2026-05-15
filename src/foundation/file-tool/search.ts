@@ -55,7 +55,7 @@ export { SEARCH_TOOL_NAME };
 
 export const searchTool: Tool = {
   name: SEARCH_TOOL_NAME,
-  description: 'Search for text in LOCAL files only (not web/network). Returns file:line: content matches, case-insensitive, default max 5 results. Default search path: agent workspace dir. Use `claw: "<id>"` to search another claw\'s resources (read-only). `claw: "*"` (broadcast across all claws) is Motion-only.',
+  description: 'Search for text in LOCAL files only (not web/network). Returns file:line: content matches, case-insensitive, default max 5 results. Default search path: workspace root. Use `claw: "<id>"` to search another claw\'s resources (read-only). `claw: "*"` (broadcast across all claws) is Motion-only.',
   schema: {
     type: 'object',
     properties: {
@@ -65,11 +65,11 @@ export const searchTool: Tool = {
       },
       path: {
         type: 'string',
-        description: 'Directory to search in (default base: workspace dir)',
+        description: 'Directory to search in (default base: workspace root)',
       },
       cwd: {
         type: 'string',
-        description: 'Override base for path resolution (relative to workspace root, or absolute, with ".." to escape workspace to claw root). Default: agent workspace dir.',
+        description: 'Override base for path resolution (relative to workspace root, or absolute, with ".." to escape workspace to claw root). Default: workspace root.',
       },
       max_results: {
         type: 'number',
