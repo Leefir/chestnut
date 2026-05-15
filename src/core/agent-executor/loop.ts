@@ -44,7 +44,10 @@ export interface ReactOptions {
 export interface ReactResult {
   finalText: string;
   stepsUsed: number;
-  stopReason: 'end_turn' | 'no_tool' | 'max_tokens';
+  // phase 788: 'unknown' propagate（audit-2026-05-14 P0.15）
+  // LLM 返 unrecognized stop_reason（refusal、content_filter、safety、stop_sequence 等）
+  // 经 step-executor 映射 'unknown'，本字段保留 'unknown' 给 caller 区分 true end_turn
+  stopReason: 'end_turn' | 'no_tool' | 'max_tokens' | 'unknown';
 }
 
 export async function runReact(options: ReactOptions): Promise<ReactResult> {
@@ -105,8 +108,9 @@ export async function runReact(options: ReactOptions): Promise<ReactResult> {
 
 function mapStopReason(
   r: 'end_turn' | 'max_tokens_text' | 'no_tool' | 'unknown'
-): 'end_turn' | 'no_tool' | 'max_tokens' {
+): 'end_turn' | 'no_tool' | 'max_tokens' | 'unknown' {
   if (r === 'max_tokens_text') return 'max_tokens';
   if (r === 'no_tool') return 'no_tool';
-  return 'end_turn';  // 'unknown' 和 'end_turn' 归一到 'end_turn'
+  if (r === 'unknown') return 'unknown';   // phase 788: propagate refusal/safety/etc 不折叠 end_turn
+  return 'end_turn';  // 默 'end_turn'（仅 true end_turn 到达）
 }

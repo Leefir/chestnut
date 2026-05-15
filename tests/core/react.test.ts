@@ -1069,4 +1069,29 @@ describe('ReAct Loop', () => {
     });
   });
 
+  // Step B: unknown stop_reason propagation (phase 788 / P0.15)
+  it('propagates unknown stop_reason instead of collapsing to end_turn (phase 788 / P0.15)', async () => {
+    // Mock LLM returning unrecognized stop_reason (e.g., refusal/safety/content_filter)
+    (mockLLM.stream as ReturnType<typeof vi.fn>).mockImplementationOnce(async function* () {
+      yield { type: 'text_delta', delta: 'partial refused response' };
+      yield { type: 'done', stopReason: 'content_filter' };
+    });
+
+    const messages: Message[] = [{ role: 'user', content: 'Trigger refusal' }];
+
+    const result = await runReact({
+      messages,
+      systemPrompt: '',
+      llm: mockLLM,
+      executor: mockExecutor,
+      ctx: mockCtx,
+      maxSteps: 5,
+    });
+
+    // Verify: stopReason propagates as 'unknown' (not collapsed to 'end_turn')
+    expect(result.stopReason).toBe('unknown');
+    // finalText still has partial content
+    expect(result.finalText).toContain('partial refused response');
+  });
+
 });
