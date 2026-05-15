@@ -7,7 +7,7 @@
  */
 
 import { runSubagent } from '../subagent/index.js';
-import { ReportResultTool } from '../../foundation/tools/report-result.js';
+import { ReportResultTool } from './tools/report-result.js';
 import { createToolRegistry } from '../../foundation/tools/index.js';
 import { ToolTimeoutError } from '../../types/errors.js';
 import { TASKS_SYNC_SUBAGENT_DIR } from '../../types/paths.js';
