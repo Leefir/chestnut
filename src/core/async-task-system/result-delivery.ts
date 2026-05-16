@@ -17,7 +17,7 @@ async function writeSentMarker(fs: FileSystem, auditWriter: AuditLog, taskId: st
   try {
     await fs.writeAtomic(SENT_MARKER(taskId), '1');
   } catch (markerErr) {
-    // 不 throw：marker 写失败仅影响 future recovery 重发（small race window），不影响当前 inbox 投递成功
+    // 不 throw：marker 写失败仅影响 future recovery 重发 → at-least-once 投递（≤ 10ms race window 已 design ratify ⚓ accepted-stable by phase 875、consumer 容忍重发、详 design/modules/l4_async_task_system.md §7.B B.sent-marker-residual-race-window）
     auditWriter.write(
       TASK_AUDIT_EVENTS.RESULT_WRITE_FAILED,
       taskId,
