@@ -62,6 +62,7 @@ export function createMainTurnUI(deps: MainTurnUIDeps): MainTurnUIController {
   let spinnerTimer: ReturnType<typeof setInterval> | null = null;
   let spinnerFrame = 0;
   let spinnerStartTs = 0;
+  let spinnerStopTs = 0;   // phase 881: last stopSpinnerNow time / dwell-aware restart 用
   let pendingClearTimer: ReturnType<typeof setTimeout> | null = null;
   let currentScope: 'main' | 'task' | 'system' | null = null;
 
@@ -106,6 +107,7 @@ export function createMainTurnUI(deps: MainTurnUIDeps): MainTurnUIController {
     }
     clearInterval(spinnerTimer);
     spinnerTimer = null;
+    spinnerStopTs = Date.now();
     deps.observability?.recordSpinner('stop', statusLabel);
     statusText = '';
     statusLabel = '';
@@ -121,9 +123,18 @@ export function createMainTurnUI(deps: MainTurnUIDeps): MainTurnUIController {
       }
       return;
     }
+    // phase 881 / new.P1.2: dwell-aware restart 防 spinner cycle 闪烁
+    // 若距上次 stopSpinnerNow < MIN_DWELL_MS（连续 phase 切换路径）→ continuity 保
+    // 用虚拟 spinnerStartTs 让下次 stopWithDwell 仍 defer，避免 fresh dwell counter 重启
+    const now = Date.now();
+    if (spinnerStopTs !== 0 && now - spinnerStopTs < MIN_DWELL_MS) {
+      // continuity 保：spinnerStartTs 不重置为 now，用虚拟 elapsed 接续上次 dwell 进度
+      spinnerStartTs = now - (MIN_DWELL_MS - 1);
+    } else {
+      spinnerStartTs = now;
+    }
     statusLabel = label;
     spinnerFrame = 0;
-    spinnerStartTs = Date.now();
     deps.observability?.recordSpinner('start', label);
     spinnerTimer = setInterval(renderStatusFrame, SPINNER_INTERVAL_MS);
     spinnerTimer.unref();

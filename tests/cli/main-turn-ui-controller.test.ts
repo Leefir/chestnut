@@ -216,4 +216,63 @@ describe('MainTurnUIController', () => {
     mainUI.enterPhase('running_tool', 'foo');
     expect(mainUI.getPhase()).toBe('running_tool');
   });
+
+  // —— phase 881: fresh-restart dwell continuity ——
+  describe('phase 881: fresh-restart dwell continuity', () => {
+    beforeEach(() => { vi.useFakeTimers(); });
+    afterEach(() => { vi.useRealTimers(); });
+
+    it('fresh-restart within MIN_DWELL_MS preserves dwell continuity', () => {
+      const recordSpinner = vi.fn();
+      const deps = makeDeps();
+      const ui = createMainTurnUI({ ...deps, observability: { recordSpinner } });
+
+      // cycle 1: start → stop with dwell defer
+      ui.enterPhase('waiting_llm');
+      vi.advanceTimersByTime(50);
+      ui.enterPhase('streaming_text');   // stopSpinnerWithDwell, schedule pendingClearTimer 150ms
+      // cycle 1 真 stop at T0+200
+      vi.advanceTimersByTime(150);
+      // 此时 pendingClearTimer fired, stopSpinnerNow ran, spinnerStopTs ≈ T0+200
+
+      // cycle 2: fresh restart at T0+205 (within MIN_DWELL_MS=200 from stop)
+      vi.advanceTimersByTime(5);
+      ui.enterPhase('waiting_llm');   // startSpinner fresh 分支
+      // continuity 分支应触发：spinnerStartTs ≈ T0+6 (virtual, T0+205 - 199)
+
+      // cycle 2 内 quick stop at T0+220 (15ms after restart)
+      vi.advanceTimersByTime(15);
+      ui.enterPhase('streaming_text');   // stopSpinnerWithDwell
+      // 由于 continuity 保，elapsed (T0+220 - T0+6) = 214 ≥ MIN_DWELL_MS → immediate stop ✓
+      // 验：stopSpinner 立即触发（不再 schedule pendingClearTimer）
+      expect(recordSpinner).toHaveBeenCalledWith('stop', expect.any(String));
+      expect(recordSpinner.mock.calls.filter(c => c[0] === 'stop').length).toBe(2);
+    });
+
+    it('fresh-restart after MIN_DWELL_MS starts new cycle', () => {
+      const recordSpinner = vi.fn();
+      const deps = makeDeps();
+      const ui = createMainTurnUI({ ...deps, observability: { recordSpinner } });
+
+      // cycle 1
+      ui.enterPhase('waiting_llm');
+      vi.advanceTimersByTime(200);
+      ui.enterPhase('streaming_text');   // elapsed=200 ≥ MIN → stop immediate
+      // 此时 spinnerStopTs ≈ T0+200
+
+      // cycle 2: 等 1 秒后 start（> MIN_DWELL_MS from stop）
+      vi.advanceTimersByTime(1000);
+      ui.enterPhase('waiting_llm');   // fresh 分支：真新 cycle
+      // spinnerStartTs ≈ T0+1200 (now)
+
+      // cycle 2 quick stop at T0+1220
+      vi.advanceTimersByTime(20);
+      ui.enterPhase('streaming_text');
+      // elapsed=20 < MIN_DWELL → schedule pendingClearTimer 180ms
+      // 验：stop 未立即触发（pendingClearTimer scheduled）
+      expect(recordSpinner.mock.calls.filter(c => c[0] === 'stop').length).toBe(1);   // cycle 1 stop only
+      vi.advanceTimersByTime(180);
+      expect(recordSpinner.mock.calls.filter(c => c[0] === 'stop').length).toBe(2);   // cycle 2 stop after dwell
+    });
+  });
 });
