@@ -10,6 +10,7 @@ export const CONTRACT_AUDIT_EVENTS = {
   LOCK_CLEARED: 'contract_lock_cleared',
   LOCK_UNLINK_FAILED: 'contract_lock_unlink_failed',
   LOCK_SCHEMA_INVALID: 'contract_lock_schema_invalid',   // ← NEW (phase 576)
+  LOCK_CLEANUP_FAILED: 'contract_lock_cleanup_failed',   // ← NEW (phase 850 / r108 F fork F2.1)
   PROGRESS_SCHEMA_INVALID: 'contract_progress_schema_invalid',  // ← NEW (phase 587)
   CONTRACT_YAML_SCHEMA_INVALID: 'contract_yaml_schema_invalid', // ← NEW (phase 587)
   PROGRESS_CORRUPTED: 'contract_progress_corrupted',

@@ -60,7 +60,7 @@ export async function executeToolTask(
       );
       // tool_async_result：仅当 toolUseId 已记录时写入
       if (task.toolUseId) {
-        auditWriter.write('tool_async_result', task.toolName, task.toolUseId, `task=${task.id}`);
+        auditWriter.write(TASK_AUDIT_EVENTS.TOOL_ASYNC_RESULT, task.toolName, task.toolUseId, `task=${task.id}`);
       }
       break; // Exit retry loop on success
     } catch (error) {

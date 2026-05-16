@@ -85,7 +85,7 @@ export async function unlinkStaleLock(ctx: LockContext, lockPath: string, reason
   } catch (err: any) {
     if (err instanceof FileNotFoundError) return true;
     ctx.audit.write(
-      'contract_lock_cleanup_failed',
+      CONTRACT_AUDIT_EVENTS.LOCK_CLEANUP_FAILED,
       reason,
       err?.code ?? 'unknown',
       err?.message ?? String(err),
