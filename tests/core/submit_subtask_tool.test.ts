@@ -34,7 +34,7 @@ describe('submitSubtaskTool', () => {
   beforeEach(async () => {
     testDir = path.join(
       os.tmpdir(),
-      `.test-done-tool-${process.pid}-${Math.random().toString(36).slice(2, 10)}`,
+      `.test-submit-subtask-${process.pid}-${Math.random().toString(36).slice(2, 10)}`,
     );
     clawDir = path.join(testDir, 'claws', 'test-claw');
     await fs.rm(testDir, { recursive: true, force: true }).catch(() => {});
