@@ -114,7 +114,6 @@ describe('Heartbeat', () => {
         heartbeat.fire();
         vi.setSystemTime(new Date(2026, 0, 1, 0, 0, 0, 100)); // +100ms 确保不同时间戳
         heartbeat.fire();
-        vi.useRealTimers();
 
         const inboxDir = path.join(tempDir, 'motion', 'inbox', 'pending');
         const files = fs.readdirSync(inboxDir).filter(f => f.endsWith('.md'));
@@ -139,7 +138,6 @@ describe('Heartbeat', () => {
         vi.useFakeTimers({ shouldAdvanceTime: false });
         vi.setSystemTime(new Date(2026, 0, 1, 0, 0, 1, 0)); // +1s 确保不同时间戳
         heartbeat.fire();
-        vi.useRealTimers();
         files = fs.readdirSync(inboxDir).filter(f => f.endsWith('.md'));
         expect(files.length).toBe(1);
       });
