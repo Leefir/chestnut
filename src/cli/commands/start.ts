@@ -23,6 +23,7 @@ import { createProcessManagerForCLI } from '../utils/factories.js';
 import { ContractSystem } from '../../core/contract/index.js';
 import { createToolRegistry } from '../../foundation/tools/index.js';
 import { createDirContext } from '../utils/factories.js';
+import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import { InboxWriter } from '../../foundation/messaging/index.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
@@ -30,7 +31,6 @@ import { PROCESS_SPAWN_CONFIRM_MS } from '../../foundation/process-manager/index
 import { CliError } from '../errors.js';
 import { getWorkspaceRoot } from '../../foundation/config/paths.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
-import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 import { startCommand as watchdogStart, isWatchdogAlive } from '../../watchdog/watchdog.js';
 import { CONTRACT_ACTIVE_DIR, CONTRACT_PAUSED_DIR, CONTRACT_ARCHIVE_DIR } from '../../core/contract/index.js';
 import { LOGS_DIR } from '../../types/paths.js';
@@ -406,7 +406,16 @@ async function _start(audit?: AuditLog): Promise<void> {
         await new Promise(r => setTimeout(r, PROCESS_SPAWN_CONFIRM_MS));
       }
     })();
-    daemonReady.catch(() => {}); // 防止并行期间 UnhandledPromiseRejection；await 时仍正确 rethrow
+    daemonReady.catch((err: unknown) => {
+      // 防止并行期间 UnhandledPromiseRejection；同时留 audit row 防 pickLanguage 异常导致 await daemonReady 永不达
+      // 正常路径 line 412 `await daemonReady` 仍正确 rethrow → handleCliError 走规范路径
+      const errMsg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      notifyAudit?.write(
+        CLI_AUDIT_EVENTS.DAEMON_SPAWN_RACE_FAILED,
+        `context=first_run_parallel_pickLanguage`,
+        `error=${errMsg}`,
+      );
+    });
 
     const language = await pickLanguage();
     await daemonReady;

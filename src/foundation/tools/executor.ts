@@ -143,7 +143,18 @@ export class ToolExecutorImpl implements IToolExecutor {
 
     const ctxWithSignal = cloneExecContext(ctx, { signal: mergedSignal, currentToolUseId: options.toolUseId });
     const executionPromise = tool.execute(args, ctxWithSignal);
-    executionPromise.catch(() => {});
+    executionPromise.catch((err: unknown) => {
+      // race loser audit：execution 真实抛错但 timeoutPromise 先 race 赢、winner audit 仅记 ToolTimeoutError、
+      // 此处补 loser 真实 root cause 留痕（D2 信息不丢失）/ 沿 phase 614 inline 'tool_exec' 模板、0 NEW const
+      const errMsg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      ctx.auditWriter?.write(
+        'tool_exec_race_loser',
+        toolName,
+        'err',
+        'context=execution_after_timeout',
+        `error=${escapeForLog(errMsg)}`,
+      );
+    });
 
     let result: ToolResult | undefined;
     try {
