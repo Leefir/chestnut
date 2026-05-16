@@ -20,6 +20,7 @@ import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { makeExecContext } from '../helpers/exec-context.js';
 
 // ── Mock factories ──────────────────────────────────────────────────────────
 
@@ -65,16 +66,7 @@ function makeRegistry(map: Record<string, { readonly: boolean }>): ToolRegistry 
 }
 
 function makeCtx(): ExecContext {
-  return {
-    clawId: 'test-claw',
-    clawDir: '/test',
-    profile: 'full',
-    fs: {} as any,
-    stepNumber: 0,
-    maxSteps: 20,
-    getElapsedMs: () => 0,
-    incrementStep: vi.fn(function (this: { stepNumber: number }) { this.stepNumber++; }),
-  } as unknown as ExecContext;
+  return makeExecContext();
 }
 
 /** Yield two tool_use blocks; first has malformed JSON, second is valid */

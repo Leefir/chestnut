@@ -12,6 +12,7 @@ import type { StreamChunk } from '../../../src/foundation/llm-orchestrator/types
 import type { LLMResponse, Message } from '../../../src/types/message.js';
 import type { ExecContext, ToolResult } from '../../../src/foundation/tool-protocol/index.js';
 import type { IToolExecutor, ToolRegistry } from '../../../src/foundation/tools/executor.js';
+import { makeExecContext } from '../../helpers/exec-context.js';
 
 // ── Mock factories ──────────────────────────────────────────────────────────
 
@@ -57,16 +58,7 @@ function makeRegistry(): ToolRegistry {
 }
 
 function makeCtx(): ExecContext {
-  return {
-    clawId: 'test-claw',
-    clawDir: '/test',
-    profile: 'full',
-    fs: {} as any,
-    stepNumber: 0,
-    maxSteps: 20,
-    getElapsedMs: () => 0,
-    incrementStep: vi.fn(function (this: { stepNumber: number }) { this.stepNumber++; }),
-  } as unknown as ExecContext;
+  return makeExecContext();
 }
 
 // ── Tests ───────────────────────────────────────────────────────────────────

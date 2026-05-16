@@ -10,6 +10,7 @@ import type { Message, ContentBlock, LLMResponse, ToolDefinition } from '../../s
 import type { LLMOrchestrator } from '../../src/foundation/llm-orchestrator/index.js';
 import type { StreamChunk } from '../../src/foundation/llm-orchestrator/types.js';
 import type { ExecContext } from '../../src/foundation/tool-protocol/index.js';
+import { makeExecContext } from '../helpers/exec-context.js';
 import type { IToolExecutor } from '../../src/foundation/tools/executor.js';
 import { MaxStepsExceededError } from '../../src/types/errors.js';
 
@@ -69,16 +70,7 @@ describe('ReAct Loop', () => {
       validateArgs: vi.fn(),
     } as unknown as IToolExecutor;
 
-    mockCtx = {
-      clawId: 'test-claw',
-      clawDir: '/test',
-      profile: 'full',
-      fs: {} as any,
-      stepNumber: 0,
-      maxSteps: 100,
-      getElapsedMs: () => 0,
-      incrementStep: vi.fn(function(this: { stepNumber: number }) { this.stepNumber++; }),
-    } as unknown as ExecContext;
+    mockCtx = makeExecContext({ maxSteps: 100 });
   });
 
   function createTextResponse(text: string): LLMResponse {

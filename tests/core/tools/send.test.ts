@@ -13,20 +13,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createSendTool } from '../../../src/foundation/messaging/tools/send.js';
 import type { ExecContext } from '../../../src/foundation/tool-protocol/index.js';
 import type { OutboxWriter } from '../../../src/foundation/messaging/index.js';
+import { makeExecContext } from '../../helpers/exec-context.js';
 
 function createMockCtx(): ExecContext {
-  return {
-    clawId: 'test-claw',
-    clawDir: '/tmp/test-claw',
-    callerType: 'claw',
-    fs: {} as any,
-    profile: {} as any,
-    stepNumber: 1,
-    maxSteps: 10,
-    isMotionChain: false,
-    getElapsedMs: () => 0,
-    incrementStep: () => {},
-  } as unknown as ExecContext;
+  return makeExecContext({ stepNumber: 1, maxSteps: 10 });
 }
 
 describe('sendTool', () => {

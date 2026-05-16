@@ -5,6 +5,7 @@ import type { Gateway, GatewayInput } from '../../src/core/gateway/index.js';
 import type { Transport, Connection } from '../../src/foundation/transport/index.js';
 import type { StreamReader, StreamEvent } from '../../src/foundation/stream/index.js';
 import type { ExecContext } from '../../src/foundation/tools/index.js';
+import { makeExecContext } from '../helpers/exec-context.js';
 
 function mockAudit() {
   return { write: vi.fn() };
@@ -95,9 +96,7 @@ function createStubStreamReaderFactory(): {
 }
 
 function mockCtx(signal?: AbortSignal): ExecContext {
-  return {
-    signal,
-  } as unknown as ExecContext;
+  return makeExecContext({ signal });
 }
 
 function getBroadcastPayloads(transport: ReturnType<typeof createStubTransport>): unknown[] {
@@ -393,7 +392,7 @@ describe('createAskUserTool', () => {
     };
     const tool = createAskUserTool(mockGateway as unknown as Gateway);
 
-    const ctx = { signal: undefined } as unknown as ExecContext;
+    const ctx = makeExecContext({ signal: undefined });
     const result = await tool.execute({ question: 'test?' }, ctx);
 
     expect(mockGateway.askUser).toHaveBeenCalledWith('test?', ctx);

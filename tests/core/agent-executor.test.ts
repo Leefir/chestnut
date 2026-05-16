@@ -14,6 +14,7 @@ import type { LLMResponse, Message } from '../../src/types/message.js';
 import type { ExecContext, ToolResult } from '../../src/foundation/tool-protocol/index.js';
 import type { IToolExecutor, ToolRegistry } from '../../src/foundation/tools/executor.js';
 import type { FileSystem } from '../../src/foundation/fs/types.js';
+import { makeExecContext } from '../helpers/exec-context.js';
 
 // ── Mock factories ──────────────────────────────────────────────────────────
 
@@ -59,16 +60,7 @@ function makeRegistry(map: Record<string, { readonly: boolean }>): ToolRegistry 
 }
 
 function makeCtx(): ExecContext {
-  return {
-    clawId: 'test-claw',
-    clawDir: '/test',
-    profile: 'full',
-    fs: {} as unknown as FileSystem,  // not exercised in this test scope (agent-executor doesn't access fs directly)
-    stepNumber: 0,
-    maxSteps: 20,
-    getElapsedMs: () => 0,
-    incrementStep: vi.fn(function (this: { stepNumber: number }) { this.stepNumber++; }),
-  } as unknown as ExecContext;
+  return makeExecContext();
 }
 
 /** LLM that yields malformed JSON for every tool_use in a sequence of responses */
