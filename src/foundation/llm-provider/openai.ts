@@ -51,6 +51,8 @@ interface OpenAIRequest {
     };
   }>;
   stream?: boolean;
+  /** OpenAI o1/o3 系列模型 reasoning effort 档位（v1 spec 3 档）*/
+  reasoning_effort?: 'low' | 'medium' | 'high';
 }
 
 /**
@@ -125,7 +127,7 @@ export class OpenAIAdapter implements ProviderAdapter {
     }
 
     if (this.config.reasoningEffort) {
-      (body as unknown as Record<string, unknown>).reasoning_effort = this.config.reasoningEffort;
+      body.reasoning_effort = this.config.reasoningEffort;
     }
 
     if (tools && tools.length > 0) {
@@ -190,7 +192,7 @@ export class OpenAIAdapter implements ProviderAdapter {
     if (temperature !== undefined) body.temperature = temperature;
     else if (this.config.temperature !== undefined) body.temperature = this.config.temperature;
     if (this.config.reasoningEffort) {
-      (body as unknown as Record<string, unknown>).reasoning_effort = this.config.reasoningEffort;
+      body.reasoning_effort = this.config.reasoningEffort;
     }
     if (tools && tools.length > 0) {
       body.tools = formatTools(tools);
