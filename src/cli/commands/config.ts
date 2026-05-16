@@ -199,6 +199,9 @@ async function providerAdd(): Promise<void> {
       const posDefault = String(currentFallbacks.length + 1);
       const posStr = await question(rl, 'Position', posDefault);
       const position = parseInt(posStr, 10) - 1;
+      if (Number.isNaN(position) || position < 0 || position > currentFallbacks.length) {
+        throw new CliError(`Position must be 1-${currentFallbacks.length + 1}, got: ${posStr}`);
+      }
       
       // Insert at position
       const newFallbacks = [...currentFallbacks];
@@ -321,8 +324,8 @@ async function providerMove(label: string, position: string): Promise<void> {
   const newPos = parseInt(position, 10) - 1;
   const fallbacks = config.llm.fallbacks!;
   
-  if (newPos < 0 || newPos >= fallbacks.length) {
-    throw new CliError(`Invalid position. Must be 1-${fallbacks.length}`);
+  if (Number.isNaN(newPos) || newPos < 0 || newPos >= fallbacks.length) {
+    throw new CliError(`Invalid position. Must be 1-${fallbacks.length}, got: ${position}`);
   }
   
   // Move element
