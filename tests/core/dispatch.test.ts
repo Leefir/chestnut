@@ -11,16 +11,10 @@ import { buildMinerSystemPrompt } from '../../src/prompts/mining.js';
 import { dispatchContractExtractPostProcessor } from '../../src/core/async-task-system/post-processors/dispatch-contract-extract.js';
 import { ExecContextImpl } from '../../src/foundation/tools/context.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
+import { TASKS_QUEUES_PENDING_DIR } from '../../src/types/paths.js';
+import { TASK_AUDIT_EVENTS } from '../../src/core/async-task-system/audit-events.js';
 import type { Message } from '../../src/types/message.js';
 import type { LLMOrchestrator } from '../../src/foundation/llm-orchestrator/index.js';
-
-const { mockWriteFile } = vi.hoisted(() => ({
-  mockWriteFile: vi.fn(),
-}));
-
-vi.mock('../../src/core/async-task-system/tools/_pending-task-writer.js', () => ({
-  writePendingSubagentTaskFile: mockWriteFile,
-}));
 
 async function createTempDir(): Promise<string> {
   const d = path.join(tmpdir(), `dispatch-test-${randomUUID()}`);
@@ -28,23 +22,31 @@ async function createTempDir(): Promise<string> {
   return d;
 }
 
+async function readPendingTasks(baseDir: string): Promise<Array<Record<string, unknown>>> {
+  const dir = path.join(baseDir, TASKS_QUEUES_PENDING_DIR);
+  try {
+    const files = (await fs.readdir(dir)).filter(f => f.endsWith('.json'));
+    return Promise.all(files.map(async f => JSON.parse(await fs.readFile(path.join(dir, f), 'utf-8'))));
+  } catch {
+    return [];
+  }
+}
+
 describe('DispatchTool', () => {
   let tempDir: string;
   let mockFs: NodeFileSystem;
+  let auditEvents: Array<{ type: string; args: unknown[] }>;
   let tool: DispatchTool;
 
   beforeEach(async () => {
     tempDir = await createTempDir();
     mockFs = new NodeFileSystem({ baseDir: tempDir });
+    auditEvents = [];
     tool = new DispatchTool(
       async () => 'mock system prompt',
       () => [{ name: 'mock_tool', description: 'Mock tool', input_schema: { type: 'object' } }],
       () => [{ name: 'mock_tool', description: 'Mock tool', input_schema: { type: 'object' } }],
     );
-  });
-
-  beforeEach(() => {
-    mockWriteFile.mockReset();
   });
 
   afterEach(async () => {
@@ -58,33 +60,38 @@ describe('DispatchTool', () => {
       profile: 'full',
       callerType,
       fs: mockFs,
-      llm: {} as unknown as LLMOrchestrator,  // not exercised - dispatch tool routes to TaskSystem
+      llm: {} as unknown as LLMOrchestrator,
       originClawId: options?.originClawId,
       dialogMessages: options?.dialogMessages,
+      auditWriter: {
+        write: (type: string, ...args: unknown[]) => { auditEvents.push({ type, args }); },
+      } as any,
     });
   }
 
   it('should allow dispatch when callerType is claw', async () => {
-    mockWriteFile.mockResolvedValue('task-123');
     const ctx = makeCtx('claw');
     const result = await tool.execute({ goal: 'do something' }, ctx);
 
     expect(result.success).toBe(true);
-    expect(result.content).toContain('task-123');
-    expect(mockWriteFile).toHaveBeenCalledTimes(1);
-    expect(mockWriteFile.mock.calls[0][2]).toMatchObject({
+    const tasks = await readPendingTasks(tempDir);
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]).toMatchObject({
       intent: expect.stringContaining('do something'),
       kind: 'subagent',
     });
+    expect(result.content).toContain(tasks[0].id);
+    expect(auditEvents.find(e => e.type === TASK_AUDIT_EVENTS.TASK_SCHEDULED)).toBeDefined();
   });
 
   it('should pass postProcessor field to scheduleSubAgent', async () => {
-    mockWriteFile.mockResolvedValue('task-pp');
     const ctx = makeCtx('claw');
     await tool.execute({ goal: 'test postProcessor' }, ctx);
 
-    const call = mockWriteFile.mock.calls[0][2];
-    expect(call.postProcessor).toBe('dispatch-contract-extract');
+    const tasks = await readPendingTasks(tempDir);
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].postProcessor).toBe('dispatch-contract-extract');
+    expect(auditEvents.find(e => e.type === TASK_AUDIT_EVENTS.TASK_SCHEDULED)).toBeDefined();
   });
 
   it('should succeed when dispatch-skills directory exists', async () => {
@@ -100,21 +107,24 @@ Content.
 `
     );
 
-    mockWriteFile.mockResolvedValue('task-abc');
     const ctx = makeCtx('claw');
     const result = await tool.execute({ goal: 'generate report' }, ctx);
 
     expect(result.success).toBe(true);
-    expect(result.content).toContain('task-abc');
+    const tasks = await readPendingTasks(tempDir);
+    expect(tasks).toHaveLength(1);
+    expect(result.content).toContain(tasks[0].id);
+    expect(auditEvents.find(e => e.type === TASK_AUDIT_EVENTS.TASK_SCHEDULED)).toBeDefined();
   });
 
   it('should succeed without dispatch-skills directory', async () => {
-    mockWriteFile.mockResolvedValue('task-xyz');
     const ctx = makeCtx('claw');
     const result = await tool.execute({ goal: 'some task' }, ctx);
 
     expect(result.success).toBe(true);
-    expect(result.content).toContain('task-xyz');
+    const tasks = await readPendingTasks(tempDir);
+    expect(tasks).toHaveLength(1);
+    expect(result.content).toContain(tasks[0].id);
   });
 
   describe('dialogMessages', () => {
@@ -123,13 +133,13 @@ Content.
         { role: 'user', content: 'Hello' },
         { role: 'assistant', content: 'Hi there' },
       ];
-      mockWriteFile.mockResolvedValue('task-dialog');
       const ctx = makeCtx('claw', { dialogMessages });
 
       await tool.execute({ goal: 'follow up', mode: 'describing' }, ctx);
 
-      expect(mockWriteFile).toHaveBeenCalledTimes(1);
-      expect(mockWriteFile.mock.calls[0][2]).toMatchObject({
+      const tasks = await readPendingTasks(tempDir);
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0]).toMatchObject({
         intent: expect.stringContaining('follow up'),
       });
     });
@@ -146,15 +156,16 @@ Content.
           ],
         },
       ];
-      mockWriteFile.mockResolvedValue('task-multi');
       const ctx = makeCtx('claw', { dialogMessages });
 
       await tool.execute({ goal: 'follow up', mode: 'describing' }, ctx);
 
-      expect(mockWriteFile).toHaveBeenCalledTimes(1);
-      expect(mockWriteFile.mock.calls[0][2]).toMatchObject({
+      const tasks = await readPendingTasks(tempDir);
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0]).toMatchObject({
         intent: expect.stringContaining('follow up'),
       });
+      expect(auditEvents.find(e => e.type === TASK_AUDIT_EVENTS.TASK_SCHEDULED)).toBeDefined();
     });
 
     it('should still capture dispatchToolUseId when dispatch is the last tool_use block (backward-compat)', async () => {
@@ -168,13 +179,13 @@ Content.
           ],
         },
       ];
-      mockWriteFile.mockResolvedValue('task-last');
       const ctx = makeCtx('claw', { dialogMessages });
 
       await tool.execute({ goal: 'follow up', mode: 'describing' }, ctx);
 
-      const call = mockWriteFile.mock.calls[0][2];
-      expect(call.intent).toContain('follow up');
+      const tasks = await readPendingTasks(tempDir);
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].intent).toContain('follow up');
     });
 
     it('should fallback to prompt when no dispatch tool_use exists in last assistant content (multi non-dispatch)', async () => {
@@ -187,23 +198,23 @@ Content.
           ],
         },
       ];
-      mockWriteFile.mockResolvedValue('task-fallback');
       const ctx = makeCtx('claw', { dialogMessages });
 
       await tool.execute({ goal: 'follow up', mode: 'describing' }, ctx);
 
-      const call = mockWriteFile.mock.calls[0][2];
-      expect(call.intent).toContain('follow up');
+      const tasks = await readPendingTasks(tempDir);
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].intent).toContain('follow up');
     });
 
     it('should send single user message when ctx.dialogMessages is undefined (mining mode)', async () => {
-      mockWriteFile.mockResolvedValue('task-single');
       const ctx = makeCtx('claw');
 
       await tool.execute({ goal: 'standalone task' }, ctx);
 
-      expect(mockWriteFile).toHaveBeenCalledTimes(1);
-      expect(mockWriteFile.mock.calls[0][2]).toMatchObject({
+      const tasks = await readPendingTasks(tempDir);
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0]).toMatchObject({
         intent: expect.stringContaining('standalone task'),
       });
     });
@@ -211,12 +222,12 @@ Content.
 
   describe('Phase 546 — dispatch systemPrompt 透传', () => {
     it('mining mode passes buildMinerSystemPrompt output to writePending', async () => {
-      mockWriteFile.mockResolvedValue('task-mining');
       const ctx = makeCtx('claw');
       await tool.execute({ goal: 'mine intent', mode: 'mining' }, ctx);
 
-      const call = mockWriteFile.mock.calls[0][2];
-      expect(call.systemPrompt).toContain('意图挖掘');
+      const tasks = await readPendingTasks(tempDir);
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].systemPrompt).toContain('意图挖掘');
     });
 
     it('describing mode passes Motion getSystemPrompt output', async () => {
@@ -226,31 +237,30 @@ Content.
         () => [{ name: 'mock_tool', description: 'Mock tool', input_schema: { type: 'object' } }],
         () => [{ name: 'mock_tool', description: 'Mock tool', input_schema: { type: 'object' } }],
       );
-      mockWriteFile.mockResolvedValue('task-describing');
       const ctx = makeCtx('claw');
       await customTool.execute({ goal: 'describe intent', mode: 'describing' }, ctx);
 
-      const call = mockWriteFile.mock.calls[0][2];
-      expect(call.systemPrompt).toBe(mockMotionPrompt);
+      const tasks = await readPendingTasks(tempDir);
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].systemPrompt).toBe(mockMotionPrompt);
     });
   });
 
   describe('originClawId propagation', () => {
     it('should pass originClawId=motion when Motion calls dispatch', async () => {
-      mockWriteFile.mockResolvedValue('task-motion');
       // Motion 调用：clawId='motion', originClawId=undefined
       const ctx = makeCtx('claw', { clawId: 'motion' });
 
       await tool.execute({ goal: 'do something' }, ctx);
 
-      expect(mockWriteFile).toHaveBeenCalledTimes(1);
-      expect(mockWriteFile.mock.calls[0][2]).toMatchObject({
+      const tasks = await readPendingTasks(tempDir);
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0]).toMatchObject({
         originClawId: 'motion',
       });
     });
 
     it('should inherit originClawId when originClawId already set', async () => {
-      mockWriteFile.mockResolvedValue('task-inherit');
       // 模拟 subagent with full profile，已有 originClawId='motion'
       const ctx = makeCtx('claw', {
         clawId: 'task-uuid',
@@ -259,23 +269,24 @@ Content.
 
       await tool.execute({ goal: 'nested dispatch' }, ctx);
 
-      expect(mockWriteFile).toHaveBeenCalledTimes(1);
+      const tasks = await readPendingTasks(tempDir);
+      expect(tasks).toHaveLength(1);
       // 应该继承，不被覆盖
-      expect(mockWriteFile.mock.calls[0][2]).toMatchObject({
+      expect(tasks[0]).toMatchObject({
         originClawId: 'motion',
       });
     });
 
     it('should use clawId as originClawId when originClawId not set', async () => {
-      mockWriteFile.mockResolvedValue('task-claw');
       // claw 调用：clawId='claw1', originClawId=undefined
       const ctx = makeCtx('claw', { clawId: 'claw1' });
 
       await tool.execute({ goal: 'claw task' }, ctx);
 
-      expect(mockWriteFile).toHaveBeenCalledTimes(1);
+      const tasks = await readPendingTasks(tempDir);
+      expect(tasks).toHaveLength(1);
       // 应该使用 clawId 作为 originClawId
-      expect(mockWriteFile.mock.calls[0][2]).toMatchObject({
+      expect(tasks[0]).toMatchObject({
         originClawId: 'claw1',
       });
     });
@@ -438,11 +449,10 @@ Content.
         profile: 'full',
         callerType: 'claw',
         fs: mockFs,
-        llm: {} as unknown as LLMOrchestrator,  // not exercised in this test scope
+        llm: {} as unknown as LLMOrchestrator,
         auditWriter: auditWriter as any,
         dialogMessages: [{ role: 'user' as const, content: 'test' }],
       });
-      mockWriteFile.mockResolvedValue('task-skill-fail');
 
       await tool.execute({ goal: 'test task' }, ctx);
 
@@ -462,11 +472,10 @@ Content.
         profile: 'full',
         callerType: 'claw',
         fs: mockFs,
-        llm: {} as unknown as LLMOrchestrator,  // not exercised in this test scope
+        llm: {} as unknown as LLMOrchestrator,
         auditWriter: auditWriter as any,
         dialogMessages: [],
       });
-      mockWriteFile.mockResolvedValue('task-empty-dialog');
 
       await tool.execute({ goal: 'test task' }, ctx);
 

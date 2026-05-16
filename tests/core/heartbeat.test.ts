@@ -47,26 +47,27 @@ describe('Heartbeat', () => {
       expect(heartbeat.isDue()).toBe(false);
     });
 
-    it('should return true after interval elapsed', () => {
-      vi.useFakeTimers();
-      heartbeat = createTestHeartbeat(tempDir, 1); // 1秒间隔
-      heartbeat.fire();
-      expect(heartbeat.isDue()).toBe(false);
+    describe('with fake timers', () => {
+      beforeEach(() => { vi.useFakeTimers(); });
+      afterEach(() => { vi.useRealTimers(); });
 
-      vi.advanceTimersByTime(1100);
-      expect(heartbeat.isDue()).toBe(true);
-      vi.useRealTimers();
-    });
+      it('should return true after interval elapsed', () => {
+        heartbeat = createTestHeartbeat(tempDir, 1); // 1秒间隔
+        heartbeat.fire();
+        expect(heartbeat.isDue()).toBe(false);
 
-    it('should respect custom interval', () => {
-      vi.useFakeTimers();
-      heartbeat = createTestHeartbeat(tempDir, 5); // 5秒间隔
-      heartbeat.fire();
-      expect(heartbeat.isDue()).toBe(false);
+        vi.advanceTimersByTime(1100);
+        expect(heartbeat.isDue()).toBe(true);
+      });
 
-      vi.advanceTimersByTime(1000);
-      expect(heartbeat.isDue()).toBe(false);
-      vi.useRealTimers();
+      it('should respect custom interval', () => {
+        heartbeat = createTestHeartbeat(tempDir, 5); // 5秒间隔
+        heartbeat.fire();
+        expect(heartbeat.isDue()).toBe(false);
+
+        vi.advanceTimersByTime(1000);
+        expect(heartbeat.isDue()).toBe(false);
+      });
     });
   });
 
@@ -87,58 +88,59 @@ describe('Heartbeat', () => {
       expect(content).toContain('心跳触发，请巡查。');
     });
 
-    it('should update lastRun after fire', () => {
-      vi.useFakeTimers();
-      heartbeat = createTestHeartbeat(tempDir, 1);
-      expect(heartbeat.isDue()).toBe(false);  // 首次不 due
+    describe('with fake timers', () => {
+      beforeEach(() => { vi.useFakeTimers(); });
+      afterEach(() => { vi.useRealTimers(); });
 
-      vi.advanceTimersByTime(1100);
-      expect(heartbeat.isDue()).toBe(true);
+      it('should update lastRun after fire', () => {
+        heartbeat = createTestHeartbeat(tempDir, 1);
+        expect(heartbeat.isDue()).toBe(false);  // 首次不 due
 
-      heartbeat.fire();
-      expect(heartbeat.isDue()).toBe(false);  // fire 后重置
+        vi.advanceTimersByTime(1100);
+        expect(heartbeat.isDue()).toBe(true);
 
-      vi.advanceTimersByTime(1100);
-      expect(heartbeat.isDue()).toBe(true);
-      vi.useRealTimers();
-    });
+        heartbeat.fire();
+        expect(heartbeat.isDue()).toBe(false);  // fire 后重置
 
-    it('should generate unique filenames for multiple fires', async () => {
-      heartbeat = createTestHeartbeat(tempDir, 1);
+        vi.advanceTimersByTime(1100);
+        expect(heartbeat.isDue()).toBe(true);
+      });
 
-      vi.useFakeTimers({ shouldAdvanceTime: false });
-      vi.setSystemTime(new Date(2026, 0, 1, 0, 0, 0, 0));
-      heartbeat.fire();
-      vi.setSystemTime(new Date(2026, 0, 1, 0, 0, 0, 100)); // +100ms 确保不同时间戳
-      heartbeat.fire();
-      vi.useRealTimers();
+      it('should generate unique filenames for multiple fires', async () => {
+        heartbeat = createTestHeartbeat(tempDir, 1);
 
-      const inboxDir = path.join(tempDir, 'motion', 'inbox', 'pending');
-      const files = fs.readdirSync(inboxDir).filter(f => f.endsWith('.md'));
+        vi.useFakeTimers({ shouldAdvanceTime: false });
+        vi.setSystemTime(new Date(2026, 0, 1, 0, 0, 0, 0));
+        heartbeat.fire();
+        vi.setSystemTime(new Date(2026, 0, 1, 0, 0, 0, 100)); // +100ms 确保不同时间戳
+        heartbeat.fire();
 
-      // 第一次 fire 生成文件，第二次被去重跳过
-      expect(files.length).toBe(1);
-    });
+        const inboxDir = path.join(tempDir, 'motion', 'inbox', 'pending');
+        const files = fs.readdirSync(inboxDir).filter(f => f.endsWith('.md'));
 
-    it('should generate new file after previous heartbeat is consumed', async () => {
-      heartbeat = createTestHeartbeat(tempDir, 1);
+        // 第一次 fire 生成文件，第二次被去重跳过
+        expect(files.length).toBe(1);
+      });
 
-      // 第一次 fire
-      heartbeat.fire();
-      const inboxDir = path.join(tempDir, 'motion', 'inbox', 'pending');
-      let files = fs.readdirSync(inboxDir).filter(f => f.endsWith('.md'));
-      expect(files.length).toBe(1);
+      it('should generate new file after previous heartbeat is consumed', async () => {
+        heartbeat = createTestHeartbeat(tempDir, 1);
 
-      // 模拟消费（移走文件）
-      fs.unlinkSync(path.join(inboxDir, files[0]));
+        // 第一次 fire
+        heartbeat.fire();
+        const inboxDir = path.join(tempDir, 'motion', 'inbox', 'pending');
+        let files = fs.readdirSync(inboxDir).filter(f => f.endsWith('.md'));
+        expect(files.length).toBe(1);
 
-      // 第二次 fire 应该生成新文件
-      vi.useFakeTimers({ shouldAdvanceTime: false });
-      vi.setSystemTime(new Date(2026, 0, 1, 0, 0, 1, 0)); // +1s 确保不同时间戳
-      heartbeat.fire();
-      vi.useRealTimers();
-      files = fs.readdirSync(inboxDir).filter(f => f.endsWith('.md'));
-      expect(files.length).toBe(1);
+        // 模拟消费（移走文件）
+        fs.unlinkSync(path.join(inboxDir, files[0]));
+
+        // 第二次 fire 应该生成新文件
+        vi.useFakeTimers({ shouldAdvanceTime: false });
+        vi.setSystemTime(new Date(2026, 0, 1, 0, 0, 1, 0)); // +1s 确保不同时间戳
+        heartbeat.fire();
+        files = fs.readdirSync(inboxDir).filter(f => f.endsWith('.md'));
+        expect(files.length).toBe(1);
+      });
     });
 
     it('should create inbox directory if not exists', () => {
