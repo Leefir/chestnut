@@ -324,8 +324,8 @@ async function providerMove(label: string, position: string): Promise<void> {
   const newPos = parseInt(position, 10) - 1;
   const fallbacks = config.llm.fallbacks!;
   
-  if (newPos < 0 || newPos >= fallbacks.length) {
-    throw new CliError(`Invalid position. Must be 1-${fallbacks.length}`);
+  if (Number.isNaN(newPos) || newPos < 0 || newPos >= fallbacks.length) {
+    throw new CliError(`Invalid position. Must be 1-${fallbacks.length}, got: ${position}`);
   }
   
   // Move element
