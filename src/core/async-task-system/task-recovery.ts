@@ -10,6 +10,7 @@ import {
 import { TASKS_QUEUES_RESULTS_DIR, TASKS_SUBAGENTS_DIR } from './dirs.js';
 import { TASK_AUDIT_EVENTS } from './audit-events.js';
 import { formatErr } from './_helpers.js';
+import { validateTaskShape, backupCorruptTask } from './task-corrupt-helpers.js';
 import { FileNotFoundError } from '../../types/errors.js';
 import { sendFallbackError, sendResult, SENT_MARKER } from './result-delivery.js';
 
@@ -33,7 +34,18 @@ async function _recoverRunningTasks(deps: RecoverTasksDeps): Promise<number> {
     if (!entry.name.endsWith('.json')) continue;
     try {
       const content = await fs.read(entry.path);
-      const task = JSON.parse(content) as SubAgentTask | ToolTask;
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(content);
+      } catch (e) {
+        await backupCorruptTask(fs, auditWriter, entry.path, content, e);
+        continue;
+      }
+      if (!validateTaskShape(parsed)) {
+        await backupCorruptTask(fs, auditWriter, entry.path, content, new Error('shape_mismatch'));
+        continue;
+      }
+      const task = parsed;
       if (task.kind === 'tool') {
         recoveredCount += await _recoverToolTask(deps, entry.path, task);
       } else {
@@ -263,7 +275,17 @@ async function _loadPendingTasks(deps: RecoverTasksDeps): Promise<void> {
     if (!entry.name.endsWith('.json')) continue;
     try {
       const content = await fs.read(entry.path);
-      JSON.parse(content) as SubAgentTask | ToolTask;
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(content);
+      } catch (e) {
+        await backupCorruptTask(fs, auditWriter, entry.path, content, e);
+        continue;
+      }
+      if (!validateTaskShape(parsed)) {
+        await backupCorruptTask(fs, auditWriter, entry.path, content, new Error('shape_mismatch'));
+        continue;
+      }
       // 文件保留 / by _initialScanPending 入队
     } catch (err) {
       const errMsg = formatErr(err);
