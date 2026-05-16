@@ -33,6 +33,7 @@ import type { StreamLog } from '../../foundation/stream/index.js';
 import type { DialogStore } from '../../foundation/dialog-store/index.js';
 import { sendFallbackError } from './result-delivery.js';
 import { recoverTasks } from './task-recovery.js';
+import { validateTaskShape, backupCorruptTask } from './task-corrupt-helpers.js';
 import { executeSubAgentTask } from './subagent-executor.js';
 import { executeToolTask } from './tool-executor.js';
 import { createWatcher, type Watcher } from '../../foundation/file-watcher/index.js';
@@ -278,9 +279,18 @@ export class AsyncTaskSystem {
    */
   private async _loadPendingTask(filePath: string): Promise<SubAgentTask | ToolTask | null> {
     const content = await this.fs.read(filePath);
-    const task = JSON.parse(content) as SubAgentTask | ToolTask;
-    if (task.kind !== 'subagent' && task.kind !== 'tool') return null;
-    return task;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(content);
+    } catch (e) {
+      await backupCorruptTask(this.fs, this.auditWriter, filePath, content, e);
+      return null;
+    }
+    if (!validateTaskShape(parsed)) {
+      await backupCorruptTask(this.fs, this.auditWriter, filePath, content, new Error('shape_mismatch'));
+      return null;
+    }
+    return parsed;
   }
 
   /**
