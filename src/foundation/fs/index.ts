@@ -12,6 +12,7 @@ export type {
   FileEntry,
   FileSystem,
   FileSystemOptions,
+  StatInfo,
 } from './types.js';
 
 // Error class — re-exported for caller convenience (canonical owner: src/types/errors.ts)

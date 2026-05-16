@@ -15,6 +15,17 @@ export interface FileEntry {
 }
 
 /**
+ * File stat info (named export for explicit coupling + compiler checking)
+ */
+export interface StatInfo {
+  size: number;
+  mtime: Date;
+  ctime: Date;
+  isDirectory: boolean;
+  isFile: boolean;
+}
+
+/**
  * FileSystem interface - Abstract file operations
  * 
  * Implementation notes:
@@ -112,13 +123,7 @@ export interface FileSystem {
    * Get file stats
    * @param path - Relative path within claw space
    */
-  stat(path: string): Promise<{
-    size: number;
-    mtime: Date;
-    ctime: Date;
-    isFile: boolean;
-    isDirectory: boolean;
-  }>;
+  stat(path: string): Promise<StatInfo>;
 
   // ========================================================================
   // Synchronous Operations
@@ -174,13 +179,7 @@ export interface FileSystem {
    * @param path - Relative path within claw space
    * @throws FileNotFoundError if file doesn't exist
    */
-  statSync(path: string): {
-    size: number;
-    mtime: Date;
-    ctime: Date;
-    isFile: boolean;
-    isDirectory: boolean;
-  };
+  statSync(path: string): StatInfo;
 
   /**
    * Move/rename a file synchronously.

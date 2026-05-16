@@ -13,6 +13,7 @@ import type {
   FileSystem,
   FileSystemOptions,
   FileEntry,
+  StatInfo,
 } from './index.js';
 import {
   readFile,
@@ -281,13 +282,7 @@ export class NodeFileSystem implements FileSystem {
     return await isDirectory(absolute);
   }
   
-  async stat(relativePath: string): Promise<{
-    size: number;
-    mtime: Date;
-    ctime: Date;
-    isFile: boolean;
-    isDirectory: boolean;
-  }> {
+  async stat(relativePath: string): Promise<StatInfo> {
     const absolute = this.resolveAndCheck(relativePath, 'read');
     return wrapENOENT(relativePath, () => stat(absolute));
   }

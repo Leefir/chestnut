@@ -8,6 +8,7 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
+import type { StatInfo } from './types.js';
 
 export const IGNORE_PATTERN = '.tmp_';
 
@@ -116,13 +117,7 @@ export async function exists(filePath: string): Promise<boolean> {
 /**
  * Get file stats
  */
-export async function stat(filePath: string): Promise<{
-  size: number;
-  mtime: Date;
-  ctime: Date;
-  isFile: boolean;
-  isDirectory: boolean;
-}> {
+export async function stat(filePath: string): Promise<StatInfo> {
   const stats = await fs.stat(filePath);
   return {
     size: stats.size,
