@@ -24,7 +24,7 @@
     "test:run": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "lint:phase155c": "bash scripts/check-phase155c-regressions.sh"
+    "migrate:claw-agents-versions": "bash scripts/migrate-claw-agents-versions.sh"
   },
   "keywords": [
     "ai",
