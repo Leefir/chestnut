@@ -15,6 +15,9 @@ import { OUTPUT_LINES_CAP } from './constants.js';
 import type { CallerType } from '../../foundation/tool-protocol/caller-type.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { VIEWPORT_AUDIT_EVENTS } from './viewport-audit-events.js';
+import { CLI_AUDIT_EVENTS } from '../audit-events.js';
+import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
+import { createSystemAudit } from '../../foundation/audit/index.js';
 import { createStreamReader, STREAM_FILE } from '../../foundation/stream/index.js';
 import { createViewportObservability } from './chat-viewport-observability.js';
 import type { StreamReader } from '../../foundation/stream/index.js';
@@ -727,6 +730,23 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
   // 防御层：任何未捕获异常先还原终端，防止 terminal emulator 因 raw mode 未还原而闪退
   const crashLogPath = path.join(options.agentDir, LOGS_DIR, 'chat-crash.log');
   const uncaughtHandler = (err: unknown) => {
+    // sync audit emit via motion-level audit shim（process 即将 exit、必 sync）
+    // fail-soft：shim 构造或 write 失败回退 stderr-only、不抛
+    try {
+      const shim = createSystemAudit(
+        new NodeFileSystem({ baseDir: options.agentDir }),
+        options.agentDir,
+      );
+      const errMsg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      const stack = err instanceof Error && err.stack ? err.stack.split('\n').slice(0, 5).join(' | ') : '';
+      shim?.write(
+        CLI_AUDIT_EVENTS.CHAT_CRASH_UNCAUGHT,
+        `pid=${process.pid}`,
+        `error=${errMsg}`,
+        stack ? `stack_head=${stack}` : '',
+      );
+    } catch { /* fail-soft: shim 自身失败不破坏 crash log + stderr 路径 */ }
+
     // 写入崩溃日志文件（terminal 关闭后仍可读）
     try {
       const stack = (err instanceof Error) ? err.stack : String(err);
