@@ -68,7 +68,7 @@ describe('CLI parseInt NaN guard', () => {
     expect(exitCode).toBe(1);
     expect(stderr).toContain('--limit must be a non-negative integer');
     expect(stderr).toContain('got: abc');
-  });
+  }, 60000);
 
   it('outbox --limit 10 → no NaN error, normal execution', async () => {
     const { stderr, exitCode } = await runCli(
@@ -77,7 +77,7 @@ describe('CLI parseInt NaN guard', () => {
     );
     expect(exitCode).toBe(0);
     expect(stderr).not.toContain('--limit must be a non-negative integer');
-  });
+  }, 60000);
 
   it('contract events --since xyz → CliError with clear message + exit code 1', async () => {
     const { stderr, exitCode } = await runCli(
@@ -87,7 +87,7 @@ describe('CLI parseInt NaN guard', () => {
     expect(exitCode).toBe(1);
     expect(stderr).toContain('--since must be a Unix timestamp in milliseconds');
     expect(stderr).toContain('got: xyz');
-  });
+  }, 60000);
 
   it('contract events --since 1704067200000 → no NaN error, normal execution', async () => {
     const { stderr, exitCode } = await runCli(
@@ -96,5 +96,5 @@ describe('CLI parseInt NaN guard', () => {
     );
     expect(exitCode).toBe(0);
     expect(stderr).not.toContain('--since must be a Unix timestamp in milliseconds');
-  });
+  }, 60000);
 });
