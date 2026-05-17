@@ -161,7 +161,7 @@ clawCmd
   .action(withCliErrorHandling(async (name: string, opts: { limit: string }) => {
     loadGlobalConfig();
     const { audit } = createDirContext(getClawDir(name));
-    const limit = parseIntOption(opts.limit, '--limit');
+    const limit = parseIntOption(opts.limit, '--limit must be a non-negative integer');
     await outboxCommand(name, { limit }, { audit });
   }));
 
@@ -373,7 +373,7 @@ contractCmd
   .description('Show contract events since a timestamp')
   .requiredOption('--since <timestamp>', 'Unix timestamp in milliseconds')
   .action(withCliErrorHandling(async (claw: string, opts: { since: string }) => {
-    const since = parseIntOption(opts.since, '--since');
+    const since = parseIntOption(opts.since, '--since must be a Unix timestamp in milliseconds');
     await contractEventsCommand(claw, since);
   }));
 
