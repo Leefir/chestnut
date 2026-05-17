@@ -9,7 +9,7 @@ import { vi } from 'vitest';
 import type { ExecContext } from '../../src/foundation/tool-protocol/index.js';
 import type { FileSystem } from '../../src/foundation/fs/types.js';
 
-const noopFs = {} as unknown as FileSystem;
+const noopFs = Object.freeze({}) as unknown as FileSystem;   // phase 907: frozen invariant 防 shared mutable race
 
 export function makeExecContext(overrides: Partial<ExecContext> = {}): ExecContext {
   const defaults: ExecContext = {

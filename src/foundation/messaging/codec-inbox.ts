@@ -22,7 +22,15 @@ export function parseFrontmatter(raw: string): { meta: Record<string, string>; b
     const ci = line.indexOf(':');
     if (ci <= 0) continue;
     const key = line.slice(0, ci).trim();
-    const value = line.slice(ci + 1).trim().replace(/^["']|["']$/g, '');
+    // phase 907 step B: parseFrontmatter 加 unescape 对称 yamlQuote 编 escape（audit-2026-05-16 #7）
+    // 顺序敏感：`\\` 必先于 `\"`/`\n`/`\r`，否则 `\\n` 误解为 `\` + literal-n 链坏
+    const rawValue = line.slice(ci + 1).trim().replace(/^["']|["']$/g, '');
+    const value = rawValue
+      .replace(/\\\\/g, '\u0000')   // tmp marker for literal backslash (NULL byte — YAML 不允许，collision-free)
+      .replace(/\\"/g, '"')
+      .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '\r')
+      .replace(/\u0000/g, '\\');     // restore literal backslash
     meta[key] = value;
   }
 
