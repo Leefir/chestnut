@@ -257,6 +257,7 @@ export async function stopCommand(deps?: { audit?: AuditLog }): Promise<void> {
     console.log('✓ Stopped Motion daemon');
   } else {
     audit?.write(CLI_AUDIT_EVENTS.MOTION_STOP, `status=failed`);
-    console.log('Failed to stop Motion');
+    console.log('✗ Failed to stop Motion');
+    process.exitCode = 1;
   }
 }
