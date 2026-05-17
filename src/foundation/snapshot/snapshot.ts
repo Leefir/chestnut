@@ -181,6 +181,7 @@ export class Snapshot {
         try {
           resolvedDir = await this.fs.realpath(this.dir);
         } catch {
+          // silent: fallback to original dir if realpath fails (best-effort alignment)
           resolvedDir = this.dir;
         }
         const relResolved = path.relative(resolvedDir, resolved);
