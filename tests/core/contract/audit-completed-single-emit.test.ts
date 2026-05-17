@@ -11,8 +11,8 @@ import { makeContractYaml } from '../../helpers/contract-yaml.js';
 import { createToolRegistry } from '../../../src/foundation/tools/index.js';
 import { CONTRACT_AUDIT_EVENTS } from '../../../src/core/contract/audit-events.js';
 
-vi.mock('../../src/constants.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/constants.js')>();
+vi.mock('../../../src/core/contract/constants.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/core/contract/constants.js')>();
   return {
     ...actual,
     LOCK_MAX_RETRIES: 3,
