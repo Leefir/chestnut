@@ -41,8 +41,8 @@ interface WatchdogPidShape {
 function validatePidShape(parsed: unknown): parsed is WatchdogPidShape {
   return (
     typeof parsed === 'object' && parsed !== null &&
-    typeof (parsed as any).pid === 'number' &&
-    typeof (parsed as any).root === 'string'
+    typeof (parsed as Partial<WatchdogPidShape>).pid === 'number' &&
+    typeof (parsed as Partial<WatchdogPidShape>).root === 'string'
   );
 }
 

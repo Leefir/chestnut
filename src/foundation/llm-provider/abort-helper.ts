@@ -110,7 +110,7 @@ export type AbortReason =
  * catch block can classify turn_interrupted cause).
  */
 export function makeExternalAbortError(reason?: AbortReason): Error {
-  const validReason = reason && typeof (reason as any).type === 'string' ? reason : undefined;
+  const validReason = reason && typeof reason === 'object' && 'type' in reason && typeof (reason as { type: unknown }).type === 'string' ? reason : undefined;
   const tail = validReason
     ? (validReason.type === 'idle_timeout' || validReason.type === 'turn_timeout'
         ? ` (cause=${validReason.type}, ms=${validReason.ms})`

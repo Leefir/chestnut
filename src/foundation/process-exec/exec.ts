@@ -102,7 +102,7 @@ async function runProcess(
       reject(new ProcessExecError({
         message: err.message,
         output: Buffer.concat(buffers).toString('utf-8'),
-        code: (err as any).code,
+        code: (err as NodeJS.ErrnoException).code,
         exitCode: null,
       }));
     });

@@ -76,8 +76,8 @@ export class EvolutionSystem {
       }
       if (
         typeof parsed !== 'object' || parsed === null ||
-        !Array.isArray((parsed as any).processedContractIds) ||
-        !(parsed as any).processedContractIds.every((x: unknown) => typeof x === 'string')
+        !Array.isArray((parsed as { processedContractIds?: unknown }).processedContractIds) ||
+        !((parsed as { processedContractIds: unknown[] }).processedContractIds).every((x: unknown) => typeof x === 'string')
       ) {
         await this._backupCorruptState(content, new Error('shape_mismatch'));
         return;
