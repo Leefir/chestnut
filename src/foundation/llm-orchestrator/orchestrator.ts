@@ -786,6 +786,7 @@ export class LLMOrchestratorImpl implements LLMOrchestrator {
         return;
       }
       // 双失败
+      try { await primaryIter.return?.(); } catch { /* silent: generator already closed, ignore */ }
       cleanupSignals();
       throw new LLMAllProvidersFailedError([
         { provider: this.primary.name, error: winner.error },
@@ -810,6 +811,7 @@ export class LLMOrchestratorImpl implements LLMOrchestrator {
       return;
     }
     // 双失败
+    try { await primaryIter.return?.(); } catch { /* silent: generator already closed, ignore */ }
     cleanupSignals();
     throw new LLMAllProvidersFailedError([
       { provider: this.primary.name, error: aResult.error },
