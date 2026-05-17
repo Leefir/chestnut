@@ -146,7 +146,11 @@ export class Snapshot {
 
       // whitelist cleanup of specified sync scratch subdirs on commit success
       // (turn-scoped lifecycle / 应然 §A.7 / phase772: 从整 syncDir 清改白名单)
-      for (const cleanupDir of (this.syncCleanupDirs ?? [])) {
+      // H.2 α-sort-by-depth: deepest first to avoid nested wipe (phase 998)
+      const sortedCleanupDirs = [...(this.syncCleanupDirs ?? [])].sort(
+        (a, b) => b.split(path.sep).length - a.split(path.sep).length
+      );
+      for (const cleanupDir of sortedCleanupDirs) {
         const relDir = path.relative(this.dir, cleanupDir);
         if (relDir === '' || relDir.startsWith('..')) {
           this.audit.write(
@@ -157,12 +161,56 @@ export class Snapshot {
           );
           continue;
         }
+
+        // H.3 α-realpath-resolve: verify resolved path is within this.dir (phase 998)
+        let resolved: string;
         try {
-          await this.fs.removeDir(relDir);
-          await this.fs.ensureDir(relDir);
+          resolved = await this.fs.realpath(cleanupDir);
+        } catch (err) {
+          this.audit.write(
+            SNAPSHOT_AUDIT_EVENTS.SYNC_CLEAN_FAILED,
+            `dir=${this.dir}`,
+            'context=realpath_failed',
+            `cleanupDir=${cleanupDir}`,
+            `reason=${err instanceof Error ? err.message : String(err)}`,
+          );
+          continue;
+        }
+        // Resolve this.dir as well to align with resolved (e.g. macOS /var -> /private/var)
+        let resolvedDir: string;
+        try {
+          resolvedDir = await this.fs.realpath(this.dir);
+        } catch {
+          // silent: fallback to original dir if realpath fails (best-effort alignment)
+          resolvedDir = this.dir;
+        }
+        const relResolved = path.relative(resolvedDir, resolved);
+        if (relResolved === '' || relResolved.startsWith('..') || path.isAbsolute(relResolved)) {
+          this.audit.write(
+            SNAPSHOT_AUDIT_EVENTS.SYNC_CLEAN_FAILED,
+            `dir=${this.dir}`,
+            'context=symlink_traversal',
+            `cleanupDir=${cleanupDir}`,
+            `resolved=${resolved}`,
+          );
+          continue;
+        }
+
+        try {
+          // H.1 α-content-only-clear: preserve dir invariant to avoid ENOENT race window
+          // with concurrent task writer (phase 998). Replaces removeDir+ensureDir.
+          const entries = await this.fs.list(relDir, { includeDirs: true });
+          for (const entry of entries) {
+            const entryPath = path.join(relDir, entry.name);
+            if (entry.isDirectory) {
+              await this.fs.removeDir(entryPath);
+            } else {
+              await this.fs.delete(entryPath);
+            }
+          }
         } catch (e) {
-          // phase 815 P1.33: removeDir+ensureDir 非原子。removeDir 成功 + ensureDir fail（disk full
-          // / permission / IO）→ dir 被删未重建 / 后续 turn 写 audit/stream ENOENT crash。
+          // phase 815 P1.33: content clear 非原子。clear 成功部分 + ensureDir fail（disk full
+          // / permission / IO）→ dir 可能未完全清空 / 后续 turn 写 audit/stream 潜在 crash。
           // best-effort 重建 + audit / 失败也只 audit 不抛（mirror init() cleanup 既有 pattern）
           try {
             await this.fs.ensureDir(relDir);

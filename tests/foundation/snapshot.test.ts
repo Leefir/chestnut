@@ -392,10 +392,13 @@ describe.skipIf(!gitAvailable)('Snapshot', () => {
     const baseFs = new NodeFileSystem({ baseDir: tmpDir });
     let ensureDirCallCount = 0;
     const fs = Object.create(baseFs);
-    fs.removeDir = vi.fn().mockResolvedValue(undefined);
+    // phase 998 H.3: realpath is called first, then list. Mock realpath to succeed and list to fail
+    // so that catch -> ensureDir restore path is triggered.
+    fs.realpath = vi.fn().mockImplementation(async (dir: string) => dir);
+    fs.list = vi.fn().mockRejectedValue(new Error('mock list failure'));
     fs.ensureDir = vi.fn().mockImplementation(async (dir: string) => {
       ensureDirCallCount++;
-      if (ensureDirCallCount <= 2) {
+      if (ensureDirCallCount <= 1) {
         throw new Error(`mock ensureDir failure #${ensureDirCallCount}`);
       }
       return baseFs.ensureDir(dir);
@@ -424,7 +427,7 @@ describe.skipIf(!gitAvailable)('Snapshot', () => {
     expect(restoreCall).toEqual([
       'snapshot_sync_restore_failed',
       expect.stringContaining('dir='),
-      expect.stringContaining('restoreReason=mock ensureDir failure #2'),
+      expect.stringContaining('restoreReason=mock ensureDir failure #1'),
     ]);
   });
 
