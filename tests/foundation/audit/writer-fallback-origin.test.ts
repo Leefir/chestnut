@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { tmpdir } from 'node:os';
 import type { FileSystem } from '../../../src/foundation/fs/types.js';
 
 // Must mock before importing the module-under-test (hoisted by vitest)
@@ -12,6 +13,10 @@ vi.mock('node:fs', async (importOriginal) => {
 
 import { AuditWriter, _resetFallbackForTest } from '../../../src/foundation/audit/writer.js';
 import * as nodeFs from 'node:fs';
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function makeFailingFs(): FileSystem {
   return {
@@ -49,10 +54,10 @@ describe('AuditWriter — fallback buffer origin tag (P1.13)', () => {
     // exit handler 已注册
     expect(exitListeners).toHaveLength(1);
 
-    // 触发 exit → dump 到 /tmp
+    // 触发 exit → dump 到 OS temp dir
     exitListeners[0]!();
     expect(nodeFs.writeFileSync).toHaveBeenCalledWith(
-      expect.stringMatching(/^\/tmp\/clawforum-audit-fallback-\d+-\d+\.tsv$/),
+      expect.stringMatching(new RegExp(`^${escapeRegex(tmpdir())}/clawforum-audit-fallback-\\d+-\\d+\\.tsv$`)),
       expect.stringContaining('/test/a.tsv'),
     );
     const dumpedContent = (vi.mocked(nodeFs.writeFileSync).mock.calls[0] as any)[1] as string;

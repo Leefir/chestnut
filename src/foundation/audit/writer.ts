@@ -1,12 +1,13 @@
 import { randomUUID } from 'crypto';
 import * as nodeFs from 'node:fs';
+import { tmpdir } from 'node:os';
 import { UUID_SHORT_LEN } from '../../constants.js';
 import { FileNotFoundError } from '../../types/errors.js';
 import type { FileSystem } from '../fs/types.js';
 import type { AuditLog } from './index.js';
 
 const FALLBACK_BUFFER_CAP = 1000;
-const FALLBACK_DIR = '/tmp';
+function getFallbackDir(): string { return tmpdir(); }
 interface FallbackEntry {
   origin: string;
   line: string;
@@ -38,7 +39,7 @@ function pushFallback(line: string, origin: string): void {
 function dumpFallback(): void {
   if (pendingFallback.length === 0) return;
   try {
-    const fallbackPath = `${FALLBACK_DIR}/clawforum-audit-fallback-${process.pid}-${Date.now()}.tsv`;
+    const fallbackPath = `${getFallbackDir()}/clawforum-audit-fallback-${process.pid}-${Date.now()}.tsv`;
     // origin 作 synthetic col 0 prepend / esc(origin) 防 tab 污染
     const body = pendingFallback
       .map(e => `${esc(e.origin)}\t${e.line}`)
