@@ -10,6 +10,12 @@ describe('Tool Profiles', () => {
     expect(TOOL_PROFILES.full).toContain('spawn');
     expect(TOOL_PROFILES.full).toContain('skill');
 
+    // phase 894 r115 B fork: NEW.P0.1 — notify_claw motion-only, must be in `full` (motion runtime uses 'full' profile)
+    expect(TOOL_PROFILES.full).toContain('notify_claw');
+    expect(TOOL_PROFILES.readonly).not.toContain('notify_claw');
+    expect(TOOL_PROFILES.subagent).not.toContain('notify_claw');
+    expect(TOOL_PROFILES.miner).not.toContain('notify_claw');
+
     expect(TOOL_PROFILES.readonly).not.toContain('write');
     expect(TOOL_PROFILES.readonly).not.toContain('spawn');
 
