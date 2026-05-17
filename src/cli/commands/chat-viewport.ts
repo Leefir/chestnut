@@ -884,7 +884,11 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
     await streamReader.stop();
     await clawManager.closeAll();
     if (clawScanInterval) clearInterval(clawScanInterval);
-    for (const tw of taskWatchMap.values()) await tw.streamReader?.stop();
+    await Promise.all(
+      Array.from(taskWatchMap.values())
+        .map(tw => tw.streamReader?.stop())
+        .filter((p): p is Promise<void> => p !== undefined)
+    );
     taskWatchMap.clear();
     // 删 viewport pid 文件（best-effort / 异常进程退出可能 leak / stop 命令容错）
     try {

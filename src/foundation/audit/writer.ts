@@ -89,8 +89,11 @@ export class AuditWriter implements AuditLog {
         this.fs.moveSync(this.filePath, `${this.filePath}.${randomUUID().slice(0, UUID_SHORT_LEN)}.bak`);
       }
     } catch (err) {
-      // FileNotFoundError（首次写入文件不存在）静默跳过；其他错误 warn
-      if (!(err instanceof FileNotFoundError)) {
+      // FileNotFoundError（首次写入文件不存在 from statSync）或 raw NodeJS ENOENT
+      // （TOCTOU race-loser from moveSync 当文件已被外部 rotate / cleanup）静默跳过；
+      // 其他 errno 仍 warn
+      const code = (err as NodeJS.ErrnoException)?.code;
+      if (!(err instanceof FileNotFoundError) && code !== 'ENOENT') {
         const reason = err instanceof Error ? err.message : String(err);
         console.error(`[AUDIT CRITICAL] rotation check failed: path=${this.filePath} reason=${reason}`);
       }
