@@ -168,15 +168,24 @@ export async function contractLogCommand(clawId: string, contractId?: string): P
     const raw = await manager.readContractYamlRaw(resolvedId);
     contractYaml = yaml.load(raw) as ContractYaml;
   } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
-    throw new CliError(`Contract "${resolvedId}" not found or unreadable for claw ${clawId}: ${reason}`);
+    // phase 906 r115 O fork (audit-2026-05-16 NEW.P2.6): preserve Error cause chain
+    throw new CliError(
+      `Contract "${resolvedId}" not found for claw ${clawId}`,
+      { cause: err },
+    );
   }
 
   // 读 progress（active/paused/archive 均可）
   let progress: ProgressData | null = null;
   try {
     progress = await manager.getProgress(resolvedId);
-  } catch { /* progress 文件缺失时忽略 */ }
+  } catch (err) {
+    // phase 906 r115 O fork (audit-2026-05-16 NEW.P2.6): narrow to ENOENT only
+    // file missing = expected (注释原意「progress 文件缺失」)，其他错误 = real bug bubble
+    if ((err as { code?: string })?.code !== 'ENOENT') {
+      throw err;
+    }
+  }
 
   console.log(`Contract: ${resolvedId}`);
   console.log(`Title: ${contractYaml.title}`);

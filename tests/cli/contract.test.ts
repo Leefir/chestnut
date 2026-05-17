@@ -45,18 +45,38 @@ describe('notifyContractCreated audit observability', () => {
   });
 });
 
-describe('phase 904 site 3: contract show catch err 含原因', () => {
-  it('contractLogCommand catch 块将原 err.message 拼入 CliError message', () => {
-    const contractPath = path.join(__dirname, '../../src/cli/commands/contract.ts');
-    const sourceCode = fs.readFileSync(contractPath, 'utf-8');
-    // 定位 readContractYamlRaw 段
+describe('phase 906 Step B1: contract.ts cause chain + ENOENT narrow', () => {
+  const contractPath = path.join(__dirname, '../../src/cli/commands/contract.ts');
+  const sourceCode = fs.readFileSync(contractPath, 'utf-8');
+
+  it('contractLogCommand catch 块保留 Error cause chain', () => {
     const idx = sourceCode.indexOf('readContractYamlRaw');
     expect(idx).toBeGreaterThan(-1);
     const block = sourceCode.slice(idx, idx + 800);
     // catch (err) 存在
     expect(block).toMatch(/catch\s*\(err\)\s*\{/);
-    // err.message 被提取并拼入 CliError
-    expect(block).toContain('err instanceof Error ? err.message : String(err)');
-    expect(block).toContain('not found or unreadable');
+    // { cause: err } 存在（ES2022 Error cause chain）
+    expect(block).toContain('{ cause: err }');
+    // 旧 reason 拼接模式已移除
+    expect(block).not.toContain('err instanceof Error ? err.message : String(err)');
+  });
+
+  it('progress read catch narrow 到 ENOENT only', () => {
+    const idx = sourceCode.indexOf('progress = await manager.getProgress');
+    expect(idx).toBeGreaterThan(-1);
+    const block = sourceCode.slice(idx, idx + 600);
+    // catch (err) 存在
+    expect(block).toMatch(/catch\s*\(err\)\s*\{/);
+    // ENOENT narrow 存在
+    expect(block).toContain("code !== 'ENOENT'");
+    // 非 ENOENT 时 throw err
+    expect(block).toContain('throw err');
+  });
+
+  it('CliError 类已 align 支持 { cause } 透传', () => {
+    const errPath = path.join(__dirname, '../../src/cli/errors.ts');
+    const errCode = fs.readFileSync(errPath, 'utf-8');
+    expect(errCode).toContain('cause?: unknown');
+    expect(errCode).toContain('super(message, optionsOrCode)');
   });
 });

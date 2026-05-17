@@ -6,11 +6,21 @@
  */
 
 export class CliError extends Error {
+  code: number;
+
+  constructor(message: string, code?: number);
+  constructor(message: string, options?: { cause?: unknown; code?: number });
   constructor(
     message: string,
-    public readonly code: number = 1
+    optionsOrCode?: number | { cause?: unknown; code?: number },
   ) {
-    super(message);
+    if (typeof optionsOrCode === 'number' || optionsOrCode === undefined) {
+      super(message);
+      this.code = optionsOrCode ?? 1;
+    } else {
+      super(message, optionsOrCode);
+      this.code = optionsOrCode.code ?? 1;
+    }
     this.name = 'CliError';
   }
 }
