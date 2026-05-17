@@ -26,6 +26,7 @@ export class Heartbeat {
   private lastRun: number;
   private readonly fs: FileSystem;
   private readonly audit: AuditLog;
+  private lastWrittenHeartbeatFile?: string;
 
   constructor(baseDir: string, options: HeartbeatOptions) {
     this.baseDir = baseDir;
@@ -52,12 +53,23 @@ export class Heartbeat {
       const inboxDir = path.join(this.baseDir, 'motion', 'inbox', 'pending');
       fs.ensureDirSync(inboxDir);
 
-      // 去重：已有未处理心跳则跳过
+      // O(1) fast path: own last-written heartbeat 仍未被 motion 消费 → 跳 scan
+      if (
+        this.lastWrittenHeartbeatFile &&
+        fs.existsSync(path.join(inboxDir, this.lastWrittenHeartbeatFile))
+      ) {
+        this.lastRun = Date.now();
+        return;
+      }
+
+      // cache miss（首次 fire / 心跳被消费 / cache 丢失）→ O(n) fallback scan
+      // 去重：已有未处理心跳则跳过 + 同步 cache
       const existing = fs.listSync(inboxDir);
       for (const f of existing) {
         if (!f.name.endsWith('.md')) continue;
         const meta = InboxWriter.readMeta(fs, path.join(inboxDir, f.name));
         if (meta.ok && meta.value.type === 'heartbeat') {
+          this.lastWrittenHeartbeatFile = f.name;   // sync cache
           this.lastRun = Date.now();  // 去重也重置计时器，避免重复检查
           return;
         }
@@ -71,6 +83,7 @@ export class Heartbeat {
         body: '心跳触发，请巡查。',
         idPrefix: 'hb',
       });
+      // writeSync 返回 void → 不 cache（fallback：下次 fall through scan）
       this.lastRun = Date.now();  // 只在成功写入后更新
     } catch (error) {
       // lastRun 未更新 → 下次 isDue() 立即可重试
