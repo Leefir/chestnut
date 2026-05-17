@@ -6,8 +6,8 @@ import type { SubAgentTask, ToolTask } from './system.js';
 
 export function validateTaskShape(parsed: unknown): parsed is SubAgentTask | ToolTask {
   return typeof parsed === 'object' && parsed !== null &&
-    typeof (parsed as any).id === 'string' &&
-    ((parsed as any).kind === 'subagent' || (parsed as any).kind === 'tool');
+    typeof (parsed as { id?: unknown }).id === 'string' &&
+    ((parsed as { kind?: unknown }).kind === 'subagent' || (parsed as { kind?: unknown }).kind === 'tool');
 }
 
 export async function backupCorruptTask(
