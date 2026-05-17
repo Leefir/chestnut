@@ -7,6 +7,7 @@ import * as path from 'path';
 import {
   loadGlobalConfig, clawExists, getClawDir, getGlobalConfigPath,
 } from '../../foundation/config/index.js';
+import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
 import { CliError } from '../errors.js';
 import { createDirContext, createProcessManagerForCLI } from '../utils/factories.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
@@ -14,7 +15,7 @@ import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 
 export async function stopCommand(name: string, deps?: { audit?: AuditLog }): Promise<void> {
   const audit = deps?.audit;
-  loadGlobalConfig();
+  loadGlobalConfig(CONFIG_DEFAULTS);
   
   if (!clawExists(name)) {
     throw new CliError(`Claw "${name}" does not exist`);

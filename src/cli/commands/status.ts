@@ -7,6 +7,7 @@ import * as path from 'path';
 import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { loadGlobalConfig, getMotionDir } from '../../foundation/config/index.js';
+import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
 import { ProcessManager, ProcessListUnavailable } from '../../foundation/process-manager/index.js';
 import { createProcessManagerForCLI } from '../utils/factories.js';
 import { CLAWS_DIR } from '../../types/paths.js';
@@ -34,7 +35,7 @@ export function findOrphanProcesses(
 }
 
 export async function statusCommand(): Promise<void> {
-  loadGlobalConfig();
+  loadGlobalConfig(CONFIG_DEFAULTS);
 
   // 1. Watchdog
   const watchdogPid = getWatchdogPid();

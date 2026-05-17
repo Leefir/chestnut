@@ -4,18 +4,17 @@
  * Config → runtime type adapters / phase 500 sub-file extraction
  */
 
-import { z } from 'zod';
 import type { LLMOrchestratorConfig } from '../llm-orchestrator/index.js';
 import type { ProviderConfig } from '../llm-provider/types.js';
 import { resolvePreset } from '../llm-provider/presets.js';
 import {
-  LLMProviderSchema,
+  type LLMProviderConfig,
   type ClawGlobalConfig,
   type ClawConfig,
 } from './schemas.js';
 
 // Convert snake_case to camelCase, resolve preset
-export function toProviderConfig(p: z.infer<typeof LLMProviderSchema>): ProviderConfig {
+export function toProviderConfig(p: LLMProviderConfig): ProviderConfig {
   const presetId = p.preset;
   if (!presetId) {
     throw new Error('Provider config must have "preset" field');

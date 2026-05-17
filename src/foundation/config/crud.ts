@@ -8,10 +8,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import {
-  ClawGlobalConfigSchema,
-  ClawConfigSchema,
+  createClawGlobalConfigSchema,
+  createClawConfigSchema,
   type ClawGlobalConfig,
   type ClawConfig,
+  type ConfigDefaults,
 } from './schemas.js';
 import {
   getGlobalConfigPath,
@@ -44,7 +45,7 @@ function expandEnvVars(obj: unknown): unknown {
 }
 
 // Load global config
-export function loadGlobalConfig(): ClawGlobalConfig {
+export function loadGlobalConfig(defaults: ConfigDefaults): ClawGlobalConfig {
   const configPath = getGlobalConfigPath();
 
   if (!fs.existsSync(configPath)) {
@@ -60,7 +61,7 @@ export function loadGlobalConfig(): ClawGlobalConfig {
   const expanded = expandEnvVars(parsed);
 
   try {
-    return ClawGlobalConfigSchema.parse(expanded);
+    return createClawGlobalConfigSchema(defaults).parse(expanded);
   } catch (error) {
     throw new Error(
       `Invalid global config: ${error instanceof Error ? error.message : String(error)}`
@@ -81,7 +82,7 @@ export function saveGlobalConfig(config: ClawGlobalConfig): void {
 }
 
 // Load claw config
-export function loadClawConfig(name: string): ClawConfig {
+export function loadClawConfig(name: string, defaults: ConfigDefaults): ClawConfig {
   const configPath = getClawConfigPath(name);
 
   if (!fs.existsSync(configPath)) {
@@ -92,7 +93,7 @@ export function loadClawConfig(name: string): ClawConfig {
   const parsed = yaml.load(content);
 
   try {
-    return ClawConfigSchema.parse(parsed);
+    return createClawConfigSchema(defaults).parse(parsed);
   } catch (error) {
     throw new Error(
       `Invalid claw config: ${error instanceof Error ? error.message : String(error)}`

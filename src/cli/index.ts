@@ -42,6 +42,7 @@ import { motionStepsCommand, motionStepCommand } from './commands/motion-steps.j
 import { LOGS_DIR } from '../types/paths.js';
 import { createDirContext } from './utils/factories.js';
 import { getClawforumRoot, getClawDir, loadGlobalConfig } from '../foundation/config/index.js';
+import { CONFIG_DEFAULTS } from '../assembly/config-defaults.js';
 import { getWorkspaceRoot } from '../foundation/config/paths.js';
 import { parseIntOption } from './parse-int-option.js';
 
@@ -98,7 +99,7 @@ clawCmd
   .command('create <name>')
   .description('Create a new Claw')
   .action(withCliErrorHandling(async (name: string) => {
-    loadGlobalConfig();
+    loadGlobalConfig(CONFIG_DEFAULTS);
     const { audit } = createDirContext(getClawDir(name));
     await createCommand(name, { audit });
   }));
@@ -116,7 +117,7 @@ clawCmd
   .command('stop <name>')
   .description('Stop Claw daemon')
   .action(withCliErrorHandling(async (name: string) => {
-    loadGlobalConfig();
+    loadGlobalConfig(CONFIG_DEFAULTS);
     const { audit } = createDirContext(getClawDir(name));
     await stopCommand(name, { audit });
   }));
@@ -159,7 +160,7 @@ clawCmd
   .description('Read and consume outbox messages from a Claw')
   .option('--limit <n>', 'Max messages to read (default: 1)', '1')
   .action(withCliErrorHandling(async (name: string, opts: { limit: string }) => {
-    loadGlobalConfig();
+    loadGlobalConfig(CONFIG_DEFAULTS);
     const { audit } = createDirContext(getClawDir(name));
     const limit = parseIntOption(opts.limit, '--limit must be a non-negative integer');
     await outboxCommand(name, { limit }, { audit });
@@ -200,10 +201,11 @@ clawCmd
   .action(withCliErrorHandling(async (name: string) => {
     // 前台入口：后台启动
     const { loadGlobalConfig, clawExists, getClawDir, getGlobalConfigPath } = await import('../foundation/config/index.js');
+    const { CONFIG_DEFAULTS } = await import('../assembly/config-defaults.js');
     const { NodeFileSystem } = await import('../foundation/fs/node-fs.js');
     const { createSystemAudit } = await import('../foundation/audit/index.js');
     const { createAgentProcessManager } = await import('../foundation/process-manager/agent-factory.js');
-    loadGlobalConfig();
+    loadGlobalConfig(CONFIG_DEFAULTS);
     if (!clawExists(name)) {
       throw new CliError(`Claw "${name}" does not exist. Try \`clawforum claw list\` to see existing claws.`);
     }
@@ -299,10 +301,11 @@ motionCmd
   .action(withCliErrorHandling(async () => {
     // 前台入口
     const { loadGlobalConfig, getMotionDir } = await import('../foundation/config/index.js');
+    const { CONFIG_DEFAULTS } = await import('../assembly/config-defaults.js');
     const { NodeFileSystem } = await import('../foundation/fs/node-fs.js');
     const { createSystemAudit } = await import('../foundation/audit/index.js');
     const { createAgentProcessManager } = await import('../foundation/process-manager/agent-factory.js');
-    loadGlobalConfig();
+    loadGlobalConfig(CONFIG_DEFAULTS);
     const motionDir = getMotionDir();
     const baseDir = path.dirname(motionDir);
     const nodeFs = new NodeFileSystem({ baseDir });
@@ -346,7 +349,7 @@ contractCmd
   .option('--file <path>', 'Path to contract YAML file')
   .option('--dir <path>', 'Directory containing contract.yaml and acceptance/ folder')
   .action(withCliErrorHandling(async (opts: { claw: string; file?: string; dir?: string }) => {
-    loadGlobalConfig();
+    loadGlobalConfig(CONFIG_DEFAULTS);
     const { audit } = createDirContext(getClawDir(opts.claw));
     if (opts.file && opts.dir) {
       throw new CliError('--file and --dir are mutually exclusive. Use one of --file or --dir, not both.');
@@ -401,7 +404,7 @@ skillCmd
       if (!opts.skill) {
         throw new CliError('--skill <name> is required with --claw');
       }
-      loadGlobalConfig();
+      loadGlobalConfig(CONFIG_DEFAULTS);
       const { audit } = createDirContext(getClawDir(opts.claw));
       await skillInstallClawCommand(opts.claw, opts.skill, { audit });
     } else {

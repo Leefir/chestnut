@@ -13,6 +13,7 @@ import * as fs from 'fs';
 import * as readline from 'readline';
 import type { ProgressData } from '../../core/contract/types.js';
 import { isInitialized, loadGlobalConfig, getMotionDir, buildLLMConfig, patchGlobalConfigPrimary, FORMAT_MAP } from '../../foundation/config/index.js';
+import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
 import { createLLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
 import { PRESETS } from '../../foundation/llm-provider/index.js';
 import { initCommand } from './init.js';
@@ -172,7 +173,7 @@ const LLM_ERROR_LABELS: Record<LLMErrorType, string> = {
 async function checkLLMConnection(): Promise<
   { ok: true; model: string } | { ok: false; errorType: LLMErrorType; message: string }
 > {
-  const globalConfig = loadGlobalConfig();
+  const globalConfig = loadGlobalConfig(CONFIG_DEFAULTS);
   const llmConfig = buildLLMConfig(globalConfig);
   const svc = createLLMOrchestrator({
     primary: llmConfig.primary,

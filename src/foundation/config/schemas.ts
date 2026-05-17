@@ -5,7 +5,6 @@
  */
 
 import { z } from 'zod';
-import { DEFAULT_MAX_STEPS } from '../../core/agent-executor/index.js';
 import {
   DEFAULT_LLM_IDLE_TIMEOUT_MS,
   DEFAULT_LLM_TIMEOUT_MS,
@@ -13,15 +12,6 @@ import {
   DEFAULT_RETRY_DELAY_MS,
   DEFAULT_LLM_RETRY_ATTEMPTS,
 } from '../llm-orchestrator/defaults.js';
-import { DEFAULT_TOOL_TIMEOUT_MS } from '../../core/runtime/constants.js';
-import {
-  WATCHDOG_INTERVAL_MS,
-  DEFAULT_DISK_WARNING_MB,
-  CLAW_INACTIVITY_TIMEOUT_MS,
-} from '../../watchdog/constants.js';
-import { CRON_TICK_INTERVAL_MS } from '../../core/cron/constants.js';
-import { REACT_DEFAULT_MAX_TOKENS } from '../../core/agent-executor/constants.js';
-import { DEFAULT_MAX_CONCURRENT_TASKS } from '../../core/async-task-system/constants.js';
 
 // API format code → preset id (for manual entry)
 export const FORMAT_MAP: Record<string, string> = {
@@ -30,105 +20,134 @@ export const FORMAT_MAP: Record<string, string> = {
   '3': 'custom-gemini',
 };
 
+/**
+ * Cross-module config defaults injected at assembly time.
+ * Owner module 负责 const 本身；本 interface 是 Config schema 的 dependency contract。
+ * 装配期单点聚合见 `src/assembly/config-defaults.ts`。
+ */
+export interface ConfigDefaults {
+  maxSteps: number;
+  toolTimeoutMs: number;
+  cronTickIntervalMs: number;
+  reactDefaultMaxTokens: number;
+  defaultMaxConcurrentTasks: number;
+  watchdogIntervalMs: number;
+  defaultDiskWarningMb: number;
+  clawInactivityTimeoutMs: number;
+}
+
 // Zod Schemas (snake_case for YAML compatibility)
-export const LLMProviderSchema = z.object({
-  preset: z.string().optional(),
-  label: z.string().optional(),
-  api_key: z.string(),
-  base_url: z.string().optional(),
-  model: z.string().optional(),
-  max_tokens: z.number().min(1).max(128000).default(REACT_DEFAULT_MAX_TOKENS),
-  temperature: z.number().min(0).max(2).default(0.7),
-  timeout_ms: z.number().min(1000).max(600000).default(DEFAULT_LLM_TIMEOUT_MS),
-  thinking: z.boolean().optional(),
-  thinking_budget_tokens: z.number().min(1).optional(),
-  thinking_mode: z.enum(['adaptive', 'enabled']).optional(),
-  thinking_effort: z.enum(['low', 'medium', 'high']).optional(),
-  extra_headers: z.record(z.string()).optional(),
-  drop_thinking_blocks: z.boolean().optional(),
-  reasoning_effort: z.enum(['low', 'medium', 'high']).optional(),
-});
+export function createLLMProviderSchema(defaults: Pick<ConfigDefaults, 'reactDefaultMaxTokens'>) {
+  return z.object({
+    preset: z.string().optional(),
+    label: z.string().optional(),
+    api_key: z.string(),
+    base_url: z.string().optional(),
+    model: z.string().optional(),
+    max_tokens: z.number().min(1).max(128000).default(defaults.reactDefaultMaxTokens),
+    temperature: z.number().min(0).max(2).default(0.7),
+    timeout_ms: z.number().min(1000).max(600000).default(DEFAULT_LLM_TIMEOUT_MS),
+    thinking: z.boolean().optional(),
+    thinking_budget_tokens: z.number().min(1).optional(),
+    thinking_mode: z.enum(['adaptive', 'enabled']).optional(),
+    thinking_effort: z.enum(['low', 'medium', 'high']).optional(),
+    extra_headers: z.record(z.string()).optional(),
+    drop_thinking_blocks: z.boolean().optional(),
+    reasoning_effort: z.enum(['low', 'medium', 'high']).optional(),
+  });
+}
 
-export const CircuitBreakerSchema = z.object({
-  failure_threshold: z.number().min(1).max(20).default(3),
-  reset_timeout_ms: z.number().min(1000).max(3600000).default(DEFAULT_RESET_TIMEOUT_MS),
-});
+export function createCircuitBreakerSchema() {
+  return z.object({
+    failure_threshold: z.number().min(1).max(20).default(3),
+    reset_timeout_ms: z.number().min(1000).max(3600000).default(DEFAULT_RESET_TIMEOUT_MS),
+  });
+}
 
-export const ClawGlobalConfigSchema = z.object({
-  version: z.string().default('1'),
-  default_max_steps: z.number().min(1).max(1000).optional(),
-  llm: z.object({
-    primary: LLMProviderSchema,
-    fallbacks: z.array(LLMProviderSchema).optional(),
-    retry_attempts: z.number().min(0).max(10).default(DEFAULT_LLM_RETRY_ATTEMPTS),
-    retry_delay_ms: z.number().min(0).max(60000).default(DEFAULT_RETRY_DELAY_MS),
-    circuit_breaker: CircuitBreakerSchema.optional(),
-  }),
-  motion: z.object({
-    heartbeat_interval_ms: z.number().min(0).default(0),
-    max_steps: z.number().min(1).max(1000).default(DEFAULT_MAX_STEPS),
+export function createClawGlobalConfigSchema(defaults: ConfigDefaults) {
+  const LLMProviderSchema = createLLMProviderSchema(defaults);
+  const CircuitBreakerSchema = createCircuitBreakerSchema();
+  return z.object({
+    version: z.string().default('1'),
+    default_max_steps: z.number().min(1).max(1000).optional(),
+    llm: z.object({
+      primary: LLMProviderSchema,
+      fallbacks: z.array(LLMProviderSchema).optional(),
+      retry_attempts: z.number().min(0).max(10).default(DEFAULT_LLM_RETRY_ATTEMPTS),
+      retry_delay_ms: z.number().min(0).max(60000).default(DEFAULT_RETRY_DELAY_MS),
+      circuit_breaker: CircuitBreakerSchema.optional(),
+    }),
+    motion: z.object({
+      heartbeat_interval_ms: z.number().min(0).default(0),
+      max_steps: z.number().min(1).max(1000).default(defaults.maxSteps),
+      subagent_max_steps: z.number().min(1).max(200).optional(),
+      max_concurrent_tasks: z.number().min(1).max(20).default(defaults.defaultMaxConcurrentTasks),
+      llm_idle_timeout_ms: z.number().min(0).max(600000).default(DEFAULT_LLM_IDLE_TIMEOUT_MS),
+    }).optional(),
+    tool_timeout_ms: z.number().min(1000).max(600000).default(defaults.toolTimeoutMs),
+    watchdog: z.object({
+      interval_ms: z.number().min(5000).default(defaults.watchdogIntervalMs),
+      disk_warning_mb: z.number().min(10).default(defaults.defaultDiskWarningMb),
+      claw_inactivity_timeout_ms: z.number().min(60000).default(defaults.clawInactivityTimeoutMs),
+    }).optional(),
+    cron: z.object({
+      enabled: z.boolean().default(true),
+      tick_interval_ms: z.number().min(100).max(60000).default(defaults.cronTickIntervalMs),
+      jobs: z.object({
+        disk_monitor: z.object({
+          enabled: z.boolean().default(true),
+          schedule: z.string().default('hourly'),
+        }).optional(),
+        llm_stats: z.object({
+          enabled: z.boolean().default(true),
+          schedule: z.string().default('daily:06:00'),
+        }).optional(),
+        dream_trigger: z.object({
+          enabled: z.boolean().default(false),
+          schedule: z.string().default('daily:04:00'),
+          max_compression_tokens: z.number().min(500).max(20000).default(4000),
+        }).optional(),
+        contract_observer: z.object({
+          enabled: z.boolean().default(true),
+          schedule: z.string().default('interval:1m'),
+        }).optional(),
+      }).optional(),
+    }).optional(),
+    viewport: z.object({
+      show_recap_stream: z.boolean().default(false),
+      show_system_messages: z.boolean().default(false),
+      show_contract_events: z.boolean().default(true),
+      trim_output_newlines: z.boolean().default(true),
+    }).optional(),
+    audit: z.object({
+      retention: z.object({
+        max_size_mb: z.number().min(1).nullable().default(null),
+      }).optional(),
+    }).optional(),
+    stream: z.object({
+      retention: z.object({
+        max_files: z.number().min(1).nullable().default(null),
+        max_days: z.number().min(1).nullable().default(null),
+      }).optional(),
+    }).optional(),
+  });
+}
+
+export function createClawConfigSchema(defaults: ConfigDefaults) {
+  const LLMProviderSchema = createLLMProviderSchema(defaults);
+  return z.object({
+    name: z.string(),
+    llm: z.object({
+      primary: LLMProviderSchema.optional(),
+    }).optional(),
+    max_steps: z.number().min(1).max(1000).optional(),
+    tool_profile: z.enum(['full', 'readonly', 'subagent']).default('full'),
     subagent_max_steps: z.number().min(1).max(200).optional(),
-    max_concurrent_tasks: z.number().min(1).max(20).default(DEFAULT_MAX_CONCURRENT_TASKS),
-    llm_idle_timeout_ms: z.number().min(0).max(600000).default(DEFAULT_LLM_IDLE_TIMEOUT_MS),
-  }).optional(),
-  tool_timeout_ms: z.number().min(1000).max(600000).default(DEFAULT_TOOL_TIMEOUT_MS),
-  watchdog: z.object({
-    interval_ms: z.number().min(5000).default(WATCHDOG_INTERVAL_MS),
-    disk_warning_mb: z.number().min(10).default(DEFAULT_DISK_WARNING_MB),
-    claw_inactivity_timeout_ms: z.number().min(60000).default(CLAW_INACTIVITY_TIMEOUT_MS),
-  }).optional(),
-  cron: z.object({
-    enabled: z.boolean().default(true),
-    tick_interval_ms: z.number().min(100).max(60000).default(CRON_TICK_INTERVAL_MS),
-    jobs: z.object({
-      disk_monitor: z.object({
-        enabled: z.boolean().default(true),
-        schedule: z.string().default('hourly'),
-      }).optional(),
-      llm_stats: z.object({
-        enabled: z.boolean().default(true),
-        schedule: z.string().default('daily:06:00'),
-      }).optional(),
-      dream_trigger: z.object({
-        enabled: z.boolean().default(false),
-        schedule: z.string().default('daily:04:00'),
-        max_compression_tokens: z.number().min(500).max(20000).default(4000),
-      }).optional(),
-      contract_observer: z.object({
-        enabled: z.boolean().default(true),
-        schedule: z.string().default('interval:1m'),
-      }).optional(),
-    }).optional(),
-  }).optional(),
-  viewport: z.object({
-    show_recap_stream: z.boolean().default(false),
-    show_system_messages: z.boolean().default(false),
-    show_contract_events: z.boolean().default(true),
-    trim_output_newlines: z.boolean().default(true),
-  }).optional(),
-  audit: z.object({
-    retention: z.object({
-      max_size_mb: z.number().min(1).nullable().default(null),
-    }).optional(),
-  }).optional(),
-  stream: z.object({
-    retention: z.object({
-      max_files: z.number().min(1).nullable().default(null),
-      max_days: z.number().min(1).nullable().default(null),
-    }).optional(),
-  }).optional(),
-});
+    max_concurrent_tasks: z.number().min(1).max(20).default(3),
+  });
+}
 
-export const ClawConfigSchema = z.object({
-  name: z.string(),
-  llm: z.object({
-    primary: LLMProviderSchema.optional(),
-  }).optional(),
-  max_steps: z.number().min(1).max(1000).optional(),
-  tool_profile: z.enum(['full', 'readonly', 'subagent']).default('full'),
-  subagent_max_steps: z.number().min(1).max(200).optional(),
-  max_concurrent_tasks: z.number().min(1).max(20).default(3),
-});
-
-export type ClawGlobalConfig = z.infer<typeof ClawGlobalConfigSchema>;
-export type ClawConfig = z.infer<typeof ClawConfigSchema>;
+// Type exports
+export type LLMProviderConfig = z.infer<ReturnType<typeof createLLMProviderSchema>>;
+export type ClawGlobalConfig = z.infer<ReturnType<typeof createClawGlobalConfigSchema>>;
+export type ClawConfig = z.infer<ReturnType<typeof createClawConfigSchema>>;

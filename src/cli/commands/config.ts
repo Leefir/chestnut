@@ -9,8 +9,9 @@ import {
   saveGlobalConfig,
   getMotionDir,
   type ClawGlobalConfig,
-  LLMProviderSchema,
+  type LLMProviderConfig,
 } from '../../foundation/config/index.js';
+import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
 import { PRESETS } from '../../foundation/llm-provider/index.js';
 import { createProcessManagerForCLI } from '../utils/factories.js';
 import { z } from 'zod';
@@ -109,7 +110,7 @@ function findProviderIndex(config: ClawGlobalConfig, label: string): { type: 'pr
 
 // provider add command
 async function providerAdd(): Promise<void> {
-  const config = loadGlobalConfig();
+  const config = loadGlobalConfig(CONFIG_DEFAULTS);
   const rl = createRL();
   
   try {
@@ -159,7 +160,7 @@ async function providerAdd(): Promise<void> {
     const role = roleAnswer === '1' ? 'primary' : 'fallback';
     
     // Build provider config
-    const providerConfig: z.infer<typeof LLMProviderSchema> = {
+    const providerConfig: LLMProviderConfig = {
       preset: presetId,
       label,
       api_key: apiKey,
@@ -220,7 +221,7 @@ async function providerAdd(): Promise<void> {
 
 // provider list command
 async function providerList(): Promise<void> {
-  const config = loadGlobalConfig();
+  const config = loadGlobalConfig(CONFIG_DEFAULTS);
   
   const primary = config.llm.primary;
   const fallbacks = config.llm.fallbacks ?? [];
@@ -249,7 +250,7 @@ async function providerList(): Promise<void> {
 
 // provider remove command
 async function providerRemove(label: string): Promise<void> {
-  const config = loadGlobalConfig();
+  const config = loadGlobalConfig(CONFIG_DEFAULTS);
   
   const found = findProviderIndex(config, label);
   if (!found) {
@@ -269,7 +270,7 @@ async function providerRemove(label: string): Promise<void> {
 
 // provider set-primary command
 async function providerSetPrimary(label: string): Promise<void> {
-  const config = loadGlobalConfig();
+  const config = loadGlobalConfig(CONFIG_DEFAULTS);
   
   const found = findProviderIndex(config, label);
   if (!found) {
@@ -310,7 +311,7 @@ async function providerSetPrimary(label: string): Promise<void> {
 
 // provider move command
 async function providerMove(label: string, position: string): Promise<void> {
-  const config = loadGlobalConfig();
+  const config = loadGlobalConfig(CONFIG_DEFAULTS);
   
   const found = findProviderIndex(config, label);
   if (!found) {

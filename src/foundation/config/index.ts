@@ -13,12 +13,17 @@
 // Schemas + types
 export {
   FORMAT_MAP,
-  LLMProviderSchema,
-  CircuitBreakerSchema,
-  ClawGlobalConfigSchema,
-  ClawConfigSchema,
+  createLLMProviderSchema,
+  createCircuitBreakerSchema,
+  createClawGlobalConfigSchema,
+  createClawConfigSchema,
 } from './schemas.js';
-export type { ClawGlobalConfig, ClawConfig } from './schemas.js';
+export type {
+  ConfigDefaults,
+  LLMProviderConfig,
+  ClawGlobalConfig,
+  ClawConfig,
+} from './schemas.js';
 
 // Path getters + re-export shared constants
 export { CLAW_SUBDIRS } from './paths.js';

@@ -13,6 +13,7 @@ import * as fsNative from 'fs';
 import * as fsAsync from 'fs/promises';
 import { createHash } from 'node:crypto';
 import { loadGlobalConfig, loadClawConfig, getClawDir, getMotionDir } from '../foundation/config/index.js';
+import { CONFIG_DEFAULTS } from '../assembly/config-defaults.js';
 
 import { startDaemonLoop } from './daemon-loop.js';
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
@@ -33,7 +34,7 @@ import type { Instances } from '../assembly/index.js';
  * 守护进程主函数（支持 claw 和 motion）
  */
 export async function daemonCommand(name: string): Promise<void> {
-  const globalConfig = loadGlobalConfig();
+  const globalConfig = loadGlobalConfig(CONFIG_DEFAULTS);
   const isMotion = name === 'motion';
 
   // 配置
@@ -49,7 +50,7 @@ export async function daemonCommand(name: string): Promise<void> {
   // 写 PID 文件（兜底：无论启动方式都确保 PID 可查）
   await processManager.selfWritePid(name);
   
-  const clawConfig = isMotion ? null : loadClawConfig(name);
+  const clawConfig = isMotion ? null : loadClawConfig(name, CONFIG_DEFAULTS);
 
   // Assembly 装配
   let instances: Instances;

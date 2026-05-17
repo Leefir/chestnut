@@ -11,6 +11,7 @@
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { getMotionDir, loadGlobalConfig } from '../foundation/config/index.js';
+import { CONFIG_DEFAULTS } from '../assembly/config-defaults.js';
 import type { FileSystem } from '../foundation/fs/types.js';
 import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import type { AuditLog } from '../foundation/audit/index.js';
@@ -88,7 +89,7 @@ export function getClawforumFs(): NodeFileSystem {
 /** 1:1 保 watchdog.ts:252-257 */
 export function getGlobalConfig() {
   if (!globalConfigCache) {
-    globalConfigCache = loadGlobalConfig();
+    globalConfigCache = loadGlobalConfig(CONFIG_DEFAULTS);
   }
   return globalConfigCache;
 }

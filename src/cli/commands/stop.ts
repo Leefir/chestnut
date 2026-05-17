@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import { existsSync } from 'fs';
 import * as path from 'path';
 import { loadGlobalConfig, getGlobalConfigPath, getMotionDir } from '../../foundation/config/index.js';
+import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
 import { stopCommand as watchdogStop } from '../../watchdog/watchdog.js';
 import { stopCommand as motionStop } from './motion.js';
 import { ProcessManager, ProcessListUnavailable } from '../../foundation/process-manager/index.js';
@@ -19,7 +20,7 @@ import { fileURLToPath } from 'url';
 import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 
 export async function stopAllCommand(deps?: { audit?: AuditLog }): Promise<void> {
-  loadGlobalConfig();
+  loadGlobalConfig(CONFIG_DEFAULTS);
 
   // motion-level audit（α 模板复用 / 同 daemon-entry shim / fail-soft）
   let audit: AuditLog | null = deps?.audit ?? null;

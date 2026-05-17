@@ -9,6 +9,7 @@ import * as yaml from 'js-yaml';
 import {
   loadGlobalConfig, getGlobalConfigPath,
 } from '../../foundation/config/index.js';
+import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
 import { createDirContext, createProcessManagerForCLI } from '../utils/factories.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import { CONTRACT_DIR } from '../../core/contract/index.js';
@@ -20,7 +21,7 @@ import { handleCliError } from '../errors.js';
  * List all Claws and their status
  */
 export async function listCommand(opts?: { json?: boolean }): Promise<void> {
-  loadGlobalConfig();
+  loadGlobalConfig(CONFIG_DEFAULTS);
 
   const globalConfigPath = getGlobalConfigPath();
   const baseDir = path.dirname(globalConfigPath);

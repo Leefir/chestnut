@@ -8,6 +8,7 @@ import * as path from 'path';
 import {
   loadGlobalConfig, clawExists, getClawDir, getGlobalConfigPath,
 } from '../../foundation/config/index.js';
+import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
 import { CliError } from '../errors.js';
 import { createDirContext, createProcessManagerForCLI } from '../utils/factories.js';
 import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
@@ -18,7 +19,7 @@ import { formatRelativeTime, getLastActiveMs } from './claw-shared.js';
  * Display Claw health status (reads directory in real time)
  */
 export async function healthCommand(name: string, opts?: { json?: boolean }): Promise<void> {
-  loadGlobalConfig();
+  loadGlobalConfig(CONFIG_DEFAULTS);
 
   if (!clawExists(name)) {
     throw new CliError(`Claw "${name}" does not exist`);

@@ -13,6 +13,7 @@ import * as fs from 'fs/promises';
 import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { loadGlobalConfig, getMotionDir, getGlobalConfigPath, getClawforumRoot } from '../../foundation/config/index.js';
+import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
 import { ProcessManager } from '../../foundation/process-manager/index.js';
 import { PROCESS_SPAWN_CONFIRM_MS } from '../../foundation/process-manager/index.js';
 
@@ -194,7 +195,7 @@ export async function initCommand(silent = false, deps?: { audit?: AuditLog }): 
  * motion chat - start interactive chat session (viewport mode)
  */
 export async function chatCommand(): Promise<void> {
-  const globalConfig = loadGlobalConfig();
+  const globalConfig = loadGlobalConfig(CONFIG_DEFAULTS);
   const motionDir = getMotionDir();
   const { audit: systemAudit } = createDirContext(motionDir);
 
@@ -241,7 +242,7 @@ export async function chatCommand(): Promise<void> {
  */
 export async function stopCommand(deps?: { audit?: AuditLog }): Promise<void> {
   const audit = deps?.audit;
-  loadGlobalConfig();
+  loadGlobalConfig(CONFIG_DEFAULTS);
   const pm = createProcessManagerForCLI();
 
   if (!pm.isAlive('motion')) {
