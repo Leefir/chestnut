@@ -192,11 +192,6 @@ vi.mock('../../src/foundation/config/index.js', () => ({
   buildLLMConfig: vi.fn(() => ({ provider: 'mock' })),
 }));
 
-vi.mock('../../src/constants.js', () => ({
-  DEFAULT_MAX_STEPS: 30,
-  DEFAULT_MAX_CONCURRENT_TASKS: 5,
-  GATEWAY_ASK_USER_TIMEOUT_MS: 30 * 60 * 1000,
-}));
 
 vi.mock('../../src/core/evolution-system/index.js', () => ({
   createEvolutionSystem: vi.fn(() => ({})),
