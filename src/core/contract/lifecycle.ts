@@ -21,6 +21,8 @@ export interface LifecycleContext extends LockContext {
   getProgress: (contractId: string) => Promise<ProgressData>;
   saveProgress: (contractId: string, progress: ProgressData) => Promise<void>;
   checkAllSubtasksCompleted: (contractId: string, progress: ProgressData) => Promise<boolean>;
+  /** phase 1020 (r124 C fork): cancelContract abort propagation to active verifier subagents */
+  abortContractVerifiers: (contractId: string, reason: string) => void;
 }
 
 export async function pauseContract(
@@ -106,6 +108,16 @@ export async function cancelContract(
     throw new ToolError(`Cannot cancel contract "${contractId}": already archived`);
   }
   await ctx.fs.ensureDir(ctx.archiveDir);
+
+  // phase 1020 (r124 C fork): 真 propagate cancel to active verifier subagents
+  // 在 lock 之前 / abort 是 sync no-blocking / abort 触发 verifier 异步 cleanup
+  // controller cleanup 异步发生（finally unregister）; cancel 主流程不等
+  try {
+    ctx.abortContractVerifiers(contractId, reason);
+  } catch (abortErr) {
+    // 不破 cancel 主流程；abortContractVerifiers 内已 try/catch + audit emit
+    // 此处仅 outer 保险（按 ML#10 不合理停下、subordinate failure 不阻 superordinate flow）
+  }
 
   // phase 791 (P0.16): acquire lock at SOURCE, do status update, move, release at TARGET.
   // phase 871 (new.P1.5 r113 G fork): catch fs.move throw + 显式释放 source 防 orphan

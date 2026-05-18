@@ -93,6 +93,47 @@ export class ContractSystem {
 
   private contractCompletedCallbacks: Set<(contractId: string) => Promise<void>> = new Set();
 
+  /**
+   * phase 1020 (r124 C fork): per-contract active verifier controllers
+   * cancelContract 触发后 abort 所有 controller / 真 propagate verifier subagent abort
+   * 反 phase 993 D.1 dead field
+   */
+  private _activeContractControllers = new Map<string, Set<AbortController>>();
+
+  private _registerVerifierController(contractId: string, ctrl: AbortController): void {
+    let s = this._activeContractControllers.get(contractId);
+    if (!s) {
+      s = new Set();
+      this._activeContractControllers.set(contractId, s);
+    }
+    s.add(ctrl);
+  }
+
+  private _unregisterVerifierController(contractId: string, ctrl: AbortController): void {
+    const s = this._activeContractControllers.get(contractId);
+    if (!s) return;
+    s.delete(ctrl);
+    if (s.size === 0) this._activeContractControllers.delete(contractId);
+  }
+
+  private _abortContractVerifiers(contractId: string, reason: string): void {
+    const s = this._activeContractControllers.get(contractId);
+    if (!s) return;
+    const err = new Error(`contract ${contractId} cancelled: ${reason}`);
+    for (const c of s) {
+      try {
+        c.abort(err);
+      } catch (abortErr) {
+        // unsafe abort: 容错防破 cancelContract 主流程
+        this.audit.write(
+          CONTRACT_AUDIT_EVENTS.CANCELLED,
+          contractId,
+          `abort_verifier_failed: ${abortErr instanceof Error ? abortErr.message : String(abortErr)}`,
+        );
+      }
+    }
+  }
+
   constructor(
     clawDir: string,
     clawId: string,
@@ -169,6 +210,7 @@ export class ContractSystem {
       getProgress: (id) => this.getProgress(id),
       saveProgress: (id, p) => this.saveProgress(id, p),
       checkAllSubtasksCompleted: (id, p) => this.checkAllCompleted(id, p),
+      abortContractVerifiers: (id, reason) => this._abortContractVerifiers(id, reason),
     };
   }
 
@@ -191,6 +233,15 @@ export class ContractSystem {
         this.runLLMAcceptance(promptFile, contractAbsDir, contractId, subtaskId, subtaskDesc, evidence, artifacts),
       withProgressLock: (contractId, fn) => this.withProgressLock(contractId, fn),
       toolRegistry: this.toolRegistry,
+      runVerifierWithCancel: async (contractId, config) => {
+        const controller = new AbortController();
+        this._registerVerifierController(contractId, controller);
+        try {
+          return await runContractVerifier({ ...config, signal: controller.signal });
+        } finally {
+          this._unregisterVerifierController(contractId, controller);
+        }
+      },
     };
   }
 
