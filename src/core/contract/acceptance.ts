@@ -16,7 +16,7 @@ import { CONTRACT_SCRIPT_TIMEOUT_MS } from './constants.js';
 import { DEFAULT_LLM_IDLE_TIMEOUT_MS } from '../../foundation/llm-orchestrator/index.js';
 import { DEFAULT_MAX_STEPS } from '../agent-executor/index.js';
 import { InboxWriter } from '../../foundation/messaging/index.js';
-import type { ContractYaml, ProgressData, AcceptanceResult } from './types.js';
+import type { ContractYaml, ProgressData, AcceptanceResult, VerifierConfig, VerifierResult } from './types.js';
 import { withProgressLock, type LockContext } from './lock.js';
 import { runContractVerifier } from './verifier-job.js';
 import { CONTRACT_AUDIT_EVENTS } from './audit-events.js';
@@ -271,6 +271,8 @@ export interface AcceptanceContext extends LockContext {
   withProgressLock: <T>(contractId: string, fn: () => Promise<T>) => Promise<T>;
   /** phase 704: verifier subagent toolset 注入源 */
   toolRegistry: ToolRegistry;
+  /** phase 1020 (r124 C fork): wrap runContractVerifier with cancel-propagation controller */
+  runVerifierWithCancel: (contractId: string, config: Omit<VerifierConfig, 'signal'>) => Promise<VerifierResult>;
 }
 
 export async function completeSubtaskSync(
@@ -540,12 +542,12 @@ export async function runLLMAcceptance(
       .replace(/\{\{artifacts\}\}/g, artifacts.join(', '))
       .replace(/\{\{subtask_description\}\}/g, subtaskDesc);
 
-    const result = await runContractVerifier({
+    const result = await ctx.runVerifierWithCancel(contractId, {
       agentId: `verifier-${contractId}-${subtaskId}`,
       prompt: filledPrompt,
       clawDir: ctx.clawDir,
       clawId: ctx.clawId,        // phase 514
-      llm: ctx.llm,
+      llm: ctx.llm!,
       fs: ctx.fs,
       audit: ctx.audit,                                         // phase 646 ⚓ verifier cleanup audit injection
       maxSteps: DEFAULT_MAX_STEPS,
