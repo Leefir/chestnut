@@ -254,9 +254,10 @@ describe.skipIf(!gitAvailable)('Snapshot', () => {
     expect(result3.ok).toBe(false);
   });
 
-  it('consecutive failures are isolated per instance', async () => {
-    const snapshot1 = new Snapshot(tmpDir, new NodeFileSystem({ baseDir: tmpDir }), { write: () => {} }, []);
-    const snapshot2 = new Snapshot(tmpDir, new NodeFileSystem({ baseDir: tmpDir }), { write: () => {} }, []);
+  it('consecutive failures are shared across instances for the same dir', async () => {
+    const audit = { write: vi.fn() };
+    const snapshot1 = new Snapshot(tmpDir, new NodeFileSystem({ baseDir: tmpDir }), audit, []);
+    const snapshot2 = new Snapshot(tmpDir, new NodeFileSystem({ baseDir: tmpDir }), audit, []);
     await snapshot1.init();
     await fsp.writeFile(path.join(tmpDir, 'data.txt'), 'hello');
     await fsp.rm(path.join(tmpDir, '.git', 'HEAD'));
@@ -264,11 +265,15 @@ describe.skipIf(!gitAvailable)('Snapshot', () => {
     await snapshot1.commit('fail-1');
     await snapshot1.commit('fail-2');
 
-    // snapshot2 的失败次数应独立
-    await snapshot2.commit('fail-1');
+    // snapshot2 shares the same counter (module-level singleton)
+    await snapshot2.commit('fail-3');
 
-    // snapshot1 再来一次才达到 3 次
-    await snapshot1.commit('fail-3');
+    // DEGRADED should trigger at 3rd failure across instances
+    expect(audit.write).toHaveBeenCalledWith(
+      SNAPSHOT_AUDIT_EVENTS.DEGRADED,
+      expect.stringContaining('dir='),
+      expect.stringContaining('consecutive=3'),
+    );
   });
 
   it('commit writes snapshot_degraded audit at exactly 3 consecutive failures', async () => {

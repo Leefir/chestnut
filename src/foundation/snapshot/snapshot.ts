@@ -25,6 +25,46 @@ type NodeExecError = Error & Partial<GitExecError>;
 
 const DEFAULT_IGNORES = ['logs/', '*.tmp'];
 
+// ---- module-level singleton state (cross-instance consecutiveFailures) ----
+
+interface SnapshotState {
+  consecutiveFailures: number;
+  degradedAt?: number;
+}
+
+const _stateMap = new Map<string, SnapshotState>();
+
+function getState(dir: string): SnapshotState {
+  let s = _stateMap.get(dir);
+  if (!s) {
+    s = { consecutiveFailures: 0 };
+    _stateMap.set(dir, s);
+  }
+  return s;
+}
+
+const STATE_FILE = '.snapshot-state.json';
+
+function stateFilePath(dir: string): string {
+  return path.join(dir, '.git', STATE_FILE);
+}
+
+async function persistState(fs: FileSystem, dir: string, state: SnapshotState): Promise<void> {
+  try {
+    await fs.writeAtomic(stateFilePath(dir), JSON.stringify(state));
+  } catch {
+    // silent: persist fail 不抛，下轮 load 最多丢 1 inc
+  }
+}
+
+async function tryClearPersist(fs: FileSystem, dir: string): Promise<void> {
+  try {
+    await fs.delete(stateFilePath(dir));
+  } catch {
+    // silent: 不存在或权限错无影响
+  }
+}
+
 function toGitExecError(e: unknown): GitExecError {
   if (e instanceof Error) {
     const ne = e as NodeExecError;
@@ -42,7 +82,6 @@ function toGitExecError(e: unknown): GitExecError {
 export class Snapshot {
   private dir: string;
   private fs: FileSystem;
-  private consecutiveFailures = 0;
   private readonly audit: AuditLog;
   private readonly ignorePatterns: readonly string[];
   private readonly syncCleanupDirs?: readonly string[];
@@ -71,8 +110,30 @@ export class Snapshot {
    */
   async init(): Promise<Result<void, ExpectedGitFailure>> {
     const gitDir = path.join(this.dir, '.git');
+    // load persisted state (cross-reassemble continuity)
+    try {
+      const sf = stateFilePath(this.dir);
+      if (await this.fs.exists(sf)) {
+        const raw = await this.fs.read(sf);
+        const loaded = JSON.parse(raw) as Partial<SnapshotState>;
+        const s = getState(this.dir);
+        if (typeof loaded.consecutiveFailures === 'number' && loaded.consecutiveFailures > 0) {
+          s.consecutiveFailures = loaded.consecutiveFailures;
+          s.degradedAt = loaded.degradedAt;
+          // audit: restored prior failures from disk
+          this.audit.write(
+            SNAPSHOT_AUDIT_EVENTS.COMMIT_FAILED,
+            `dir=${this.dir}`,
+            'context=state_restored_from_disk',
+            `consecutive=${s.consecutiveFailures}`,
+          );
+        }
+      }
+    } catch {
+      // silent: corrupted file → start from 0
+    }
     if (await this.fs.exists(gitDir)) {
-      this.consecutiveFailures = 0;
+      // idempotent: do NOT reset counter (preserve cross-reassemble failure history)
       return ok(undefined);
     }
     try {
@@ -82,7 +143,7 @@ export class Snapshot {
       await Snapshot.git(this.dir, ['config', 'user.email', 'clawforum@local']);
       await Snapshot.git(this.dir, ['add', '.']);
       await Snapshot.git(this.dir, ['commit', '--allow-empty', '-m', 'init']);
-      this.consecutiveFailures = 0;
+      getState(this.dir).consecutiveFailures = 0;
       return ok(undefined);
     } catch (rawErr) {
       const failure = this.classifyOrThrow(rawErr);
@@ -132,12 +193,14 @@ export class Snapshot {
     try {
       const status = await Snapshot.git(this.dir, ['status', '--porcelain']);
       if (!status) {
-        this.consecutiveFailures = 0;
+        getState(this.dir).consecutiveFailures = 0;
         return ok(undefined);
       }
       await Snapshot.git(this.dir, ['add', '.']);
       await Snapshot.git(this.dir, ['commit', '-m', message]);
-      this.consecutiveFailures = 0;
+      const s = getState(this.dir);
+      s.consecutiveFailures = 0;
+      await tryClearPersist(this.fs, this.dir);
       this.audit.write(
         SNAPSHOT_AUDIT_EVENTS.COMMITTED,
         `dir=${this.dir}`,
@@ -233,18 +296,22 @@ export class Snapshot {
       return ok(undefined);
     } catch (rawErr) {
       const failure = this.classifyOrThrow(rawErr);
-      this.consecutiveFailures++;
+      const s = getState(this.dir);
+      s.consecutiveFailures++;
+      await persistState(this.fs, this.dir, s);
       this.audit.write(
         SNAPSHOT_AUDIT_EVENTS.COMMIT_FAILED,
         `dir=${this.dir}`,
         `kind=${failure.kind}`,
-        `consecutive=${this.consecutiveFailures}`,
+        `consecutive=${s.consecutiveFailures}`,
       );
-      if (this.consecutiveFailures === 3) {
+      if (s.consecutiveFailures === 3) {
+        s.degradedAt = Date.now();
+        await persistState(this.fs, this.dir, s);
         this.audit.write(
           SNAPSHOT_AUDIT_EVENTS.DEGRADED,
           `dir=${this.dir}`,
-          `consecutive=${this.consecutiveFailures}`,
+          `consecutive=${s.consecutiveFailures}`,
         );
       }
       return errResult(failure);
