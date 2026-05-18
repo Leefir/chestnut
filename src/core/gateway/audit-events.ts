@@ -15,6 +15,7 @@ export const GATEWAY_AUDIT_EVENTS = {
   ASK_USER_RESOLVED: 'gateway_ask_user_resolved',
   ASK_USER_CANCELLED: 'gateway_ask_user_cancelled',
   ASK_USER_REPLY_DROPPED: 'gateway_ask_user_reply_dropped',
+  ASK_USER_RACE_LOSS: 'gateway_ask_user_race_loss',
   ASK_USER_BROADCAST_FAILED: 'gateway_ask_user_broadcast_failed',
   ASK_USER_NO_LISTENER: 'gateway_ask_user_no_listener',
   CONNECTION_DROPPED: 'gateway_connection_dropped',

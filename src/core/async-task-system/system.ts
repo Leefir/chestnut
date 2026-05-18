@@ -551,7 +551,13 @@ export class AsyncTaskSystem {
           `${TASKS_QUEUES_PENDING_DIR}/${taskId}.json`,
           `${TASKS_QUEUES_FAILED_DIR}/${taskId}.json`
         ).catch((e) => {
-          auditError(this.auditWriter, TASK_AUDIT_EVENTS.MOVE_FAILED, e, taskId, 'context=cancel_pending_move');
+          const code = (e as NodeJS.ErrnoException)?.code;
+          if (code === 'ENOENT' || code === 'FS_NOT_FOUND') {
+            // race-loss: dispatch 已 movePendingToRunning / cancel pending move 失败是预期 (phase 1011 D.3)
+            this.auditWriter.write(TASK_AUDIT_EVENTS.TASK_CANCEL_RACE_LOST_TO_DISPATCH, taskId);
+          } else {
+            auditError(this.auditWriter, TASK_AUDIT_EVENTS.MOVE_FAILED, e, taskId, 'context=cancel_pending_move');
+          }
         });
       }
 

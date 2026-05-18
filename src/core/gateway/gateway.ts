@@ -88,7 +88,11 @@ export function createGateway(input: GatewayInput): Gateway {
 
   const cancel = (id: string, reason: 'timeout' | 'abort'): void => {
     const entry = pending.get(id);
-    if (!entry) return; // 已被其他分支收口
+    if (!entry) {
+      // race-loss: ask_user_reply 或并发 cancel 已 win / silent return 漂移、emit 区分 (phase 1011 D.1)
+      audit.write(GATEWAY_AUDIT_EVENTS.ASK_USER_RACE_LOSS, `id=${id}`, `reason=${reason}`, 'lost_to=other_branch');
+      return;
+    }
     cleanup(id);
     const message =
       reason === 'timeout'

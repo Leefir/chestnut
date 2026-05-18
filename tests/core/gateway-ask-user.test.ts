@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { createGateway, createAskUserTool } from '../../src/core/gateway/index.js';
+import { GATEWAY_AUDIT_EVENTS } from '../../src/core/gateway/audit-events.js';
 import type { Gateway, GatewayInput } from '../../src/core/gateway/index.js';
 import type { Transport, Connection } from '../../src/foundation/transport/index.js';
 import type { StreamReader, StreamEvent } from '../../src/foundation/stream/index.js';
@@ -391,6 +392,40 @@ describe('Gateway askUser', () => {
     await promise;
     expect(audit.write).toHaveBeenCalledWith(
       'gateway_ask_user_resolved', expect.stringContaining('id='), expect.stringContaining('by='),
+    );
+  });
+
+  it('cancel race-loss emits ASK_USER_RACE_LOSS when reply wins but timer not cleared (phase 1011 D.1)', async () => {
+    const originalClearTimeout = globalThis.clearTimeout;
+    const audit = mockAudit();
+    gateway = createGateway(createInput({ audit, askUserTimeoutMs: 100 }));
+    await gateway.start();
+
+    const conn: Connection = { id: 'c1', connectedAt: Date.now() };
+    transport._connect(conn);
+
+    const promise = gateway.askUser('Q?', mockCtx());
+    const askId = extractAskId(transport);
+
+    // Prevent clearTimeout so timer survives cleanup (simulating race window)
+    globalThis.clearTimeout = vi.fn(() => {}) as any;
+
+    // Reply wins: cleanup deletes entry but timer remains
+    transport._message(conn, JSON.stringify({ type: 'ask_user_reply', id: askId, answer: 'ok' }));
+    await promise;
+
+    // Restore clearTimeout
+    globalThis.clearTimeout = originalClearTimeout;
+
+    // Timer fires later: cancel sees empty pending (race-loss)
+    vi.advanceTimersByTime(120);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(audit.write).toHaveBeenCalledWith(
+      GATEWAY_AUDIT_EVENTS.ASK_USER_RACE_LOSS,
+      expect.stringContaining(`id=${askId}`),
+      'reason=timeout',
+      'lost_to=other_branch',
     );
   });
 

@@ -43,10 +43,16 @@ export class StreamWriter implements StreamLog {
         );
       }
     }
-    // NEW (phase 743 step B): ensure STREAM_FILE exists for chokidar single-file watch reliability
-    // Reason: chokidar 'add' on new file appearing is unreliable on CI overlayfs / tmpfs inotify
-    //         creating empty file at open ensures chokidar watches existing path + 'change' on subsequent write is reliable
-    // Resource ownership: STREAM_FILE is owned by StreamWriter (M#3) / writer business semantic (M#1+M#2)
+    // === Session boundary invariant (phase 1011 D.4 reframe-⚓ + phase 743 step B):
+    //     archive moveSync → STREAM_FILE writeAtomicSync('') 是 documented 序列。
+    //     reader-side chokidar 监 STREAM_FILE：
+    //       - moveSync 触 'unlink' event
+    //       - writeAtomicSync 触 'add' event
+    //     reader 端期望 debounce 或忽略 unlink-then-add 短窗（~µs）以避 parse_failed。
+    //     既有 WRITER_OPEN_CREATED_EMPTY (line 54) + ARCHIVE_FAILED (line 38) 双 emit 已 cover
+    //     session boundary observability；0 NEW emit 必要。
+    //     reader 端 stream_reader_unlinked + stream_reader_file_missing 已 cover unlink case。
+    //     ⚓ accepted-stable per `feedback_yagni_helper_threshold` (既有 emit cover)。
     if (!this.fs.existsSync(STREAM_FILE)) {
       this.fs.writeAtomicSync(STREAM_FILE, '');
       this.audit.write(

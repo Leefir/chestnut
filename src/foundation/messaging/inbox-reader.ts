@@ -175,7 +175,12 @@ export class InboxReader {
       const filePath = path.join(this.pendingDir, entry.name);
       const result = InboxWriter.readMeta(this.fs, filePath);
       if (!result.ok) {
-        this.audit.write(MESSAGING_AUDIT_EVENTS.INBOX_META_FAILED, `file=${entry.name}`, `kind=${result.error.kind}`);
+        if (result.error.kind === 'not_found') {
+          // race-skip: file 被 markDone/markFailed 并发移走、非真 failure (phase 1011 D.2)
+          this.audit.write(MESSAGING_AUDIT_EVENTS.INBOX_PEEK_RACE_SKIP, `file=${entry.name}`);
+        } else {
+          this.audit.write(MESSAGING_AUDIT_EVENTS.INBOX_META_FAILED, `file=${entry.name}`, `kind=${result.error.kind}`);
+        }
         continue;
       }
       const meta = result.value;

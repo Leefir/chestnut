@@ -158,4 +158,20 @@ describe('StreamWriter', () => {
     writer.close();
     expect(() => writer.close()).not.toThrow();
   });
+
+  it('open archives then writeAtomic empty emits WRITER_OPEN_CREATED_EMPTY (phase 1011 D.4 invariant doc)', () => {
+    const { audit, events } = makeAudit();
+    fsSync.writeFileSync(path.join(tmpDir, 'stream.jsonl'), '{"ts":0}\n');
+
+    const writer = new StreamWriter(fs, audit);
+    writer.open();
+
+    expect(events.some(e => e[0] === STREAM_AUDIT_EVENTS.WRITER_OPEN_CREATED_EMPTY)).toBe(true);
+
+    // session boundary: archive exists + new empty file exists
+    const archiveDir = path.join(tmpDir, 'logs', 'stream');
+    const archives = fsSync.readdirSync(archiveDir);
+    expect(archives.length).toBe(1);
+    expect(fsSync.existsSync(path.join(tmpDir, 'stream.jsonl'))).toBe(true);
+  });
 });
