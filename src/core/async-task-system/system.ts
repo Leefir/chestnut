@@ -516,7 +516,11 @@ export class AsyncTaskSystem {
             taskId,
             `error=${formatErr(err)}`,
           );
-        } catch { /* nested try 防 audit 自身异常 nested throw */ }
+        } catch (innerErr) {
+          // L2 audit writer recursion border: align `[AUDIT CRITICAL]` console.error pattern
+          // (foundation/audit/writer.ts:81+99 + foundation/audit/index.ts:14-16 design)
+          console.error(`[AUDIT CRITICAL] task cancel audit nested throw: taskId=${taskId} reason=${innerErr instanceof Error ? innerErr.message : String(innerErr)}`);
+        }
       }
       this.auditWriter.write(TASK_AUDIT_EVENTS.CANCELLED, taskId, 'from=running');
       return;
@@ -553,6 +557,13 @@ export class AsyncTaskSystem {
             await backupCorruptTask(this.fs, this.auditWriter, filePath, content, e).catch(() => { /* fs.move 路径仍 cover */ });
           }
           // read 失败 → 跳过 / 后续 move 仍尝试
+          // phase 1013 E.4: parse fail 显式 audit 留痕
+          this.auditWriter.write(
+            TASK_AUDIT_EVENTS.PARSE_FAILED,
+            taskId,
+            'context=cancel_pending_load',
+            `error=${formatErr(e)}`,
+          );
         }
       }
 
