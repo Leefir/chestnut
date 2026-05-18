@@ -25,6 +25,7 @@ export class DialogStore {
   private readonly archiveDir: string;
   private createdAt: string | null = null;
   private corruptedPoisoned: boolean = false;
+  private flushPromise: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly fs: FileSystem,
@@ -161,41 +162,55 @@ export class DialogStore {
    * Save session to current.json
    * phase 713: 扩 snapshot 参 / atomic write systemPrompt + messages + toolsForLLM 3 件
    */
+  /**
+   * NEW pub method: await all pending save() flush
+   * phase 1024 G.2: expose flushPromise for barrier (runtime.stop / SIGTERM 不丢半写)
+   */
+  getFlushPromise(): Promise<void> {
+    return this.flushPromise;
+  }
+
   async save(snapshot: {
     systemPrompt: string;
     messages: Message[];
     toolsForLLM: ToolDefinition[];
   }): Promise<void> {
-    const now = new Date().toISOString();
-    
-    // Use cached createdAt if available, otherwise use now
-    if (!this.createdAt) {
-      this.createdAt = now;
-    }
+    const doSave = async (): Promise<void> => {
+      const now = new Date().toISOString();
 
-    const data: SessionData = {
-      version: 2,
-      ...(this.clawId !== undefined && { clawId: this.clawId }),  // phase 450: 0 clawId 时 schema 不含此字段
-      createdAt: this.createdAt,
-      updatedAt: now,
-      systemPrompt: snapshot.systemPrompt,
-      messages: snapshot.messages,
-      toolsForLLM: snapshot.toolsForLLM,
+      // Use cached createdAt if available, otherwise use now
+      if (!this.createdAt) {
+        this.createdAt = now;
+      }
+
+      const data: SessionData = {
+        version: 2,
+        ...(this.clawId !== undefined && { clawId: this.clawId }),  // phase 450: 0 clawId 时 schema 不含此字段
+        createdAt: this.createdAt,
+        updatedAt: now,
+        systemPrompt: snapshot.systemPrompt,
+        messages: snapshot.messages,
+        toolsForLLM: snapshot.toolsForLLM,
+      };
+
+      try {
+        await this.fs.writeAtomic(this.currentPath, JSON.stringify(data, null, 2));
+        // phase 988 (audit-2026-05-17 NEW.P1 G.1): reset corruptedPoisoned 防 sticky data loss
+        // save 写新 current.json → current.json 实然不再 corrupted、应然 align
+        this.corruptedPoisoned = false;
+      } catch (err) {
+        this.audit.write(
+          DIALOG_AUDIT_EVENTS.SAVE_FAILED,
+          `path=${this.currentPath}`,
+          `reason=${err instanceof Error ? err.message : String(err)}`,
+        );
+        throw err;
+      }
     };
-
-    try {
-      await this.fs.writeAtomic(this.currentPath, JSON.stringify(data, null, 2));
-      // phase 988 (audit-2026-05-17 NEW.P1 G.1): reset corruptedPoisoned 防 sticky data loss
-      // save 写新 current.json → current.json 实然不再 corrupted、应然 align
-      this.corruptedPoisoned = false;
-    } catch (err) {
-      this.audit.write(
-        DIALOG_AUDIT_EVENTS.SAVE_FAILED,
-        `path=${this.currentPath}`,
-        `reason=${err instanceof Error ? err.message : String(err)}`,
-      );
-      throw err;
-    }
+    // phase 1024 G.2: serialize concurrent save() — chain into flushPromise / catch swallow per-link 防 chain 破裂
+    const next = this.flushPromise.then(doSave, doSave);  // 失败也继续 doSave / chain 不破
+    this.flushPromise = next.catch(() => { /* swallow / 防 chain 破裂、caller 仍看到 original error via await next */ });
+    return next;
   }
 
   /**
@@ -381,13 +396,39 @@ export class DialogStore {
    * Validate and normalize session data
    */
   private validateSession(data: SessionData): SessionData {
+    // phase 1024 G.4: version 上界 invariant — supported version = 1 | 2 / version > 2 fail-loud audit
+    let version: number = data.version ?? 2;
+    if (typeof version !== 'number' || version > 2 || version < 1) {
+      this.audit.write(
+        DIALOG_AUDIT_EVENTS.INVARIANT_FAILED,
+        `field=version`,
+        `got=${String(data.version)}`,
+        `fallback=2`,
+      );
+      version = 2;
+    }
+    // messages corrupt entry filter: shape check role + content
+    const messages = Array.isArray(data.messages)
+      ? data.messages.filter((m): m is Message => {
+          const valid = m != null && typeof m === 'object' && 'role' in m && 'content' in m;
+          if (!valid) {
+            this.audit.write(
+              DIALOG_AUDIT_EVENTS.INVARIANT_FAILED,
+              `field=messages.entry`,
+              `got=${typeof m}`,
+              `filter=skipped`,
+            );
+          }
+          return valid;
+        })
+      : [];
     return {
-      version: data.version ?? 2,
+      version: version as SessionData['version'],
       clawId: data.clawId ?? this.clawId,
       createdAt: data.createdAt ?? new Date().toISOString(),
       updatedAt: data.updatedAt ?? new Date().toISOString(),
       systemPrompt: data.systemPrompt ?? '',
-      messages: Array.isArray(data.messages) ? data.messages : [],
+      messages,
       toolsForLLM: Array.isArray(data.toolsForLLM) ? data.toolsForLLM : [],
     };
   }
