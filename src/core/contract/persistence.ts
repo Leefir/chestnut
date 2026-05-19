@@ -87,13 +87,16 @@ export async function loadContract(
     priority: 'normal',
     creator: 'system',
     goal: yamlContract.goal,
-    subtasks: yamlContract.subtasks.map(st => ({
-      id: st.id,
-      description: st.description,
-      status: progress.subtasks[st.id]?.status || 'todo',
-      created_at: progress.started_at || new Date().toISOString(),
-      updated_at: progress.subtasks[st.id]?.completed_at || new Date().toISOString(),
-    })),
+    subtasks: yamlContract.subtasks.map(st => {
+      const subtask = progress.subtasks[st.id];
+      return {
+        id: st.id,
+        description: st.description,
+        status: subtask?.status || 'todo',
+        created_at: progress.started_at || new Date().toISOString(),
+        updated_at: subtask?.completed_at || new Date().toISOString(),
+      };
+    }),
     auth_level: yamlContract.auth_level ?? CONTRACT_DEFAULTS.auth_level,
     created_at: progress.started_at || new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -120,7 +123,8 @@ export async function checkAllSubtasksCompleted(
   progress: ProgressData,
 ): Promise<boolean> {
   const contractYaml = await loadContractYaml(ctx, contractId);
-  return contractYaml.subtasks.every(st =>
-    progress.subtasks[st.id]?.status === 'completed'
-  );
+  return contractYaml.subtasks.every(st => {
+    const subtask = progress.subtasks[st.id];
+    return subtask?.status === 'completed';
+  });
 }
