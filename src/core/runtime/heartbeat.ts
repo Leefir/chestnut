@@ -7,6 +7,7 @@
 import * as path from 'path';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { InboxWriter } from '../../foundation/messaging/index.js';
+import type { InboxReader } from '../../foundation/messaging/index.js';
 import { HEARTBEAT_AUDIT_EVENTS } from './heartbeat-audit-events.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 
@@ -15,6 +16,7 @@ export interface HeartbeatOptions {
   interval?: number;
   fs: FileSystem;
   audit: AuditLog;
+  inboxReader: InboxReader;
 }
 
 /**
@@ -26,7 +28,7 @@ export class Heartbeat {
   private lastRun: number;
   private readonly fs: FileSystem;
   private readonly audit: AuditLog;
-  private lastWrittenHeartbeatFile?: string;
+  private readonly inboxReader: InboxReader;
 
   constructor(baseDir: string, options: HeartbeatOptions) {
     this.baseDir = baseDir;
@@ -34,6 +36,7 @@ export class Heartbeat {
     this.lastRun = Date.now();  // 启动后等满一个 interval 再首次触发
     this.fs = options.fs;
     this.audit = options.audit;
+    this.inboxReader = options.inboxReader;
   }
 
   /**
@@ -47,51 +50,35 @@ export class Heartbeat {
   /**
    * 触发心跳：向 motion inbox 写入 heartbeat 消息
    */
-  fire(): void {
+  async fire(): Promise<void> {
     try {
-      const fs = this.fs;
       const inboxDir = path.join(this.baseDir, 'motion', 'inbox', 'pending');
-      fs.ensureDirSync(inboxDir);
+      this.fs.ensureDirSync(inboxDir);
 
-      // O(1) fast path: own last-written heartbeat 仍未被 motion 消费 → 跳 scan
-      if (
-        this.lastWrittenHeartbeatFile &&
-        fs.existsSync(path.join(inboxDir, this.lastWrittenHeartbeatFile))
-      ) {
+      // 走 InboxReader 受信路径（phase1059）：peek 不消费，带 dedup + race 处理
+      const metas = await this.inboxReader.peekMetas();
+      const hasPendingHeartbeat = metas.some((m) => m.type === 'heartbeat');
+      if (hasPendingHeartbeat) {
         this.lastRun = Date.now();
         return;
       }
 
-      // cache miss（首次 fire / 心跳被消费 / cache 丢失）→ O(n) fallback scan
-      // 去重：已有未处理心跳则跳过 + 同步 cache
-      const existing = fs.listSync(inboxDir);
-      for (const f of existing) {
-        if (!f.name.endsWith('.md')) continue;
-        const meta = InboxWriter.readMeta(fs, path.join(inboxDir, f.name));
-        if (meta.ok && meta.value.type === 'heartbeat') {
-          this.lastWrittenHeartbeatFile = f.name;   // sync cache
-          this.lastRun = Date.now();  // 去重也重置计时器，避免重复检查
-          return;
-        }
-      }
-
-      const audit = this.audit;
-      new InboxWriter(fs, inboxDir, audit).writeSync({
+      new InboxWriter(this.fs, inboxDir, this.audit).writeSync({
         type: 'heartbeat',
         source: 'system',
         priority: 'low',
         body: '心跳触发，请巡查。',
         idPrefix: 'hb',
       });
-      // writeSync 返回 void → 不 cache（fallback：下次 fall through scan）
       this.lastRun = Date.now();  // 只在成功写入后更新
     } catch (error) {
-      // lastRun 未更新 → 下次 isDue() 立即可重试
       this.audit.write(
         HEARTBEAT_AUDIT_EVENTS.FIRE_FAILED,
         'context=Heartbeat.fire',
         `error=${String(error)}`,
       );
+      // fire() 是定时器回调，不 rethrow（无上层 handler）
+      // lastRun 未更新 → 下次 isDue() 立即可重试
     }
   }
 }

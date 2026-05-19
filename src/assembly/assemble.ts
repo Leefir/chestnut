@@ -545,6 +545,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
             interval: heartbeatIntervalMs / 1000,
             fs: parentFs,
             audit: auditWriter,
+            inboxReader,
           });
         } catch (e) {
           auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=heartbeat`, `phase=construct`, `reason=${errMsg(e)}`);

@@ -324,8 +324,10 @@ export class Runtime {
       return { injected: [], sources: [], count: 0, infos: [] };
     }
     const { addressed, unaddressed } = this._splitAndAuditEntries(entries);
+    // 先 format 再 markDone：format/inject 成功后才移文件
+    // 若其间 crash，文件在 pending/ 中，下次 drain 重新处理
+    const { injected, sources } = await this._formatInjected(addressed);
     const truncated = await this._markDoneAndTruncate(addressed, unaddressed);
-    const { injected, sources } = await this._formatInjected(truncated);
     return {
       injected,
       sources,
@@ -339,7 +341,11 @@ export class Runtime {
       return await this.inboxReader.drainInbox();
     } catch (err) {
       if (err instanceof InboxListFailed || err instanceof InboxMoveFailed) {
-        // audit 已在 drainInbox 内写；此处只需保守退出本轮
+        this.auditWriter.write(
+          RUNTIME_AUDIT_EVENTS.INBOX_DRAIN_FAILED,
+          `error=${err.constructor.name}`,
+          `reason=${formatErr(err)}`,
+        );
         return [];
       }
       throw err;

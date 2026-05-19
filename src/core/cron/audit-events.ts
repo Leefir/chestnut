@@ -22,4 +22,5 @@ export const CRON_AUDIT_EVENTS = {
   RUNNER_DRAIN_TIMEOUT: 'cron_drain_timeout',   // phase 793 (P0.22): stop drain cap timeout
   RUNNER_DRAIN_LATE_SETTLE: 'cron_drain_late_settle',  // NEW phase 867 (r111 E fork): post-drain late settle observability
   RETENTION_CLEANUP: 'cron_retention_cleanup',          // NEW phase 1053 β-1: retention cleanup cron
+  RETENTION_CLEANUP_DELETE_FAILED: 'cron_retention_cleanup_delete_failed', // NEW phase1059
 } as const;
