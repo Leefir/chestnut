@@ -333,7 +333,7 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
 
       // Heartbeat check (moved into daemon loop to avoid setInterval race conditions)
       if (heartbeat?.isDue()) {
-        heartbeat.fire();
+        await heartbeat.fire();
       }
 
       let interruptPoller: ReturnType<typeof setInterval> | null = null;

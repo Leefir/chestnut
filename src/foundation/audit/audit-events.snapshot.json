@@ -156,6 +156,7 @@
       "cron_metrics_snapshot",
       "cron_parse_fallback",
       "cron_retention_cleanup",
+      "cron_retention_cleanup_delete_failed",
       "cron_runner_started",
       "cron_runner_stopped"
     ],
@@ -214,6 +215,7 @@
       "outbox_write_failed",
       "regime_switch",
       "regime_switch_failed",
+      "runtime_inbox_drain_failed",
       "runtime_inbox_init_failed",
       "runtime_optional_section_read_failed",
       "runtime_process_batch_failed",

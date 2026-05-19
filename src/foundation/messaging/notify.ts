@@ -22,8 +22,9 @@ export function notifyInbox(
     const { inboxDir, ...rest } = opts;
     new InboxWriter(fs, inboxDir, audit).writeSync(rest);
   } catch {
-    // InboxWriter.writeSync 已 audit INBOX_WRITE_FAILED / 此处 catch 静默 best-effort
-    // 不 console.warn 防 TUI raw mode 渲染污染（phase 529 Step E 同型 fix / silent X cluster N+1 实证）
+    // InboxWriter.writeSync 已 audit INBOX_WRITE_FAILED
+    // 此处 catch 是防 TUI raw mode 渲染污染的 best-effort barrier
+    // 不 rethrow — notify 是旁路通知，失败不影响主流程
   }
 }
 

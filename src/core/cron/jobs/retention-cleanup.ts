@@ -48,11 +48,11 @@ export async function runRetentionCleanup(opts: RetentionCleanupOptions): Promis
             totalDeleted++;
           }
         } catch {
-          // silent: best-effort per-file cleanup
+          audit.write(CRON_AUDIT_EVENTS.RETENTION_CLEANUP_DELETE_FAILED, `context=per-file`, `dir=${dir}`);
         }
       }
     } catch {
-      // silent: best-effort per-dir cleanup
+      audit.write(CRON_AUDIT_EVENTS.RETENTION_CLEANUP_DELETE_FAILED, `context=per-dir`, `dir=${dir}`);
     }
   }
 
