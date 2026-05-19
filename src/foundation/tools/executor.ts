@@ -15,6 +15,7 @@ import {
 } from '../../types/errors.js';
 import { CLAWSPACE_DIR } from '../../types/paths.js';
 import type { CallerType, ExecContext } from '../tool-protocol/index.js';
+import type { PermissionChecker } from '../../types/permission.js';
 import type { ToolResult } from '../tool-protocol/index.js';
 import type { ToolProfile } from '../../types/config.js';
 import type { FileSystem } from '../fs/types.js';
@@ -362,7 +363,7 @@ export class ToolExecutor extends ToolExecutorImpl {
    */
   getExecContext(
     profile: ToolProfile,
-    options: { clawId: string; maxSteps: number; signal?: AbortSignal; callerType?: CallerType; originClawId?: string; isShadow?: boolean }
+    options: { clawId: string; maxSteps: number; signal?: AbortSignal; callerType?: CallerType; originClawId?: string; isShadow?: boolean; permissionChecker?: PermissionChecker }
   ): ExecContextImpl {
     return new ExecContextImpl({
       clawId: options.clawId,
@@ -372,6 +373,7 @@ export class ToolExecutor extends ToolExecutorImpl {
       syncDir: this.syncDir,
       profile,
       callerType: options.callerType ?? 'claw',
+      permissionChecker: options.permissionChecker,
       fs: this.fs,
       llm: this.llm,
       maxSteps: options.maxSteps,

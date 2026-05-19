@@ -129,6 +129,7 @@ export async function runSubagent(opts: RunSubagentOptions): Promise<RunSubagent
     messages: opts.messages,
     isShadow: opts.isShadow,
     toolTimeoutMs: opts.toolTimeoutMs,
+    permissionChecker: opts.permissionChecker,
   });
 
   const text = await agent.run();

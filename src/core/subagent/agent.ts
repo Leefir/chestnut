@@ -24,6 +24,7 @@ import type { StreamLog } from '../../foundation/stream/index.js';
 import { type CallerType, callerTypeToProfile } from '../../foundation/tool-protocol/index.js';
 import type { DialogStore } from '../../foundation/dialog-store/index.js';
 import { DEFAULT_SUBAGENT_SYSTEM_PROMPT } from '../../prompts/index.js';
+import type { PermissionChecker } from '../../types/permission.js';
 
 export interface SubAgentOptions {
   agentId: string;
@@ -56,6 +57,7 @@ export interface SubAgentOptions {
   auditWriter: AuditLog;          // tasks/queues/results/{id}/audit.tsv，step 11+ 写事件
   mainDialogStore?: DialogStore;                                // NEW: subagent profile only / ask_caller 用 read-only ref
   mainContextSnapshot?: { clawId: string; toolUseId: string };   // NEW: passthrough from SubAgentTask
+  permissionChecker?: PermissionChecker;                      // phase 1072: subagent file tool permission check
 }
 
 export class SubAgent {
@@ -90,6 +92,7 @@ export class SubAgent {
   private auditWriter: AuditLog;
   private mainDialogStore?: DialogStore;
   private mainContextSnapshot?: { clawId: string; toolUseId: string };
+  private permissionChecker?: PermissionChecker;
 
   constructor(options: SubAgentOptions) {
     this.agentId = options.agentId;
@@ -123,6 +126,7 @@ export class SubAgent {
     this.auditWriter = options.auditWriter;
     this.mainDialogStore = options.mainDialogStore;
     this.mainContextSnapshot = options.mainContextSnapshot;
+    this.permissionChecker = options.permissionChecker;
   }
 
   /**
@@ -308,6 +312,7 @@ export class SubAgent {
             callerType,
             originClawId: this.originClawId,
             isShadow: this.isShadow,
+            permissionChecker: this.permissionChecker,
           }),
           maxSteps: this.maxSteps,
           maxConsecutiveParseErrors: this.maxConsecutiveParseErrors,
