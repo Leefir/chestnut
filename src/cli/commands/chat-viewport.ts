@@ -528,7 +528,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
           const tw = taskWatchMap.get(taskId);
           if (tw) tw.lastEventMs = Date.now();
           mainUI.withScope('task', () => handleTaskEvent(taskId, ev));
-        }, options.audit, { persistent: false });
+        }, options.audit, { persistent: true });
         taskReader.start();
         const tw: TaskWatch = {
           callerType: callerType as CallerType,
