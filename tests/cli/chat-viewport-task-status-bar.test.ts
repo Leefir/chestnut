@@ -12,8 +12,9 @@ describe('chat-viewport-task-status-bar', () => {
     bar.addTrack('task-abc', 'subagent');
     const spawn = bar.renderSpawn(80);
     const shadow = bar.renderShadow(80);
-    expect(spawn).toContain('task-abc');
-    expect(shadow).not.toContain('task-abc');
+    // prefix 'spawn-' + slice(0,6) 'task-a' → 'spawn-task-a'
+    expect(spawn).toContain('spawn-task-a');
+    expect(shadow).not.toContain('spawn-task-a');
   });
 
   it('addTrack(shadow) goes to shadow, not spawn', () => {
@@ -21,8 +22,9 @@ describe('chat-viewport-task-status-bar', () => {
     bar.addTrack('task-def', 'shadow');
     const spawn = bar.renderSpawn(80);
     const shadow = bar.renderShadow(80);
-    expect(shadow).toContain('task-def');
-    expect(spawn).not.toContain('task-def');
+    // prefix 'shadow-' + slice(0,6) 'task-d' → 'shadow-task-d'
+    expect(shadow).toContain('shadow-task-d');
+    expect(spawn).not.toContain('shadow-task-d');
   });
 
   it('unshift order: newest at head (visual top)', () => {
@@ -32,10 +34,10 @@ describe('chat-viewport-task-status-bar', () => {
     bar.addTrack('task-c', 'subagent');
     const spawn = bar.renderSpawn(80);
     const lines = spawn.split('\n');
-    // head = newest = task-c
-    expect(lines[0]).toContain('task-c');
-    expect(lines[1]).toContain('task-b');
-    expect(lines[2]).toContain('task-a');
+    // head = newest = task-c → label 'spawn-task-c'
+    expect(lines[0]).toContain('spawn-task-c');
+    expect(lines[1]).toContain('spawn-task-b');
+    expect(lines[2]).toContain('spawn-task-a');
   });
 
   it('updateTrack tool_call renders tool name', () => {
@@ -57,18 +59,19 @@ describe('chat-viewport-task-status-bar', () => {
   it('updateTrack turn_end removes track immediately', () => {
     const { bar } = makeDeps();
     bar.addTrack('task-z', 'subagent');
-    expect(bar.renderSpawn(80)).toContain('task-z');
+    expect(bar.renderSpawn(80)).toContain('spawn-task-z');
     bar.updateTrack('task-z', { type: 'turn_end' });
-    expect(bar.renderSpawn(80)).not.toContain('task-z');
-    expect(bar.renderShadow(80)).not.toContain('task-z');
+    expect(bar.renderSpawn(80)).not.toContain('spawn-task-z');
+    expect(bar.renderShadow(80)).not.toContain('spawn-task-z');
   });
 
   it('callerType=spawn maps to spawn tracks', () => {
     const { bar } = makeDeps();
     bar.addTrack('task-spawn', 'spawn');
-    // slice(0,8) shortens 'task-spawn' to 'task-spa'
-    expect(bar.renderSpawn(80)).toContain('task-spa');
-    expect(bar.renderShadow(80)).not.toContain('task-spa');
+    // 'spawn' != 'shadow' → maps to 'subagent' → prefix 'spawn-'
+    // slice(0,6): 'task-s' + prefix 'spawn-' → 'spawn-task-s'
+    expect(bar.renderSpawn(80)).toContain('spawn-task-s');
+    expect(bar.renderShadow(80)).not.toContain('spawn-task-s');
   });
 
   it('hasAny reflects track presence', () => {
@@ -88,7 +91,8 @@ describe('buildTaskLine', () => {
     t.textBuffer = 'pondering';
     t.bufferType = 'thinking';
     const line = buildTaskLine(t, 80);
-    expect(line).toContain('[abc12345]');
+    // 'subagent' → prefix 'spawn-' + slice(0,6) 'abc123' → '[spawn-abc123]'
+    expect(line).toContain('[spawn-abc123]');
     expect(line).toContain('read_file');
     expect(line).toContain('(pondering)');
   });
@@ -98,7 +102,8 @@ describe('buildTaskLine', () => {
     t.textBuffer = 'some output';
     t.bufferType = 'text';
     const line = buildTaskLine(t, 80);
-    expect(line).toContain('def67890');
+    // 'shadow' → prefix 'shadow-' + slice(0,6) 'def678' → '[shadow-def678]'
+    expect(line).toContain('[shadow-def678]');
     expect(line).toContain('some output');
   });
 });

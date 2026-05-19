@@ -6,33 +6,28 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const viewportPath = path.join(__dirname, '../../src/cli/commands/chat-viewport.ts');
 
-describe('chat-viewport sync tool prefix (GView-3 α)', () => {
+describe('chat-viewport tool call display (unified, no special prefix)', () => {
   const sourceCode = fs.readFileSync(viewportPath, 'utf-8');
 
-  it('tool_call case contains spawn/shadow prefix logic', () => {
-    // Locate the tool_call handler block
+  it('tool_call case uses unified displayName = toolName', () => {
     const toolCallStart = sourceCode.indexOf("case 'tool_call':");
     expect(toolCallStart).toBeGreaterThan(-1);
     const nextCase = sourceCode.indexOf('case ', toolCallStart + 1);
     const block = sourceCode.slice(toolCallStart, nextCase > toolCallStart ? nextCase : toolCallStart + 600);
 
-    expect(block).toContain("toolName === 'spawn'");
-    expect(block).toContain("toolName === 'shadow'");
-    expect(block).toContain("`${toolName}:`");
+    // All tools use the same display format — no special spawn/shadow prefix
+    expect(block).toContain('const displayName = toolName;');
   });
 
-  it('spawn tool gets spawn: prefix in displayName', () => {
+  it('no spawn: or shadow: colon suffix', () => {
     const toolCallStart = sourceCode.indexOf("case 'tool_call':");
     const nextCase = sourceCode.indexOf('case ', toolCallStart + 1);
     const block = sourceCode.slice(toolCallStart, nextCase > toolCallStart ? nextCase : toolCallStart + 600);
 
-    // displayName = (toolName === 'spawn' || toolName === 'shadow') ? `${toolName}:` : toolName;
-    expect(block).toContain("(toolName === 'spawn' || toolName === 'shadow')");
-    expect(block).toContain('`${toolName}:`');
-    expect(block).toContain(': toolName');
+    expect(block).not.toContain("`${toolName}:`");
   });
 
-  it('appendOutput uses displayName, not raw event.name', () => {
+  it('appendOutput uses displayName', () => {
     const toolCallStart = sourceCode.indexOf("case 'tool_call':");
     const nextCase = sourceCode.indexOf('case ', toolCallStart + 1);
     const block = sourceCode.slice(toolCallStart, nextCase > toolCallStart ? nextCase : toolCallStart + 600);
@@ -41,13 +36,13 @@ describe('chat-viewport sync tool prefix (GView-3 α)', () => {
     expect(block).toContain(`⚙ \${displayName}`);
   });
 
-  it('default tool (e.g. exec) does not get arbitrary prefix', () => {
-    // The prefix is conditional: only spawn/shadow get it
+  it('default tool (e.g. exec) uses bare toolName without conditional prefix', () => {
     const toolCallStart = sourceCode.indexOf("case 'tool_call':");
     const nextCase = sourceCode.indexOf('case ', toolCallStart + 1);
     const block = sourceCode.slice(toolCallStart, nextCase > toolCallStart ? nextCase : toolCallStart + 600);
 
-    // Should NOT unconditionally prefix every tool name
-    expect(block).not.toMatch(/appendOutput\s*\(\s*['"]\\x1b\[36m['"]\s*,\s*[`'"]⚙\s*\$\{event\.name/);
+    // No conditional logic for specific tool names
+    expect(block).not.toContain("toolName === 'spawn'");
+    expect(block).not.toContain("toolName === 'shadow'");
   });
 });
