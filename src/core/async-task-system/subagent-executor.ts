@@ -55,6 +55,14 @@ export async function executeSubAgentTask(
   // Per-task result dir + TASK_ATTEMPT_START stream marker（async 特有 lifecycle）
   const taskResultDir = `${TASKS_QUEUES_RESULTS_DIR}/${task.id}`;
   fs.ensureDirSync(taskResultDir);
+  // task_started emitted here (after dir exists) so viewport per-task reader won't ENOENT
+  parentStreamLog?.write({
+    ts: Date.now(),
+    type: STREAM_TASK_EVENTS.TASK_STARTED,
+    taskId: task.id,
+    callerType: task.callerType ?? 'subagent',
+    silent: false,
+  });
   const taskStreamPath = `${taskResultDir}/${STREAM_FILE}`;
   try {
     fs.appendSync(taskStreamPath, JSON.stringify({

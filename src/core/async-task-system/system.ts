@@ -354,15 +354,17 @@ export class AsyncTaskSystem {
       return;
     }
 
-    // task_started stream event triggered here (covers spawn direct write,
-    // scheduleSubAgent, and startup recovery scan uniformly)
-    this.parentStreamLog?.write({
-      ts: Date.now(),
-      type: STREAM_TASK_EVENTS.TASK_STARTED,
-      taskId: task.id,
-      callerType: task.callerType ?? 'subagent',
-      silent: false,
-    });
+    // task_started: SubAgentTask emitted in executeSubAgentTask after dir creation;
+    // ToolTask emitted here (no per-task result dir / no stream reader needed)
+    if (task.kind === 'tool') {
+      this.parentStreamLog?.write({
+        ts: Date.now(),
+        type: STREAM_TASK_EVENTS.TASK_STARTED,
+        taskId: task.id,
+        callerType: task.callerType ?? 'subagent',
+        silent: false,
+      });
+    }
     this.pendingQueue.push(task);
     this._dispatch();
   }
