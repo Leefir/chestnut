@@ -205,12 +205,15 @@ export class SubAgent {
       });
 
       // Setup messages（若传入 messages 则直接使用，否则从 prompt 构建）
-      const messages: Message[] = this.messages
-        ? [
-            ...this.messages,  // 继承历史上下文
-            ...(this.prompt ? [{ role: 'user' as const, content: this.prompt }] : []),
-          ]
-        : [{ role: 'user' as const, content: this.prompt }];
+      // Store on this.messages so finally block can persist the mutated array
+      if (this.messages) {
+        if (this.prompt) {
+          this.messages.push({ role: 'user' as const, content: this.prompt });
+        }
+      } else {
+        this.messages = [{ role: 'user' as const, content: this.prompt }];
+      }
+      const messages = this.messages;
 
       // Ensure task directory exists
       await this.fs.ensureDir(this.resultDir);
@@ -348,6 +351,16 @@ export class SubAgent {
                 `error=${err instanceof Error ? err.message : String(err)}`,
               );
               // 不 throw — audit 失败不终止任务
+            }
+            // 每步后持久化 messages — 崩溃可恢复、执行中可观察
+            try {
+              await this.messageStore.save({
+                systemPrompt,
+                messages,
+                toolsForLLM: tools,
+              });
+            } catch {
+              // best-effort / 不影响 agent 执行
             }
             auditStep++;
             auditStepTools = [];
