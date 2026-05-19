@@ -30,6 +30,7 @@ export const RUNTIME_AUDIT_EVENTS = {
   INBOX_HANDLER_FAILED: 'inbox_handler_failed',
   INBOX_INJECT: 'inbox_inject',
   INBOX_UNADDRESSED: 'inbox_unaddressed',
+  INBOX_UNKNOWN_TYPE: 'runtime_inbox_unknown_type',
   INBOX_DRAIN_FAILED: 'runtime_inbox_drain_failed',
   // TOOL / OUTBOX
   TOOL_RESULT: 'tool_result',

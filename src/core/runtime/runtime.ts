@@ -303,7 +303,10 @@ export class Runtime {
         }
       }
       case 'message':
+        return `[system message${t}] ${body}`;
       default:
+        this.auditWriter.write(RUNTIME_AUDIT_EVENTS.INBOX_UNKNOWN_TYPE,
+          `type=${type}`, `from=${from}`);
         return `[system message${t}] ${body}`;
     }
   }
@@ -1039,7 +1042,12 @@ export class Runtime {
       case 'none': inherited = []; break;
       case 'last-turn': inherited = extractLastTurn(oldMessages); break;
       case 'all':
-      default: inherited = oldMessages;
+        inherited = oldMessages;
+        break;
+      default:
+        this.auditWriter.write(RUNTIME_AUDIT_EVENTS.REGIME_SWITCH_FAILED,
+          'context=unknown_strategy', `strategy=${strategy}`);
+        inherited = oldMessages;
     }
     // 4. tool_use 悬空 repair（per L5.G4）
     const { repaired } = DialogStore.repair(inherited, { interruptionMessage: 'Regime switch: tools may have changed.' });
