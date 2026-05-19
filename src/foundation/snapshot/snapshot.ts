@@ -25,6 +25,9 @@ type NodeExecError = Error & Partial<GitExecError>;
 
 const DEFAULT_IGNORES = ['logs/', '*.tmp'];
 
+/** Minimum interval between git commits (ms). Commits within this window are skipped. */
+const COMMIT_THROTTLE_MS = 30_000;
+
 // ---- module-level singleton state (cross-instance consecutiveFailures) ----
 
 interface SnapshotState {
@@ -85,6 +88,7 @@ export class Snapshot {
   private readonly audit: AuditLog;
   private readonly ignorePatterns: readonly string[];
   private readonly syncCleanupDirs?: readonly string[];
+  private _lastCommitMs = 0;
 
   constructor(dir: string, fs: FileSystem, audit: AuditLog, ignorePatterns: readonly string[], syncCleanupDirs?: readonly string[]) {
     this.dir = dir;
@@ -190,6 +194,12 @@ export class Snapshot {
    * - 不可预期失败 → throw
    */
   async commit(message: string): Promise<Result<void, ExpectedGitFailure>> {
+    // Throttle: skip commits within COMMIT_THROTTLE_MS (phase 1051)
+    const now = Date.now();
+    if (now - this._lastCommitMs < COMMIT_THROTTLE_MS) {
+      return ok(undefined);
+    }
+
     try {
       const status = await Snapshot.git(this.dir, ['status', '--porcelain']);
       if (!status) {
@@ -198,6 +208,7 @@ export class Snapshot {
       }
       await Snapshot.git(this.dir, ['add', '.']);
       await Snapshot.git(this.dir, ['commit', '-m', message]);
+      this._lastCommitMs = Date.now();
       const s = getState(this.dir);
       s.consecutiveFailures = 0;
       await tryClearPersist(this.fs, this.dir);

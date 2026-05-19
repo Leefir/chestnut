@@ -70,7 +70,11 @@ vi.mock('../../src/foundation/stream/index.js', () => ({
 }));
 
 vi.mock('../../src/foundation/fs/node-fs.js', () => ({
-  NodeFileSystem: vi.fn(() => ({ ensureDir: vi.fn().mockResolvedValue(undefined) })),
+  NodeFileSystem: vi.fn(() => ({
+    ensureDir: vi.fn().mockResolvedValue(undefined),
+    existsSync: vi.fn(() => false),
+    listSync: vi.fn(() => []),
+  })),
 }));
 
 vi.mock('../../src/assembly/cleanup.js', () => ({
@@ -117,6 +121,10 @@ vi.mock('../../src/core/memory/index.js', () => ({
 
 vi.mock('../../src/core/contract/jobs/contract-observer.js', () => ({
   runContractObserver: vi.fn(),
+}));
+
+vi.mock('../../src/core/cron/jobs/git-gc-weekly.js', () => ({
+  runGitGcWeekly: vi.fn(),
 }));
 
 vi.mock('../../src/foundation/llm-orchestrator/orchestrator.js', () => ({
@@ -526,6 +534,7 @@ describe('assemble', () => {
     const { runLlmStats } = await import('../../src/core/cron/jobs/llm-stats.js');
     const { createMemorySystem } = await import('../../src/core/memory/index.js');
     const { runContractObserver } = await import('../../src/core/contract/jobs/contract-observer.js');
+    const { runGitGcWeekly } = await import('../../src/core/cron/jobs/git-gc-weekly.js');
 
     expect(runDiskMonitor).toHaveBeenCalled();
     expect(runLlmStats).toHaveBeenCalled();
@@ -533,6 +542,7 @@ describe('assemble', () => {
     expect(mockMemorySystem.runDeepDream).toHaveBeenCalled();
     expect(mockMemorySystem.runRandomDream).toHaveBeenCalled();
     expect(runContractObserver).toHaveBeenCalled();
+    expect(runGitGcWeekly).toHaveBeenCalled();
   });
 
   // ==========================================================================

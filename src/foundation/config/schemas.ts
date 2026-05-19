@@ -115,6 +115,10 @@ export function createClawGlobalConfigSchema(defaults: ConfigDefaults) {
           enabled: z.boolean().default(true),
           schedule: z.string().default('interval:5m'),
         }).optional(),
+        git_gc_weekly: z.object({
+          enabled: z.boolean().default(true),
+          schedule: z.string().default('daily:03:00'),
+        }).optional(),
       }).optional(),
     }).optional(),
     viewport: z.object({

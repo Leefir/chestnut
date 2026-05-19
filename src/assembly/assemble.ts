@@ -59,6 +59,7 @@ import { createCronRunner, parseSchedule, CronRunner } from '../core/cron/index.
 import { runDiskMonitor } from '../core/cron/jobs/disk-monitor.js';
 import { runLlmStats } from '../core/cron/jobs/llm-stats.js';
 import { runMetricsSnapshot } from '../core/cron/jobs/metrics-snapshot.js';
+import { runGitGcWeekly } from '../core/cron/jobs/git-gc-weekly.js';
 import { createMemorySystem, memorySearchTool } from '../core/memory/index.js';
 import type { MemorySystem } from '../core/memory/index.js';
 import { runContractObserver } from '../core/contract/jobs/contract-observer.js';
@@ -665,6 +666,17 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
               notifyInbox: (payload, audit) => notifyInbox(clawforumFs, payload, audit),
             }),
             timeoutMs: 5 * 60_000,
+          },
+          {
+            name: 'git-gc-weekly',
+            enabled: globalConfig.cron?.jobs?.git_gc_weekly?.enabled ?? true,
+            schedule: parseSchedule(globalConfig.cron?.jobs?.git_gc_weekly?.schedule ?? 'daily:03:00', auditWriter),
+            handler: () => runGitGcWeekly({
+              clawforumDir,
+              fs: clawforumFs,
+              audit: auditWriter,
+            }),
+            timeoutMs: 120_000,
           },
         ], auditWriter);
       } catch (e) {

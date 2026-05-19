@@ -26,6 +26,8 @@ export interface AuditLog {
 
 export { AuditWriter, AUDIT_FILE } from './writer.js';
 export { AUDIT_MESSAGE_MAX_CHARS, AUDIT_PREVIEW_LEN } from './defaults.js';
+export { BatchedAuditWriter } from './batched-writer.js';
+export type { BatchedAuditWriterOptions } from './batched-writer.js';
 
 export function createSystemAudit(fs: FileSystem, baseDir: string): AuditLog {
   return new AuditWriter(fs, path.join(baseDir, AUDIT_FILE));
