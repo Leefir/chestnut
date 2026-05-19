@@ -155,6 +155,7 @@
       "cron_llm_stats",
       "cron_metrics_snapshot",
       "cron_parse_fallback",
+      "cron_retention_cleanup",
       "cron_runner_started",
       "cron_runner_stopped"
     ],

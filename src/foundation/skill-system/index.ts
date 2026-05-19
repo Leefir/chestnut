@@ -12,7 +12,7 @@ export { SkillSystem, type SkillMeta } from './registry.js';
 
 /**
  * 构造 SkillSystem。
- * 调用方必须在使用前显式 `await registry.loadAll()`（契约 §2.1）。
+ * loadAll 为 lazy init — 首次调用 `loadFull()` / `getMeta()` 时自动触发。
  */
 export function createSkillSystem(
   fs: FileSystem,

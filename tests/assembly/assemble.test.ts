@@ -736,14 +736,6 @@ describe('assemble', () => {
       expect(thrown.message).toMatch(/SkillSystem construct failed/);
     });
 
-    it('skill_registry loadAll failure → audit module=skill_registry phase=init + throw', async () => {
-      const { events, thrown } = await expectAssembleFailure(
-        '../../src/foundation/skill-system/registry.js', 'SkillSystem', 'loadAll', { getSkills: vi.fn(() => []) },
-      );
-      expect(events.some(e => /^assemble_failed\tmodule=skill_registry\tphase=init\treason=injected/.test(e))).toBe(true);
-      expect(thrown.message).toMatch(/SkillSystem\.loadAll failed/);
-    });
-
     it('contract_manager construct failure → audit module=contract_manager phase=construct + throw', async () => {
       const { events, thrown } = await expectAssembleFailure(
         '../../src/core/contract/manager.js', 'ContractSystem', 'ctor',

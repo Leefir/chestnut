@@ -60,6 +60,7 @@ import { runDiskMonitor } from '../core/cron/jobs/disk-monitor.js';
 import { runLlmStats } from '../core/cron/jobs/llm-stats.js';
 import { runMetricsSnapshot } from '../core/cron/jobs/metrics-snapshot.js';
 import { runGitGcWeekly } from '../core/cron/jobs/git-gc-weekly.js';
+import { runRetentionCleanup } from '../core/cron/jobs/retention-cleanup.js';
 import { createMemorySystem, memorySearchTool } from '../core/memory/index.js';
 import type { MemorySystem } from '../core/memory/index.js';
 import { runContractObserver } from '../core/contract/jobs/contract-observer.js';
@@ -220,19 +221,13 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       throw new Error(`Assembly: ToolRegistry construct failed: ${errMsg(e)}`, { cause: e });
     }
 
-    // --- L3-L5: skillRegistry + loadAll ---
+    // --- L3-L5: skillRegistry (lazy init / phase 1053 α-6) ---
     let skillRegistry: SkillSystem;
     try {
       skillRegistry = createSkillSystem(systemFs, SKILLS_DIR_DEFAULT, auditWriter);
     } catch (e) {
       auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=skill_registry`, `phase=construct`, `reason=${errMsg(e)}`);
       throw new Error(`Assembly: SkillSystem construct failed: ${errMsg(e)}`, { cause: e });
-    }
-    try {
-      await skillRegistry.loadAll();
-    } catch (e) {
-      auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=skill_registry`, `phase=init`, `reason=${errMsg(e)}`);
-      throw new Error(`Assembly: SkillSystem.loadAll failed: ${errMsg(e)}`, { cause: e });
     }
 
     // --- L3-L5: contractManager ---
@@ -675,6 +670,23 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
               clawforumDir,
               fs: clawforumFs,
               audit: auditWriter,
+            }),
+            timeoutMs: 120_000,
+          },
+          {
+            name: 'retention-cleanup',
+            enabled: globalConfig.cron?.jobs?.retention_cleanup?.enabled ?? true,
+            schedule: parseSchedule(globalConfig.cron?.jobs?.retention_cleanup?.schedule ?? 'daily:04:00', auditWriter),
+            handler: () => runRetentionCleanup({
+              motionDir: clawDir,
+              fs: clawforumFs,
+              audit: auditWriter,
+              maxDays: {
+                inbox: globalConfig.retention?.inbox_max_days ?? 30,
+                outbox: globalConfig.retention?.outbox_max_days ?? 30,
+                tasks: globalConfig.retention?.tasks_max_days ?? 60,
+                dialog: globalConfig.retention?.dialog_max_days ?? 90,
+              },
             }),
             timeoutMs: 120_000,
           },

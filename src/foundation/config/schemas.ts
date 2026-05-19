@@ -119,6 +119,10 @@ export function createClawGlobalConfigSchema(defaults: ConfigDefaults) {
           enabled: z.boolean().default(true),
           schedule: z.string().default('daily:03:00'),
         }).optional(),
+        retention_cleanup: z.object({
+          enabled: z.boolean().default(true),
+          schedule: z.string().default('daily:04:00'),
+        }).optional(),
       }).optional(),
     }).optional(),
     viewport: z.object({
@@ -137,6 +141,12 @@ export function createClawGlobalConfigSchema(defaults: ConfigDefaults) {
         max_files: z.number().min(1).nullable().default(null),
         max_days: z.number().min(1).nullable().default(null),
       }).optional(),
+    }).optional(),
+    retention: z.object({
+      inbox_max_days: z.number().int().positive().default(30),
+      outbox_max_days: z.number().int().positive().default(30),
+      tasks_max_days: z.number().int().positive().default(60),
+      dialog_max_days: z.number().int().positive().default(90),
     }).optional(),
   });
 }

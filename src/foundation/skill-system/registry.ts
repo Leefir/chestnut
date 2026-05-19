@@ -67,10 +67,25 @@ export class SkillSystem {
   private nameSourceMap: Map<string, 'frontmatter' | 'fallback_dirname'> = new Map();
   private audit?: AuditLog;
 
+  // phase 1053 α-6: lazy init guard (cold-start sync chain removal)
+  private _loaded = false;
+  private _loadPromise: Promise<void> | null = null;
+
   constructor(fs: FileSystem, skillsDir: string, audit?: AuditLog) {
     this.fs = fs;
     this.skillsDir = skillsDir;
     this.audit = audit;
+  }
+
+  private async _ensureLoaded(): Promise<void> {
+    if (this._loaded) return;
+    if (this._loadPromise) return this._loadPromise;
+    this._loadPromise = this.loadAll().then(() => {
+      this._loaded = true;
+    }).finally(() => {
+      this._loadPromise = null;
+    });
+    return this._loadPromise;
   }
 
   /**
@@ -177,6 +192,7 @@ export class SkillSystem {
    * 加载完整 SKILL.md 内容
    */
   async loadFull(name: string): Promise<string> {
+    await this._ensureLoaded();
     const meta = this.metaMap.get(name);
     if (!meta) {
       throw new ToolError(`Skill "${name}" not found`);
