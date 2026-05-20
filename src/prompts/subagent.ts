@@ -30,12 +30,13 @@ Do NOT attempt to fix issues, execute tasks, or make assumptions about missing e
  * 装配方（subagent-executor / verifier-job）调用 / prepend 到 default/verifier prompt
  * phase 514 加
  */
-export function buildSubagentSystemPromptPrefix(args: {
+export function buildSubagentSystemPrompt(args: {
   taskId: string;              // subagent task id
   callerClawId: string;        // caller's clawId
   subagentsDir: string;        // e.g. 'tasks/subagents' — caller 装配期注入
+  systemPrompt?: string;       // optional custom system prompt to append after prefix
 }): string {
-  return `## Workspace Context
+  const prefix = `## Workspace Context
 
 Your default cwd is the clawspace of your caller "${args.callerClawId}".
 Your dedicated temp dir: \`../${args.subagentsDir}/${args.taskId}/\` (recommended for working files. persists for post-hoc audit)
@@ -48,4 +49,5 @@ Tool defaults:
   - 例 \`write: { "path": "foo.md", "cwd": "../${args.subagentsDir}/${args.taskId}", "content": "..." }\`
 - 访问其他 claw 用 read tools 的 \`claw: "<id>"\` 参数（read-only / write 隔离）
 `;
+  return args.systemPrompt ? `${prefix}\n\n${args.systemPrompt}` : prefix;
 }

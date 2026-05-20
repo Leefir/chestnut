@@ -16,7 +16,7 @@ import { formatErr, auditError, classifyTaskError } from './_helpers.js';
 import { AskMotionTool } from './tools/ask-motion.js';
 import { TASKS_SYNC_DIR } from '../../types/paths.js';
 import { TASKS_QUEUES_RESULTS_DIR, TASKS_SUBAGENTS_DIR } from './dirs.js';
-import { buildSubagentSystemPromptPrefix, DEFAULT_SUBAGENT_SYSTEM_PROMPT } from '../../prompts/subagent.js';
+import { buildSubagentSystemPrompt, DEFAULT_SUBAGENT_SYSTEM_PROMPT } from '../../prompts/subagent.js';
 import { sendResult, sendFallbackError } from './result-delivery.js';
 
 import type { PostProcessor } from './post-processors/types.js';
@@ -102,12 +102,12 @@ export async function executeSubAgentTask(
       ? task.shadowToolsForLLM
       : registry.formatForLLM(effectiveRegistry.getAll());
 
-    const promptPrefix = buildSubagentSystemPromptPrefix({
+    const finalSystemPrompt = buildSubagentSystemPrompt({
       taskId: task.id,
       callerClawId: task.parentClawId,
       subagentsDir: TASKS_SUBAGENTS_DIR,
+      systemPrompt: task.systemPrompt ?? DEFAULT_SUBAGENT_SYSTEM_PROMPT,
     });
-    const finalSystemPrompt = `${promptPrefix}\n\n${task.systemPrompt ?? DEFAULT_SUBAGENT_SYSTEM_PROMPT}`;
 
     const { text, capturedResult } = await runSubagent({
       agentId: task.id,

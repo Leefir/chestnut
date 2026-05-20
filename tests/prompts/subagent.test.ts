@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { buildSubagentSystemPromptPrefix } from '../../src/prompts/subagent.js';
+import { buildSubagentSystemPrompt } from '../../src/prompts/subagent.js';
 
-describe('buildSubagentSystemPromptPrefix', () => {
+describe('buildSubagentSystemPrompt', () => {
   it('教默认 clawspace + 推荐临时区 (phase 518)', () => {
-    const result = buildSubagentSystemPromptPrefix({
+    const result = buildSubagentSystemPrompt({
       taskId: 'abc123',
       callerClawId: 'main-claw',
       subagentsDir: 'tasks/subagents',
@@ -14,7 +14,7 @@ describe('buildSubagentSystemPromptPrefix', () => {
   });
 
   it('mentions tool defaults and cross-claw access', () => {
-    const result = buildSubagentSystemPromptPrefix({
+    const result = buildSubagentSystemPrompt({
       taskId: 'x',
       callerClawId: 'caller',
       subagentsDir: 'tasks/subagents',
