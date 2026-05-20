@@ -34,7 +34,7 @@ export const spawnTool: Tool = {
       },
       timeoutMs: {
         type: 'number',
-        description: 'Timeout in milliseconds (default: 300000)',
+        description: 'Timeout in milliseconds (default: 60000)',
       },
       maxSteps: {
         type: 'number',

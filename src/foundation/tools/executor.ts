@@ -21,6 +21,7 @@ import type { ToolProfile } from '../../types/config.js';
 import type { FileSystem } from '../fs/types.js';
 import type { LLMOrchestrator } from '../llm-orchestrator/index.js';
 import type { AuditLog } from '../audit/index.js';
+import type { AbortReason } from '../llm-provider/index.js';
 import type { ScheduleAsyncTool } from './async-dispatch.js';
 import type { DialogStore } from '../dialog-store/index.js';
 import { DEFAULT_TOOL_TIMEOUT_MS } from './constants.js';
@@ -130,7 +131,7 @@ export class ToolExecutorImpl implements IToolExecutor {
 
     // 5. Execute with timeout using Promise.race (sync path)
     const timeoutController = new AbortController();
-    const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs);
+    const timeoutId = setTimeout(() => timeoutController.abort({ type: 'tool_timeout', ms: timeoutMs } satisfies AbortReason), timeoutMs);
 
     const upstreamSignals = ctx.signal ? [ctx.signal] : [];
     const mergedSignal = upstreamSignals.length === 0
