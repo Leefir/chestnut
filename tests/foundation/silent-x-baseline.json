@@ -269,7 +269,7 @@
     },
     {
       "file": "src/watchdog/watchdog-utils.ts",
-      "line": 113,
+      "line": 120,
       "body_excerpt": "} catch { /* skip */ }",
       "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
     }
