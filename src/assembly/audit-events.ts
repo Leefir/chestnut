@@ -15,4 +15,5 @@ export const ASSEMBLY_AUDIT_EVENTS = {
   DAEMON_CRASH: 'daemon_crash',
   CLEANUP_TEMP_FILES_FAILED: 'cleanup_temp_files_failed',
   DISASSEMBLE_STEP_FAILED: 'disassemble_step_failed',
+  FALLBACK_RECONCILE_FAILED: 'assembly_fallback_reconcile_failed',
 } as const;

@@ -43,7 +43,7 @@ export function writeWatchdogInboxMessage(type: string, content: Record<string, 
   const motionDir = getMotionDir();
   const inboxDir = path.join(motionDir, 'inbox', 'pending');
   const { fs, audit } = getMotionContext();
-  const body = (content.message as string) ?? JSON.stringify(content);
+  const body = typeof content.message === 'string' ? content.message : JSON.stringify(content);
   new InboxWriter(fs, inboxDir, audit).writeSync({
     type: `watchdog_${type}`,
     source: 'watchdog',

@@ -18,8 +18,11 @@ import type { FileSystem } from '../foundation/fs/types.js';
 import type { AuditLog } from '../foundation/audit/index.js';
 import { readAll, STREAM_FILE } from '../foundation/stream/index.js';
 import { LLM_OUTPUT_EVENTS } from '../foundation/stream/index.js';
+// NOTE: turn_start/turn_end/turn_error NOT included — only LLM output counts as activity
+// If new stream event types are added, this set must be evaluated for inclusion
 import { CONTRACT_DIR } from '../core/contract/index.js';
 import { WATCHDOG_AUDIT_EVENTS } from './audit-events.js';
+import { formatErr } from '../types/utils.js';
 
 // Parse stream.jsonl, return the timestamp of the last event and the last error message
 export interface ClawActivityInfo {
@@ -60,7 +63,11 @@ export async function getClawActivityInfo(
     }
 
     return { lastEventMs, lastError };
-  } catch {
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code !== 'ENOENT' && code !== 'FS_NOT_FOUND') {
+      audit?.write(WATCHDOG_AUDIT_EVENTS.STREAM_READ_FAILED, `reason=${formatErr(err)}`);
+    }
     return { lastEventMs: null, lastError: null };
   }
 }

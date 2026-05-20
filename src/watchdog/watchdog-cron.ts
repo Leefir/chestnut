@@ -28,8 +28,8 @@ export async function maybeCronClawInactivity(pm: ProcessManager, audit: AuditLo
   if (!fs.existsSync(CLAWS_DIR)) return;
 
   // 清理已不存在的 claw 的 Map 条目
-  const clawEntries = fs.listSync(CLAWS_DIR, { includeDirs: true });
-  const existingClawIds = new Set(clawEntries.filter(entry => entry.isDirectory).map(entry => entry.name));
+  const clawEntries = fs.listSync(CLAWS_DIR, { includeDirs: true }).filter(e => e.isDirectory);
+  const existingClawIds = new Set(clawEntries.map(entry => entry.name));
   audit.write(WATCHDOG_AUDIT_EVENTS.CLAW_SCAN, `ctx=inactivity present=${[...existingClawIds].join(',')}`);
   for (const id of lastInactivityNotified.keys()) {
     if (!existingClawIds.has(id)) {
@@ -107,8 +107,8 @@ export function maybeCronClawCrash(pm: ProcessManager, audit: AuditLog): void {
   if (!fs.existsSync(CLAWS_DIR)) return;
 
   // 清理已不存在的 claw 的 Map 条目
-  const clawEntries = fs.listSync(CLAWS_DIR, { includeDirs: true });
-  const existingClawIds = new Set(clawEntries.filter(entry => entry.isDirectory).map(entry => entry.name));
+  const clawEntries = fs.listSync(CLAWS_DIR, { includeDirs: true }).filter(e => e.isDirectory);
+  const existingClawIds = new Set(clawEntries.map(entry => entry.name));
   audit.write(WATCHDOG_AUDIT_EVENTS.CLAW_SCAN, `ctx=crash present=${[...existingClawIds].join(',')}`);
   for (const id of clawPreviouslyAlive.keys()) {
     if (!existingClawIds.has(id)) {

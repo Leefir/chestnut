@@ -4,6 +4,7 @@
     "assembly_audit-events": [
       "assemble_failed",
       "assemble_lock_conflict",
+      "assembly_fallback_reconcile_failed",
       "cleanup_temp_files_failed",
       "daemon_crash",
       "daemon_start",
@@ -395,7 +396,8 @@
       "watchdog_crash",
       "watchdog_pid_corrupt",
       "watchdog_state_load_failed",
-      "watchdog_stop"
+      "watchdog_stop",
+      "watchdog_stream_read_failed"
     ]
   }
 }

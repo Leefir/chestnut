@@ -117,6 +117,9 @@ export function detectUncleanExit(auditDir: string, auditWriter: AuditLog): void
 
 export async function assemble(config: AssembleConfig): Promise<Instances> {
   const { identity, clawId, clawDir, globalConfig, clawConfig } = config;
+  if (identity === 'claw' && !clawConfig) {
+    throw new Error('clawConfig is required when identity=claw');
+  }
   const isMotion = identity === 'motion';
   const auditMaxSizeMb = globalConfig.audit?.retention?.max_size_mb ?? null;
 
@@ -133,19 +136,22 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   const syncDir = path.join(clawDir, TASKS_SYNC_DIR);
   await clawFs.ensureDir(syncDir);
 
-  // Reconcile prior crash fallback dumps before creating new audit writer
-  try {
-    await reconcileFallbackDumps(systemFs);
-  } catch {
-    // silent: reconcile 失败不阻塞启动（best-effort、下次启动再试）
-  }
-
   // --- 1. AuditWriter (daemon.ts L100-104) ---
   let auditWriter: AuditLog;
   try {
     auditWriter = createAuditWriter(systemFs, 'audit.tsv', auditMaxSizeMb);
   } catch (e) {
     throw new Error(`Assembly: audit writer construct failed: ${errMsg(e)}`, { cause: e });
+  }
+
+  // Reconcile prior crash fallback dumps after audit writer is ready
+  try {
+    await reconcileFallbackDumps(systemFs);
+  } catch (err) {
+    auditWriter.write(
+      ASSEMBLY_AUDIT_EVENTS.FALLBACK_RECONCILE_FAILED,
+      `reason=${errMsg(err)}`,
+    );
   }
 
   // --- 2. ProcessManager + acquireLock (daemon.ts L107-108) ---
@@ -165,6 +171,9 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_LOCK_CONFLICT, `clawId=${clawId}`);
     throw e;
   }
+
+  let llm: LLMOrchestrator | undefined;
+  let streamWriter: StreamWriter | undefined;
 
   try {
     // --- 3. Runtime (daemon.ts L111-137) ---
@@ -191,7 +200,6 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     const idleTimeoutMs = globalConfig.motion?.llm_idle_timeout_ms ?? DEFAULT_LLM_IDLE_TIMEOUT_MS;
 
     // --- L3-L5: llm ---
-    let llm: LLMOrchestrator;
     try {
       llm = createLLMOrchestrator({ ...llmConfig, events: createLLMAuditSink(auditWriter) });
     } catch (e) {
@@ -436,7 +444,6 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     }
 
     // --- StreamWriter 前置（phase182 B.p166-5 升档：setter 双阶段消除） ---
-    let streamWriter: StreamWriter;
     try {
       streamWriter = createStreamWriter(systemFs, auditWriter, {
         maxFiles: globalConfig.stream?.retention?.max_files ?? null,
@@ -450,7 +457,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
 
     // contractNotify callback 在 Runtime 构造前形成（注入 deps 而非 setter）
     const contractNotifyCallback = (type: string, data: Record<string, unknown>) => {
-      streamWriter.write({ ts: Date.now(), type: 'user_notify', subtype: type, ...data });
+      streamWriter!.write({ ts: Date.now(), type: 'user_notify', subtype: type, ...data });
 
       // A.6 双链路：motion inbox 实时收契约事件 (D8 事件驱动 align)
       notifyInbox(systemFs, {
@@ -477,7 +484,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       taskSystem,
       contextInjector,
       execContext,
-      parentStreamLog: streamWriter,
+      parentStreamLog: streamWriter!,
       contractNotifyCallback,
       // phase 521: regime switch coordination / Assembly own factory / closure capture 5 const
       dialogStoreFactory: makeDialogStore,
@@ -709,12 +716,12 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
 
     // --- 8. 契约 §4 audit daemon_started ---
     auditWriter.write(ASSEMBLY_AUDIT_EVENTS.DAEMON_STARTED, `clawId=${clawId}`, `pid=${process.pid}`);
-    streamWriter.write({ ts: Date.now(), type: 'daemon_started', clawId, pid: process.pid });
+    streamWriter!.write({ ts: Date.now(), type: 'daemon_started', clawId, pid: process.pid });
 
     return {
       clawId: config.clawId,
       runtime,
-      streamWriter,
+      streamWriter: streamWriter!,
       snapshot,
       processManager,
       auditWriter,
@@ -724,6 +731,9 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       evolutionSystem,
     };
   } catch (e) {
+    // Best-effort cleanup of already-constructed resources
+    streamWriter?.close?.();
+    llm?.close()?.catch(() => {});
     if (lockAcquired) {
       try {
         processManager.releaseLock(clawId);

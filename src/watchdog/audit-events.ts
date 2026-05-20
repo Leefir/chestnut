@@ -15,4 +15,5 @@ export const WATCHDOG_AUDIT_EVENTS = {
   PID_CORRUPT: 'watchdog_pid_corrupt',
   STOP: 'watchdog_stop',
   CLAW_HAS_CONTRACT_CHECK_FAILED: 'claw_has_contract_check_failed',
+  STREAM_READ_FAILED: 'watchdog_stream_read_failed',
 } as const;
