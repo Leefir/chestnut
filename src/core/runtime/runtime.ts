@@ -461,7 +461,7 @@ export class Runtime {
     const tools = this.toolRegistry.formatForLLM(
       this.toolRegistry.getForProfile(this.options.toolProfile ?? 'full')
     );
-    const { systemPrompt, identityHash } = await this._resolveSystemPromptForRun();
+    const { systemPrompt, identityContent } = await this._resolveSystemPromptForRun();
     // phase 769: inject systemPrompt + tools for shadow sync path to read in-memory main agent state
     this.execContext.systemPromptForLLM = systemPrompt;
     this.execContext.toolsForLLM = tools;
@@ -578,7 +578,7 @@ export class Runtime {
     }
 
     // phase 521: turn 末 regime change 检测（per L5.G3 (a) 自动检测）
-    await this._checkRegimeSwitch(systemPrompt, identityHash);
+    await this._checkRegimeSwitch(systemPrompt, identityContent);
   }
 
   /**
@@ -787,7 +787,7 @@ export class Runtime {
     const messages = [...session.messages];
 
     // 2. Build systemPrompt (already includes AGENTS.md + MEMORY.md + skills + contract)
-    const { systemPrompt, identityHash } = await this._resolveSystemPromptForRun();
+    const { systemPrompt, identityContent } = await this._resolveSystemPromptForRun();
 
     // 3. Append the user message
     messages.push({ role: 'user', content: userMessage });
@@ -856,7 +856,7 @@ export class Runtime {
       await this.sessionManager.save({ systemPrompt, messages, toolsForLLM: tools });
 
       // phase 521: turn 末 regime change 检测（chat() 也走 _runReact 等效路径）
-      await this._checkRegimeSwitch(systemPrompt, identityHash);
+      await this._checkRegimeSwitch(systemPrompt, identityContent);
 
       this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_END);
 
@@ -983,20 +983,20 @@ export class Runtime {
   // ============================================================================
 
   /**
-   * Resolve systemPrompt + identityHash for a turn run.
-   * - If systemPromptBuilder is configured, use full prompt as identityHash (U3 (a) / phase 521 兼容).
-   * - Else, use contextInjector.buildSystemPromptForRegime() to get full + identityHash 分层。
+   * Resolve systemPrompt + identityContent for a turn run.
+   * - If systemPromptBuilder is configured, use full prompt as identityContent (U3 (a) / phase 521 兼容).
+   * - Else, use contextInjector.buildSystemPromptForRegime() to get full + identityContent 分层。
    */
   private async _resolveSystemPromptForRun(): Promise<{
     systemPrompt: string;
-    identityHash: string;
+    identityContent: string;
   }> {
     if (this.options.systemPromptBuilder) {
       const systemPrompt = await this.buildSystemPrompt();
-      return { systemPrompt, identityHash: systemPrompt };
+      return { systemPrompt, identityContent: systemPrompt };
     }
     const r = await this.contextInjector.buildSystemPromptForRegime();
-    return { systemPrompt: r.full, identityHash: r.identityHash };
+    return { systemPrompt: r.full, identityContent: r.identityContent };
   }
 
   private async ensureDirectories(clawDir: string): Promise<void> {
@@ -1016,17 +1016,17 @@ export class Runtime {
   // phase 521: regime switch coordination
   // ============================================================================
 
-  private async _checkRegimeSwitch(newSystemPrompt: string, identityHash: string): Promise<void> {
-    if (this.lastIdentityHash !== undefined && this.lastIdentityHash !== identityHash) {
+  private async _checkRegimeSwitch(newSystemPrompt: string, identityContent: string): Promise<void> {
+    if (this.lastIdentityHash !== undefined && this.lastIdentityHash !== identityContent) {
       try {
         await this._performRegimeSwitch(newSystemPrompt);
-        this.lastIdentityHash = identityHash;
+        this.lastIdentityHash = identityContent;
       } catch (err) {
         auditError(this.auditWriter, RUNTIME_AUDIT_EVENTS.REGIME_SWITCH_FAILED, err);
         // lastIdentityHash 不更新 → 下 turn 重试自愈（D7）
       }
     } else {
-      this.lastIdentityHash = identityHash;
+      this.lastIdentityHash = identityContent;
     }
   }
 

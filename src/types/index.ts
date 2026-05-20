@@ -54,10 +54,20 @@ export {
   LLMError,
   LLMRateLimitError,
   LLMTimeoutError,
+  LLMAuthError,
+  LLMNetworkError,
+  LLMEmptyResponseError,
+  LLMModelNotFoundError,
   LLMAllProvidersFailedError,
   FileNotFoundError,
   MaxStepsExceededError,
+  ConsecutiveParseErrorsExceededError,
+  ConsecutiveMaxTokensToolUseError,
+  WallTimeExceededError,
 } from './errors.js';
+
+export { classifyLLMError, getUserActionHint, isProgrammingBug } from './errors.js';
+export { formatErr, safeNumber } from './utils.js';
 
 // Signal types (control-flow throws, not errors)
 export {

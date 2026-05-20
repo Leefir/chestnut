@@ -40,6 +40,7 @@ import {
 } from './constants.js';
 import { notifyInbox } from '../foundation/messaging/index.js';
 import { IdleTimeoutSignal, PriorityInboxInterrupt, UserInterrupt } from '../types/signals.js';
+import { LLMAllProvidersFailedError } from '../types/errors.js';
 import { CONTRACT_DIR } from '../core/contract/index.js';
 import { STATUS_SUBDIR } from '../types/paths.js';
 
@@ -239,7 +240,6 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
   let startupFired = false;
 
   // LLM failure retry state
-  const LLM_ERROR_PATTERN = /all providers failed/i;
   let llmRetryCount = 0;
   let llmRetryDelayMs = LLM_RETRY_INITIAL_DELAY_MS;
   let llmRetryPending = false; // set by catch, consumed by next iteration's try
@@ -448,8 +448,7 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
           // 步间中断 — 直接继续，下一轮立即处理优先消息，无需 recovery delay
           options.audit.write(DAEMON_AUDIT_EVENTS.LOOP_INTERRUPT, `cause=${LOOP_INTERRUPT_CAUSES.PRIORITY_INBOX}`, `recovery_delay_ms=0`);
         } else if (
-          err instanceof Error &&
-          LLM_ERROR_PATTERN.test(err.message) &&
+          err instanceof LLMAllProvidersFailedError &&
           llmRetryCount < LLM_MAX_RETRIES
         ) {
           // Transient LLM failure — schedule retry via llmRetryPending flag
@@ -463,7 +462,7 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
           saveLlmRetryState();
         } else {
           // Non-LLM error, or max retries exceeded — reset and wait
-          const isLLMMaxRetry = err instanceof Error && LLM_ERROR_PATTERN.test(err.message);
+          const isLLMMaxRetry = err instanceof LLMAllProvidersFailedError;
           llmRetryCount = 0;
           llmRetryDelayMs = LLM_RETRY_INITIAL_DELAY_MS;
           saveLlmRetryState();

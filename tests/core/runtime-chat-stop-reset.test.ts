@@ -111,7 +111,7 @@ describe('runtime chat() stopRequested reset (phase 900)', () => {
 
     vi.spyOn(deps.contextInjector, 'buildSystemPromptForRegime').mockResolvedValue({
       full: 'test-prompt',
-      identityHash: 'test-hash',
+      identityContent: 'test-hash',
     });
 
     // Simulate previous turn's abort leaving stopRequested=true

@@ -3,6 +3,8 @@
  * Phase 0: Interface definitions only
  */
 
+import { formatErr } from './utils.js';
+
 export type ErrorCode = 
   // Permission errors (1xx)
   | 'PERMISSION_DENIED'
@@ -32,6 +34,7 @@ export type ErrorCode =
   | 'MAX_STEPS_EXCEEDED'
   | 'CONSECUTIVE_PARSE_ERRORS_EXCEEDED'
   | 'CONSECUTIVE_MAX_TOKENS_TOOL_USE_EXCEEDED'
+  | 'WALL_TIME_EXCEEDED'
   | 'UNKNOWN_ERROR';
 
 export interface ErrorDetails {
@@ -66,6 +69,7 @@ export abstract class ClawError extends Error {
       code: this.code,
       message: this.message,
       context: this.context,
+      ...(this.cause !== undefined && { cause: formatErr(this.cause) }),
     };
   }
 }
@@ -279,7 +283,7 @@ export class ConsecutiveMaxTokensToolUseError extends ClawError {
 }
 
 export class WallTimeExceededError extends ClawError {
-  readonly code: ErrorCode = 'MAX_STEPS_EXCEEDED';
+  readonly code: ErrorCode = 'WALL_TIME_EXCEEDED';
 
   constructor(public readonly deadlineMs: number, public readonly elapsedMs: number) {
     super(

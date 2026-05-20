@@ -120,7 +120,7 @@ describe('runtime stopRequested per-turn reset (phase 786 / P0.14)', () => {
 
     vi.spyOn(deps.contextInjector, 'buildSystemPromptForRegime').mockResolvedValue({
       full: 'test-prompt',
-      identityHash: 'test-hash',
+      identityContent: 'test-hash',
     });
 
     await (runtime as unknown as { _runReact: (m: Message[]) => Promise<void> })._runReact([
@@ -153,7 +153,7 @@ describe('runtime stopRequested per-turn reset (phase 786 / P0.14)', () => {
 
     vi.spyOn(deps.contextInjector, 'buildSystemPromptForRegime').mockResolvedValue({
       full: 'test-prompt',
-      identityHash: 'test-hash',
+      identityContent: 'test-hash',
     });
 
     // Turn 1

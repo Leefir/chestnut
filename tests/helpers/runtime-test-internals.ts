@@ -30,7 +30,7 @@ export interface RuntimeTestInternals {
   outboxWriter: OutboxWriter;
   auditWriter: AuditLog;
   lastIdentityHash?: string;
-  buildSystemPrompt(): Promise<{ full: string; identityHash: string }>;
+  buildSystemPrompt(): Promise<{ full: string; identityContent: string }>;
   _handleTurnInterrupt(err: unknown, callbacks?: StreamCallbacks): void;
   _hasHighPriorityInbox(): Promise<boolean>;
 }

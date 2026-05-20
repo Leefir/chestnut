@@ -156,10 +156,10 @@ export class ContextInjector {
   /**
    * Build system prompt for regime switch detection.
    * Returns both the full prompt and the identity hash (agents + skills only).
-   * identityHash excludes dynamic parts (memory, contract) so that only
+   * identityContent excludes dynamic parts (memory, contract) so that only
    * identity-layer changes trigger regime switches.
    */
-  async buildSystemPromptForRegime(): Promise<{ full: string; identityHash: string }> {
+  async buildSystemPromptForRegime(): Promise<{ full: string; identityContent: string }> {
     const parts = await this.buildParts();
     const sections: string[] = [];
     if (parts.agents) sections.push(parts.agents);
@@ -171,7 +171,7 @@ export class ContextInjector {
     // identity = 身份层（agents + skills）/ memory + contract = 动态层不入
     const identity = [parts.agents, parts.skills].filter(Boolean).join('\n\n');
 
-    return { full, identityHash: identity };
+    return { full, identityContent: identity };
   }
 }
 

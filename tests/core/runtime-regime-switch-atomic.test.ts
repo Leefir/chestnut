@@ -129,8 +129,8 @@ describe('Runtime regime switch atomicity (phase 600 / A.regime-switch-atomicity
     const oldSessionManager = runtime.testGetSessionManager();
 
     vi.spyOn(deps.contextInjector, 'buildSystemPromptForRegime')
-      .mockResolvedValueOnce({ full: 'system-prompt-A', identityHash: 'identity-A' })
-      .mockResolvedValueOnce({ full: 'system-prompt-B', identityHash: 'identity-B' });
+      .mockResolvedValueOnce({ full: 'system-prompt-A', identityContent: 'identity-A' })
+      .mockResolvedValueOnce({ full: 'system-prompt-B', identityContent: 'identity-B' });
 
     await runtime.chat('Message 1');
     await runtime.chat('Message 2');
@@ -177,8 +177,8 @@ describe('Runtime regime switch atomicity (phase 600 / A.regime-switch-atomicity
     await deps.sessionManager.save({ systemPrompt: 'test-system-prompt', messages: seededMessages, toolsForLLM: [] });
 
     vi.spyOn(deps.contextInjector, 'buildSystemPromptForRegime')
-      .mockResolvedValueOnce({ full: 'system-prompt-A', identityHash: 'identity-A' })
-      .mockResolvedValueOnce({ full: 'system-prompt-B', identityHash: 'identity-B' });
+      .mockResolvedValueOnce({ full: 'system-prompt-A', identityContent: 'identity-A' })
+      .mockResolvedValueOnce({ full: 'system-prompt-B', identityContent: 'identity-B' });
 
     await runtime.chat('Message 1');
     await runtime.chat('Message 2');
@@ -244,8 +244,8 @@ describe('Runtime regime switch atomicity (phase 600 / A.regime-switch-atomicity
     });
 
     vi.spyOn(deps.contextInjector, 'buildSystemPromptForRegime')
-      .mockResolvedValueOnce({ full: 'system-prompt-A', identityHash: 'identity-A' })
-      .mockResolvedValueOnce({ full: 'system-prompt-B', identityHash: 'identity-B' });
+      .mockResolvedValueOnce({ full: 'system-prompt-A', identityContent: 'identity-A' })
+      .mockResolvedValueOnce({ full: 'system-prompt-B', identityContent: 'identity-B' });
 
     await runtime.chat('Message 1');
     await runtime.chat('Message 2');
@@ -302,8 +302,8 @@ describe('Runtime regime switch atomicity (phase 600 / A.regime-switch-atomicity
     await deps.sessionManager.save({ systemPrompt: 'test-system-prompt', messages: seededMessages, toolsForLLM: [] });
 
     vi.spyOn(deps.contextInjector, 'buildSystemPromptForRegime')
-      .mockResolvedValueOnce({ full: 'system-prompt-A', identityHash: 'identity-A' })
-      .mockResolvedValueOnce({ full: 'system-prompt-B', identityHash: 'identity-B' });
+      .mockResolvedValueOnce({ full: 'system-prompt-A', identityContent: 'identity-A' })
+      .mockResolvedValueOnce({ full: 'system-prompt-B', identityContent: 'identity-B' });
 
     await runtime.chat('Message 1');
     await runtime.chat('Message 2');

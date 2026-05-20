@@ -14,6 +14,7 @@ import type { Watcher } from '../../src/foundation/file-watcher/types.js';
 import type { FileSystem } from '../../src/foundation/fs/types.js';
 import { createWatcher } from '../../src/foundation/file-watcher/index.js';
 import { IdleTimeoutSignal, UserInterrupt, PriorityInboxInterrupt } from '../../src/types/signals.js';
+import { LLMAllProvidersFailedError } from '../../src/types/errors.js';
 
 // Module-level mock so ESM named exports are replaceable
 vi.mock('fs', async (importOriginal) => {
@@ -120,7 +121,7 @@ describe('startDaemonLoop - LLM retry', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const retryLastTurn = vi.fn().mockResolvedValue(undefined);
     const processBatch = vi.fn()
-      .mockRejectedValueOnce(new Error('All providers failed: network unreachable'))
+      .mockRejectedValueOnce(new LLMAllProvidersFailedError([{ provider: 'test', error: new Error('network unreachable') }]))
       .mockResolvedValue(0);
 
     const mockRuntime = { processBatch, retryLastTurn, abort: vi.fn() } as unknown as Runtime;
@@ -151,7 +152,7 @@ describe('startDaemonLoop - LLM retry', () => {
       'attempt=1',
       'max=3',
       'delay_ms=30000',
-      expect.stringContaining('error=All providers failed'),
+      expect.stringContaining('error=All LLM providers failed'),
     );
 
     stop();
@@ -167,8 +168,8 @@ describe('startDaemonLoop - LLM retry', () => {
     const errSpy  = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     // processBatch throws once; retryLastTurn always throws → 3 retries → max exceeded
-    const processBatch  = vi.fn().mockRejectedValueOnce(new Error('All providers failed'));
-    const retryLastTurn = vi.fn().mockRejectedValue(new Error('All providers failed on retry'));
+    const processBatch  = vi.fn().mockRejectedValueOnce(new LLMAllProvidersFailedError([{ provider: 'test', error: new Error('network unreachable') }]));
+    const retryLastTurn = vi.fn().mockRejectedValue(new LLMAllProvidersFailedError([{ provider: 'test', error: new Error('network unreachable on retry') }]));
     const mockRuntime = { processBatch, retryLastTurn, abort: vi.fn() } as unknown as Runtime;
 
     const { stop } = startDaemonLoop({
@@ -204,26 +205,26 @@ describe('startDaemonLoop - LLM retry', () => {
       'attempt=1',
       'max=3',
       'delay_ms=30000',
-      expect.stringContaining('error=All providers failed'),
+      expect.stringContaining('error=All LLM providers failed'),
     );
     expect(mockAudit.write).toHaveBeenCalledWith(
       'daemon_loop_llm_retry',
       'attempt=2',
       'max=3',
       'delay_ms=60000',
-      expect.stringContaining('error=All providers failed on retry'),
+      expect.stringContaining('error=All LLM providers failed'),
     );
     expect(mockAudit.write).toHaveBeenCalledWith(
       'daemon_loop_llm_retry',
       'attempt=3',
       'max=3',
       'delay_ms=120000',
-      expect.stringContaining('error=All providers failed on retry'),
+      expect.stringContaining('error=All LLM providers failed'),
     );
     expect(mockAudit.write).toHaveBeenCalledWith(
       'daemon_loop_fatal',
       'reason=max_retries_exhausted',
-      expect.stringContaining('error=All providers failed on retry'),
+      expect.stringContaining('error=All LLM providers failed'),
     );
 
     stop();
