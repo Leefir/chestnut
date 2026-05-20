@@ -11,7 +11,7 @@ import type { ToolResult, ExecContext } from '../../foundation/tool-protocol/ind
 
 import { UUID_SHORT_LEN } from '../../constants.js';
 import { TASKS_SYNC_SPAWN_DIR } from './constants.js';
-import { runSubagent, createPerTaskRegistry } from '../subagent/index.js';
+import { runSubagent, createPerTaskRegistry, getDisplayResult } from '../subagent/index.js';
 import { AUDIT_PREVIEW_LEN } from '../../foundation/audit/index.js';
 import { DEFAULT_SUBAGENT_SYSTEM_PROMPT } from '../../prompts/subagent.js';
 import { SPAWN_AUDIT_EVENTS } from './audit-events.js';
@@ -64,7 +64,7 @@ export async function runSpawnSync(opts: RunSpawnSyncOptions): Promise<ToolResul
       toolTimeoutMs: opts.ctx.toolTimeoutMs,
     });
 
-    const content = (capturedResult as { result?: string } | undefined)?.result ?? text;
+    const content = getDisplayResult(text, capturedResult);
     opts.ctx.auditWriter?.write(SPAWN_AUDIT_EVENTS.SYNC_FINISHED, id);
     return {
       success: true,

@@ -147,3 +147,10 @@ export async function runSubagent(opts: RunSubagentOptions): Promise<RunSubagent
 
 // caller 负责 registry 装配（含 profile filter + 特殊工具如 done）
 // runSubagent 只 own audit/stream/workspace/dialog store lifecycle
+
+/**
+ * phase 1091: 统一 capturedResult 读取，消除 3 处重复 cast
+ */
+export function getDisplayResult(text: string, capturedResult?: unknown): string {
+  return (capturedResult as { result?: string } | undefined)?.result ?? text;
+}

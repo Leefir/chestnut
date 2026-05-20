@@ -7,7 +7,7 @@ import type { PermissionChecker } from '../../types/permission.js';
 import { type CallerType, callerTypeToProfile } from '../../foundation/tool-protocol/index.js';
 
 import type { ToolRegistry } from '../../foundation/tools/index.js';
-import { runSubagent, NoopAuditWriter, createPerTaskRegistry, DONE_TOOL_NAME } from '../subagent/index.js';
+import { runSubagent, NoopAuditWriter, createPerTaskRegistry, DONE_TOOL_NAME, getDisplayResult } from '../subagent/index.js';
 import { createDialogStore } from '../../foundation/dialog-store/index.js';
 
 import { TASK_AUDIT_EVENTS } from './audit-events.js';
@@ -135,7 +135,7 @@ export async function executeSubAgentTask(
     });
 
     // Phase438: 单 postProcessor lookup + execute（替代 pipeline）
-    const displayResult = (capturedResult as { result?: string } | undefined)?.result ?? text;
+    const displayResult = getDisplayResult(text, capturedResult);
     let inboxResult = displayResult;
     if (task.postProcessor) {
       const handler = postProcessors.get(task.postProcessor);

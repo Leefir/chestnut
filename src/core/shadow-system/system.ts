@@ -11,7 +11,7 @@ import type { Message } from '../../types/message.js';
 
 import { UUID_SHORT_LEN } from '../../constants.js';
 import { TASKS_SYNC_SHADOW_DIR } from './constants.js';
-import { runSubagent, createPerTaskRegistry } from '../subagent/index.js';
+import { runSubagent, createPerTaskRegistry, getDisplayResult } from '../subagent/index.js';
 import { AUDIT_PREVIEW_LEN } from '../../foundation/audit/index.js';
 import { SHADOW_AUDIT_EVENTS } from './audit-events.js';
 import { synthesizeFormB, formatErr } from './_helpers.js';
@@ -133,7 +133,7 @@ export async function runShadow(opts: RunShadowOptions): Promise<ToolResult> {
       permissionChecker: opts.ctx.permissionChecker,
     });
 
-    const finalResult = (capturedResult as { result?: string } | undefined)?.result ?? text;
+    const finalResult = getDisplayResult(text, capturedResult);
     opts.ctx.auditWriter?.write(SHADOW_AUDIT_EVENTS.FINISHED, shadowId);
     return {
       success: true,
