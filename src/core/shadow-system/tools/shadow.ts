@@ -72,7 +72,7 @@ export const shadowTool: Tool = {
         maxSteps,
         parentClawId: ctx.clawId,
         originClawId: ctx.originClawId ?? ctx.clawId,
-        callerType: 'subagent',
+        callerType: 'shadow',
         isShadow: true,
         shadowMessages: ctx.dialogMessages,
         shadowSystemPrompt: ctx.systemPromptForLLM,
