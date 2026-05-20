@@ -116,7 +116,7 @@ describe('phase 1029: subagent inherits tool timeout from caller', () => {
 
     const mockFs = {
       ensureDir: vi.fn().mockResolvedValue(undefined),
-      appendSync: vi.fn(),
+      append: vi.fn().mockResolvedValue(undefined),
     };
 
     await runSubagent({

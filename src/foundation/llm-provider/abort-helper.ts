@@ -100,6 +100,7 @@ export type AbortReason =
   | { type: 'idle_timeout'; ms: number }
   | { type: 'step_yield' }
   | { type: 'turn_timeout'; ms: number }
+  | { type: 'tool_timeout'; ms: number }
   | { type: 'external'; original?: unknown };
 
 /**

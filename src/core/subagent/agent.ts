@@ -150,7 +150,9 @@ export class SubAgent {
       ? () => {
           clearTimeout(idleTimerId);
           idleTimerId = setTimeout(() => {
-            this.onIdleTimeout?.();
+            try {
+              this.onIdleTimeout?.();
+            } catch { /* silent: callback failure must not block abort */ }
             timeoutController.abort({ type: 'idle_timeout', ms: this.idleTimeoutMs! } satisfies AbortReason);
           }, this.idleTimeoutMs!);
         }
@@ -395,7 +397,7 @@ export class SubAgent {
       turnEnded = true;
 
       // Extract final text result
-      return result.finalText || '[No output produced]';
+      return result.finalText ?? '[No output produced]';
     } catch (error) {
       // Log error
       const errMsg = error instanceof Error ? error.message : String(error);
