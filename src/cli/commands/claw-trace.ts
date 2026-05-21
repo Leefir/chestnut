@@ -14,7 +14,7 @@ import {
 import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
 import { CliError } from '../errors.js';
 import { CONTRACT_DIR } from '../../core/contract/index.js';
-import { DIALOG_DIR } from '../../foundation/paths.js';
+import { DIALOG_DIR } from '../../foundation/dialog-store/dirs.js';
 import { migrateAndValidateSession, validateSessionData } from '../../foundation/dialog-store/store.js';
 
 interface StreamEvent {
@@ -156,7 +156,12 @@ async function readStreamEvents(clawDir: string, startedAt: string): Promise<Str
       const stat = await fs.promises.stat(fp);
       files.push({ path: fp, mtime: stat.mtimeMs });
     }
-  } catch { return []; }
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+      process.stderr.write(`[trace] readdir stream dir failed: ${(e as Error).message}\n`);
+    }
+    return [];
+  }
 
   // 按修改时间排序
   files.sort((a, b) => a.mtime - b.mtime);
