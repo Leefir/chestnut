@@ -24,7 +24,7 @@ import { ToolRegistryImpl } from '../../../src/foundation/tools/registry.js';
 import type { LLMOrchestrator } from '../../../src/foundation/llm-orchestrator/index.js';
 import type { DialogStore } from '../../../src/foundation/dialog-store/index.js';
 import { SHADOW_AUDIT_EVENTS } from '../../../src/core/shadow-system/audit-events.js';
-import { DONE_TOOL_NAME } from '../../../src/foundation/tools/tool-names.js';
+import { DONE_TOOL_NAME } from '../../../src/core/subagent/tools/done.js';
 
 const { mockRunSubagent } = vi.hoisted(() => ({
   mockRunSubagent: vi.fn(),

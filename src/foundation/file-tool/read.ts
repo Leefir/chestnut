@@ -13,12 +13,12 @@ import { READ_MAX_LINES, READ_MAX_CHARS } from './constants.js';
 import { resolveWorkspacePath } from './_resolve-path.js';
 import { safeNumber } from '../utils/format.js';
 
-import { READ_TOOL_NAME } from '../tools/tool-names.js';
 import { CLAWS_DIR } from '../paths.js';
-export { READ_TOOL_NAME };
+export const READ_TOOL_NAME = 'read' as const;
 
 export const readTool: Tool = {
   name: READ_TOOL_NAME,
+  profiles: ['full', 'readonly', 'subagent', 'miner'],
   description: 'Read a file in your agent workspace. Path is relative to your workspace root — do NOT prefix with "clawspace/". Use cwd: ".." to access files in your claw root (e.g., MEMORY.md). Use cwd: "memory" for subdirs. Use claw: "<id>" to read another claw\'s files (available to all agents); claw: "*" is Motion-only.',
   schema: {
     type: 'object',

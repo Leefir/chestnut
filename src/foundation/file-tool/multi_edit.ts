@@ -15,8 +15,7 @@ import type { ToolResult } from '../tool-protocol/index.js';
 
 import { backupToSync } from './sync-backup.js';
 import { resolveWorkspacePath } from './_resolve-path.js';
-import { MULTI_EDIT_TOOL_NAME } from '../tools/tool-names.js';
-export { MULTI_EDIT_TOOL_NAME };
+export const MULTI_EDIT_TOOL_NAME = 'multi_edit' as const;
 
 function countMatches(s: string, pattern: string): number {
   if (!pattern) return 0;
@@ -31,6 +30,7 @@ function countMatches(s: string, pattern: string): number {
 
 export const multiEditTool: Tool = {
   name: MULTI_EDIT_TOOL_NAME,
+  profiles: ['full', 'subagent', 'miner'],
   description: 'Apply multiple edits to a file atomically. Edits are applied in order; on any failure, all edits are rolled back. Single backup before all edits. File must exist.',
   schema: {
     type: 'object',

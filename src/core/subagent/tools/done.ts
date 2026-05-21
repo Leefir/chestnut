@@ -11,9 +11,7 @@
 
 import type { Tool, ExecContext } from '../../../foundation/tools/index.js';
 import type { ToolResult } from '../../../foundation/tool-protocol/index.js';
-import { DONE_TOOL_NAME } from '../../../foundation/tools/tool-names.js';
-
-export { DONE_TOOL_NAME };
+export const DONE_TOOL_NAME = 'done' as const;
 
 /**
  * 通用 done 工具
@@ -22,6 +20,7 @@ export { DONE_TOOL_NAME };
 export function createDoneTool(): Tool & { capturedResult?: { result: string } } {
   const tool: Tool & { capturedResult?: { result: string } } = {
     name: DONE_TOOL_NAME,
+    profiles: ['subagent'],
     description: 'Submit your final result and exit. ' +
       'Use when your task is complete and you have a result to return to the caller. ' +
       'After calling done, no further tool use is expected.',

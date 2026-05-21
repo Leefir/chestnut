@@ -11,13 +11,12 @@ import { randomUUID } from 'crypto';
 import type { Tool, ExecContext } from '../../../foundation/tools/index.js';
 import type { ToolResult } from '../../../foundation/tool-protocol/index.js';
 import type { Message, ToolDefinition } from '../../../foundation/llm-provider/types.js';
-import { SHADOW_TOOL_NAME } from '../../../foundation/tools/tool-names.js';
 import { runShadow } from '../system.js';
 import { SHADOW_AUDIT_EVENTS } from '../audit-events.js';
 import { writePendingSubagentTaskFile } from '../../async-task-system/index.js';
 import { synthesizeFormB } from '../_helpers.js';
 
-export { SHADOW_TOOL_NAME };
+export const SHADOW_TOOL_NAME = 'shadow' as const;
 
 /** Strip trailing incomplete assistant message so shadow LLM doesn't see unpaired tool_uses */
 function stripIncompleteToolUse(msgs: Message[] | undefined): Message[] | undefined {
@@ -40,6 +39,7 @@ export function createShadowTool(deps: {
 }): Tool {
   return {
     name: SHADOW_TOOL_NAME,
+    profiles: ['full'],
     description: 'Create a one-shot shadow of yourself with full context inheritance. ' +
       'By default the shadow executes asynchronously and results arrive via inbox. ' +
       'Set async=false for synchronous execution that blocks until the result is available inline. ' +
@@ -153,6 +153,7 @@ function _compatExecute(args: Record<string, unknown>, ctx: ExecContext): Return
 }
 export const shadowTool: Tool = {
   name: SHADOW_TOOL_NAME,
+  profiles: ['full'],
   description: 'compat wrapper — use createShadowTool(factory) directly',
   schema: { type: 'object', properties: { task: { type: 'string' } }, required: ['task'] },
   readonly: false,

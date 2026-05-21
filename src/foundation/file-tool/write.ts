@@ -14,11 +14,11 @@ import type { ToolResult } from '../tool-protocol/index.js';
 import { backupToSync } from './sync-backup.js';
 import { resolveWorkspacePath } from './_resolve-path.js';
 
-import { WRITE_TOOL_NAME } from '../tools/tool-names.js';
-export { WRITE_TOOL_NAME };
+export const WRITE_TOOL_NAME = 'write' as const;
 
 export const writeTool: Tool = {
   name: WRITE_TOOL_NAME,
+  profiles: ['full', 'subagent', 'miner'],
   description: 'Write content to a file. Use append=true to append instead of overwrite. Auto-backups to clawDir/tasks/sync/ (turn-scoped / cleaned by Snapshot commit). For overwrite mode (append=false), file must be fully read in this session first (read without truncation). WARNING: single LLM output is limited to ~4096 tokens (~3000 chars). For long files, split into multiple write calls: first call without append, subsequent calls with append=true.',
   schema: {
     type: 'object',

@@ -39,4 +39,4 @@ export function createCommandTools(deps: CommandToolDeps = {}): CommandToolModul
 }
 
 export { createExecTool, execTool } from './exec.js';
-export { EXEC_TOOL_NAME } from '../tools/tool-names.js';
+export { EXEC_TOOL_NAME } from './exec.js';

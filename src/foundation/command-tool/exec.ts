@@ -52,12 +52,12 @@ async function persistOverflow(
   }
 }
 
-import { EXEC_TOOL_NAME } from '../tools/tool-names.js';
-export { EXEC_TOOL_NAME };
+export const EXEC_TOOL_NAME = 'exec' as const;
 
 export function createExecTool(deps: CommandToolDeps = {}) {
   return {
     name: EXEC_TOOL_NAME,
+    profiles: ['full', 'subagent', 'miner'],
     description: 'Execute a shell command in your agent workspace. Runs via `sh -c`, so shell features (pipes, redirects, quotes) work normally. Relative paths resolve against your workspace root.',
     schema: {
       type: 'object',

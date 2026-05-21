@@ -5,9 +5,8 @@ import type { Message } from '../../../foundation/llm-provider/types.js';
 import { buildAskMotionCloneFirstMessage } from '../../../prompts/index.js';
 import { DialogStore } from '../../../foundation/dialog-store/index.js';
 
-import { ASK_MOTION_TOOL_NAME } from '../../../foundation/tools/tool-names.js';
 import { formatErr } from '../_helpers.js';
-export { ASK_MOTION_TOOL_NAME };
+export const ASK_MOTION_TOOL_NAME = 'ask_motion' as const;
 
 export const ASK_MOTION_TOOL_DESCRIPTION = `向 Motion 分身提问，获取 Motion 对用户意图、背景、偏好的判断。
 分身继承 Motion 完整上下文（系统提示 + 当前对话历史），多轮问答自动累积。
@@ -29,6 +28,7 @@ export class AskMotionTool implements Tool {
   readonly description = ASK_MOTION_TOOL_DESCRIPTION;
   readonly readonly = false;
   readonly idempotent = false;
+  readonly profiles = ['miner'] as const;
 
   readonly schema = ASK_MOTION_TOOL_SCHEMA;
 

@@ -179,22 +179,21 @@ describe('ToolExecutor validateArgs', () => {
 describe('ToolRegistryImpl getForProfile', () => {
   it('should filter tools based on profile allowlist', () => {
     const registry = new ToolRegistryImpl();
-    
-    // 注册 TOOL_PROFILES 中定义的工具
+
     registry.register({
       name: 'read',
       description: 'Read tool',
       schema: { type: 'object', properties: {} },
-
+      profiles: ['readonly', 'subagent', 'full'],
       readonly: true,
       execute: async () => ({ success: true }),
     });
-    
+
     registry.register({
       name: 'write',
       description: 'Write tool',
       schema: { type: 'object', properties: {} },
-
+      profiles: ['subagent', 'full'],
       readonly: false,
       execute: async () => ({ success: true }),
     });
@@ -203,7 +202,7 @@ describe('ToolRegistryImpl getForProfile', () => {
       name: 'exec',
       description: 'Exec tool',
       schema: { type: 'object', properties: {} },
-
+      profiles: ['subagent', 'full'],
       readonly: false,
       execute: async () => ({ success: true }),
     });
@@ -226,20 +225,17 @@ describe('ToolRegistryImpl getForProfile', () => {
     expect(fullTools.some(t => t.name === 'write')).toBe(true);
   });
 
-  it('should return empty array for non-existent tools', () => {
+  it('should return empty array for tools with no profiles', () => {
     const registry = new ToolRegistryImpl();
-    
-    // 注册不在 TOOL_PROFILES 中的工具
+
     registry.register({
       name: 'customTool',
       description: 'Custom tool',
       schema: { type: 'object', properties: {} },
-
       readonly: true,
       execute: async () => ({ success: true }),
     });
 
-    // 任何 profile 都不应该包含 customTool
     const readonlyTools = registry.getForProfile('readonly');
     expect(readonlyTools.some(t => t.name === 'customTool')).toBe(false);
   });

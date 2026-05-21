@@ -15,12 +15,12 @@ import { createSkillSystem, type SkillSystem } from '../index.js';
  *
  * Requires skillRegistry to be injected before use.
  */
-import { SKILL_TOOL_NAME } from '../../tools/tool-names.js';
-export { SKILL_TOOL_NAME };
+export const SKILL_TOOL_NAME = 'skill' as const;
 
 export function createSkillTool(skillRegistry: SkillSystem): Tool {
   return {
     name: SKILL_TOOL_NAME,
+    profiles: ['full', 'subagent', 'miner'],
     description: 'Load a skill by name. Skills provide domain-specific knowledge and guidelines from SKILL.md files.',
     schema: {
       type: 'object',

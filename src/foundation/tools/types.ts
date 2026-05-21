@@ -100,6 +100,8 @@ export interface Tool extends ToolDescriptor {
   idempotent: boolean;
   supportsAsync?: boolean;
   defaultTimeoutMs?: number;
+  /** Which profiles this tool belongs to. Each tool declares its own (M#3). */
+  profiles: readonly ToolProfile[];
   execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult>;
 }
 

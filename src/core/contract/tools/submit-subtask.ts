@@ -14,12 +14,12 @@ import type { ContractSystem } from '../manager.js';
  * 
  * Requires contractManager to be injected before use.
  */
-import { SUBMIT_SUBTASK_TOOL_NAME } from '../../../foundation/tools/tool-names.js';
-export { SUBMIT_SUBTASK_TOOL_NAME };
+export const SUBMIT_SUBTASK_TOOL_NAME = 'submit_subtask' as const;
 
 export function createSubmitSubtaskTool(contractManager: ContractSystem): Tool {
   return {
     name: SUBMIT_SUBTASK_TOOL_NAME,
+    profiles: ['full'],
     description: 'Mark a subtask as complete and submit it for acceptance verification. ' +
       'Acceptance runs asynchronously — the result (pass or reject) will be ' +
       'delivered to your inbox. Check inbox for feedback before proceeding.',
