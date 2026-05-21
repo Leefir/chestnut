@@ -11,9 +11,9 @@ import { buildMinerSystemPrompt } from '../../src/prompts/mining.js';
 import { dispatchContractExtractPostProcessor } from '../../src/core/async-task-system/post-processors/dispatch-contract-extract.js';
 import { ExecContextImpl } from '../../src/foundation/tools/context.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
-import { TASKS_QUEUES_PENDING_DIR } from '../../src/types/paths.js';
+import { TASKS_QUEUES_PENDING_DIR } from '../../src/foundation/paths.js';
 import { TASK_AUDIT_EVENTS } from '../../src/core/async-task-system/audit-events.js';
-import type { Message } from '../../src/types/message.js';
+import type { Message } from '../../src/foundation/llm-provider/types.js';
 import type { LLMOrchestrator } from '../../src/foundation/llm-orchestrator/index.js';
 
 async function createTempDir(): Promise<string> {

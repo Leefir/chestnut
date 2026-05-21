@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { runContractVerifier } from '../../../src/core/contract/verifier-job.js';
-import { ToolTimeoutError } from '../../../src/types/errors.js';
+import { ToolTimeoutError } from '../../../src/foundation/errors.js';
 import type { VerifierConfig } from '../../../src/core/contract/types.js';
 
 const { mockRunSubagent } = vi.hoisted(() => ({

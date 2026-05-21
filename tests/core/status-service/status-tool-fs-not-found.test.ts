@@ -8,7 +8,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createStatusTool } from '../../../src/core/status-service/index.js';
 import { ExecContextImpl } from '../../../src/foundation/tools/context.js';
-import { FileNotFoundError } from '../../../src/types/errors.js';
+import { FileNotFoundError } from '../../../src/foundation/fs/types.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/index.js';
 
 describe('status-tool FS_NOT_FOUND handling (phase 883 B1)', () => {

@@ -4,8 +4,38 @@
  * Main library exports
  */
 
-// Types
-export * from './types/index.js';
+// Types (canonical sources)
+export type {
+  Role, TextBlock, ToolUseBlock, ToolResultBlock, ThinkingBlock, UnknownBlock,
+  ContentBlock, Message, ToolDefinition, LLMResponse, JSONSchema7,
+} from './foundation/llm-provider/types.js';
+export type {
+  ContractStatus, SubtaskStatus, LastFailedFeedback,
+  AcceptanceFailedNotification, SubTask, Contract,
+} from './core/contract/types.js';
+export type { InboxMessage, OutboxMessage, HeartbeatEntry, Priority } from './foundation/messaging/types.js';
+export { PRIORITY_VALUES } from './foundation/messaging/types.js';
+export type { ToolProfile, CallerType } from './foundation/tool-protocol/index.js';
+export type { ErrorCode, ErrorDetails } from './foundation/errors.js';
+export {
+  ClawError, PermissionError, PathNotInClawSpaceError, WriteOperationForbiddenError,
+  ToolError, ToolNotFoundError, ToolInvalidInputError, ToolTimeoutError, isProgrammingBug,
+} from './foundation/errors.js';
+export {
+  LLMError, LLMRateLimitError, LLMTimeoutError, LLMAuthError, LLMNetworkError,
+  LLMEmptyResponseError, LLMModelNotFoundError, LLMAllProvidersFailedError,
+  classifyLLMError, getUserActionHint,
+} from './foundation/llm-orchestrator/errors.js';
+export type { LLMErrorClass, UserActionHint } from './foundation/llm-orchestrator/errors.js';
+export { FileNotFoundError } from './foundation/fs/types.js';
+export {
+  MaxStepsExceededError, ConsecutiveParseErrorsExceededError,
+  ConsecutiveMaxTokensToolUseError, WallTimeExceededError,
+} from './core/agent-executor/errors.js';
+export { IdleTimeoutSignal, PriorityInboxInterrupt, UserInterrupt } from './core/signals.js';
+export { formatErr, safeNumber, oneLine, SUMMARY_MAX_CHARS } from './foundation/utils/format.js';
+export { ok, err, type Result } from './foundation/utils/result.js';
+export type { PermissionChecker } from './foundation/tool-protocol/permission.js';
 
 // Core runtime and modules
 export * from './core/index.js';

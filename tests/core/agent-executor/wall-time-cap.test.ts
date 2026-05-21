@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runReact } from '../../../src/core/agent-executor/index.js';
-import { WallTimeExceededError } from '../../../src/types/errors.js';
+import { WallTimeExceededError } from '../../../src/core/agent-executor/errors.js';
 import type { LLMOrchestrator } from '../../../src/foundation/llm-orchestrator/index.js';
 import type { IToolExecutor } from '../../../src/foundation/tools/executor.js';
 import { makeExecContext } from '../../helpers/exec-context.js';

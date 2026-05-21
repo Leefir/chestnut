@@ -13,7 +13,7 @@ import type {
   LLMResponse,
   Message,
   ToolDefinition
-} from '../../src/types/message.js';
+} from '../../src/foundation/llm-provider/types.js';
 
 import type { StreamChunk } from '../../src/foundation/llm-orchestrator/types.js';
 import { AnthropicAdapter } from '../../src/foundation/llm-provider/anthropic.js';
@@ -25,7 +25,7 @@ import {
   LLMRateLimitError,
   LLMTimeoutError,
   LLMAllProvidersFailedError,
-} from '../../src/types/errors.js';
+} from '../../src/foundation/llm-orchestrator/errors.js';
 import { TEST_LLM_TIMEOUT_MS } from '../helpers/test-timeouts.js';
 
 // Mock Anthropic SDK

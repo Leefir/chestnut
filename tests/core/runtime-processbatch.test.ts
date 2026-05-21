@@ -8,7 +8,7 @@ import * as path from 'path';
 import { promises as fs } from 'fs';
 import { Runtime } from '../../src/core/runtime/index.js';
 import { makeRuntimeDeps } from '../helpers/runtime-deps.js';
-import type { InboxMessage } from '../../src/types/messaging.js';
+import type { InboxMessage } from '../../src/foundation/messaging/types.js';
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 import { createTestRuntime, createMockLLMConfig, createMockLLM } from './_runtime-test-helpers.js';
 

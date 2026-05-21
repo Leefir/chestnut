@@ -11,7 +11,7 @@ import {
   LLMAuthError,
   LLMRateLimitError,
   LLMAllProvidersFailedError,
-} from '../../../src/types/errors.js';
+} from '../../../src/foundation/llm-orchestrator/errors.js';
 import type {
   ProviderAdapter,
   StreamChunk,

@@ -1232,7 +1232,7 @@ describe('ContractSystem', () => {
     });
 
     it('subagent timeout → cause=subagent_timeout + reset todo', async () => {
-      const { ToolTimeoutError } = await import('../../src/types/errors.js');
+      const { ToolTimeoutError } = await import('../../src/foundation/errors.js');
       const mockAudit = { write: vi.fn() };
       const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 
@@ -1368,7 +1368,7 @@ describe('ContractSystem', () => {
     });
 
     it('retry_count 跨多次失败递增', async () => {
-      const { ToolTimeoutError } = await import('../../src/types/errors.js');
+      const { ToolTimeoutError } = await import('../../src/foundation/errors.js');
       const mockAudit = { write: vi.fn() };
       const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry());
 

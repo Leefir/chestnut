@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { randomUUID } from 'crypto';
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
-import { PermissionError } from '../../../src/types/errors.js';
+import { PermissionError } from '../../../src/foundation/errors.js';
 
 describe('NodeFileSystem — absolute path reject (P0.1 phase 611)', () => {
   // baseDir 用唯一子目录、保所有平台 /tmp/escape /etc/passwd /nonexistent/sensitive 都在 baseDir 外
@@ -28,7 +28,7 @@ describe('NodeFileSystem — absolute path reject (P0.1 phase 611)', () => {
   it('does not affect legitimate relative paths', async () => {
     // baseDir = os.tmpdir() / relative path 'sub/file' 应 0 throw
     // (file 不存在 → read 抛 FileNotFoundError 非 PermissionError)
-    const { FileNotFoundError } = await import('../../../src/types/errors.js');
+    const { FileNotFoundError } = await import('../../../src/foundation/fs/types.js');
     await expect(fs.read('sub/file')).rejects.toThrow(FileNotFoundError);
   });
 });

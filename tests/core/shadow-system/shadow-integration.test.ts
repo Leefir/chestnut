@@ -9,7 +9,7 @@ import { createDoneTool, DONE_TOOL_NAME } from '../../../src/core/subagent/index
 import { NoopAuditWriter } from '../../../src/core/subagent/noop-writers.js';
 import { createTempDir, cleanupTempDir } from '../../utils/temp.js';
 import type { LLMOrchestrator } from '../../../src/foundation/llm-orchestrator/index.js';
-import type { LLMResponse, StreamChunk } from '../../../src/types/message.js';
+import type { LLMResponse, StreamChunk } from '../../../src/foundation/llm-provider/types.js';
 
 /**
  * Convert LLMResponse to stream chunks for mock

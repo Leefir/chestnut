@@ -6,11 +6,11 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { executeStep } from '../../src/core/step-executor/step-executor.js';
-import { IdleTimeoutSignal } from '../../src/types/signals.js';
+import { IdleTimeoutSignal } from '../../src/core/signals.js';
 import type { LLMCallInfo } from '../../src/core/step-executor/step-executor.js';
 import type { LLMOrchestrator } from '../../src/foundation/llm-orchestrator/index.js';
 import type { StreamChunk } from '../../src/foundation/llm-orchestrator/types.js';
-import type { LLMResponse, Message } from '../../src/types/message.js';
+import type { LLMResponse, Message } from '../../src/foundation/llm-provider/types.js';
 import type { ExecContext, ToolResult, Tool } from '../../src/foundation/tool-protocol/index.js';
 import type { IToolExecutor, ToolRegistry } from '../../src/foundation/tools/executor.js';
 import { ExecContextImpl } from '../../src/foundation/tools/context.js';

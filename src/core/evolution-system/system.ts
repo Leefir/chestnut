@@ -10,7 +10,8 @@ import * as path from 'path';
 import { CLAWSPACE_DIR } from '../../foundation/paths.js';
 import { CONTRACT_AUDIT_EVENTS } from '../contract/audit-events.js';
 import type { Message } from '../../foundation/llm-provider/types.js';
-import { FileNotFoundError, isProgrammingBug } from '../../types/index.js';
+import { FileNotFoundError } from '../../foundation/fs/types.js';
+import { isProgrammingBug } from '../../foundation/errors.js';
 
 export interface EvolutionSystemDeps {
   fs: FileSystem;

@@ -9,7 +9,8 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { ContextInjector } from '../../../src/core/dialog/injector.js';
-import { FileNotFoundError, PermissionError } from '../../../src/types/errors.js';
+import { FileNotFoundError } from '../../../src/foundation/fs/types.js';
+import { PermissionError } from '../../../src/foundation/errors.js';
 import { DIALOG_AUDIT_EVENTS } from '../../../src/foundation/dialog-store/audit-events.js';
 
 describe('ContextInjector — context load audit (phase 646 P1.3)', () => {

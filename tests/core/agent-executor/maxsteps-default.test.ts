@@ -7,10 +7,10 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { runReact } from '../../../src/core/agent-executor/index.js';
-import { MaxStepsExceededError } from '../../../src/types/errors.js';
+import { MaxStepsExceededError } from '../../../src/core/agent-executor/errors.js';
 import { DEFAULT_MAX_STEPS } from '../../../src/core/agent-executor/defaults.js';
 import type { LLMOrchestrator } from '../../../src/foundation/llm-orchestrator/index.js';
-import type { LLMResponse } from '../../../src/types/message.js';
+import type { LLMResponse } from '../../../src/foundation/llm-provider/types.js';
 import type { IToolExecutor } from '../../../src/foundation/tools/executor.js';
 import { makeExecContext } from '../../helpers/exec-context.js';
 

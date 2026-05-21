@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { FileNotFoundError } from '../../types/index.js';
+import { FileNotFoundError } from '../../foundation/fs/types.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { MEMORY_AUDIT_EVENTS } from './audit-events.js';
 import type { AuditLog } from '../../foundation/audit/index.js';

@@ -13,7 +13,7 @@ import * as os from 'os';
 // Note: DialogStore 从具体实现导入
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { DialogStore } from '../../src/foundation/dialog-store/index.js';
-import type { Message } from '../../src/types/message.js';
+import type { Message } from '../../src/foundation/llm-provider/types.js';
 import { makeSession } from '../helpers/session-fixtures.js';
 import { DIALOG_AUDIT_EVENTS } from '../../src/foundation/dialog-store/audit-events.js';
 

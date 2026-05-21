@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { encodeInbox, decodeInbox } from '../../../src/foundation/messaging/codec-inbox.js';
-import type { InboxMessage } from '../../../src/types/messaging.js';
+import type { InboxMessage } from '../../../src/foundation/messaging/types.js';
 
 describe('codec-inbox round-trip symmetric invariant (audit-2026-05-16 §7 / phase 905)', () => {
   const base: InboxMessage = {

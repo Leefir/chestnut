@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { encodeInbox, decodeInbox } from '../../../src/foundation/messaging/codec-inbox.js';
-import type { InboxMessage } from '../../../src/types/messaging.js';
+import type { InboxMessage } from '../../../src/foundation/messaging/types.js';
 
 const baseMsg = (overrides: Partial<InboxMessage> = {}): InboxMessage => ({
   id: 'test-id',

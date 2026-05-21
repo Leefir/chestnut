@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { ToolDefinition } from '../../src/types/message.js';
+import type { ToolDefinition } from '../../src/foundation/llm-provider/types.js';
 import { AnthropicAdapter } from '../../src/foundation/llm-provider/anthropic.js';
 import { TEST_LLM_TIMEOUT_MS } from '../helpers/test-timeouts.js';
 

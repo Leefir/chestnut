@@ -5,10 +5,10 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { executeStep } from '../../../src/core/step-executor/index.js';
-import { IdleTimeoutSignal } from '../../../src/types/signals.js';
+import { IdleTimeoutSignal } from '../../../src/core/signals.js';
 import type { LLMOrchestrator } from '../../../src/foundation/llm-orchestrator/index.js';
 import type { StreamChunk } from '../../../src/foundation/llm-orchestrator/types.js';
-import type { Message, LLMResponse } from '../../../src/types/message.js';
+import type { Message, LLMResponse } from '../../../src/foundation/llm-provider/types.js';
 import type { ExecContext, ToolResult } from '../../../src/foundation/tool-protocol/index.js';
 import type { IToolExecutor, ToolRegistry } from '../../../src/foundation/tools/executor.js';
 import { makeExecContext } from '../../helpers/exec-context.js';

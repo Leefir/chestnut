@@ -10,7 +10,7 @@ import type { ToolRegistry } from '../../foundation/tools/index.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
 import type { ToolDefinition } from '../../foundation/llm-provider/types.js';
-import { ToolTimeoutError } from '../../types/index.js';
+import { ToolTimeoutError } from '../../foundation/errors.js';
 import { IdleTimeoutSignal, PriorityInboxInterrupt, UserInterrupt } from '../signals.js';
 import type { AbortReason } from '../../foundation/llm-provider/index.js';
 import { makeExternalAbortError } from '../../foundation/llm-provider/index.js';

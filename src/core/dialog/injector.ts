@@ -15,7 +15,7 @@ import type { Contract } from '../contract/types.js';
 import type { SessionData } from '../../foundation/dialog-store/index.js';
 import type { SkillSystem } from '../../foundation/skill-system/index.js';
 import type { ContractSystem } from '../contract/index.js';
-import { FileNotFoundError } from '../../types/index.js';
+import { FileNotFoundError } from '../../foundation/fs/types.js';
 import { DIALOG_AUDIT_EVENTS } from '../../foundation/dialog-store/audit-events.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 

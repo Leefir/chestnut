@@ -17,7 +17,7 @@ import {
   LLMAuthError,
   LLMModelNotFoundError,
   LLMEmptyResponseError,
-} from '../../types/index.js';
+} from '../llm-orchestrator/errors.js';
 import { AuthenticationError, PermissionDeniedError, NotFoundError } from '@anthropic-ai/sdk';
 import { parseRetryAfter } from './_helpers.js';
 import type {

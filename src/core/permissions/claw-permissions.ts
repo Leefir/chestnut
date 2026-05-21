@@ -19,7 +19,7 @@ import { realpathSync } from 'node:fs';
 import {
   PathNotInClawSpaceError,
   WriteOperationForbiddenError,
-} from '../../types/index.js';
+} from '../../foundation/errors.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { PERMISSION_AUDIT_EVENTS } from './audit-events.js';
 import {

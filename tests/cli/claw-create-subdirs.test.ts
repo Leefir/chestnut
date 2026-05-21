@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { randomUUID } from 'crypto';
-import { CLAW_SUBDIRS, CLAWS_DIR } from '../../src/types/paths.js';
+import { CLAW_SUBDIRS, CLAWS_DIR } from '../../src/foundation/paths.js';
 import { TASKS_SYNC_SUBAGENT_DIR } from '../../src/core/subagent/constants.js';
 import { TASKS_SYNC_SPAWN_DIR } from '../../src/core/spawn-system/constants.js';
 import { TASKS_SYNC_SHADOW_DIR } from '../../src/core/shadow-system/constants.js';

@@ -10,8 +10,8 @@ import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
 import { InboxWriter } from '../../../src/foundation/messaging/index.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
-import type { InboxMessage } from '../../../src/types/messaging.js';
-import { INBOX_PENDING_DIR } from '../../../src/types/paths.js';
+import type { InboxMessage } from '../../../src/foundation/messaging/types.js';
+import { INBOX_PENDING_DIR } from '../../../src/foundation/paths.js';
 
 describe('inbox filename source prefix (phase 1047)', () => {
   let testDir: string;

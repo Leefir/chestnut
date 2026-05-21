@@ -13,8 +13,8 @@ import type { AuditLog } from '../../src/foundation/audit/index.js';
 import type { Watcher } from '../../src/foundation/file-watcher/types.js';
 import type { FileSystem } from '../../src/foundation/fs/types.js';
 import { createWatcher } from '../../src/foundation/file-watcher/index.js';
-import { IdleTimeoutSignal, UserInterrupt, PriorityInboxInterrupt } from '../../src/types/signals.js';
-import { LLMAllProvidersFailedError } from '../../src/types/errors.js';
+import { IdleTimeoutSignal, UserInterrupt, PriorityInboxInterrupt } from '../../src/core/signals.js';
+import { LLMAllProvidersFailedError } from '../../src/foundation/llm-orchestrator/errors.js';
 
 // Module-level mock so ESM named exports are replaceable
 vi.mock('fs', async (importOriginal) => {

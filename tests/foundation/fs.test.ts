@@ -25,10 +25,8 @@ import {
   NodeFileSystem,
   writeAtomic,
 } from '../../src/foundation/fs/index.js';
-import {
-  PermissionError,
-  FileNotFoundError,
-} from '../../src/types/errors.js';
+import { PermissionError } from '../../src/foundation/errors.js';
+import { FileNotFoundError } from '../../src/foundation/fs/types.js';
 
 describe('FileSystem', () => {
   describe('writeAtomic', () => {

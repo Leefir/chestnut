@@ -8,9 +8,9 @@ import * as path from 'path';
 import { promises as fs } from 'fs';
 import { Runtime } from '../../src/core/runtime/index.js';
 import { makeRuntimeDeps } from '../helpers/runtime-deps.js';
-import type { InboxMessage } from '../../src/types/messaging.js';
-import type { Message } from '../../src/types/message.js';
-import { IdleTimeoutSignal, UserInterrupt } from '../../src/types/signals.js';
+import type { InboxMessage } from '../../src/foundation/messaging/types.js';
+import type { Message } from '../../src/foundation/llm-provider/types.js';
+import { IdleTimeoutSignal, UserInterrupt } from '../../src/core/signals.js';
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 import { createTestRuntime, createMockLLMConfig, createMockLLM } from './_runtime-test-helpers.js';
 

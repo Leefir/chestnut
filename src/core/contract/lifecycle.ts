@@ -9,7 +9,7 @@ import type { AuditWriter } from '../../foundation/audit/index.js';
 import type { Contract } from '../contract/types.js';
 import type { ProgressData } from './types.js';
 import { acquireLock, releaseLock, withProgressLock, type LockContext } from './lock.js';
-import { ToolError } from '../../types/index.js';
+import { ToolError } from '../../foundation/errors.js';
 import { CONTRACT_AUDIT_EVENTS } from './audit-events.js';
 
 export interface LifecycleContext extends LockContext {

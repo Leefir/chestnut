@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { AskMotionTool } from '../../../src/core/async-task-system/tools/ask-motion.js';
 import { createDialogStore } from '../../../src/foundation/dialog-store/index.js';
 import type { LLMOrchestrator } from '../../../src/foundation/llm-orchestrator/index.js';
-import type { Message } from '../../../src/types/message.js';
+import type { Message } from '../../../src/foundation/llm-provider/types.js';
 
 describe('AskMotionTool', () => {
   it('should not be readonly to prevent concurrent cloneHistory mutation', async () => {

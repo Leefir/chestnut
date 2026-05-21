@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { LLMOrchestratorImpl } from '../../src/foundation/llm-orchestrator/orchestrator.js';
 import type { ProviderAdapter, StreamChunk, LLMEventSink, LLMEvent } from '../../src/foundation/llm-orchestrator/types.js';
-import { LLMError, LLMAllProvidersFailedError, LLMTimeoutError } from '../../src/types/errors.js';
+import { LLMError, LLMAllProvidersFailedError, LLMTimeoutError } from '../../src/foundation/llm-orchestrator/errors.js';
 
 // Mock provider factory
 

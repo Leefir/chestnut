@@ -15,9 +15,9 @@ import { Runtime } from '../../src/core/runtime/runtime.js';
 import { makeRuntimeDeps } from '../helpers/runtime-deps.js';
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 import type { LLMOrchestratorConfig } from '../../src/foundation/llm-orchestrator/types.js';
-import type { LLMResponse } from '../../src/types/message.js';
+import type { LLMResponse } from '../../src/foundation/llm-provider/types.js';
 import type { StreamChunk } from '../../src/foundation/llm-orchestrator/types.js';
-import type { Message } from '../../src/types/message.js';
+import type { Message } from '../../src/foundation/llm-provider/types.js';
 import { TEST_LLM_TIMEOUT_MS } from '../helpers/test-timeouts.js';
 
 async function* responseToStreamChunks(response: LLMResponse): AsyncIterableIterator<StreamChunk> {

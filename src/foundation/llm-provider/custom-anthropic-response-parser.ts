@@ -4,7 +4,7 @@
  */
 
 import type { LLMResponse, ContentBlock } from '../llm-provider/types.js';
-import { LLMEmptyResponseError } from '../../types/index.js';
+import { LLMEmptyResponseError } from '../llm-orchestrator/errors.js';
 
 export interface AnthropicResponse {
   id: string;

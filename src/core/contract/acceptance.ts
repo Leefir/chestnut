@@ -8,7 +8,7 @@ import type { FileSystem } from '../../foundation/fs/types.js';
 import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { Contract, AcceptanceFailedNotification, LastFailedFeedback } from '../contract/types.js';
-import { ToolError, ToolTimeoutError, isProgrammingBug } from '../../types/index.js';
+import { ToolError, ToolTimeoutError, isProgrammingBug } from '../../foundation/errors.js';
 import type { ToolRegistry } from '../../foundation/tools/index.js';
 import { exec } from '../../foundation/process-exec/index.js';
 import { ProcessExecError } from '../../foundation/process-exec/index.js';

@@ -23,7 +23,7 @@ import { makeAudit } from '../helpers/audit.js';
 import { ContractSystem } from '../../src/core/contract/manager.js';
 
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';
-import { TASKS_QUEUES_RUNNING_DIR } from '../../src/types/paths.js';
+import { TASKS_QUEUES_RUNNING_DIR } from '../../src/foundation/paths.js';
 import { ToolExecutor } from '../../src/foundation/tools/executor.js';
 import { ToolRegistryImpl } from '../../src/foundation/tools/registry.js';
 import { createToolRegistry } from '../../src/foundation/tools/index.js';

@@ -9,7 +9,7 @@ import { CircuitBreaker } from '../../../src/foundation/llm-orchestrator/circuit
 import {
   LLMNetworkError,
   LLMAllProvidersFailedError,
-} from '../../../src/types/errors.js';
+} from '../../../src/foundation/llm-orchestrator/errors.js';
 import type {
   ProviderAdapter,
   StreamChunk,

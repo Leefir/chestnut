@@ -12,8 +12,8 @@ import { InboxReader } from '../../src/foundation/messaging/index.js';
 import { OutboxWriter } from '../../src/foundation/messaging/index.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
 import { makeAudit } from '../helpers/audit.js';
-import type { InboxMessage } from '../../src/types/messaging.js';
-import { INBOX_PENDING_DIR, INBOX_DONE_DIR, INBOX_FAILED_DIR, OUTBOX_PENDING_DIR } from '../../src/types/paths.js';
+import type { InboxMessage } from '../../src/foundation/messaging/types.js';
+import { INBOX_PENDING_DIR, INBOX_DONE_DIR, INBOX_FAILED_DIR, OUTBOX_PENDING_DIR } from '../../src/foundation/paths.js';
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 
 /**

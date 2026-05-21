@@ -29,7 +29,7 @@ import { HEARTBEAT_AUDIT_EVENTS } from './heartbeat-audit-events.js';
 import { CLAW_SUBDIRS, DIALOG_DIR } from '../../foundation/paths.js';
 import { oneLine, formatErr } from '../../foundation/utils/format.js';
 import { escapeForLog } from '../../foundation/tools/index.js';
-import { MaxStepsExceededError } from '../../types/index.js';
+import { MaxStepsExceededError } from '../agent-executor/errors.js';
 import { DEFAULT_MAX_STEPS } from '../agent-executor/index.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { Snapshot } from '../../foundation/snapshot/index.js';
@@ -189,7 +189,7 @@ export class Runtime {
       () => this.buildSystemPrompt(),
       () => this.toolRegistry.formatForLLM(this.toolRegistry.getAll()),
       (profile) => this.toolRegistry.formatForLLM(
-        this.toolRegistry.getForProfile(profile as import('../../types/config.js').ToolProfile),
+        this.toolRegistry.getForProfile(profile as import('../../foundation/tool-protocol/index.js').ToolProfile),
       ),
     );
     this.toolRegistry.register(dispatchTool);

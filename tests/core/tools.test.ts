@@ -18,7 +18,7 @@ import {
   ToolNotFoundError,
   ToolTimeoutError,
   ToolInvalidInputError,
-} from '../../src/types/errors.js';
+} from '../../src/foundation/errors.js';
 
 describe('Tools', () => {
   describe('TOOL_PROFILES', () => {

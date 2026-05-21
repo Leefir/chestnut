@@ -246,7 +246,7 @@ describe('shadow tool (phase 767)', () => {
     });
 
     it('classifies ToolTimeoutError as timeout', async () => {
-      const { ToolTimeoutError } = await import('../../../src/types/errors.js');
+      const { ToolTimeoutError } = await import('../../../src/foundation/errors.js');
       mockRunSubagent.mockRejectedValue(new ToolTimeoutError('read', 5000));
 
       const result = await shadowTool.execute({ task: 'timeout test', async: false }, baseCtx);

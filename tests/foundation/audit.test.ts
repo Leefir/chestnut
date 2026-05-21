@@ -4,7 +4,7 @@ import path from 'path';
 import os from 'os';
 import { AuditWriter } from '../../src/foundation/audit/writer.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
-import { FileNotFoundError } from '../../src/types/errors.js';
+import { FileNotFoundError } from '../../src/foundation/fs/types.js';
 
 describe('AuditWriter', () => {
   let tmpDir: string;

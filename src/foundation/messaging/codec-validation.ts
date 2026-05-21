@@ -3,7 +3,7 @@
  * Message field validation for Messaging
  */
 
-import type { InboxMessage } from '../../types/index.js';
+import type { InboxMessage } from '../messaging/types.js';
 import type { Priority } from '../messaging/types.js';
 
 export const VALID_PRIORITIES: Priority[] = ['critical', 'high', 'normal', 'low'];

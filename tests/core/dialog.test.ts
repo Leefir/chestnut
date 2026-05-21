@@ -8,7 +8,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
-import { DIALOG_ARCHIVE_DIR } from '../../src/types/paths.js';
+import { DIALOG_ARCHIVE_DIR } from '../../src/foundation/paths.js';
 import { promises as fs } from 'fs';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
@@ -16,7 +16,7 @@ import { randomUUID } from 'crypto';
 import { DialogStore } from '../../src/foundation/dialog-store/index.js';
 import { ContextInjector } from '../../src/core/dialog/injector.js';
 import { createSkillSystem } from '../../src/foundation/skill-system/index.js';
-import type { Message } from '../../src/types/message.js';
+import type { Message } from '../../src/foundation/llm-provider/types.js';
 import { makeSession } from '../helpers/session-fixtures.js';
 import type { SessionData } from '../../src/foundation/dialog-store/index.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';

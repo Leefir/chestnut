@@ -7,7 +7,7 @@ import {
   type SessionLike,
 } from '../../src/cli/commands/_message-renderer.js';
 import { CliError } from '../../src/cli/errors.js';
-import type { Message, ToolUseBlock, ToolResultBlock } from '../../src/types/message.js';
+import type { Message, ToolUseBlock, ToolResultBlock } from '../../src/foundation/llm-provider/types.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';

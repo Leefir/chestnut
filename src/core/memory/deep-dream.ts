@@ -10,7 +10,7 @@ import { createSystemAudit } from '../../foundation/audit/index.js';
 import { migrateAndValidateSession, validateSessionData } from '../../foundation/dialog-store/store.js';
 import type { SessionData } from '../../foundation/dialog-store/types.js';
 import { CLAWS_DIR, DIALOG_DIR } from '../../foundation/paths.js';
-import { FileNotFoundError } from '../../types/index.js';
+import { FileNotFoundError } from '../../foundation/fs/types.js';
 import {
   DEEP_DREAM_SYSTEM_PROMPT,
   buildDreamInput,

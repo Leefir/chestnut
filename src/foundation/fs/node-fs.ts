@@ -27,10 +27,8 @@ import {
   stat,
   isDirectory,
 } from './atomic.js';
-import {
-  FileNotFoundError,
-  PermissionError,
-} from '../../types/index.js';
+import { FileNotFoundError } from './types.js';
+import { PermissionError } from '../errors.js';
 
 async function wrapENOENT<T>(
   relativePath: string,
