@@ -40,6 +40,7 @@ export const RUNTIME_AUDIT_EVENTS = {
   SESSION_REPAIR_FAILED: 'runtime_session_repair_failed',
   // phase 521: regime switch audit event
   REGIME_SWITCH: 'regime_switch',
+  REGIME_SWITCH_COMMITTED: 'regime_switch_committed', // NEW phase1108
   // phase 539: regime switch failed audit event
   REGIME_SWITCH_FAILED: 'regime_switch_failed',
   // phase 598: optional section read failed audit event

@@ -225,6 +225,7 @@
       "llm_unparseable_tool_use",
       "outbox_write_failed",
       "regime_switch",
+      "regime_switch_committed",
       "regime_switch_failed",
       "runtime_inbox_drain_failed",
       "runtime_inbox_init_failed",
@@ -405,5 +406,5 @@
       "watchdog_stream_read_failed"
     ]
   },
-  "updated": "2026-05-21T13:32:40.518Z"
+  "updated": "2026-05-21T13:44:47.807Z"
 }

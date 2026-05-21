@@ -1142,6 +1142,11 @@ export class Runtime {
     this.sessionManager = newSessionManager;
     // 8. audit 成功
     this.auditWriter.write(
+      RUNTIME_AUDIT_EVENTS.REGIME_SWITCH_COMMITTED,
+      `strategy=${strategy}`,
+      `inherited=${repaired.length}`,
+    );
+    this.auditWriter.write(
       RUNTIME_AUDIT_EVENTS.REGIME_SWITCH,
       `strategy=${strategy}`,
       `inherited=${repaired.length}`,
