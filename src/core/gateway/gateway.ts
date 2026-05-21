@@ -278,17 +278,23 @@ export function createGateway(input: GatewayInput): Gateway {
           abortListener = () => {
             cancel(id, 'abort');
           };
+        }
+
+        // phase 1102 gw-2: pending.set BEFORE addEventListener to prevent abort/cancel race
+        // If abort fires between addEventListener and pending.set, cancel() finds null → timer leaks.
+        pending.set(id, { id, resolve, timer, abortListener, signal: ctx.signal ?? null });
+
+        if (ctx.signal && abortListener) {
           ctx.signal.addEventListener('abort', abortListener, { once: true });
           // G4 robust：addEventListener 后立即 check / spec 不 retroactively fire
           if (ctx.signal.aborted) {
             ctx.signal.removeEventListener('abort', abortListener);
             clearTimeout(timer);
+            pending.delete(id);
             resolve(failureResult('ask_user 被中断取消'));
             return;
           }
         }
-
-        pending.set(id, { id, resolve, timer, abortListener, signal: ctx.signal ?? null });
 
         audit.write(GATEWAY_AUDIT_EVENTS.ASK_USER_PENDING, `id=${id}`);
         try {

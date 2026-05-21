@@ -1355,7 +1355,8 @@ describe('ContractSystem', () => {
       );
 
       const progress = await testManager.getProgress(contractId);
-      expect(progress.subtasks['t1'].status).toBe('todo');
+      // phase 1102 con-4: status becomes 'escalated' (not 'failed') after max retries
+      expect(progress.subtasks['t1'].status).toBe('escalated');
       expect(progress.subtasks['t1'].status).not.toBe('failed');
       expect(progress.subtasks['t1'].retry_count).toBe(3);
       expect(progress.subtasks['t1'].escalated_at).toBeDefined();

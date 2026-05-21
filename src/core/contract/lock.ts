@@ -103,6 +103,44 @@ export async function unlinkStaleLock(ctx: LockContext, lockPath: string, reason
 
 export async function releaseLock(ctx: LockContext, lockPath: string): Promise<void> {
   try {
+    // phase 1102 con-3: verify ownership before deleting to prevent race-condition
+    // where a concurrent force-clear removed our lock and replaced it with another
+    const raw = await ctx.fs.read(lockPath);
+    let parsed: { pid?: unknown } | undefined;
+    try {
+      parsed = JSON.parse(raw) as { pid?: unknown };
+    } catch {
+      // silent: backward compat — old-format lock files (plain text / empty) treat as unowned, allow delete
+      parsed = undefined;
+    }
+    if (parsed && typeof parsed.pid === 'number' && parsed.pid !== process.pid) {
+      ctx.audit.write(
+        CONTRACT_AUDIT_EVENTS.LOCK_UNLINK_FAILED,
+        `context=ContractSystem.releaseLock`,
+        `path=${lockPath}`,
+        `reason=ownership_mismatch`,
+        `expected_pid=${process.pid}`,
+        `actual_pid=${parsed.pid}`,
+      );
+      return;
+    }
+  } catch (e) {
+    // ENOENT / FS_NOT_FOUND: proceed to delete so the original audit behavior is preserved
+    // (caller may rely on LOCK_UNLINK_FAILED when target lock was never created)
+    const code = (e as NodeJS.ErrnoException).code;
+    if (code !== 'ENOENT' && code !== 'FS_NOT_FOUND') {
+      // Other read errors: audit and proceed with delete attempt (best-effort)
+      ctx.audit.write(
+        CONTRACT_AUDIT_EVENTS.LOCK_UNLINK_FAILED,
+        `context=ContractSystem.releaseLock`,
+        `path=${lockPath}`,
+        `reason=read_error`,
+        `error=${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+  }
+
+  try {
     await ctx.fs.delete(lockPath);
   } catch (e) {
     ctx.audit.write(CONTRACT_AUDIT_EVENTS.LOCK_UNLINK_FAILED, `context=ContractSystem.releaseLock`, `path=${lockPath}`, `error=${e instanceof Error ? e.message : String(e)}`);

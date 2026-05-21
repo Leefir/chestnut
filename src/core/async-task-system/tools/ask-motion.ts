@@ -51,7 +51,8 @@ export class AskMotionTool implements Tool {
     let answer: string;
     try {
       // phase 713: 全然一致性 reuse Motion DialogStore latest dialog snapshot
-      const { session } = await this.motionDialogStore.load();
+      // phase 1102 r126: use loadStable to avoid reading incomplete session during concurrent save
+      const { session } = await this.motionDialogStore.loadStable();
 
       const response = await this.llm.call({
         system: session.systemPrompt,                          // 全然一致性 / Motion 用啥 / 这里用啥

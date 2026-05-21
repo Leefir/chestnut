@@ -25,7 +25,8 @@ export type SubtaskStatus =
   | 'todo'
   | 'in_progress'
   | 'completed'
-  | 'failed';
+  | 'failed'
+  | 'escalated';   // phase 1102 con-4: explicit escalation state to break infinite loops
 
 export interface LastFailedFeedback {
   feedback: string;

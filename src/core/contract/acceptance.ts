@@ -255,6 +255,7 @@ async function applyAcceptanceOutcome(
 
     if (subtask.retry_count >= maxRetries) {
       subtask.escalated_at = new Date().toISOString();
+      subtask.status = 'escalated';   // phase 1102 con-4: prevent silent infinite loop
       await ctx.saveProgress(contractId, progress);
       ctx.audit.write(
         CONTRACT_AUDIT_EVENTS.ESCALATED,
@@ -575,10 +576,12 @@ export async function runLLMAcceptance(
       .replace(/\{\{artifacts\}\}/g, artifacts.join(', '))
       .replace(/\{\{subtask_description\}\}/g, subtaskDesc);
 
+    // phase 1102 con-6: restrict verifier scope to contract directory only
+    // (prevents verifier from accessing caller's inbox/status/memory)
     const result = await ctx.runVerifierWithCancel(contractId, {
       agentId: `verifier-${contractId}-${subtaskId}`,
       prompt: filledPrompt,
-      clawDir: ctx.clawDir,
+      clawDir: contractAbsDir,
       clawId: ctx.clawId,        // phase 514
       llm: ctx.llm!,
       fs: ctx.fs,
@@ -701,9 +704,10 @@ export async function writeAcceptanceError(
         const maxRetries = contractYaml.escalation?.max_retries ?? 3;
 
         // phase 1038 α-4: mirror line 235-243 escalation check
-        // reset path 累 retry_count 时必 check escalation (mirror normal acceptance failed path)
+        // phase 1102 con-4: set status='escalated' to prevent silent infinite loop
         if (subtask.retry_count >= maxRetries) {
           subtask.escalated_at = new Date().toISOString();
+          subtask.status = 'escalated';
           await ctx.saveProgress(contractId, progress);
           ctx.audit.write(
             CONTRACT_AUDIT_EVENTS.ESCALATED,

@@ -111,6 +111,63 @@ export class DialogStore {
   }
 
   /**
+   * Load session with mtime consistency check.
+   * phase 1102 r126: prevents reading incomplete session during concurrent save().
+   */
+  async loadStable(maxRetries = 3): Promise<LoadResult> {
+    for (let i = 0; i <= maxRetries; i++) {
+      let statBefore: { size: number; mtime: number } | null = null;
+      try {
+        const s = await this.fs.stat(this.currentPath);
+        statBefore = { size: s.size, mtime: s.mtime.getTime() };
+      } catch (e) {
+        const code = (e as NodeJS.ErrnoException).code;
+        if (code === 'ENOENT' || code === 'FS_NOT_FOUND') {
+          // File doesn't exist — load() will cold-start; no race possible
+          return this.load();
+        }
+        throw e;
+      }
+
+      const result = await this.load();
+
+      let statAfter: { size: number; mtime: number } | null = null;
+      try {
+        const s = await this.fs.stat(this.currentPath);
+        statAfter = { size: s.size, mtime: s.mtime.getTime() };
+      } catch (e) {
+        const code = (e as NodeJS.ErrnoException).code;
+        if (code === 'ENOENT' || code === 'FS_NOT_FOUND') {
+          // File was archived/removed between load and stat — result is still valid
+          return result;
+        }
+        throw e;
+      }
+
+      if (
+        statBefore !== null &&
+        statAfter !== null &&
+        statBefore.size === statAfter.size &&
+        statBefore.mtime === statAfter.mtime
+      ) {
+        return result;
+      }
+
+      if (i < maxRetries) {
+        await new Promise(r => setTimeout(r, 50 * (i + 1)));
+      }
+    }
+
+    // Exceeded retries: fall back to plain load() — audit for observability
+    this.audit.write(
+      DIALOG_AUDIT_EVENTS.CORRUPTED,
+      'file=current.json',
+      `reason=load_stable_exhausted_after_${maxRetries}_retries`,
+    );
+    return this.load();
+  }
+
+  /**
    * Save session to current.json
    * phase 713: 扩 snapshot 参 / atomic write systemPrompt + messages + toolsForLLM 3 件
    */
