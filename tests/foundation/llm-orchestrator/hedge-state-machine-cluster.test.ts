@@ -124,6 +124,7 @@ vi.mock('../../../src/foundation/llm-provider/anthropic.js', () => ({
 
 describe('hedge state machine cluster (phase 991)', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 

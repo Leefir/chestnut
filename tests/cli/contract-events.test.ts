@@ -32,6 +32,7 @@ describe('contractEventsCommand', () => {
   let logSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     clawDir = await fsAsync.mkdtemp(path.join(os.tmpdir(), 'contract-events-test-'));
     (globalThis as any).__TEST_CLAW_DIR__ = clawDir;
     logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});

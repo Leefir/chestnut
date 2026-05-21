@@ -28,6 +28,7 @@ describe('claw-health', () => {
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const { loadGlobalConfig, clawExists, getClawDir, getGlobalConfigPath } = await import('../../../src/foundation/config/index.js');
     vi.mocked(loadGlobalConfig).mockReturnValue({} as any);

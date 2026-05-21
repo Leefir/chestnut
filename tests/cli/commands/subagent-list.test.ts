@@ -31,6 +31,7 @@ describe('subagent-list', () => {
   let consoleErrSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.clearAllMocks();

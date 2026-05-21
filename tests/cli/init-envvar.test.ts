@@ -26,6 +26,7 @@ vi.mock('readline', () => ({
 let processExitSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
+  vi.restoreAllMocks();
   processExitSpy = vi.spyOn(process, 'exit').mockImplementation((_code?: string | number | null | undefined) => {
     throw new Error(`process.exit(${_code})`);
   });

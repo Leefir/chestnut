@@ -25,6 +25,7 @@ describe('already-running sentinel (phase 981 E-α3)', () => {
   let warnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'clawforum-ar-test-'));
     originalRoot = process.env.CLAWFORUM_ROOT;
     process.env.CLAWFORUM_ROOT = tmpDir;
