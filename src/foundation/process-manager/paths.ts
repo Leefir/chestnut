@@ -1,6 +1,7 @@
 import * as path from 'path';
-import { STATUS_SUBDIR } from '../paths.js';
 import type { ProcessManagerContext } from './types.js';
+
+export const STATUS_SUBDIR = 'status';
 
 export function getStatusDir(ctx: ProcessManagerContext, clawId: string): string {
   return path.join(ctx.resolveDir(clawId), STATUS_SUBDIR);

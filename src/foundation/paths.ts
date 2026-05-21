@@ -11,7 +11,6 @@ import * as path from 'path';
 
 export const CLAWS_DIR = 'claws' as const;
 export const CLAWSPACE_DIR = 'clawspace' as const;
-export const STATUS_SUBDIR = 'status' as const;
 
 export const CLAW_SUBDIRS = [
   'dialog',
@@ -38,7 +37,7 @@ export const CLAW_SUBDIRS = [
   'skills',
   CLAWSPACE_DIR,
   'logs',
-  STATUS_SUBDIR,
+  'status',
 ] as const;
 
 // ── Runtime path resolution ──
