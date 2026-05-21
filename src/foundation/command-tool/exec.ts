@@ -14,7 +14,7 @@ import { TASKS_SYNC_EXEC_DIR } from './index.js';
 import { exec } from '../process-exec/index.js';
 import { ProcessExecError } from '../process-exec/index.js';
 import { PROCESS_EXEC_DEFAULT_TIMEOUT_MS } from '../process-exec/index.js';
-import { formatErr, safeNumber } from '../../types/utils.js';
+import { formatErr, safeNumber } from '../utils/format.js';
 import type { CommandToolDeps } from './index.js';
 
 function truncate(str: string, maxLen: number): string {

@@ -1,20 +1,8 @@
-/**
- * Runtime signals — not errors, just typed control-flow throws.
- * All abort/interrupt signal classes live here.
- */
+// Thin wrapper — re-exports from canonical owner core/signals.ts (L3)
+// During migration. Once all consumers import from canonical source, this file is deleted.
 
-/** System idle timeout aborted the react loop. */
-export class IdleTimeoutSignal {
-  readonly name = 'IdleTimeoutSignal';
-  constructor(public readonly timeoutMs: number) {}
-}
-
-/** Step loop yielded to process a high-priority inbox message. */
-export class PriorityInboxInterrupt {
-  readonly name = 'PriorityInboxInterrupt';
-}
-
-/** User explicitly interrupted the turn (e.g. Esc key). */
-export class UserInterrupt {
-  readonly name = 'UserInterrupt';
-}
+export {
+  IdleTimeoutSignal,
+  PriorityInboxInterrupt,
+  UserInterrupt,
+} from '../core/signals.js';

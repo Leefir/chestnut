@@ -11,8 +11,8 @@
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import type { FileSystem } from '../fs/types.js';
-import type { InboxMessage } from '../../types/messaging.js';
-import { PRIORITY_VALUES, type Priority } from '../../types/priority.js';
+import type { InboxMessage } from '../messaging/types.js';
+import { PRIORITY_VALUES, type Priority } from '../messaging/types.js';
 import { decodeInbox } from './codec-inbox.js';
 import type { AuditLog } from '../audit/index.js';
 import { MESSAGING_AUDIT_EVENTS } from './audit-events.js';

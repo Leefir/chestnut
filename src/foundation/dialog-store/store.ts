@@ -10,7 +10,7 @@
 import * as path from 'path';
 import type { FileSystem } from '../fs/types.js';
 
-import type { Message, ToolUseBlock, ToolResultBlock, ToolDefinition } from '../../types/message.js';
+import type { Message, ToolUseBlock, ToolResultBlock, ToolDefinition } from '../llm-provider/types.js';
 import type { SessionData, LoadResult, DialogMarker, RestoreResult } from './types.js';
 import type { AuditLog } from '../audit/index.js';
 import { DIALOG_AUDIT_EVENTS } from './audit-events.js';

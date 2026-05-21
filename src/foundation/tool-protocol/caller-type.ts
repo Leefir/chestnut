@@ -5,7 +5,7 @@
  * across the codebase. New dispatch modes only need to be added here.
  */
 
-import type { ToolProfile } from '../../types/config.js';
+import type { ToolProfile } from '../tool-protocol/index.js';
 
 export type DispatchCallerType = 'describer' | 'miner';
 export type CallerType = 'claw' | 'subagent' | 'verifier' | 'shadow' | DispatchCallerType;

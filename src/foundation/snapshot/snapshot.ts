@@ -15,7 +15,7 @@ import { exec } from '../process-exec/index.js';
 import type { FileSystem } from '../fs/types.js';
 import type { AuditLog } from '../audit/index.js';
 import { SNAPSHOT_AUDIT_EVENTS } from './audit-events.js';
-import { ok, err as errResult, type Result } from '../../types/result.js';
+import { ok, err as errResult, type Result } from '../utils/result.js';
 import { classifyGitError, type ExpectedGitFailure, type GitExecError } from './git-errors.js';
 import { AUDIT_MESSAGE_MAX_CHARS } from '../audit/index.js';
 

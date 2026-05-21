@@ -7,7 +7,7 @@
  */
 
 
-import type { LLMResponse, TextBlock, ThinkingBlock, ToolUseBlock } from '../../types/message.js';
+import type { LLMResponse, TextBlock, ThinkingBlock, ToolUseBlock } from '../llm-provider/types.js';
 import {
   LLMError,
   LLMAllProvidersFailedError,

@@ -3,7 +3,7 @@
  * No external dependencies to avoid circular imports
  */
 
-import type { Message, ToolDefinition, LLMResponse } from '../../types/message.js';
+import type { Message, ToolDefinition, LLMResponse } from '../llm-provider/types.js';
 import type { ApiFormat } from '../llm-provider/presets.js';
 import type { LLMErrorClass, UserActionHint } from '../../types/errors.js';
 

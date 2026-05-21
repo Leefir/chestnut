@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import type { InboxMessage } from '../../types/messaging.js';
+import type { InboxMessage } from '../messaging/types.js';
 import { validatePriority, validateType } from './codec-validation.js';
 
 /**

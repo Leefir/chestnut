@@ -7,7 +7,7 @@
 
 import type {
   LLMResponse,
-} from '../../types/message.js';
+} from '../llm-provider/types.js';
 import {
   LLMError,
   LLMTimeoutError,

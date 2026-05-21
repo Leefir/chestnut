@@ -19,7 +19,7 @@ import * as lockOps from './lock.js';
 import { spawnProcess } from './spawn.js';
 import { stopProcess } from './stop.js';
 import { findProcesses } from './find.js';
-import { CLAWS_DIR } from '../../types/paths.js';
+import { CLAWS_DIR } from '../paths.js';
 import type { ProcessManagerContext, SpawnOptions } from './types.js';
 
 export { LockConflictError } from './types.js';

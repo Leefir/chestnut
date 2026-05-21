@@ -1,15 +1,5 @@
-/**
- * Priority type and values - Shared between messaging and contract layers
- */
+// Thin wrapper — re-exports from canonical owner foundation/messaging/types.ts (L2c Messaging)
+// During migration. Once all consumers import from canonical source, this file is deleted.
 
-export type Priority = 'low' | 'normal' | 'high' | 'critical';
-
-/**
- * Priority values for sorting (higher = more important)
- */
-export const PRIORITY_VALUES: Record<Priority, number> = {
-  critical: 4,
-  high: 3,
-  normal: 2,
-  low: 1,
-};
+export type { Priority } from '../foundation/messaging/types.js';
+export { PRIORITY_VALUES } from '../foundation/messaging/types.js';

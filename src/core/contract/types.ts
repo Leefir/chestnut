@@ -7,7 +7,64 @@ import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { ToolRegistry } from '../../foundation/tools/index.js';
-import type { ContractStatus, SubtaskStatus, LastFailedFeedback } from '../../types/contract.js';
+import type { Priority } from '../../foundation/messaging/types.js';
+
+// ============================================================================
+// Contract domain types (canonical owner per interfaces/l4.md)
+// ============================================================================
+
+export type ContractStatus =
+  | 'pending'
+  | 'running'
+  | 'paused'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+export type SubtaskStatus =
+  | 'todo'
+  | 'in_progress'
+  | 'completed'
+  | 'failed';
+
+export interface LastFailedFeedback {
+  feedback: string;
+  cause: 'llm_rejected' | 'programming_bug' | 'subagent_timeout' | 'script_failed';
+}
+
+export interface AcceptanceFailedNotification {
+  contract_id: string;
+  subtask_id: string;
+  cause: 'llm_rejected' | 'programming_bug' | 'subagent_timeout' | 'script_failed';
+  feedback: string;
+  retry_count: number;
+  max_retries: number;
+}
+
+export interface SubTask {
+  id: string;
+  description: string;
+  status: SubtaskStatus;
+  created_at: string;
+  updated_at: string;
+  completed_at?: string;
+}
+
+export interface Contract {
+  id: string;
+  title: string;
+  description: string;
+  status: ContractStatus;
+  priority: Priority;
+  creator: string;
+  goal: string;
+  subtasks: SubTask[];
+  auth_level: 'auto' | 'notify' | 'confirm';
+  created_at: string;
+  updated_at: string;
+  started_at?: string;
+  completed_at?: string;
+}
 
 // YAML contract file structure (exported for CLI use)
 export interface ContractYaml {

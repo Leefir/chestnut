@@ -13,7 +13,7 @@ import type {
   ContentBlock,
   TextBlock,
   ToolUseBlock,
-} from '../../types/message.js';
+} from '../llm-provider/types.js';
 import {
   LLMError,
   LLMRateLimitError,

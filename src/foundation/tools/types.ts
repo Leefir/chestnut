@@ -3,8 +3,8 @@
  * Tool framework types / phase 501 extracted from executor.ts (C-α 极保守整理性)
  */
 
-import type { JSONSchema7 } from '../../types/message.js';
-import type { ToolProfile } from '../../types/config.js';
+import type { JSONSchema7 } from '../llm-provider/types.js';
+import type { ToolProfile } from '../tool-protocol/index.js';
 import type { FileSystem } from '../fs/types.js';
 import type { LLMOrchestrator } from '../llm-orchestrator/index.js';
 import type { AuditLog } from '../audit/index.js';

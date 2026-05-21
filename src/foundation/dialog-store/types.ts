@@ -4,7 +4,7 @@
  * Session data structure for current.json persistence.
  */
 
-import type { Message, ToolDefinition } from '../../types/message.js';
+import type { Message, ToolDefinition } from '../llm-provider/types.js';
 
 export interface SessionData {
   version: number;          // bump to 2 (phase 713)

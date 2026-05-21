@@ -11,8 +11,8 @@ import type { FileSystem } from '../fs/types.js';
 import type { Tool, ToolResult, ExecContext } from '../tool-protocol/index.js';
 
 import { resolveWorkspacePath } from './_resolve-path.js';
-import { CLAWS_DIR } from '../../types/paths.js';
-import { safeNumber, formatErr } from '../../types/utils.js';
+import { CLAWS_DIR } from '../paths.js';
+import { safeNumber, formatErr } from '../utils/format.js';
 
 /**
  * Walk directory recursively and search for query in files.

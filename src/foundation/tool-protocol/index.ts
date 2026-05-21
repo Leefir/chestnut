@@ -7,18 +7,19 @@
  * type-only / 无 runtime / 无 audit events
  */
 
-import type { JSONSchema7 } from '../../types/message.js';
-import type { ToolProfile } from '../../types/config.js';
+import type { JSONSchema7 } from '../llm-provider/types.js';
 import type { FileSystem } from '../fs/types.js';
 import type { LLMOrchestrator } from '../llm-orchestrator/index.js';
-import type { Message, ToolDefinition } from '../../types/message.js';
+import type { Message, ToolDefinition } from '../llm-provider/types.js';
 import type { CallerType } from './caller-type.js';
 import type { AuditLog } from '../audit/index.js';
 import type { DialogStore } from '../dialog-store/index.js';
 import type { ToolRegistry } from '../tools/types.js';
-import type { PermissionChecker } from '../../types/permission.js';
+import type { PermissionChecker } from './permission.js';
 
-export type { JSONSchema7, ToolProfile, CallerType };
+export type ToolProfile = string;
+export type { JSONSchema7, CallerType };
+export type { PermissionChecker };
 export { callerTypeToProfile } from './caller-type.js';
 
 /**

@@ -1,11 +1,4 @@
-export type Result<T, E> =
-  | { ok: true; value: T }
-  | { ok: false; error: E };
+// Thin wrapper — re-exports from canonical owner foundation/utils/result.ts
+// During migration. Once all consumers import from canonical source, this file is deleted.
 
-export function ok<T>(value: T): Result<T, never> {
-  return { ok: true, value };
-}
-
-export function err<E>(error: E): Result<never, E> {
-  return { ok: false, error };
-}
+export { ok, err, type Result } from '../foundation/utils/result.js';

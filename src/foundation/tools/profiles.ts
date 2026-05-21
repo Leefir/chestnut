@@ -2,7 +2,7 @@
  * Tool profiles - define which tools are available in each profile
  */
 
-import type { ToolProfile } from '../../types/config.js';
+import type { ToolProfile } from '../tool-protocol/index.js';
 import {
   READ_TOOL_NAME,
   WRITE_TOOL_NAME,

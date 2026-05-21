@@ -5,7 +5,7 @@
  * Exports: LLMProvider interface, provider adapters, factory
  */
 
-import type { LLMResponse } from '../../types/message.js';
+import type { LLMResponse } from '../llm-provider/types.js';
 import type { ProviderConfig, LLMCallOptions, StreamChunk, ProviderAdapter } from './types.js';
 import { AnthropicAdapter } from './anthropic.js';
 import { CustomAnthropicAdapter } from './custom-anthropic.js';

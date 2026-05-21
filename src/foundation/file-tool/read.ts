@@ -11,10 +11,10 @@ import type { Tool, ToolResult, ExecContext } from '../tool-protocol/index.js';
 import { READ_MAX_LINES, READ_MAX_CHARS } from './constants.js';
 
 import { resolveWorkspacePath } from './_resolve-path.js';
-import { safeNumber } from '../../types/utils.js';
+import { safeNumber } from '../utils/format.js';
 
 import { READ_TOOL_NAME } from '../tools/tool-names.js';
-import { CLAWS_DIR } from '../../types/paths.js';
+import { CLAWS_DIR } from '../paths.js';
 export { READ_TOOL_NAME };
 
 export const readTool: Tool = {

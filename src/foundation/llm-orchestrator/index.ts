@@ -6,7 +6,7 @@
  *          createLLMOrchestrator factory
  */
 
-import type { LLMResponse } from '../../types/message.js';
+import type { LLMResponse } from '../llm-provider/types.js';
 import type { LLMCallOptions, StreamChunk } from './types.js';
 
 export { LLMOrchestratorImpl } from './orchestrator.js';

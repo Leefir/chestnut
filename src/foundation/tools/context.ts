@@ -10,19 +10,19 @@
 
 import type { FileSystem } from '../fs/types.js';
 import type { LLMOrchestrator } from '../llm-orchestrator/index.js';
-import type { ToolProfile } from '../../types/config.js';
+import type { ToolProfile } from '../tool-protocol/index.js';
 import type { ExecContext } from '../tool-protocol/index.js';
 import path from 'path';
 import { MOTION_CLAW_ID } from '../../constants.js';
-import { CLAWSPACE_DIR } from '../../types/paths.js';
+import { CLAWSPACE_DIR } from '../paths.js';
 
 
-import type { Message, ToolDefinition } from '../../types/message.js';
+import type { Message, ToolDefinition } from '../llm-provider/types.js';
 import type { AuditLog } from '../audit/index.js';
 import type { CallerType } from '../tool-protocol/caller-type.js';
 import type { DialogStore } from '../dialog-store/index.js';
 import type { ToolRegistry } from './types.js';
-import type { PermissionChecker } from '../../types/permission.js';
+import type { PermissionChecker } from '../tool-protocol/permission.js';
 
 /**
  * Options for creating execution context

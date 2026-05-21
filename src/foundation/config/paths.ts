@@ -7,7 +7,7 @@
 import * as path from 'path';
 
 // Re-export shared constants
-export { CLAW_SUBDIRS } from '../../types/paths.js';
+export { CLAW_SUBDIRS } from '../paths.js';
 
 // Workspace root - 优先从环境变量获取（供 exec 子进程继承）
 export function getWorkspaceRoot(): string {

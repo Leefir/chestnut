@@ -13,11 +13,11 @@ import {
   ToolTimeoutError,
   ToolInvalidInputError,
 } from '../../types/errors.js';
-import { CLAWSPACE_DIR } from '../../types/paths.js';
+import { CLAWSPACE_DIR } from '../paths.js';
 import type { CallerType, ExecContext } from '../tool-protocol/index.js';
-import type { PermissionChecker } from '../../types/permission.js';
+import type { PermissionChecker } from '../tool-protocol/permission.js';
 import type { ToolResult } from '../tool-protocol/index.js';
-import type { ToolProfile } from '../../types/config.js';
+import type { ToolProfile } from '../tool-protocol/index.js';
 import type { FileSystem } from '../fs/types.js';
 import type { LLMOrchestrator } from '../llm-orchestrator/index.js';
 import type { AuditLog } from '../audit/index.js';
@@ -32,7 +32,7 @@ import {
   type IToolExecutor,
   type ToolExecutorOptions,
 } from './types.js';
-import { safeNumber } from '../../types/utils.js';
+import { safeNumber } from '../utils/format.js';
 
 // Re-export types from ./types.js for caller compat (18 caller 0 改)
 export type {

@@ -1,0 +1,42 @@
+export type Priority = 'low' | 'normal' | 'high' | 'critical';
+
+export const PRIORITY_VALUES: Record<Priority, number> = {
+  critical: 4,
+  high: 3,
+  normal: 2,
+  low: 1,
+};
+
+export interface InboxMessage {
+  id: string;
+  type: 'message' | 'user_chat' | 'user_inbox_message' | 'crash_notification' | 'heartbeat' | 'claw_outbox' | string;
+  from: string;
+  to: string;
+  content: string;
+  priority: Priority;
+  timestamp: string;
+  contract_id?: string;
+  reply_to?: string;
+  extraMeta?: Record<string, string>;
+}
+
+export interface OutboxMessage {
+  id: string;
+  type: 'response' | 'contract_update' | 'status_report' | 'report' | 'question' | 'result' | 'error';
+  from: string;
+  to: string;
+  content: string;
+  timestamp: string;
+  priority: 'critical' | 'high' | 'normal' | 'low';
+  contract_id?: string;
+  in_reply_to?: string;
+}
+
+export interface HeartbeatEntry {
+  claw_id: string;
+  timestamp: string;
+  status: 'idle' | 'working' | 'error';
+  current_contract?: string;
+  message_count: number;
+  memory_usage?: number;
+}

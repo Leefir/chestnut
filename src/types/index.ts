@@ -1,47 +1,53 @@
 /**
- * Types module - Unified exports
- * Phase 0: All type definitions
+ * Types barrel — re-exports from canonical module-owned locations.
+ *
+ * During migration: this barrel allows existing consumers to keep working
+ * while imports are progressively updated to point directly to canonical sources.
+ * Once all consumers are migrated, this directory will be deleted.
  */
 
-// Message types
+// Message types → L1 LLMProvider
 export type {
   Role,
   TextBlock,
   ToolUseBlock,
   ToolResultBlock,
+  ThinkingBlock,
+  UnknownBlock,
   ContentBlock,
   Message,
   ToolDefinition,
   LLMResponse,
   JSONSchema7,
-} from './message.js';
+} from '../foundation/llm-provider/types.js';
 
-// Contract types
+// Contract types → L4 ContractSystem
 export type {
   ContractStatus,
+  SubtaskStatus,
+  LastFailedFeedback,
+  AcceptanceFailedNotification,
   SubTask,
   Contract,
-} from './contract.js';
+} from '../core/contract/types.js';
 
-// Messaging types
+// Messaging types → L2c Messaging
 export type {
   InboxMessage,
   OutboxMessage,
   HeartbeatEntry,
-} from './messaging.js';
+  Priority,
+} from '../foundation/messaging/types.js';
+export { PRIORITY_VALUES } from '../foundation/messaging/types.js';
 
-// Priority (shared)
-export type { Priority } from './priority.js';
+// Config types → L2b ToolProtocol
+export type { ToolProfile } from '../foundation/tool-protocol/index.js';
 
-// Config types
-export type { ToolProfile } from './config.js';
-
-// Error types
+// Error base + L1/L2 error classes → foundation/errors.ts
 export type {
   ErrorCode,
   ErrorDetails,
-} from './errors.js';
-
+} from '../foundation/errors.js';
 export {
   ClawError,
   PermissionError,
@@ -51,6 +57,11 @@ export {
   ToolNotFoundError,
   ToolInvalidInputError,
   ToolTimeoutError,
+  isProgrammingBug,
+} from '../foundation/errors.js';
+
+// LLM error classes → L2b LLMOrchestrator
+export {
   LLMError,
   LLMRateLimitError,
   LLMTimeoutError,
@@ -59,25 +70,30 @@ export {
   LLMEmptyResponseError,
   LLMModelNotFoundError,
   LLMAllProvidersFailedError,
-  FileNotFoundError,
+  classifyLLMError,
+  getUserActionHint,
+} from '../foundation/llm-orchestrator/errors.js';
+
+// FileSystem errors → L1 FileSystem
+export { FileNotFoundError } from '../foundation/fs/types.js';
+
+// L3 runtime errors → L3 AgentExecutor
+export {
   MaxStepsExceededError,
   ConsecutiveParseErrorsExceededError,
   ConsecutiveMaxTokensToolUseError,
   WallTimeExceededError,
-} from './errors.js';
+} from '../core/agent-executor/errors.js';
 
-export { classifyLLMError, getUserActionHint, isProgrammingBug } from './errors.js';
-export { formatErr, safeNumber } from './utils.js';
-
-// Signal types (control-flow throws, not errors)
+// Signal types → L3
 export {
   IdleTimeoutSignal,
   PriorityInboxInterrupt,
   UserInterrupt,
-} from './signals.js';
+} from '../core/signals.js';
 
-// Result ADT (phase202 搬自 foundation/common/result.ts)
-export { ok, err, type Result } from './result.js';
+// Utility functions → foundation/utils
+export { formatErr, safeNumber, oneLine } from '../foundation/utils/format.js';
 
-// oneLine helper (phase203 搬自 foundation/utils/string.ts)
-export { oneLine } from './utils.js';
+// Result ADT → foundation/utils
+export { ok, err, type Result } from '../foundation/utils/result.js';

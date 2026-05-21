@@ -1,11 +1,4 @@
-/**
- * Config types - System configuration schemas
- * Phase 0: Zod schemas with TypeScript type inference
- * 
- * NOTE: This file now only exports ToolProfile type.
- * All other config schemas have been moved to foundation/config/index.ts
- * as they are CLI-specific and not used by the core runtime.
- */
+// Thin wrapper — re-exports from canonical owner foundation/tool-protocol/index.ts (L2b ToolProtocol)
+// During migration. Once all consumers import from canonical source, this file is deleted.
 
-// Tool profile for tool permission management
-export type ToolProfile = 'full' | 'readonly' | 'subagent' | 'miner';
+export type { ToolProfile } from '../foundation/tool-protocol/index.js';

@@ -8,13 +8,13 @@
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import type { FileSystem } from '../fs/types.js';
-import type { InboxMessage } from '../../types/messaging.js';
+import type { InboxMessage } from '../messaging/types.js';
 import { encodeInbox, parseFrontmatter } from './codec-inbox.js';
 import type { AuditLog } from '../audit/index.js';
 
 import { MESSAGING_AUDIT_EVENTS } from './audit-events.js';
 import { UUID_SHORT_LEN } from '../../constants.js';
-import { ok, err as errResult, type Result } from '../../types/result.js';
+import { ok, err as errResult, type Result } from '../utils/result.js';
 import type { InboxMetaError } from './errors.js';
 
 export type InboxMessageMeta = Record<string, string>;

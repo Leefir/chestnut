@@ -5,6 +5,16 @@
  * Atomic writes, path guarding.
  */
 
+import { ClawError, type ErrorCode } from '../errors.js';
+
+export class FileNotFoundError extends ClawError {
+  readonly code: ErrorCode = 'FS_NOT_FOUND';
+
+  constructor(path: string) {
+    super(`File not found: "${path}"`, { path });
+  }
+}
+
 export interface FileEntry {
   name: string;
   path: string;
