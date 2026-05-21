@@ -6,7 +6,9 @@
 
 // Registry
 import { ToolRegistryImpl } from './registry.js';
-import type { ToolRegistry } from './executor.js';
+import type { ToolRegistry } from './types.js';
+
+export { ToolRegistryImpl } from './registry.js';
 
 export function createToolRegistry(): ToolRegistry {
   return new ToolRegistryImpl();
@@ -15,6 +17,7 @@ export function createToolRegistry(): ToolRegistry {
 // Executor (interfaces + implementation)
 export {
   ToolExecutor,
+  ToolExecutorImpl,
   createToolExecutor,
 } from './executor.js';
 
