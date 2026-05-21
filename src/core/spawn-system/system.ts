@@ -49,7 +49,6 @@ export async function runSpawnSync(opts: RunSpawnSyncOptions): Promise<ToolResul
     const { text, capturedResult } = await runSubagent({
       agentId: id,
       callerType: 'subagent',
-      callerClawId: opts.ctx.clawId,
       clawDir: opts.ctx.clawDir,
       fs: opts.ctx.fs,
       llm: opts.ctx.llm,
