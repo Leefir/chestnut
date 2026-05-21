@@ -24,10 +24,12 @@ export async function handleToolUseStop(
   if (toolCalls.length === 0 && prebuiltResults.length === 0) {
     const text = extractText(response.content);
     appendAssistantMessage(messages, response.content);
+    callbacks?.onMessageAppended?.('assistant', response.content.length);
     callbacks?.onUnparseableToolUse?.(response.stop_reason);
     return { kind: 'final', stopReason: 'no_tool', finalText: text };
   }
   appendAssistantMessage(messages, response.content.filter(b => b.type !== 'tool_result'));
+  callbacks?.onMessageAppended?.('assistant', response.content.filter(b => b.type !== 'tool_result').length);
 
   let newParseErrorCount = 0;
   const trackingCallbacks: import('./types.js').StepCallbacks = {
@@ -43,6 +45,7 @@ export async function handleToolUseStop(
 
   if (ctx.signal?.aborted) throwAbortError(ctx.signal);
   appendToolResults(messages, [...prebuiltResults, ...toolResults]);
+  callbacks?.onMessageAppended?.('user', toolResults.length + prebuiltResults.length);
 
   const totalToolCallCount = toolCalls.length + prebuiltResults.length;
   const totalParseErrorCount = prebuiltResults.length + newParseErrorCount;
@@ -81,6 +84,7 @@ export function handleMaxTokensStop(
   );
   if (toolCalls.length > 0 || prebuiltResults.length > 0) {
     appendAssistantMessage(messages, response.content.filter(b => b.type !== 'tool_result'));
+    input.callbacks?.onMessageAppended?.('assistant', response.content.filter(b => b.type !== 'tool_result').length);
     const allIds = [
       ...toolCalls.map(tc => tc.id),
       ...prebuiltResults.map(pr => pr.tool_use_id),
@@ -92,6 +96,7 @@ export function handleMaxTokensStop(
       is_error: true,
     }));
     appendToolResults(messages, truncatedResults);
+    input.callbacks?.onMessageAppended?.('user', truncatedResults.length);
     return {
       kind: 'max_tokens_tool_use',
       meta: {

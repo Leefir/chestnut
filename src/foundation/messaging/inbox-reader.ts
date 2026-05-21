@@ -180,6 +180,7 @@ export class InboxReader {
       throw new InboxMoveFailed(filePath, 'done', err);
     }
     this.audit.write(MESSAGING_AUDIT_EVENTS.INBOX_DONE, `file=${fileName}`);
+    this.audit.write(MESSAGING_AUDIT_EVENTS.OUTBOX_DELIVERED, `file=${fileName}`);
   }
 
   /**

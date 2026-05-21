@@ -32,6 +32,7 @@ export interface StepCallbacks {
   onToolInputParseError?: (toolName: string, toolUseId: string, rawInput: string) => void;
   onToolExecutionFailed?: (toolName: string, toolUseId: string, errorType: string, errorMsg: string) => void;
   onSafeCallbackError?: (label: string, err: unknown) => void;
+  onMessageAppended?: (role: 'assistant' | 'user', blocks: number) => void;
 }
 
 export interface StepInput {

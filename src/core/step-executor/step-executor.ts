@@ -52,6 +52,7 @@ export async function executeStep(input: StepInput): Promise<StepResult> {
   if (response.stop_reason === 'end_turn' || response.stop_reason === 'stop') {
     const text = extractText(response.content);
     appendAssistantMessage(messages, response.content);
+    callbacks?.onMessageAppended?.('assistant', response.content.length);
     return { kind: 'final', stopReason: response.stop_reason, finalText: text };
   }
 
@@ -60,6 +61,7 @@ export async function executeStep(input: StepInput): Promise<StepResult> {
   callbacks?.onUnknownStopReason?.(response.stop_reason);
   const text = extractText(response.content);
   appendAssistantMessage(messages, response.content);
+  callbacks?.onMessageAppended?.('assistant', response.content.length);
   return { kind: 'final', stopReason: 'content_filter', finalText: text };
 }
 
