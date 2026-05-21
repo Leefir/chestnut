@@ -8,7 +8,14 @@ import { AsyncTaskSystem, type AsyncTaskSystemOptions, type SubAgentTask } from 
 
 export { AsyncTaskSystem, type SubAgentTask, type AsyncTaskSystemOptions } from './system.js';
 
-export { TASKS_QUEUES_RESULTS_DIR, TASKS_SUBAGENTS_DIR } from './dirs.js';
+export {
+  TASKS_QUEUES_PENDING_DIR,
+  TASKS_QUEUES_RUNNING_DIR,
+  TASKS_QUEUES_DONE_DIR,
+  TASKS_QUEUES_FAILED_DIR,
+  TASKS_QUEUES_RESULTS_DIR,
+  TASKS_SUBAGENTS_DIR,
+} from './dirs.js';
 
 // phase 763：升级 pending writer 为公开 API / 修 evolution-system + assembly deep import 违 M#7
 export { writePendingSubagentTaskFile } from './tools/_pending-task-writer.js';

@@ -143,31 +143,31 @@
     },
     {
       "file": "src/cli/commands/subagent-helpers.ts",
-      "line": 114,
+      "line": 116,
       "body_excerpt": "} catch { /* ignore */ }",
       "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
     },
     {
       "file": "src/cli/commands/subagent-helpers.ts",
-      "line": 57,
+      "line": 59,
       "body_excerpt": "} catch { /* ignore parse errors */ }",
       "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
     },
     {
       "file": "src/cli/commands/subagent-helpers.ts",
-      "line": 67,
+      "line": 69,
       "body_excerpt": "} catch { /* ignore */ }",
       "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
     },
     {
       "file": "src/cli/commands/subagent-helpers.ts",
-      "line": 86,
+      "line": 88,
       "body_excerpt": "} catch { /* ignore */ }",
       "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
     },
     {
       "file": "src/cli/commands/subagent-helpers.ts",
-      "line": 100,
+      "line": 102,
       "body_excerpt": "} catch { /* ignore */ }",
       "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
     },

@@ -15,10 +15,6 @@ export const CLAWS_DIR = 'claws' as const;
 export const CLAWSPACE_DIR = 'clawspace' as const;
 export const STATUS_SUBDIR = 'status' as const;
 
-export const TASKS_QUEUES_PENDING_DIR = 'tasks/queues/pending';
-export const TASKS_QUEUES_RUNNING_DIR = 'tasks/queues/running';
-export const TASKS_QUEUES_DONE_DIR = 'tasks/queues/done';
-export const TASKS_QUEUES_FAILED_DIR = 'tasks/queues/failed';
 export const TASKS_SYNC_DIR = 'tasks/sync';
 
 export const INBOX_PENDING_DIR = 'inbox/pending';
@@ -36,10 +32,10 @@ export const CLAW_SUBDIRS = [
   OUTBOX_PENDING_DIR,
   'outbox/done',
   'outbox/failed',
-  TASKS_QUEUES_PENDING_DIR,
-  TASKS_QUEUES_RUNNING_DIR,
-  TASKS_QUEUES_DONE_DIR,
-  TASKS_QUEUES_FAILED_DIR,
+  'tasks/queues/pending',
+  'tasks/queues/running',
+  'tasks/queues/done',
+  'tasks/queues/failed',
   'tasks/queues/results',
   'tasks/sync/exec',
   'tasks/sync/write',

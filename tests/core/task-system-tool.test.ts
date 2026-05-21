@@ -8,7 +8,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { INBOX_PENDING_DIR, TASKS_QUEUES_RUNNING_DIR, TASKS_QUEUES_DONE_DIR } from '../../src/foundation/paths.js';
+import { INBOX_PENDING_DIR } from '../../src/foundation/paths.js';
+import { TASKS_QUEUES_RUNNING_DIR, TASKS_QUEUES_DONE_DIR, TASKS_QUEUES_PENDING_DIR } from '../../src/core/async-task-system/index.js';
 import { AsyncTaskSystem, SubAgentTask, ToolTask } from '../../src/core/async-task-system/system.js';
 import { ToolExecutorImpl, ExecuteOptions } from '../../src/foundation/tools/executor.js';
 import { ToolRegistryImpl } from '../../src/foundation/tools/registry.js';
@@ -27,7 +28,6 @@ import { waitForCompleteFile } from '../helpers/wait-for-file.js';
 import { makeTaskSystemDeps } from '../helpers/task-system.js';
 import { waitFor } from '../helpers/wait-for.js';
 import { writePendingToolTaskFile } from '../../src/core/async-task-system/tools/_pending-tool-task-writer.js';
-import { TASKS_QUEUES_PENDING_DIR } from '../../src/foundation/paths.js';
 import { SUBAGENT_DEFAULT_TIMEOUT_MS } from '../helpers/test-timeouts.js';
 
 const TEST_MAX_CONCURRENT = 3;

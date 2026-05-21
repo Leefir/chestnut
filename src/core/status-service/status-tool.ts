@@ -9,7 +9,7 @@
 
 import type { Tool, ToolResult, ExecContext } from '../../foundation/tool-protocol/index.js';
 import type { ContractSystem } from '../contract/index.js';
-import { TASKS_QUEUES_PENDING_DIR, TASKS_QUEUES_RUNNING_DIR } from '../../foundation/paths.js';
+import { TASKS_QUEUES_PENDING_DIR, TASKS_QUEUES_RUNNING_DIR } from '../async-task-system/index.js';
 import { STATUS_AUDIT_EVENTS } from './audit-events.js';
 
 async function getContractStatus(ctx: ExecContext, contractSystem: ContractSystem): Promise<string> {

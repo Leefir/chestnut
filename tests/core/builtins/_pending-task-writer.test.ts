@@ -7,7 +7,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { writePendingSubagentTaskFile } from '../../../src/core/async-task-system/tools/_pending-task-writer.js';
-import { TASKS_QUEUES_PENDING_DIR } from '../../../src/foundation/paths.js';
+import { TASKS_QUEUES_PENDING_DIR } from '../../../src/core/async-task-system/index.js';
 import type { FileSystem } from '../../../src/foundation/fs/types.js';
 import type { AuditWriter } from '../../../src/foundation/audit/writer.js';
 
