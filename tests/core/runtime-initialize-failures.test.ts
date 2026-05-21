@@ -185,6 +185,7 @@ describe('Runtime.initialize() failure audits', () => {
     // session_repaired should still have been written before commit
     const sessionRepairedCall = auditSpy.mock.calls.find(c => c[0] === 'session_repaired');
     expect(sessionRepairedCall).toBeDefined();
+    expect(sessionRepairedCall![1]).toMatch(/^tools=\d+$/);
 
     // Cleanup
     await fs.rm(path.dirname(path.dirname(clawDir)), { recursive: true, force: true }).catch(() => {});

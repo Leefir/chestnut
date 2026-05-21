@@ -27,7 +27,8 @@ async function readPendingTasks(baseDir: string): Promise<Array<Record<string, u
   try {
     const files = (await fs.readdir(dir)).filter(f => f.endsWith('.json'));
     return Promise.all(files.map(async f => JSON.parse(await fs.readFile(path.join(dir, f), 'utf-8'))));
-  } catch {
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
     return [];
   }
 }

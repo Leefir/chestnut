@@ -128,7 +128,8 @@ async function readClawInbox(tempDir: string): Promise<Array<{ filename: string;
       messages.push({ filename, content });
     }
     return messages.sort((a, b) => a.filename.localeCompare(b.filename));
-  } catch {
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
     return [];
   }
 }
@@ -147,7 +148,8 @@ async function readMotionInbox(tempDir: string): Promise<Array<{ filename: strin
       messages.push({ filename, content });
     }
     return messages.sort((a, b) => a.filename.localeCompare(b.filename));
-  } catch {
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
     return [];
   }
 }
@@ -228,7 +230,6 @@ describe('ContractSystem Acceptance Flow', () => {
   });
 
   afterEach(async () => {
-    vi.useRealTimers();
     // 清理 rootDir（clawDir 的祖父目录）
     await cleanupTempDir(path.resolve(clawDir, '..', '..'));
   });

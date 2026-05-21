@@ -110,7 +110,9 @@ describe('spawn tool sync path (phase 766)', () => {
       const result = await spawnTool.execute({ intent: 'test task' }, baseCtx);
 
       expect(result.success).toBe(true);
-      expect(mockWriteFile).toHaveBeenCalled();
+      expect(mockWriteFile).toHaveBeenCalledWith(
+        expect.anything(), expect.anything(), expect.objectContaining({ intent: 'test task' }),
+      );
       expect(mockRunSubagent).not.toHaveBeenCalled();
     });
 
@@ -120,7 +122,9 @@ describe('spawn tool sync path (phase 766)', () => {
       const result = await spawnTool.execute({ intent: 'test task', async: true }, baseCtx);
 
       expect(result.success).toBe(true);
-      expect(mockWriteFile).toHaveBeenCalled();
+      expect(mockWriteFile).toHaveBeenCalledWith(
+        expect.anything(), expect.anything(), expect.objectContaining({ intent: 'test task' }),
+      );
       expect(mockRunSubagent).not.toHaveBeenCalled();
     });
   });
