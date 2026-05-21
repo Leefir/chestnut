@@ -47,6 +47,9 @@ export const CONTRACT_AUDIT_EVENTS = {
   VERIFIER_FAILED: 'contract_verifier_failed',
   // phase 1080: verifier skipped because contract was cancelled
   VERIFIER_SKIPPED: 'contract_verifier_skipped',
+  // NEW phase1108: verifier lifecycle observability
+  VERIFIER_STARTED: 'contract_verifier_started',
+  VERIFIER_PASSED: 'contract_verifier_passed',
   // phase350: A.8 observer 错误暴露
   OBSERVER_EVENT_FAILED: 'contract_observer_event_failed',
   CONTRACT_COMPLETED_HANDLER_FAILED: 'contract_completed_handler_failed',

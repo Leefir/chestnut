@@ -45,6 +45,12 @@ export async function runContractVerifier(config: VerifierConfig): Promise<Verif
     }
   }
 
+  config.audit?.write(
+    CONTRACT_AUDIT_EVENTS.VERIFIER_STARTED,
+    `agentId=${config.agentId}`,
+    `clawId=${config.clawId}`,
+  );
+
   try {
     const doneTool = createDoneTool();
     const registry = createToolRegistry();
@@ -89,6 +95,7 @@ export async function runContractVerifier(config: VerifierConfig): Promise<Verif
       if (doneResult.result) {
         try {
           const r = JSON.parse(doneResult.result) as { passed: boolean; reason: string; issues?: string[] };
+          if (r.passed) config.audit?.write(CONTRACT_AUDIT_EVENTS.VERIFIER_PASSED, `agentId=${config.agentId}`);
           return {
             passed: r.passed,
             feedback: doneResult.result,
@@ -102,6 +109,7 @@ export async function runContractVerifier(config: VerifierConfig): Promise<Verif
       // 兼容旧格式（direct object）
       const r = capturedResult as { passed: boolean; reason: string; issues?: string[] };
       if ('passed' in r) {
+        if (r.passed) config.audit?.write(CONTRACT_AUDIT_EVENTS.VERIFIER_PASSED, `agentId=${config.agentId}`);
         return {
           passed: r.passed,
           feedback: JSON.stringify(r),
@@ -116,6 +124,7 @@ export async function runContractVerifier(config: VerifierConfig): Promise<Verif
     }
     const jsonStr = jsonMatch[1] || jsonMatch[0];
     const result = JSON.parse(jsonStr) as { passed: boolean; reason: string; issues?: string[] };
+    if (result.passed) config.audit?.write(CONTRACT_AUDIT_EVENTS.VERIFIER_PASSED, `agentId=${config.agentId}`);
     return { passed: result.passed, feedback: jsonStr, structured: result };
 
   } catch (err) {

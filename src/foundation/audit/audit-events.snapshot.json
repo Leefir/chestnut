@@ -1,5 +1,4 @@
 {
-  "_meta": "Phase 1019 r124 E fork: audit-events const 不变承诺 CI lock. 任意改字符串值 → 该 file 必同 PR ratify update.",
   "modules": {
     "assembly_audit-events": [
       "assemble_failed",
@@ -143,7 +142,9 @@
       "contract_unexpected_async_throw",
       "contract_updated",
       "contract_verifier_failed",
+      "contract_verifier_passed",
       "contract_verifier_skipped",
+      "contract_verifier_started",
       "contract_yaml_schema_invalid",
       "subtask_completed"
     ],
@@ -157,6 +158,7 @@
       "cron_handler_timeout",
       "cron_job_error",
       "cron_job_late_settled",
+      "cron_job_started",
       "cron_llm_stats",
       "cron_metrics_snapshot",
       "cron_parse_fallback",
@@ -402,5 +404,6 @@
       "watchdog_stop",
       "watchdog_stream_read_failed"
     ]
-  }
+  },
+  "updated": "2026-05-21T13:32:40.518Z"
 }

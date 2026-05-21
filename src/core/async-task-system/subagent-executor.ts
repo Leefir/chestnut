@@ -166,6 +166,7 @@ export async function executeSubAgentTask(
       `intent=${task.intent.slice(0, 60)}`,
       `elapsed_ms=${Date.now() - taskStartTime}`,
       `len=${displayResult.length}`,
+      `subAuditPath=tasks/queues/results/${task.id}/audit.tsv`,
     );
   } catch (error) {
     taskFailed = true;
@@ -201,6 +202,7 @@ export async function executeSubAgentTask(
       `intent=${task.intent.slice(0, 60)}`,
       `error_category=${classifyTaskError(error)}`,
       `elapsed_ms=${Date.now() - taskStartTime}`,
+      `subAuditPath=tasks/queues/results/${task.id}/audit.tsv`,
     );
   } finally {
     // Move from running to done/failed based on success

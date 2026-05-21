@@ -17,6 +17,7 @@ export const CRON_AUDIT_EVENTS = {
   PARSE_INVALID: 'cron_parse_invalid',
   PARSE_FALLBACK: 'cron_parse_fallback',
   JOB_ERROR: 'cron_job_error',
+  JOB_STARTED: 'cron_job_started',        // NEW phase1108: tick dispatch
   HANDLER_TIMEOUT: 'cron_handler_timeout',
   HANDLER_STUCK: 'cron_handler_stuck',
   JOB_LATE_SETTLED: 'cron_job_late_settled',  // NEW phase 758
