@@ -21,6 +21,7 @@ export function createAskUserTool(gateway: Gateway): Tool {
     },
     readonly: false,
     idempotent: false,
+    profiles: ['full'],
     execute: (args, ctx) => gateway.askUser(String(args.question ?? ''), ctx),
   };
 }

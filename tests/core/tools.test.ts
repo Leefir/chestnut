@@ -1,6 +1,6 @@
 /**
  * Tools module tests
- * 
+ *
  * Tests:
  * - ToolRegistryImpl: register, get, profile filtering
  * - ToolExecutor: execute with permissions, timeout, errors
@@ -11,7 +11,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ToolRegistryImpl } from '../../src/foundation/tools/registry.js';
 import { ToolExecutorImpl } from '../../src/foundation/tools/executor.js';
 import { ExecContextImpl } from '../../src/foundation/tools/context.js';
-import { TOOL_PROFILES } from '../../src/foundation/tools/profiles.js';
 import type { Tool, ToolResult } from '../../src/foundation/tool-protocol/index.js';
 import type { FileSystem } from '../../src/foundation/fs/types.js';
 import {
@@ -21,37 +20,6 @@ import {
 } from '../../src/foundation/errors.js';
 
 describe('Tools', () => {
-  describe('TOOL_PROFILES', () => {
-    it('should define correct tools for readonly profile', () => {
-      expect(TOOL_PROFILES.readonly).toEqual(['read', 'search', 'ls', 'status', 'memory_search']);
-    });
-
-    it('should define correct tools for full profile', () => {
-      expect(TOOL_PROFILES.full).toHaveLength(14);
-      expect(TOOL_PROFILES.full).toContain('read');
-      expect(TOOL_PROFILES.full).toContain('write');
-      expect(TOOL_PROFILES.full).toContain('spawn');
-      expect(TOOL_PROFILES.full).toContain('dispatch');
-      expect(TOOL_PROFILES.full).toContain('submit_subtask');
-      expect(TOOL_PROFILES.full).not.toContain('done');
-      expect(TOOL_PROFILES.full).toContain('shadow');
-      expect(TOOL_PROFILES.full).toContain('notify_claw');
-    });
-
-    it('should define correct tools for subagent profile', () => {
-      expect(TOOL_PROFILES.subagent).toContain('read');
-      expect(TOOL_PROFILES.subagent).toContain('write');
-      expect(TOOL_PROFILES.subagent).toContain('skill');
-      expect(TOOL_PROFILES.subagent).not.toContain('spawn');
-    });
-
-    it('should define correct tools for miner profile', () => {
-      expect(TOOL_PROFILES.miner).toContain('read');
-      expect(TOOL_PROFILES.miner).toContain('write');
-      expect(TOOL_PROFILES.miner).not.toContain('send');
-    });
-  });
-
   describe('ToolRegistryImpl', () => {
     let registry: ToolRegistryImpl;
 
@@ -64,7 +32,7 @@ describe('Tools', () => {
         name: 'test-tool',
         description: 'A test tool',
         schema: { type: 'object' },
-
+        profiles: ['full'],
         readonly: true,
         execute: async () => ({ success: true, content: 'ok' }),
       };
@@ -81,7 +49,7 @@ describe('Tools', () => {
         name: 'same',
         description: 'First',
         schema: { type: 'object' },
-
+        profiles: ['full'],
         readonly: true,
         execute: async () => ({ success: true, content: 'v1' }),
       };
@@ -90,7 +58,7 @@ describe('Tools', () => {
         name: 'same',
         description: 'Second',
         schema: { type: 'object' },
-
+        profiles: ['full'],
         readonly: true,
         execute: async () => ({ success: true, content: 'v2' }),
       };
@@ -107,7 +75,7 @@ describe('Tools', () => {
         name: 'exists',
         description: 'Test',
         schema: { type: 'object' },
-
+        profiles: ['full'],
         readonly: true,
         execute: async () => ({ success: true, content: '' }),
       };
@@ -123,7 +91,7 @@ describe('Tools', () => {
         name: 'to-remove',
         description: 'Test',
         schema: { type: 'object' },
-
+        profiles: ['full'],
         readonly: true,
         execute: async () => ({ success: true, content: '' }),
       };
@@ -140,7 +108,7 @@ describe('Tools', () => {
         name: 'tool-a',
         description: 'A',
         schema: { type: 'object' },
-
+        profiles: ['full'],
         readonly: true,
         execute: async () => ({ success: true, content: '' }),
       });
@@ -149,7 +117,7 @@ describe('Tools', () => {
         name: 'tool-b',
         description: 'B',
         schema: { type: 'object' },
-
+        profiles: ['full'],
         readonly: true,
         execute: async () => ({ success: true, content: '' }),
       });
@@ -159,31 +127,30 @@ describe('Tools', () => {
     });
 
     it('should filter tools by profile', () => {
-      // Register tools matching profile names
-      TOOL_PROFILES.readonly.forEach(name => {
+      const readonlyNames = ['read', 'search', 'ls', 'status', 'memory_search'];
+      readonlyNames.forEach(name => {
         registry.register({
           name,
           description: `Tool ${name}`,
           schema: { type: 'object' },
-
+          profiles: ['readonly', 'full'],
           readonly: true,
           execute: async () => ({ success: true, content: '' }),
         });
       });
 
-      // Also register a tool not in readonly profile
       registry.register({
         name: 'write',
         description: 'Write tool',
         schema: { type: 'object' },
-
+        profiles: ['full'],
         readonly: false,
         execute: async () => ({ success: true, content: '' }),
       });
 
       const readonlyTools = registry.getForProfile('readonly');
       expect(readonlyTools).toHaveLength(5);
-      expect(readonlyTools.every(t => TOOL_PROFILES.readonly.includes(t.name))).toBe(true);
+      expect(readonlyTools.every(t => t.profiles.includes('readonly'))).toBe(true);
       expect(readonlyTools.some(t => t.name === 'write')).toBe(false);
     });
 
@@ -196,7 +163,7 @@ describe('Tools', () => {
           properties: { path: { type: 'string' } },
           required: ['path'],
         },
-
+        profiles: ['full'],
         readonly: true,
         execute: async () => ({ success: true, content: '' }),
       });
@@ -270,7 +237,7 @@ describe('Tools', () => {
         name: 'test',
         description: 'Test tool',
         schema: { type: 'object', properties: { key: { type: 'string' } } },
-
+        profiles: ['full'],
         readonly: true,
         execute: mockExecute,
       });
@@ -303,10 +270,9 @@ describe('Tools', () => {
         name: 'slow',
         description: 'Slow tool',
         schema: { type: 'object' },
-
+        profiles: ['full'],
         readonly: true,
         execute: async () => {
-          // Sleep for a long time - longer than timeoutMs
           await new Promise(r => setTimeout(r, 500));
           return { success: true, content: '' };
         },
@@ -319,12 +285,11 @@ describe('Tools', () => {
         fs: mockFs,
       });
 
-      // Timeout should trigger before tool completes
       const promise = executor.execute({
         toolName: 'slow',
         args: {},
         ctx,
-        timeoutMs: 50, // Tool takes 500ms, timeout at 50ms
+        timeoutMs: 50,
       });
 
       const result = await promise;
@@ -337,7 +302,7 @@ describe('Tools', () => {
         name: 'explosive',
         description: 'Tool that always throws',
         schema: { type: 'object' },
-
+        profiles: ['full'],
         readonly: true,
         execute: async () => {
           throw new Error('something went badly wrong');
@@ -368,7 +333,7 @@ describe('Tools', () => {
         name: 'tool1',
         description: 'Tool 1',
         schema: { type: 'object' },
-
+        profiles: ['full'],
         readonly: true,
         execute: async () => {
           executionOrder.push(1);
@@ -382,7 +347,7 @@ describe('Tools', () => {
         name: 'tool2',
         description: 'Tool 2',
         schema: { type: 'object' },
-
+        profiles: ['full'],
         readonly: true,
         execute: async () => {
           executionOrder.push(2);
@@ -396,7 +361,7 @@ describe('Tools', () => {
         name: 'tool3',
         description: 'Tool 3',
         schema: { type: 'object' },
-
+        profiles: ['full'],
         readonly: true,
         execute: async () => {
           executionOrder.push(3);
@@ -425,8 +390,6 @@ describe('Tools', () => {
       expect(results).toHaveLength(3);
       expect(results.every(r => r.success)).toBe(true);
 
-      // If executed in parallel, order should be interleaved (starts before previous ends)
-      // E.g., [1, 2, 3, -1, -2, -3] or similar
       const starts = executionOrder.filter(n => n > 0);
       const ends = executionOrder.filter(n => n < 0);
 
@@ -443,7 +406,7 @@ describe('Tools', () => {
           required: ['path'],
           properties: { path: { type: 'string' } },
         },
-
+        profiles: ['full'],
         readonly: true,
         idempotent: true,
         execute: async () => ({ success: true, content: 'ok' }),
@@ -457,7 +420,7 @@ describe('Tools', () => {
       });
 
       await expect(
-        executor.execute({ toolName: 'strict', args: {}, ctx }) // missing 'path'
+        executor.execute({ toolName: 'strict', args: {}, ctx })
       ).rejects.toThrow(ToolInvalidInputError);
     });
 
@@ -466,7 +429,7 @@ describe('Tools', () => {
         name: 'async-capable',
         description: 'Supports async',
         schema: { type: 'object' },
-
+        profiles: ['full'],
         readonly: true,
         idempotent: true,
         supportsAsync: true,
@@ -481,7 +444,6 @@ describe('Tools', () => {
           ...mockFs,
           writeAtomic: vi.fn().mockResolvedValue(undefined),
         } as unknown as FileSystem,
-        // no taskSystem — phase432 不再需要
       });
 
       const result = await executor.execute({
@@ -502,7 +464,7 @@ describe('Tools', () => {
         name: 'no-async',
         description: 'No async support',
         schema: { type: 'object' },
-
+        profiles: ['full'],
         readonly: false,
         idempotent: false,
         supportsAsync: false,
@@ -537,7 +499,7 @@ describe('Tools', () => {
         name: 'long-task',
         description: 'Long running task',
         schema: { type: 'object', properties: { key: { type: 'string' } } },
-
+        profiles: ['full'],
         readonly: false,
         idempotent: true,
         supportsAsync: true,
@@ -572,7 +534,7 @@ describe('Tools', () => {
         name: 'read-op',
         description: 'Read',
         schema: { type: 'object' },
-
+        profiles: ['full'],
         readonly: true,
         idempotent: true,
         execute: async () => ({ success: true, content: 'read-result' }),
@@ -582,7 +544,7 @@ describe('Tools', () => {
         name: 'write-op',
         description: 'Write',
         schema: { type: 'object' },
-
+        profiles: ['full'],
         readonly: false,
         idempotent: false,
         execute: async () => ({ success: true, content: 'write-result' }),
@@ -595,7 +557,6 @@ describe('Tools', () => {
         fs: mockFs,
       });
 
-      // executeParallel returns null for non-readonly, result for readonly
       const results = await executor.executeParallel(
         [
           { toolName: 'read-op', args: {} },

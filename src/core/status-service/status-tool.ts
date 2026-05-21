@@ -107,13 +107,13 @@ async function getStorageStatus(ctx: ExecContext): Promise<string[]> {
   return lines;
 }
 
-import { STATUS_TOOL_NAME } from '../../foundation/tools/tool-names.js';
 import { CLAWSPACE_DIR } from '../../foundation/paths.js';
-export { STATUS_TOOL_NAME };
+export const STATUS_TOOL_NAME = 'status' as const;
 
 export function createStatusTool(contractSystem: ContractSystem): Tool {
   return {
     name: STATUS_TOOL_NAME,
+    profiles: ['full', 'readonly'],
     description: 'Get comprehensive status: Claw ID, profile, step count, active contract with full subtask list (id/description/status), tasks, storage (MEMORY.md, clawspace). Call at turn start to re-orient after restart.',
     schema: {
       type: 'object',

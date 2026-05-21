@@ -10,7 +10,7 @@ import type { ToolResult } from '../../../foundation/tool-protocol/index.js';
 import { MarkerNotFoundError } from '../../../foundation/dialog-store/index.js';
 import type { DialogStore } from '../../../foundation/dialog-store/index.js';
 
-export const ASK_CALLER_TOOL_NAME = 'ask_caller';
+export const ASK_CALLER_TOOL_NAME = 'ask_caller' as const;
 
 export function createAskCallerTool(deps: {
   mainDialogStore?: DialogStore;
@@ -20,6 +20,7 @@ export function createAskCallerTool(deps: {
 
   return {
     name: ASK_CALLER_TOOL_NAME,
+    profiles: ['subagent'],
     description: 'Ask the parent claw a question about its context at the time of spawn. Useful when you need clarification on intent or context that was not captured in the spawn intent.',
     schema: {
       type: 'object',

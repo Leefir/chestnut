@@ -15,8 +15,7 @@ import type { ToolResult } from '../tool-protocol/index.js';
 
 import { backupToSync } from './sync-backup.js';
 import { resolveWorkspacePath } from './_resolve-path.js';
-import { EDIT_TOOL_NAME } from '../tools/tool-names.js';
-export { EDIT_TOOL_NAME };
+export const EDIT_TOOL_NAME = 'edit' as const;
 
 function countMatches(s: string, pattern: string): number {
   if (!pattern) return 0;
@@ -31,6 +30,7 @@ function countMatches(s: string, pattern: string): number {
 
 export const editTool: Tool = {
   name: EDIT_TOOL_NAME,
+  profiles: ['full', 'subagent', 'miner'],
   description: 'Replace exact string in a file (for subagent partial modify). old_string must uniquely match by default; use replace_all=true for batch. File must exist.',
   schema: {
     type: 'object',

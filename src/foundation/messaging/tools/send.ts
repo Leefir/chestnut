@@ -7,12 +7,12 @@ import type { Tool, ExecContext } from '../../tools/index.js';
 import type { ToolResult } from '../../tool-protocol/index.js';
 import type { OutboxWriter } from '../index.js';
 
-import { SEND_TOOL_NAME } from '../../tools/tool-names.js';
-export { SEND_TOOL_NAME };
+export const SEND_TOOL_NAME = 'send' as const;
 
 export function createSendTool(outboxWriter: OutboxWriter): Tool {
   return {
     name: SEND_TOOL_NAME,
+    profiles: ['full'],
     description: 'Send a message to the outbox for the parent or other claws. Priority: critical|high|normal|low (default: normal).',
     schema: {
       type: 'object',

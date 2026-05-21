@@ -7,7 +7,7 @@
 import type { Tool } from '../tools/index.js';
 import type { ToolRegistry } from './executor.js';
 import type { ToolProfile } from '../tool-protocol/index.js';
-import { TOOL_PROFILES } from './profiles.js';
+
 
 /**
  * Tool registry implementation
@@ -56,8 +56,7 @@ export class ToolRegistryImpl implements ToolRegistry {
    * Get tools available for a specific profile
    */
   getForProfile(profile: ToolProfile): Tool[] {
-    const allowedNames = TOOL_PROFILES[profile];
-    return this.getAll().filter(tool => (allowedNames as readonly string[]).includes(tool.name));
+    return this.getAll().filter(tool => tool.profiles?.includes(profile) ?? false);
   }
 
   /**

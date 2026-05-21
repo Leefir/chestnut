@@ -54,11 +54,11 @@ async function walkNative(
   return rem;
 }
 
-import { SEARCH_TOOL_NAME } from '../tools/tool-names.js';
-export { SEARCH_TOOL_NAME };
+export const SEARCH_TOOL_NAME = 'search' as const;
 
 export const searchTool: Tool = {
   name: SEARCH_TOOL_NAME,
+  profiles: ['full', 'readonly', 'subagent', 'miner'],
   description: 'Search for text in LOCAL files only (not web/network). Returns file:line: content matches, case-insensitive, default max 5 results. Default search path: workspace root. Use `claw: "<id>"` to search another claw\'s resources (read-only). `claw: "*"` (broadcast across all claws) is Motion-only.',
   schema: {
     type: 'object',

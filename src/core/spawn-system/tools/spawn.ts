@@ -16,13 +16,13 @@ import { runSpawnSync } from '../system.js';
  * phase 763：从 async-task-system/tools/spawn.ts 迁至 spawn-system 模块（M#1 业务语义独立）。
  * 直接写 tasks/queues/pending/ 文件，由 async-task-system watcher 异步调度。
  */
-import { SPAWN_TOOL_NAME } from '../../../foundation/tools/tool-names.js';
 import { formatErr } from '../_helpers.js';
 import { DEFAULT_MAX_STEPS } from '../../agent-executor/defaults.js';
-export { SPAWN_TOOL_NAME };
+export const SPAWN_TOOL_NAME = 'spawn' as const;
 
 export const spawnTool: Tool = {
   name: SPAWN_TOOL_NAME,
+  profiles: ['full'],
   description: 'Create a subagent to handle a delegated task. ' +
     'By default the subagent executes asynchronously and results arrive via inbox. ' +
     'Set async=false for synchronous execution that blocks until the subagent completes and returns the result inline.',

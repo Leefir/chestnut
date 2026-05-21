@@ -12,12 +12,12 @@ import { LS_MAX_ENTRIES } from './constants.js';
 
 import { resolveWorkspacePath } from './_resolve-path.js';
 
-import { LS_TOOL_NAME } from '../tools/tool-names.js';
 import { CLAWS_DIR } from '../paths.js';
-export { LS_TOOL_NAME };
+export const LS_TOOL_NAME = 'ls' as const;
 
 export const lsTool: Tool = {
   name: LS_TOOL_NAME,
+  profiles: ['full', 'readonly', 'subagent', 'miner'],
   description: 'List files and directories in the specified path. Use `claw: "<id>"` to list another claw\'s directory. `claw` parameter with specific target is available to all agents; broadcast across all claws is Motion-only.',
   schema: {
     type: 'object',

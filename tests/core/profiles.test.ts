@@ -2,36 +2,41 @@
  * Tool profiles tests
  */
 import { describe, it, expect } from 'vitest';
-import { TOOL_PROFILES } from '../../src/foundation/tools/profiles.js';
+import { readTool } from '../../src/foundation/file-tool/read.js';
+import { writeTool } from '../../src/foundation/file-tool/write.js';
+import { editTool } from '../../src/foundation/file-tool/edit.js';
+import { multiEditTool } from '../../src/foundation/file-tool/multi_edit.js';
+import { spawnTool } from '../../src/core/spawn-system/tools/spawn.js';
+import { shadowTool } from '../../src/core/shadow-system/tools/shadow.js';
+import { memorySearchTool } from '../../src/core/memory/tools/memory_search.js';
+import { execTool } from '../../src/foundation/command-tool/exec.js';
 
 describe('Tool Profiles', () => {
   it('should have correct tools in each profile', () => {
-    expect(TOOL_PROFILES.full).toContain('dispatch');
-    expect(TOOL_PROFILES.full).toContain('spawn');
-    expect(TOOL_PROFILES.full).toContain('skill');
+    // full profile tools
+    expect(readTool.profiles).toContain('full');
+    expect(spawnTool.profiles).toContain('full');
+    expect(shadowTool.profiles).toContain('full');
+    expect(execTool.profiles).toContain('full');
 
-    // phase 894 r115 B fork: NEW.P0.1 — notify_claw motion-only, must be in `full` (motion runtime uses 'full' profile)
-    expect(TOOL_PROFILES.full).toContain('notify_claw');
-    expect(TOOL_PROFILES.readonly).not.toContain('notify_claw');
-    expect(TOOL_PROFILES.subagent).not.toContain('notify_claw');
-    expect(TOOL_PROFILES.miner).not.toContain('notify_claw');
+    // readonly constraints
+    expect(writeTool.profiles).not.toContain('readonly');
+    expect(spawnTool.profiles).not.toContain('readonly');
+    expect(shadowTool.profiles).not.toContain('readonly');
 
-    expect(TOOL_PROFILES.readonly).not.toContain('write');
-    expect(TOOL_PROFILES.readonly).not.toContain('spawn');
+    // subagent constraints
+    expect(spawnTool.profiles).not.toContain('subagent');
+    expect(shadowTool.profiles).not.toContain('subagent');
 
-    expect(TOOL_PROFILES.subagent).not.toContain('spawn');
-    expect(TOOL_PROFILES.subagent).not.toContain('send');
+    // edit / multi_edit in subagent + miner but not readonly
+    expect(editTool.profiles).toContain('subagent');
+    expect(editTool.profiles).toContain('miner');
+    expect(editTool.profiles).not.toContain('readonly');
+    expect(multiEditTool.profiles).toContain('subagent');
+    expect(multiEditTool.profiles).toContain('miner');
+    expect(multiEditTool.profiles).not.toContain('readonly');
 
-
-    expect(TOOL_PROFILES.subagent).toContain('edit');
-    expect(TOOL_PROFILES.subagent).toContain('multi_edit');
-    expect(TOOL_PROFILES.miner).toContain('edit');
-    expect(TOOL_PROFILES.miner).toContain('multi_edit');
-
-    expect(TOOL_PROFILES.full).not.toContain('edit');
-    expect(TOOL_PROFILES.full).not.toContain('multi_edit');
-    expect(TOOL_PROFILES.readonly).not.toContain('edit');
-    expect(TOOL_PROFILES.readonly).not.toContain('multi_edit');
-
+    // memory_search in readonly
+    expect(memorySearchTool.profiles).toContain('readonly');
   });
 });

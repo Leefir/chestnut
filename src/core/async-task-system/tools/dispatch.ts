@@ -13,8 +13,7 @@ import { DISPATCH_AUDIT_EVENTS } from './dispatch-audit-events.js';
 
 const DISPATCH_SUBAGENT_TIMEOUT_MS = 3600 * 1000;   // 1 hour
 
-import { DISPATCH_TOOL_NAME } from '../../../foundation/tools/tool-names.js';
-export { DISPATCH_TOOL_NAME };
+export const DISPATCH_TOOL_NAME = 'dispatch' as const;
 
 export class DispatchTool implements Tool {
   readonly name = DISPATCH_TOOL_NAME;
@@ -36,6 +35,7 @@ export class DispatchTool implements Tool {
 
   readonly readonly = false;
   readonly idempotent = false;
+  readonly profiles = ['full'] as const;
 
   constructor(
     private getSystemPrompt: () => Promise<string>,  // buildSystemPrompt() 是 async

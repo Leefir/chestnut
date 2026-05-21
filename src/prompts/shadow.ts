@@ -8,7 +8,7 @@
  * 调整时确认是 const 文本变化（一次性影响后续所有 shadow，archive 不影响）。
  */
 
-import { SHADOW_TOOL_NAME } from '../foundation/tools/tool-names.js';
+import { SHADOW_TOOL_NAME } from '../core/shadow-system/index.js';
 
 export const SHADOW_INSTRUCTION_PREFIX = `[SHADOW INSTRUCTION — YOU ARE NO LONGER THE MAIN AGENT]`;
 

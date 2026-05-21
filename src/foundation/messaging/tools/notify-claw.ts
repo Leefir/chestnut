@@ -14,9 +14,7 @@ import type { FileSystem } from '../../fs/types.js';
 import type { AuditLog } from '../../audit/index.js';
 import { InboxWriter } from '../inbox-writer.js';
 import { MESSAGING_AUDIT_EVENTS } from '../audit-events.js';
-import { NOTIFY_CLAW_TOOL_NAME } from '../../tools/tool-names.js';
-
-export { NOTIFY_CLAW_TOOL_NAME };
+export const NOTIFY_CLAW_TOOL_NAME = 'notify_claw' as const;
 
 export interface NotifyClawDeps {
   fs: FileSystem;
@@ -27,6 +25,7 @@ export interface NotifyClawDeps {
 export function createNotifyClawTool(deps: NotifyClawDeps): Tool {
   return {
     name: NOTIFY_CLAW_TOOL_NAME,
+    profiles: ['full'],
     description: 'Notify a target claw by writing a message directly to its inbox. interrupt=true 让 claw 当前 step 完成后立即处理（中断 react 循环）；interrupt=false（默认）等 claw 正常 turn pull。motion-only tool（D11 单向访问特权）。',
     schema: {
       type: 'object',

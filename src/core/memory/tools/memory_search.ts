@@ -5,8 +5,7 @@
 import type { Tool, ExecContext } from '../../../foundation/tools/index.js';
 import type { ToolResult } from '../../../foundation/tool-protocol/index.js';
 import type { FileEntry } from '../../../foundation/fs/types.js';
-import { MEMORY_SEARCH_TOOL_NAME } from '../../../foundation/tools/tool-names.js';
-export { MEMORY_SEARCH_TOOL_NAME };
+export const MEMORY_SEARCH_TOOL_NAME = 'memory_search' as const;
 
 /**
  * Parse YAML frontmatter (industry standard syntax / per practices.md §DRY reflex 反例落地 / phase 461)
@@ -38,6 +37,7 @@ function parseFrontmatter(raw: string): { meta: Record<string, string>; body: st
 
 export const memorySearchTool: Tool = {
   name: MEMORY_SEARCH_TOOL_NAME,
+  profiles: ['full', 'readonly', 'subagent', 'miner'],
   description: 'Full-text search across memory/ files. Supports keyword search, filename regex filtering, and frontmatter metadata filtering. At least one of query or filter is required.',
   schema: {
     type: 'object',
