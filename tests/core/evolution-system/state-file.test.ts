@@ -118,6 +118,7 @@ describe('EvolutionSystem state file dedupe', () => {
   let auditSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 
@@ -241,6 +242,7 @@ describe('EvolutionSystem ENOENT path', () => {
   let auditSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 

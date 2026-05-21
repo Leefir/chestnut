@@ -7,6 +7,7 @@ describe('motion-steps', () => {
   let clawStepSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     clawStepsSpy = vi.spyOn(clawSteps, 'clawStepsCommand').mockResolvedValue(undefined);
     clawStepSpy = vi.spyOn(clawSteps, 'clawStepCommand').mockResolvedValue(undefined);
   });

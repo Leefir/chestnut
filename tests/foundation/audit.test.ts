@@ -12,6 +12,7 @@ describe('AuditWriter', () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-test-'));
     nodeFs = new NodeFileSystem({ baseDir: tmpDir });
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});

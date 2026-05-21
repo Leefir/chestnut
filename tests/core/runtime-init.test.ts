@@ -23,6 +23,7 @@ describe('Runtime Init', () => {
   }
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     tempDir = await createTempDir();
     clawDir = path.join(tempDir, 'claws', 'test-claw');
   });

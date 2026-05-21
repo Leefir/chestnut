@@ -11,6 +11,7 @@ describe('claw-steps', () => {
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'clawforum-test-'));
     originalRoot = process.env.CLAWFORUM_ROOT;
     process.env.CLAWFORUM_ROOT = tmpDir;

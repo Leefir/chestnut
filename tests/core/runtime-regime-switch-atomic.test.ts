@@ -86,6 +86,7 @@ describe('Runtime regime switch atomicity (phase 600 / A.regime-switch-atomicity
   const runtimesToStop: TestRuntime[] = [];
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     tempDir = await createTempDir();
     clawDir = path.join(tempDir, 'claws', 'test-claw');
   });

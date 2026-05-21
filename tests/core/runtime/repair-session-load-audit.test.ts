@@ -7,7 +7,7 @@
  * - turn pipeline remains reachable after load failure
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as path from 'path';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
@@ -24,6 +24,10 @@ import { INBOX_PENDING_DIR, INBOX_DONE_DIR, INBOX_FAILED_DIR } from '../../../sr
 import { RUNTIME_AUDIT_EVENTS } from '../../../src/core/runtime/runtime-audit-events.js';
 
 describe('Runtime — repairSessionIfNeeded load failure observability (R72-P1-2)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
   async function makeDeps(clawDir: string) {
     const systemFs = new NodeFileSystem({ baseDir: clawDir });
     const clawFs = new NodeFileSystem({ baseDir: clawDir });

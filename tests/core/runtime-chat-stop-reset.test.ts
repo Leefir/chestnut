@@ -83,6 +83,7 @@ describe('runtime chat() stopRequested reset (phase 900)', () => {
   let clawDir: string;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     tempDir = path.join(tmpdir(), `claw-test-${randomUUID()}`);
     await fs.mkdir(tempDir, { recursive: true });
     clawDir = path.join(tempDir, 'claws', 'test-claw');

@@ -13,6 +13,7 @@ describe('AuditWriter rotateIfNeeded TOCTOU race-loser (B3)', () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     _resetFallbackForTest();
     consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
   });

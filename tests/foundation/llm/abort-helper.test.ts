@@ -7,6 +7,7 @@ import {
 import { LLMTimeoutError } from '../../../src/types/errors.js';
 
 beforeEach(() => {
+  vi.restoreAllMocks();
   vi.useFakeTimers();
 });
 

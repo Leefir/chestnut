@@ -43,6 +43,7 @@ describe('Builtin Tools', () => {
   let outboxWriter: OutboxWriter;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     tempDir = await createTempDir();
     // exec tool default cwd = clawspace; ensure it exists for subprocess tests
     await fs.mkdir(path.join(tempDir, 'clawspace'), { recursive: true });

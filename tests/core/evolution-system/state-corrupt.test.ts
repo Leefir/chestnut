@@ -69,6 +69,10 @@ async function cleanup(tmpBase: string) {
 describe('EvolutionSystem _loadState corrupt path', () => {
   let auditSpy: ReturnType<typeof vi.spyOn>;
 
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
   afterEach(() => {
     vi.clearAllMocks();
   });

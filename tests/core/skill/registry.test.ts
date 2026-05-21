@@ -32,6 +32,7 @@ describe('SkillSystem', () => {
   let mockAudit: AuditLog & { write: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     mockFs = createMockFs();
     mockAudit = createMockAudit();
   });

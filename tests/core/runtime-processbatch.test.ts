@@ -24,6 +24,7 @@ describe('Runtime ProcessBatch', () => {
   }
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     tempDir = await createTempDir();
     clawDir = path.join(tempDir, 'claws', 'test-claw');
   });

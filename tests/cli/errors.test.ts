@@ -23,6 +23,7 @@ describe('handleCliError', () => {
   let consoleErrSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     consoleErrSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
   });
   afterEach(() => {

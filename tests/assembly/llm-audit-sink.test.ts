@@ -5,11 +5,15 @@
  * 历史：phase604 NEW
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createLLMAuditSink } from '../../src/assembly/llm-audit-sink.js';
 import type { AuditLog } from '../../src/foundation/audit/index.js';
 
 describe('createLLMAuditSink critical fallback (phase 604 / B.llm-audit-sink-recursion-boundary)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('audit.write throw → console.error [LLM AUDIT SINK CRITICAL] + sink 不抛（isolation 保）', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const audit: AuditLog = {

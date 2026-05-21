@@ -19,6 +19,7 @@ describe('multi_edit tool', () => {
   let ctx: ExecContextImpl;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     tempDir = await createTempDir();
     mockFs = new NodeFileSystem({ baseDir: tempDir });
     ctx = new ExecContextImpl({

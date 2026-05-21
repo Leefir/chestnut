@@ -16,6 +16,7 @@ describe('DialogStore flushPromise serialize (phase 1024 G.2)', () => {
   const clawId = 'test-claw';
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     tempDir = await createTempDir();
     fs = new NodeFileSystem({ baseDir: tempDir });
     audit = makeAudit();

@@ -4,7 +4,7 @@
  * Directly tests executeStep without going through runReact shim.
  */
 
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { executeStep } from '../../src/core/step-executor/step-executor.js';
 import { IdleTimeoutSignal } from '../../src/types/signals.js';
 import type { LLMCallInfo } from '../../src/core/step-executor/step-executor.js';
@@ -161,6 +161,10 @@ function makeTool(name: string, fn: (args: Record<string, unknown>, ctx: ExecCon
 // ── Tests ───────────────────────────────────────────────────────────────────
 
 describe('StepExecutor', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('kind=final (end_turn)：LLM 直接返回 end_turn 的纯文本', async () => {
     const llm = makeMockLLM([{
       content: [{ type: 'text', text: 'hello' }],

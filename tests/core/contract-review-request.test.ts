@@ -109,6 +109,7 @@ describe('EvolutionSystem.runRetroForContract - happy path', () => {
   let fixtures: TestFixtures;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
     fixtures = await setupFixtures();
   });
@@ -150,6 +151,7 @@ describe('EvolutionSystem.runRetroForContract - best-effort branches', () => {
   let auditSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
     fixtures = await setupFixtures();
     auditSpy = vi.spyOn(fixtures.mockAudit, 'write');

@@ -29,6 +29,7 @@ describe('Runtime RetryOutboxInterrupt', () => {
   }
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     tempDir = await createTempDir();
     clawDir = path.join(tempDir, 'claws', 'test-claw');
   });

@@ -85,6 +85,7 @@ describe('runtime stopRequested per-turn reset (phase 786 / P0.14)', () => {
   const runtimesToStop: Runtime[] = [];
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     tempDir = path.join(tmpdir(), `claw-test-${randomUUID()}`);
     await fs.mkdir(tempDir, { recursive: true });
     clawDir = path.join(tempDir, 'claws', 'test-claw');

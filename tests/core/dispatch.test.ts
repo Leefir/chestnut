@@ -39,6 +39,7 @@ describe('DispatchTool', () => {
   let tool: DispatchTool;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     tempDir = await createTempDir();
     mockFs = new NodeFileSystem({ baseDir: tempDir });
     auditEvents = [];
