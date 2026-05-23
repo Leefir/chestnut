@@ -109,14 +109,13 @@ export class StreamWriter implements StreamLog {
   }
 
   /** 写一行事件 */
-  write(event: StreamEvent): boolean {
+  write(event: StreamEvent): void {
     if (!this.isOpen) {
       throw new Error('StreamWriter: write() called before open()');
     }
     const line = JSON.stringify(event) + '\n';
     try {
       this.fs.appendSync(STREAM_FILE, line);
-      return true;
     } catch (err) {
       this.audit.write(
         STREAM_AUDIT_EVENTS.APPEND_FAILED,
@@ -124,7 +123,6 @@ export class StreamWriter implements StreamLog {
         `reason=${err instanceof Error ? err.message : String(err)}`,
         `body=${line.trimEnd()}`,
       );
-      return false;
     }
   }
 

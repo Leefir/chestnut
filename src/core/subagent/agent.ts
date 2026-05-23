@@ -180,14 +180,7 @@ private callerType?: CallerType;
         }
         return;
       }
-      const ok = sw.write(event);
-      if (!ok) {
-        this.auditWriter.write(
-          SUBAGENT_AUDIT_EVENTS.STREAM_APPEND_FAILED,
-          `agentId=${this.agentId}`,
-          `event=${event.type}`,
-        );
-      }
+      sw.write(event);
     };
 
     // Turn start: written before any potentially-throwing init so catch always pairs it

@@ -9,7 +9,8 @@ export const SUBAGENT_AUDIT_EVENTS = {
   PERSIST_FAILED: 'subagent_persist_failed',
   LOG_APPEND_FAILED: 'subagent_log_append_failed',
   GHOST_CALLBACK_AFTER_TURN_END: 'ghost_callback_after_turn_end',
-  STREAM_APPEND_FAILED: 'subagent_stream_append_failed',
+  // STREAM_APPEND_FAILED removed (phase 1152 G.1): PerResourceStreamWriter internally emits
+  // STREAM_AUDIT_EVENTS.APPEND_FAILED with full path context; caller-side duplicate emit eliminated.
   TIMEOUT_REJECTION: 'subagent_timeout_rejection',
 } as const;
 
