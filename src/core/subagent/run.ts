@@ -85,8 +85,8 @@ export async function runSubagent(opts: RunSubagentOptions): Promise<RunSubagent
   const streamPath = `${opts.resultDir}/${STREAM_FILE}`;
   const baseStreamWriter = createPerResourceStreamWriter(opts.fs, streamPath, auditWriter);
   const taskStreamWriter = {
-    write: (event: Record<string, unknown>): boolean => {
-      return baseStreamWriter.write({ ts: Date.now(), ...event } as StreamEvent);
+    write: (event: Record<string, unknown>): void => {
+      baseStreamWriter.write({ ts: Date.now(), ...event } as StreamEvent);
     },
   };
 

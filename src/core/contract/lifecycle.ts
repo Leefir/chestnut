@@ -114,27 +114,36 @@ export async function cancelContract(
   }
   await ctx.fs.ensureDir(ctx.archiveDir);
 
-  // phase 1020 (r124 C fork): 真 propagate cancel to active verifier subagents
-  // 在 lock 之前 / abort 是 sync no-blocking / abort 触发 verifier 异步 cleanup
-  // controller cleanup 异步发生（finally unregister）; cancel 主流程不等
-  try {
-    ctx.abortContractVerifiers(contractId, reason);
-  } catch (abortErr) {
-    // 不破 cancel 主流程；abortContractVerifiers 内已 try/catch + audit emit
-    // 此处仅 outer 保险（按 ML#10 不合理停下、subordinate failure 不阻 superordinate flow）
-  }
-
-  // phase 791 (P0.16): acquire lock at SOURCE, do status update, move, release at TARGET.
-  // phase 871 (new.P1.5 r113 G fork): catch fs.move throw + 显式释放 source 防 orphan
+  // phase 1152 G.5 (r127 G fork): canonical decision point = saveProgress(cancelled) BEFORE abort
+  // 原因：crash 在 abort 后 saveProgress 前 → verifier 已死、status 还 'running' → boot reconcile 不识别 cancel
+  // saveProgress 提前：crash window 内 progress.json 已 cancelled、boot reconcile 自然识别
+  //
+  // op 顺序：
+  //   1. acquireLock at SOURCE (lock first)
+  //   2. saveProgress(cancelled) 写 source dir progress.json (canonical decision)
+  //   3. abortContractVerifiers (best-effort, outer try/catch)
+  //   4. fs.move source → archive
+  //   5. releaseLock at TARGET
   const sourceLockPath = `${dir}/${contractId}/progress.lock`;
   const targetLockPath = `${ctx.archiveDir}/${contractId}/progress.lock`;
   await acquireLock(ctx, sourceLockPath);
   try {
+    // (2) canonical decision: saveProgress first (durable cancel mark)
     const progress = await ctx.getProgress(contractId);
     progress.status = 'cancelled';
     progress.checkpoint = `cancelled: ${reason}`;
     await ctx.saveProgress(contractId, progress);
 
+    // (3) abort verifier subagents (best-effort, no-blocking)
+    // crash here: progress.json 已 cancelled、boot reconcile 自然识别 / verifier 已被 abort 或自然死亡
+    try {
+      ctx.abortContractVerifiers(contractId, reason);
+    } catch (abortErr) {
+      // 不破 cancel 主流程；abortContractVerifiers 内已 try/catch + audit emit
+      // 此处仅 outer 保险（按 ML#10 不合理停下、subordinate failure 不阻 superordinate flow）
+    }
+
+    // (4) move whole dir
     await ctx.fs.move(`${dir}/${contractId}`, `${ctx.archiveDir}/${contractId}`);
   } catch (err) {
     try { await releaseLock(ctx, sourceLockPath); } catch { /* audit emit + 不阻断 throw chain */ }

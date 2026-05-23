@@ -25,7 +25,7 @@ import type { Watcher } from '../foundation/file-watcher/index.js';
 import type { AuditLog } from '../foundation/audit/index.js';
 import { MESSAGING_AUDIT_EVENTS } from '../foundation/messaging/audit-events.js';
 import { DAEMON_AUDIT_EVENTS, LOOP_ITERATION_TYPES, LOOP_INTERRUPT_CAUSES } from './audit-events.js';
-import { STREAM_AUDIT_EVENTS } from '../foundation/stream/audit-events.js';
+
 import { AGENT_STREAM_EVENTS } from '../core/agent-executor/index.js';
 import { oneLine } from '../foundation/utils/format.js';
 
@@ -56,10 +56,7 @@ const INTERRUPT_POLL_MAX_ERRORS = 20;
  */
 function createStreamCallbacks(sink: StreamLog, audit: AuditLog): StreamCallbacks {
   const checkWrite = (event: import('../foundation/stream/types.js').StreamEvent) => {
-    const ok = sink.write(event);
-    if (!ok) {
-      audit.write(STREAM_AUDIT_EVENTS.APPEND_FAILED, `type=${(event as { type?: string }).type ?? 'unknown'}`, 'context=daemon_callback');
-    }
+    sink.write(event);
   };
   return {
     onBeforeLLMCall: () => {

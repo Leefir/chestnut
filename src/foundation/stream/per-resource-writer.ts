@@ -22,11 +22,10 @@ export class PerResourceStreamWriter implements StreamLog {
     private readonly audit: AuditLog,
   ) {}
 
-  write(event: StreamEvent): boolean {
+  write(event: StreamEvent): void {
     const line = JSON.stringify(event) + '\n';
     try {
       this.fs.appendSync(this.filePath, line);
-      return true;
     } catch (err) {
       this.audit.write(
         STREAM_AUDIT_EVENTS.APPEND_FAILED,
@@ -35,7 +34,6 @@ export class PerResourceStreamWriter implements StreamLog {
         `reason=${err instanceof Error ? err.message : String(err)}`,
         `body=${line.trimEnd()}`,
       );
-      return false;
     }
   }
 }

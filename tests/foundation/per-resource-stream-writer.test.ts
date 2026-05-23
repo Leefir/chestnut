@@ -30,11 +30,11 @@ describe('PerResourceStreamWriter', () => {
     nativeFs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('appends JSONL line per event and returns true', () => {
+  it('appends JSONL line per event (phase 1152 G.1: void signature)', () => {
     const w = createPerResourceStreamWriter(fs, `sub/${STREAM_FILE}`, audit);
     expect(w).toBeInstanceOf(PerResourceStreamWriter);
-    expect(w.write({ ts: 100, type: 'task_attempt_start', taskId: 'T1' })).toBe(true);
-    expect(w.write({ ts: 200, type: 'thinking_delta', delta: 'hi' })).toBe(true);
+    expect(() => w.write({ ts: 100, type: 'task_attempt_start', taskId: 'T1' })).not.toThrow();
+    expect(() => w.write({ ts: 200, type: 'thinking_delta', delta: 'hi' })).not.toThrow();
     const content = nativeFs.readFileSync(streamPath, 'utf-8');
     const lines = content.trim().split('\n');
     expect(lines).toHaveLength(2);
@@ -42,11 +42,10 @@ describe('PerResourceStreamWriter', () => {
     expect(JSON.parse(lines[1])).toEqual({ ts: 200, type: 'thinking_delta', delta: 'hi' });
   });
 
-  it('emits APPEND_FAILED on write error and returns false', () => {
+  it('emits APPEND_FAILED on write error (phase 1152 G.1: void signature)', () => {
     // 传绝对路径超出 baseDir → resolveAndCheck 抛 PermissionError
     const w = createPerResourceStreamWriter(fs, '/outside/base/stream.jsonl', audit);
-    const ok = w.write({ ts: 100, type: 'task_started', taskId: 'T2' });
-    expect(ok).toBe(false);
+    expect(() => w.write({ ts: 100, type: 'task_started', taskId: 'T2' })).not.toThrow();
     const auditContent = nativeFs.readFileSync(auditPath, 'utf-8');
     expect(auditContent).toMatch(/stream_append_failed/);
     expect(auditContent).toMatch(/path=\/outside\/base\/stream\.jsonl/);
