@@ -23,7 +23,12 @@ const CLI_ENTRY = path.resolve(process.cwd(), 'dist/cli.js');
 function runCli(args: string[], env: Record<string, string> = {}): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
   return new Promise((resolve, reject) => {
     const child = spawn('node', [CLI_ENTRY, ...args], {
-      env: { ...process.env, ...env },
+      env: {
+        ...process.env,
+        ...env,
+        DEBUG: '*',                           // phase 1145 β: enable all debug namespaces
+        NODE_OPTIONS: '--trace-warnings',     // phase 1145 β: surface unhandled rejections / warnings
+      },
       cwd: process.cwd(),
     });
     let stdout = '';
@@ -31,7 +36,15 @@ function runCli(args: string[], env: Record<string, string> = {}): Promise<{ std
     child.stdout?.on('data', (data) => { stdout += data.toString(); });
     child.stderr?.on('data', (data) => { stderr += data.toString(); });
     child.on('error', reject);
-    child.on('close', (exitCode) => { resolve({ stdout, stderr, exitCode }); });
+    child.on('close', (exitCode) => {
+      // phase 1145 β: unconditional dump on non-zero exit
+      if (exitCode !== 0) {
+        console.error('[phase1145-β] CLI subprocess exitCode:', exitCode);
+        console.error('[phase1145-β] STDOUT (full):\n' + stdout);
+        console.error('[phase1145-β] STDERR (full):\n' + stderr);
+      }
+      resolve({ stdout, stderr, exitCode });
+    });
   });
 }
 
