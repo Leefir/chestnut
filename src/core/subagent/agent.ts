@@ -289,6 +289,11 @@ private callerType?: CallerType;
           safeSwWrite({ ts: Date.now(), type: AGENT_STREAM_EVENTS.TOOL_CALL, name, tool_use_id: toolUseId });
         },
         onToolResult: (name: string, toolUseId: string, result: { success: boolean; content?: string }, step: number, maxSteps: number) => {
+          this.auditWriter.write(
+            'tool_result', name, toolUseId,
+            result.success ? 'ok' : 'err',
+            `summary=${oneLine(result.content ?? '')}`,
+          );
           safeSwWrite({
             ts: Date.now(),
             type: AGENT_STREAM_EVENTS.TOOL_RESULT,
@@ -299,11 +304,6 @@ private callerType?: CallerType;
             step: step + 1,
             maxSteps,
           });
-          this.auditWriter.write(
-            'tool_result', name, toolUseId,
-            result.success ? 'ok' : 'err',
-            `summary=${oneLine(result.content ?? '')}`,
-          );
         },
       };
 
