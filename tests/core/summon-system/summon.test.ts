@@ -6,15 +6,15 @@ import * as path from 'path';
 import { promises as fs } from 'fs';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
-import { SummonTool } from '../../src/core/summon-system/tools/summon.js';
-import { buildMinerSystemPrompt } from '../../src/prompts/mining.js';
-import { summonContractExtractPostProcessor } from '../../src/core/summon-system/post-processors/contract-extract.js';
-import { ExecContextImpl } from '../../src/foundation/tools/context.js';
-import { NodeFileSystem } from '../../src/foundation/fs/index.js';
-import { TASKS_QUEUES_PENDING_DIR } from '../../src/core/async-task-system/index.js';
-import { TASK_AUDIT_EVENTS } from '../../src/core/async-task-system/audit-events.js';
-import type { Message } from '../../src/foundation/llm-provider/types.js';
-import type { LLMOrchestrator } from '../../src/foundation/llm-orchestrator/index.js';
+import { SummonTool } from '../../../src/core/summon-system/tools/summon.js';
+import { buildMinerSystemPrompt } from '../../../src/prompts/mining.js';
+import { summonContractExtractPostProcessor } from '../../../src/core/summon-system/post-processors/contract-extract.js';
+import { ExecContextImpl } from '../../../src/foundation/tools/context.js';
+import { NodeFileSystem } from '../../../src/foundation/fs/index.js';
+import { TASKS_QUEUES_PENDING_DIR } from '../../../src/core/async-task-system/index.js';
+import { TASK_AUDIT_EVENTS } from '../../../src/core/async-task-system/audit-events.js';
+import type { Message } from '../../../src/foundation/llm-provider/types.js';
+import type { LLMOrchestrator } from '../../../src/foundation/llm-orchestrator/index.js';
 
 async function createTempDir(): Promise<string> {
   const d = path.join(tmpdir(), `summon-test-${randomUUID()}`);
@@ -383,7 +383,7 @@ Content.
       );
       const raw = JSON.parse(await fs.readFile(byContractPath, 'utf-8'));
       expect(raw.mode).toBe('shadow');
-      expect(raw.describingTaskId).toBe('task-desc');
+      expect(raw.shadowTaskId).toBe('task-desc');
       expect(raw.miningTaskId).toBeUndefined();
     });
 
