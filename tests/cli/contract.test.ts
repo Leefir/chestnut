@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
+import { type ContractYaml } from '../../src/core/contract/index.js';
 
 vi.mock('../../src/cli/utils/factories.js', () => ({
   createDirContext: vi.fn(() => ({
@@ -38,10 +40,70 @@ describe('notifyContractCreated audit observability', () => {
 
     expect(audit.write).toHaveBeenCalledWith(
       'stream_append_failed',
-      'context=contract_notify',
-      'contractId=test-contract-001',
+      'path=stream.jsonl',
+      'type=user_notify',
       expect.stringMatching(/reason=disk full/),
+      expect.stringMatching(/"contractId":"test-contract-001"/),
     );
+  });
+
+  it('appends contract_created event to stream.jsonl via PerResourceStreamWriter (phase 1120)', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'contract-notify-'));
+    const audit = { write: vi.fn() };
+    try {
+      (createDirContext as any).mockReturnValue({
+        fs: {
+          appendSync: vi.fn((filePath: string, data: string) => {
+            fs.appendFileSync(path.join(tempDir, filePath), data);
+          }),
+        },
+        audit,
+      });
+
+      const contract: ContractYaml = {
+        title: 'T', goal: 'G', subtasks: [{ id: 's1', description: 'd' }],
+      };
+
+      notifyContractCreated(tempDir, 'claw-A', 'c-001', contract);
+      const streamContent = fs.readFileSync(path.join(tempDir, 'stream.jsonl'), 'utf-8');
+      const lines = streamContent.trim().split('\n');
+      expect(lines).toHaveLength(1);
+      const parsed = JSON.parse(lines[0]);
+      expect(parsed.type).toBe('user_notify');
+      expect(parsed.subtype).toBe('contract_created');
+      expect(parsed.contractId).toBe('c-001');
+      expect(parsed.clawId).toBe('claw-A');
+      expect(parsed.title).toBe('T');
+      expect(parsed.subtaskCount).toBe(1);
+      expect(typeof parsed.ts).toBe('number');
+    } finally {
+      fs.chmodSync(tempDir, 0o700);
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('emits STREAM_AUDIT_EVENTS.APPEND_FAILED on stream write failure (phase 1120)', () => {
+    const audit = { write: vi.fn() };
+    (createDirContext as any).mockReturnValue({
+      fs: {
+        appendSync: vi.fn(() => { throw new Error('disk full'); }),
+      },
+      audit,
+    });
+
+    const contract: ContractYaml = {
+      title: 'T', goal: 'G', subtasks: [],
+    };
+
+    expect(() => notifyContractCreated('/tmp/claw', 'claw-A', 'c-002', contract)).not.toThrow();
+
+    expect(audit.write).toHaveBeenCalledTimes(1);
+    const call = audit.write.mock.calls[0];
+    expect(call[0]).toBe('stream_append_failed');
+    expect(call[1]).toBe('path=stream.jsonl');
+    expect(call[2]).toBe('type=user_notify');
+    expect(call[3]).toMatch(/reason=disk full/);
+    expect(call[4]).toMatch(/body=.*"contractId":"c-002"/);
   });
 });
 

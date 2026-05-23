@@ -17,7 +17,7 @@ import { notifySystem } from '../../foundation/messaging/index.js';
 import { createSystemAudit, type AuditLog } from '../../foundation/audit/index.js';
 import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 import { createToolRegistry } from '../../foundation/tools/index.js';
-import { STREAM_FILE } from '../../foundation/stream/index.js';
+import { STREAM_FILE, createPerResourceStreamWriter, STREAM_AUDIT_EVENTS, type StreamEvent } from '../../foundation/stream/index.js';
 import { CONTRACT_DIR } from '../../core/contract/index.js';
 import { CliError } from '../errors.js';
 
@@ -40,20 +40,18 @@ export function notifyContractCreated(clawDir: string, clawId: string, contractI
   const { fs, audit: contractAudit } = createDirContext(clawDir);
 
   // best-effort：通知 viewport via stream.jsonl（失败不中断 contract 创建）
-  const streamLine = JSON.stringify({
-    ts: Date.now(), type: 'user_notify', subtype: 'contract_created',
-    contractId, clawId, title: contract.title, subtaskCount: contract.subtasks.length,
-  }) + '\n';
-  try {
-    fs.appendSync(STREAM_FILE, streamLine);
-  } catch (err) {
-    contractAudit.write(
-      'stream_append_failed',
-      `context=contract_notify`,
-      `contractId=${contractId}`,
-      `reason=${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
+  // CLI cross-process append to daemon singleton stream — boundary event、low-frequency；
+  // 经 L2 createPerResourceStreamWriter（phase 1120 / 应然承认 l2_stream.md §3 边界 co-writer）
+  const streamWriter = createPerResourceStreamWriter(fs, STREAM_FILE, contractAudit);
+  streamWriter.write({
+    ts: Date.now(),
+    type: 'user_notify',
+    subtype: 'contract_created',
+    contractId,
+    clawId,
+    title: contract.title,
+    subtaskCount: contract.subtasks.length,
+  } as StreamEvent);
 
   // 写 inbox 通知，触发 claw daemon 开始执行（best-effort）
   const subtaskLines = contract.subtasks.map(s => `- ${s.id}: ${s.description}`).join('\n');
