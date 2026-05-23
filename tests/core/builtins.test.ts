@@ -1560,10 +1560,10 @@ describe('Builtin Tools', () => {
 
       const motionFs = new NodeFileSystem({ baseDir: motionDir });
       const subagentCtx = new ExecContextImpl({
-        clawId: 'dispatcher-456',
+        clawId: 'subagent-456',
         clawDir: motionDir,
         profile: 'full',
-        callerType: 'dispatcher',
+        callerType: 'subagent',
         fs: motionFs,
       fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir }),
         originClawId: 'motion',
