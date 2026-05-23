@@ -27,3 +27,5 @@ export function createStreamWriter(
 ): StreamWriter {
   return new StreamWriter(fs, audit, retention);
 }
+
+export { PerResourceStreamWriter, createPerResourceStreamWriter } from './per-resource-writer.js';
