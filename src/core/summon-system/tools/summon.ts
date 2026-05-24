@@ -19,11 +19,11 @@ export const SUMMON_TOOL_NAME = 'summon' as const;
 
 export class SummonTool implements Tool {
   readonly name = SUMMON_TOOL_NAME;
-  readonly description = `召唤子代理，创建契约。支持两种模式：
+  readonly description = `召唤子代理，创建契约。支持两种模式（**按场景选**）：
 
-**mining（默认）**：创建意图挖掘子代理，通过与 Motion 分身多轮问答澄清用户意图，再由子代理完成契约创建。适合意图模糊或需确认优先级、目标 claw 的场景。
+**shadow（默认、推荐）**：子代理继承 Motion 完整上下文（对话历史 + 系统提示 + 完整工具集），无需问答即可继续推理 + 决策 + 执行。适用于 Motion 已与 user 充分对话、上下文足够的场景。
 
-**shadow**：直接创建子代理完成契约创建，子代理继承 Motion 的完整上下文。适合意图明确、无需额外澄清的场景。
+**mining（实验中、未完整实现）**：子代理空白起步，通过 ask_motion 工具与 Motion 多轮问答构建上下文，再完成任务。当前不建议使用。
 
 两种模式均不能：
 - 调用 spawn 工具（会报错）
@@ -33,7 +33,7 @@ export class SummonTool implements Tool {
 - 任务需要给 claw 创建契约
 - 任务可能匹配已有 dispatch-skills
 
-已知确切 prompt 的一次性任务，Motion 直接用 spawn 即可。`;
+已知确切 prompt 的一次性任务、Motion 直接用 spawn 即可。`;
 
   readonly readonly = false;
   readonly idempotent = false;
@@ -62,7 +62,7 @@ export class SummonTool implements Tool {
       mode: {
         type: 'string',
         enum: ['shadow', 'mining'],
-        description: "调度模式。'mining'（默认）：先挖掘用户意图再创建契约；'shadow'：直接进入契约创建流程。",
+        description: "执行模式（可选、默认 'shadow'）：'shadow' = 子代理继承 Motion 完整上下文（推荐）；'mining' = 子代理通过 ask_motion 多轮问答构建上下文（实验中、未完整实现、不建议使用）。",
       },
     },
     required: ['goal'],
@@ -94,8 +94,8 @@ export class SummonTool implements Tool {
       }
     }
 
-    // 确定调度模式：mining（默认，意图挖掘）或 shadow（直接进入契约创建）
-    const mode = (args.mode as 'mining' | 'shadow') ?? 'mining';
+    // 确定执行模式：shadow（默认、继承 Motion 上下文）或 mining（实验中、ask_motion 问答构建上下文）
+    const mode = (args.mode as 'mining' | 'shadow') ?? 'shadow';
     const isMining = mode === 'mining';
     const callerType: 'shadow' | 'miner' = isMining ? 'miner' : 'shadow';
 
