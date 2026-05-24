@@ -65,6 +65,7 @@ export async function scheduleRetro(config: RetroConfig): Promise<void> {
   // 调度 retro subagent（A.4）
   await writePendingSubagentTaskFile(config.motionFs, config.motionAudit, {
     kind: 'subagent',
+    mode: 'standard',
     intent: retroPrompt,
     timeoutMs: config.retroSubagentTimeoutMs ?? 600000,
     maxSteps: DEFAULT_MAX_STEPS,

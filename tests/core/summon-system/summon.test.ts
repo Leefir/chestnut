@@ -79,8 +79,9 @@ describe('SummonTool', () => {
     const tasks = await readPendingTasks(tempDir);
     expect(tasks).toHaveLength(1);
     expect(tasks[0]).toMatchObject({
-      intent: expect.stringContaining('do something'),
+      intentPreview: expect.stringContaining('do something'),
       kind: 'subagent',
+      mode: 'shadow',
     });
     expect(result.content).toContain(tasks[0].id);
     expect(auditEvents.find(e => e.type === TASK_AUDIT_EVENTS.TASK_SCHEDULED)).toBeDefined();
@@ -161,7 +162,7 @@ Content.
       expect(lastMsg.content).toContain('SHADOW INSTRUCTION');
       expect(lastMsg.content).toContain('shadow_id: summon-');
       expect(lastMsg.content).toContain('## 本次目标');
-      expect(tasks[0].intent).toContain('audit L1 FileSystem');
+      expect(tasks[0].intentPreview).toContain('audit L1 FileSystem');
     });
 
     it('shadow mode: 末条 assistant tool_use 时 strip + SHADOW INSTRUCTION', async () => {

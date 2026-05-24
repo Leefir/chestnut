@@ -46,7 +46,8 @@ export function inferKind(id: string, clawDir: string): SubagentKind {
     if (fs.existsSync(taskPath)) {
       try {
         const task = JSON.parse(fs.readFileSync(taskPath, 'utf-8'));
-        if (task.systemPrompt?.includes('RANDOM_DREAM') || task.intent?.includes('[DREAM_OUTPUT]')) {
+        const intentText = task.mode === 'shadow' ? task.intentPreview : task.intent;
+        if (task.systemPrompt?.includes('RANDOM_DREAM') || intentText?.includes('[DREAM_OUTPUT]')) {
           return 'random_dream';
         }
         // SUNSET (per phase 1180): 'dispatch-contract-extract' branch 与 assemble.ts:295 sibling、同步删 if audit 0 触发 30 天

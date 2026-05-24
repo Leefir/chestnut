@@ -10,8 +10,7 @@ import { buildSummonContractTask, buildMinerSystemPrompt, buildMiningUserMessage
 import { ASK_MOTION_TOOL_NAME, ASK_MOTION_TOOL_DESCRIPTION, ASK_MOTION_TOOL_SCHEMA } from './ask-motion.js';
 import { writePendingSubagentTaskFile } from '../../async-task-system/index.js';
 import { SUMMON_AUDIT_EVENTS } from '../audit-events.js';
-import { synthesizeFormB, stripIncompleteToolUse, buildShadowInstruction, type BuildShadowInstructionArgs } from '../../shadow-system/index.js';
-import { randomUUID } from 'crypto';
+import { spawnShadowSubagent, stripIncompleteToolUse } from '../../shadow-system/index.js';
 
 const SUMMON_SUBAGENT_TIMEOUT_MS = 3600 * 1000;   // 1 hour
 
@@ -123,27 +122,6 @@ export class SummonTool implements Tool {
       ctx.auditWriter?.write(SUMMON_AUDIT_EVENTS.NO_DIALOG_CONTEXT);
     }
 
-    // phase 1142: shadow mode 子代理身份锚定委托 ShadowSystem（synthesizeFormB + buildShadowInstruction）
-    // 复用 shadow tool async path 模式：strip → synthesizeFormB → shadowMessages 含 SHADOW INSTRUCTION 锚 + task
-    // mining mode 不传 shadowMessages：保 mining 不动 discipline、AskMotionTool 已提供 context
-    // intent = userMessage（与 shadow async path 对称：intent = task、shadowMessages 末也含 task）
-    let shadowMessages: Message[] | undefined;
-    if (!isMining) {
-      const summonId = `summon-${randomUUID().slice(0, 8)}`;
-      const stripped = stripIncompleteToolUse(dialogMessages) ?? dialogMessages ?? [];
-      const instructionArgs: BuildShadowInstructionArgs = {
-        shadowId: summonId,
-        spawnedAt: new Date().toISOString(),
-        spawnedByClawId: ctx.clawId ?? '',
-        toolUseId: ctx.currentToolUseId ?? '',
-        task: userMessage,
-      };
-      shadowMessages = synthesizeFormB({
-        mainMessagesBeforeMarker: stripped,
-        instructionArgs,
-      });
-    }
-
     // miner 使用专属工具列表（miner profile + ask_motion）；shadow 用 Motion 完整列表确保 KV cache 命中
     const motionClawDir = isMining ? ctx.clawDir : undefined;
     const toolsForLLM = isMining
@@ -160,20 +138,37 @@ export class SummonTool implements Tool {
 
     // 调度 summoner（声明式 postProcessor 替代 closure 注册）
     try {
-      const taskId = await writePendingSubagentTaskFile(ctx.fs, ctx.auditWriter, {
-        kind: 'subagent',
-        intent: userMessage,
-        timeoutMs: SUMMON_SUBAGENT_TIMEOUT_MS,
-        maxSteps: (args.maxSteps as number) ?? ctx.subagentMaxSteps ?? ctx.maxSteps,
-        parentClawId: ctx.clawId,
-        originClawId: ctx.originClawId ?? ctx.clawId,
-        callerType,                    // 'shadow' 或 'miner'
-        motionClawDir,
-        postProcessor: 'summon-contract-extract',  // 声明式 post-processor
-        mainContextSnapshot,
-        systemPrompt,                            // phase 546: 透传 caller-side specialized prompt（mining: buildMinerSystemPrompt / shadow: this.getSystemPrompt()）
-        shadowMessages,  // phase 1142: shadow mode 含 SHADOW INSTRUCTION 锚 + contractTaskBody / mining mode = undefined
-      });
+      let taskId: string;
+      if (!isMining) {
+        const stripped = stripIncompleteToolUse(dialogMessages) ?? dialogMessages ?? [];
+        const result = await spawnShadowSubagent({
+          task: userMessage,
+          mainMessages: stripped,
+          ctx,
+          systemPrompt: systemPrompt ?? '',
+          toolsForLLM: toolsForLLM ?? [],
+          timeoutMs: SUMMON_SUBAGENT_TIMEOUT_MS,
+          idleTimeoutMs,
+          postProcessor: 'summon-contract-extract',
+          shadowIdPrefix: 'summon',
+        });
+        taskId = result.taskId;
+      } else {
+        taskId = await writePendingSubagentTaskFile(ctx.fs, ctx.auditWriter, {
+          kind: 'subagent',
+          mode: 'standard',
+          intent: userMessage,
+          timeoutMs: SUMMON_SUBAGENT_TIMEOUT_MS,
+          maxSteps: (args.maxSteps as number) ?? ctx.subagentMaxSteps ?? ctx.maxSteps,
+          parentClawId: ctx.clawId,
+          originClawId: ctx.originClawId ?? ctx.clawId,
+          callerType,                    // 'miner'
+          motionClawDir,
+          postProcessor: 'summon-contract-extract',  // 声明式 post-processor
+          mainContextSnapshot,
+          systemPrompt,                            // phase 546: 透传 caller-side specialized prompt（mining: buildMinerSystemPrompt）
+        });
+      }
 
       return {
         success: true,

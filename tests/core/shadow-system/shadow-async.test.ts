@@ -138,7 +138,7 @@ describe('shadow tool async (phase 1087)', () => {
 
       const callArgs = mockWriteFile.mock.calls[0][2];
       expect(callArgs.kind).toBe('subagent');
-      expect(callArgs.intent).toBe('test task');
+      expect(callArgs.intentPreview).toBe('test task');
       expect(callArgs.isShadow).toBe(true);
       // synthesized by stripIncompleteToolUse + synthesizeFormB:
       // main messages stripped of trailing assistant (tool_use) → 1 user msg

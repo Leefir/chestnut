@@ -22,11 +22,11 @@ export async function writePendingSubagentTaskFile(
   args: Omit<SubAgentTask, 'id' | 'createdAt'>,
 ): Promise<string> {
   const taskId = randomUUID();
-  const task: SubAgentTask = {
+  const task = {
     ...args,
     id: taskId,
     createdAt: new Date().toISOString(),
-  };
+  } as SubAgentTask;
   await fs.writeAtomic(
     `${TASKS_QUEUES_PENDING_DIR}/${taskId}.json`,
     JSON.stringify(task, null, 2),

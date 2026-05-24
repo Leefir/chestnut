@@ -77,6 +77,7 @@ export const spawnTool: Tool = {
       try {
         const taskId = await writePendingSubagentTaskFile(ctx.fs, ctx.auditWriter, {
           kind: 'subagent',
+          mode: 'standard',
           intent,
           timeoutMs,
           maxSteps,
