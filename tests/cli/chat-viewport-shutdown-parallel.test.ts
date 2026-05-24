@@ -29,13 +29,15 @@ describe('chat-viewport shutdown parallelization (B2)', () => {
     );
   });
 
-  it('Promise.all resolves 3 × 100ms stops in < 200ms (parallel vs serial)', async () => {
+  it('Promise.all resolves 3 × SETTLE_MS stops in < 2 × SETTLE_MS (parallel vs serial)', async () => {
+    // phase 1176: per-promise settle duration（test-local fixture）
+    const SETTLE_MS = 100;
     const start = Date.now();
     await Promise.all(
-      Array.from({ length: 3 }).map(() => new Promise<void>(r => setTimeout(r, 100)))
+      Array.from({ length: 3 }).map(() => new Promise<void>(r => setTimeout(r, SETTLE_MS)))
     );
     const elapsed = Date.now() - start;
-    // serial would be ~300ms; parallel should be ~100ms
-    expect(elapsed).toBeLessThan(200);
+    // parallel ≈ SETTLE_MS（1×）/ serial would be ≈ 3 × SETTLE_MS / 2 × SETTLE_MS 是区分上界
+    expect(elapsed).toBeLessThan(SETTLE_MS * 2);
   });
 });

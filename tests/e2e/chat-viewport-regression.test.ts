@@ -486,6 +486,8 @@ describe('chat-viewport regression baseline', () => {
   });
 
   it('基线 6：Spinner start/stop 配对（计数相等 + 无 orphan + elapsed_ms 与实际时钟差吻合）', async () => {
+    // phase 1176: wall-clock noise budget for Spinner elapsed_ms vs delivery timestamp diff
+    const SPINNER_TOLERANCE_MS = 250;
     const fx = await bootstrapFixture();
 
     await appendStreamEvent(fx, { type: 'turn_start' });
@@ -546,7 +548,7 @@ describe('chat-viewport regression baseline', () => {
       (stopThinking!.slice(1) as string[])
         .find(c => c.startsWith('elapsed_ms='))!.split('=')[1]
     );
-    expect(Math.abs(elapsedThinking - expectedThinking)).toBeLessThanOrEqual(250);
+    expect(Math.abs(elapsedThinking - expectedThinking)).toBeLessThanOrEqual(SPINNER_TOLERANCE_MS);
 
     const tcToolCallEntry = fx.deliveryTimestamps.find(d => d.type === 'tool_call');
     const tcToolResultEntry = fx.deliveryTimestamps.find(d => d.type === 'tool_result');
@@ -565,7 +567,7 @@ describe('chat-viewport regression baseline', () => {
       (stopExec!.slice(1) as string[])
         .find(c => c.startsWith('elapsed_ms='))!.split('=')[1]
     );
-    expect(Math.abs(elapsedExec - expectedExec)).toBeLessThanOrEqual(250);
+    expect(Math.abs(elapsedExec - expectedExec)).toBeLessThanOrEqual(SPINNER_TOLERANCE_MS);
 
     expect(fx.audit.filter(STREAM_AUDIT_EVENTS.READER_PARSE_FAILED).length).toBe(0);
     expect(fx.audit.filter(STREAM_AUDIT_EVENTS.READER_CORRUPT).length).toBe(0);
