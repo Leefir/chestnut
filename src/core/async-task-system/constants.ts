@@ -17,3 +17,9 @@ export const DEFAULT_RETRY_BASE_DELAY_MS = 500;
  * phase 863 const promote (r111 J fork / `feedback_config_defaults_single_source`).
  */
 export const SHUTDOWN_DRAIN_GRACE_MS = 1000;
+
+/**
+ * Pending queue 上限 / 达此 cap 时 schedule 触发 reject + audit emit
+ * + notify motion (overflow notification per phase 670).
+ */
+export const PENDING_QUEUE_MAX = 1000;

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AsyncTaskSystem } from '../../../src/core/async-task-system/system.js';
 import type { AsyncTaskSystemOptions } from '../../../src/core/async-task-system/system.js';
+import { PENDING_QUEUE_MAX } from '../../../src/core/async-task-system/constants.js';
 import { TASK_AUDIT_EVENTS } from '../../../src/core/async-task-system/audit-events.js';
 import type { AuditLog } from '../../../src/foundation/audit/index.js';
 import type { InboxWriter } from '../../../src/foundation/messaging/index.js';
@@ -50,9 +51,9 @@ describe('pending queue overflow motion notify', () => {
       motionInbox: mockInbox,
     });
 
-    // 塞满 pendingQueue 到 PENDING_QUEUE_MAX
+    // 塞满 pendingQueue 到 PENDING_QUEUE_MAX (src const)
     const pendingQueue = (system as any).pendingQueue as any[];
-    for (let i = 0; i < 1000; i++) {
+    for (let i = 0; i < PENDING_QUEUE_MAX; i++) {
       pendingQueue.push({ id: `task-${i}`, kind: 'subagent' });
     }
 
