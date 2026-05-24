@@ -121,7 +121,7 @@ export function gatherClawSnapshot(clawDir: string, pm: ProcessLiveness, clawId:
       const entries = fs.listSync(path.join(CONTRACT_DIR, sub), { includeDirs: true });
       const dir = entries.find(e => e.isDirectory);
       if (dir) { contract = `${sub}:${dir.name}`; break; }
-    } catch { /* skip */ }
+    } catch { /* silent: contract dir scan ENOENT is legitimate / skip */ }
   }
 
   const countMd = (dir: string) => {
@@ -136,7 +136,7 @@ export function gatherClawSnapshot(clawDir: string, pm: ProcessLiveness, clawId:
     const raw = fs.readSync('audit.tsv');
     const lines = raw.split('\n').filter(l => l.trim());
     lastAuditEvents = lines.slice(-AUDIT_TAIL_N);
-  } catch { /* ENOENT or corrupt: leave undefined optional */ }
+  } catch { /* silent: audit.tsv ENOENT or corrupt: leave undefined optional */ }
 
   return { status, contract, inboxPending, outboxPending, lastAuditEvents };
 }
