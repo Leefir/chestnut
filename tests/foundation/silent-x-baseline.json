@@ -41,22 +41,11 @@
     },
     {
       "file": "src/cli/commands/chat-viewport.ts",
-      "line": 610,
+      "line": 321,
       "body_excerpt": "} catch (e) {",
       "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
     },
-    {
-      "file": "src/cli/commands/chat-viewport.ts",
-      "line": 754,
-      "body_excerpt": "} catch { /* fail-soft: shim 自身失败不破坏 crash log + stderr 路径 */ }",
-      "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
-    },
-    {
-      "file": "src/cli/commands/chat-viewport.ts",
-      "line": 786,
-      "body_excerpt": "} catch { /* skip */ }",
-      "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
-    },
+
     {
       "file": "src/cli/commands/claw-list.ts",
       "line": 118,
