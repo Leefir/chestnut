@@ -54,6 +54,7 @@ export const CONTRACT_AUDIT_EVENTS = {
   VERIFIER_RESULT_PARSE_FAILED: 'contract_verifier_result_parse_failed',
   // phase350: A.8 observer 错误暴露
   OBSERVER_EVENT_FAILED: 'contract_observer_event_failed',
+  CONTRACT_SYSTEM_CLOSED: 'contract_system_closed',
   CONTRACT_COMPLETED_HANDLER_FAILED: 'contract_completed_handler_failed',
   // phase 1010 r123 B fork: silent X catch ALL TODO cluster narrow (audit-2026-05-18 §Section 1)
   EVENT_COLLECTOR_SCAN_FAILED: 'contract_event_collector_scan_failed',
