@@ -46,6 +46,42 @@ function findCatchSites(content: string, filePath: string): CatchSite[] {
   return sites;
 }
 
+function findPromiseFormCatchSites(content: string, filePath: string): CatchSite[] {
+  const sites: CatchSite[] = [];
+  const lines = content.split('\n');
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // Matches .catch(() => {), .catch((e) => {), .catch(e => {), .catch(async (e) => {)
+    const catchMatch = line.match(/\.catch\s*\(\s*(?:async\s+)?(?:\([^)]*\)|\w+)(?::\s*\w+)?\s*=>\s*\{/);
+    if (!catchMatch) continue;
+
+    const braceIdx = line.indexOf('{', catchMatch.index! + catchMatch[0].lastIndexOf('{'));
+    if (braceIdx === -1) continue;
+
+    let depth = 1;
+    const bodyLines: string[] = [];
+    let lineRest = line.slice(braceIdx + 1);
+    let j = i;
+
+    while (depth > 0 && j < lines.length) {
+      if (j > i) lineRest = lines[j];
+      for (const ch of lineRest) {
+        if (ch === '{') depth++;
+        else if (ch === '}') depth--;
+        if (depth === 0) break;
+      }
+      bodyLines.push(lineRest);
+      j++;
+      if (depth === 0) break;
+    }
+
+    sites.push({ file: filePath, line: i + 1, body: bodyLines.join('\n') });
+  }
+
+  return sites;
+}
+
 const ALLOWED_PATTERNS = [
   // Canonical silent annotation
   /\/\/\s*silent:/,
@@ -67,6 +103,7 @@ const ALLOWED_PATTERNS = [
   /\bdropConnection\b/,
   /\bbackupCorrupt\b/,
   /\bremoveWatchdogPid\b/,
+  /\blogWithAudit\b/,
   // Logging / output
   /\blog\(/,
   /\bappendOutput\b/,
@@ -116,7 +153,10 @@ describe('phase 964: silent X invariant (lint enforcement)', () => {
     for (const filePath of walkSrc(SRC_DIR)) {
       const relPath = path.relative(path.resolve(__dirname, '../../'), filePath);
       const content = fs.readFileSync(filePath, 'utf-8');
-      const sites = findCatchSites(content, relPath);
+      const sites = [
+        ...findCatchSites(content, relPath),
+        ...findPromiseFormCatchSites(content, relPath),
+      ];
       for (const site of sites) {
         if (isAllowed(site.body)) continue;
         const key = `${site.file}:${site.line}`;
@@ -174,6 +214,20 @@ describe('phase 964: silent X invariant (lint enforcement)', () => {
   it('reverse: catch with canonical silent comment is allowed', () => {
     const synthetic = 'function x() { try { foo(); } catch { // silent: expected failure } }';
     const sites = findCatchSites(synthetic, 'synthetic.ts');
+    expect(sites.length).toBe(1);
+    expect(isAllowed(sites[0].body)).toBe(true);
+  });
+
+  it('reverse 7: promise-form .catch(() => {}) w/o annotation → invariant fails', () => {
+    const synthetic = 'function x() { foo().catch(() => {}); }';
+    const sites = findPromiseFormCatchSites(synthetic, 'synthetic.ts');
+    expect(sites.length).toBe(1);
+    expect(isAllowed(sites[0].body)).toBe(false);
+  });
+
+  it('reverse 8: promise-form .catch(() => { audit.write(...) }) is allowed', () => {
+    const synthetic = 'function x() { foo().catch(() => { audit.write("e"); }); }';
+    const sites = findPromiseFormCatchSites(synthetic, 'synthetic.ts');
     expect(sites.length).toBe(1);
     expect(isAllowed(sites[0].body)).toBe(true);
   });
