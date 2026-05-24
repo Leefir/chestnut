@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   emitContractPassed,
   emitContractSubtaskCompleted,
-  emitContractAcceptanceStarted,
+  emitContractVerificationStarted,
 } from '../../../src/core/contract/audit-emit.js';
 import { CONTRACT_AUDIT_EVENTS } from '../../../src/core/contract/audit-events.js';
 import { makeMockAudit } from '../../helpers/audit.js';
@@ -11,7 +11,7 @@ describe('contract typed audit emit (phase 1141)', () => {
   const makeAudit = makeMockAudit;
 
   // 主路径
-  it('emitContractPassed split contractId + subtaskId 2 cols (key fix site acceptance.ts:202)', () => {
+  it('emitContractPassed split contractId + subtaskId 2 cols (key fix site verification.ts:202)', () => {
     const audit = makeAudit();
     emitContractPassed(audit, { contractId: 'c_abc', subtaskId: 'st_xyz' });
     expect(audit.write).toHaveBeenCalledWith(
@@ -36,11 +36,11 @@ describe('contract typed audit emit (phase 1141)', () => {
     );
   });
 
-  it('emitContractAcceptanceStarted serializes contractId + subtaskId', () => {
+  it('emitContractVerificationStarted serializes contractId + subtaskId', () => {
     const audit = makeAudit();
-    emitContractAcceptanceStarted(audit, { contractId: 'c_abc', subtaskId: 'st_xyz' });
+    emitContractVerificationStarted(audit, { contractId: 'c_abc', subtaskId: 'st_xyz' });
     expect(audit.write).toHaveBeenCalledWith(
-      CONTRACT_AUDIT_EVENTS.ACCEPTANCE_STARTED,
+      CONTRACT_AUDIT_EVENTS.VERIFICATION_STARTED,
       'contractId=c_abc',
       'subtaskId=st_xyz',
     );
