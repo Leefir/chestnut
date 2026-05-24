@@ -143,31 +143,31 @@
     },
     {
       "file": "src/cli/commands/subagent-helpers.ts",
-      "line": 117,
+      "line": 118,
       "body_excerpt": "} catch { /* ignore */ }",
       "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
     },
     {
       "file": "src/cli/commands/subagent-helpers.ts",
-      "line": 60,
+      "line": 61,
       "body_excerpt": "} catch { /* ignore parse errors */ }",
       "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
     },
     {
       "file": "src/cli/commands/subagent-helpers.ts",
-      "line": 70,
+      "line": 71,
       "body_excerpt": "} catch { /* ignore */ }",
       "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
     },
     {
       "file": "src/cli/commands/subagent-helpers.ts",
-      "line": 89,
+      "line": 90,
       "body_excerpt": "} catch { /* ignore */ }",
       "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
     },
     {
       "file": "src/cli/commands/subagent-helpers.ts",
-      "line": 103,
+      "line": 104,
       "body_excerpt": "} catch { /* ignore */ }",
       "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
     },
@@ -282,14 +282,14 @@
     },
     {
       "file": "src/core/async-task-system/system.ts",
-      "line": 478,
+      "line": 480,
       "body_excerpt": ".catch(() => {}",
       "reason": "best-effort cleanup before throw / throw 真传播 / cleanup 失败无害",
       "form": "promise"
     },
     {
       "file": "src/core/async-task-system/system.ts",
-      "line": 675,
+      "line": 677,
       "body_excerpt": ".catch(() => {",
       "reason": "fs.move 路径仍 cover 持久化",
       "form": "promise"

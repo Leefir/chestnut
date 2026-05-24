@@ -7,14 +7,13 @@
  * reading from ExecContext (M#5: L2 doesn't know L4 semantics).
  */
 
-import { randomUUID } from 'crypto';
 import type { Tool, ExecContext } from '../../../foundation/tools/index.js';
 import type { ToolResult } from '../../../foundation/tool-protocol/index.js';
 import type { Message, ToolDefinition } from '../../../foundation/llm-provider/types.js';
 import { runShadow } from '../system.js';
 import { SHADOW_AUDIT_EVENTS } from '../audit-events.js';
-import { writePendingSubagentTaskFile } from '../../async-task-system/index.js';
-import { synthesizeFormB, stripIncompleteToolUse } from '../_helpers.js';
+import { spawnShadowSubagent } from '../index.js';
+import { stripIncompleteToolUse } from '../_helpers.js';
 
 export const SHADOW_TOOL_NAME = 'shadow' as const;
 
@@ -85,29 +84,16 @@ export function createShadowTool(deps: {
       const mainMessages = stripIncompleteToolUse(messages);
 
       if (asyncMode) {
-        const shadowId = `shadow-${randomUUID().slice(0, 8)}`;
-        const instructionArgs = {
-          shadowId,
-          spawnedAt: new Date().toISOString(),
-          spawnedByClawId: ctx.clawId,
-          toolUseId: ctx.currentToolUseId ?? '',
+        const { taskId } = await spawnShadowSubagent({
           task,
-        };
-        const synthesized = synthesizeFormB({ mainMessagesBeforeMarker: mainMessages ?? [], instructionArgs });
-
-        const taskId = await writePendingSubagentTaskFile(ctx.fs, ctx.auditWriter, {
-          kind: 'subagent',
-          intent: task,
+          mainMessages: mainMessages ?? [],
+          ctx,
+          systemPrompt: systemPrompt ?? '',
+          toolsForLLM: tools ?? [],
           timeoutMs,
           maxSteps,
-          parentClawId: ctx.clawId,
-          originClawId: ctx.originClawId ?? ctx.clawId,
-          callerType: 'shadow',
-          isShadow: true,
-          shadowMessages: synthesized,
-          shadowSystemPrompt: systemPrompt,
-          shadowToolsForLLM: tools,
         });
+
         return {
           success: true,
           content: `Shadow queued. Task ID: ${taskId}. Result will be delivered to inbox when complete.`,

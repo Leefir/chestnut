@@ -82,10 +82,9 @@ export interface AsyncTaskSystemOptions {
 }
 
 
-export interface SubAgentTask {
+interface CommonSubAgentTaskFields {
   kind: 'subagent';
   id: string;
-  intent: string;
   timeoutMs: number;
   maxSteps: number;
   parentClawId: string;
@@ -104,10 +103,13 @@ export interface SubAgentTask {
   systemPrompt?: string;                 // phase 546 internal field：caller-side specialized system prompt（agent 不可见 / 与 phase 470 砍 agent-facing spawn schema 不冲突 / fall-back DEFAULT_SUBAGENT_SYSTEM_PROMPT）
   // phase 1087：shadow async 上下文快照字段
   isShadow?: boolean;
-  shadowMessages?: Message[];
   shadowSystemPrompt?: string;
   shadowToolsForLLM?: ToolDefinition[];
 }
+
+export type SubAgentTask =
+  | (CommonSubAgentTaskFields & { mode: 'standard'; intent: string; shadowMessages?: undefined; intentPreview?: undefined })
+  | (CommonSubAgentTaskFields & { mode: 'shadow'; intent?: undefined; shadowMessages: Message[]; intentPreview: string });
 
 export interface ToolTask {
   kind: 'tool';
@@ -275,11 +277,11 @@ export class AsyncTaskSystem {
    */
   async scheduleSubAgent(taskData: Omit<SubAgentTask, 'id' | 'createdAt'>): Promise<string> {
     const taskId = randomUUID();
-    const task: SubAgentTask = {
+    const task = {
       ...taskData,
       id: taskId,
       createdAt: new Date().toISOString(),
-    };
+    } as SubAgentTask;
 
     // Save to pending directory; watcher will pick up and dispatch
     const taskPath = `${TASKS_QUEUES_PENDING_DIR}/${taskId}.json`;

@@ -11,3 +11,5 @@ export { TASKS_SYNC_SHADOW_DIR } from './constants.js';
 // phase 1142: primitives for L4 consumers (SummonSystem.shadow mode)
 export { synthesizeFormB, stripIncompleteToolUse } from './_helpers.js';
 export { buildShadowInstruction, type BuildShadowInstructionArgs } from '../../prompts/index.js';
+// phase 1185: spawnShadowSubagent helper — shadow subagent 装配业务归位
+export { spawnShadowSubagent, type SpawnShadowSubagentOptions, type SpawnShadowSubagentResult } from './spawn-shadow-subagent.js';
