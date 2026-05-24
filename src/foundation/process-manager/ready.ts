@@ -93,10 +93,17 @@ export function isReady(ctx: ProcessManagerContext, clawId: string): boolean {
       `ready_pid=${readyPid}`,
       `pid_file_pid=${pidFilePid}`,
     );
-    // r127 C fork C.1: self-cleanup stale marker (fire-and-forget)
-    // race with next markReady writeAtomic: if delete wins after rename, next isReady sees absent marker
-    // → benign: spawn poll loop will wait for markReady (already finished) and re-check; or markReady will re-write
-    ctx.fs.delete(readyFile).catch(() => { /* benign: race with next markReady or already gone */ });
+    // r128 C fork C.1: narrow ENOENT only / non-ENOENT audit emit (mirror phase 1032 cleanup.ts)
+    ctx.fs.delete(readyFile).catch((e: any) => {
+      if (e?.code !== 'ENOENT') {
+        ctx.audit.write(
+          PROCESS_MANAGER_AUDIT_EVENTS.READY_STALE_CLEANUP_FAILED,
+          `claw=${clawId}`,
+          `reason=${e?.message ?? String(e)}`,
+        );
+      }
+      // ENOENT silent: benign race / next markReady or already gone
+    });
     return false;
   }
   try {

@@ -356,6 +356,7 @@
       "pid_write_ok",
       "process_kill_escalated",
       "process_list_failed",
+      "process_manager_ready_stale_cleanup_failed",
       "process_ready_check_isalive_throw",
       "process_ready_check_parse_failed",
       "process_ready_check_read_failed",
