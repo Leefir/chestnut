@@ -11,7 +11,7 @@ import * as path from 'path';
 import type { PermissionChecker } from '../../foundation/tool-protocol/permission.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 
-import { DEFAULT_MAX_CONCURRENT_TASKS, SHUTDOWN_DRAIN_GRACE_MS, DEFAULT_RETRY_BASE_DELAY_MS } from './constants.js';
+import { DEFAULT_MAX_CONCURRENT_TASKS, SHUTDOWN_DRAIN_GRACE_MS, DEFAULT_RETRY_BASE_DELAY_MS, PENDING_QUEUE_MAX } from './constants.js';
 import type { ToolRegistry } from '../../foundation/tools/index.js';
 import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
 import type { CallerType } from '../../foundation/tool-protocol/caller-type.js';
@@ -269,8 +269,6 @@ export class AsyncTaskSystem {
     this.parentStreamLog = sink;
   }
 
-  private static readonly PENDING_QUEUE_MAX = 1000;
-
   /**
    * Schedule a new subagent task
    * Returns taskId immediately, task enters pending queue and will be dispatched
@@ -347,11 +345,11 @@ export class AsyncTaskSystem {
    */
   private async _enqueueAndDispatch(task: SubAgentTask | ToolTask): Promise<void> {
     // T6: PENDING_QUEUE_MAX cap check
-    if (this.pendingQueue.length >= AsyncTaskSystem.PENDING_QUEUE_MAX) {
+    if (this.pendingQueue.length >= PENDING_QUEUE_MAX) {
       emitPendingQueueOverflow(this.auditWriter, {
         taskId: task.id,
         queueLength: this.pendingQueue.length,
-        cap: AsyncTaskSystem.PENDING_QUEUE_MAX,
+        cap: PENDING_QUEUE_MAX,
       });
       // Move file to failed/ to prevent restart watcher race re-ingest
       const pendingPath = `${TASKS_QUEUES_PENDING_DIR}/${task.id}.json`;
@@ -371,13 +369,13 @@ export class AsyncTaskSystem {
             type: 'task_queue_overflow',
             source: 'async-task-system',
             priority: 'critical',
-            body: `Task ${task.id} (${task.kind}) rejected: queue at cap ${AsyncTaskSystem.PENDING_QUEUE_MAX}`,
+            body: `Task ${task.id} (${task.kind}) rejected: queue at cap ${PENDING_QUEUE_MAX}`,
             idPrefix: `${Date.now()}_overflow`,
           });
           emitPendingQueueOverflowNotified(this.auditWriter, {
             taskId: task.id,
             queueLength: this.pendingQueue.length,
-            cap: AsyncTaskSystem.PENDING_QUEUE_MAX,
+            cap: PENDING_QUEUE_MAX,
           });
         } catch (notifyErr) {
           emitMoveFailed(this.auditWriter, {
