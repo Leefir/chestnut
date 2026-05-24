@@ -573,6 +573,9 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
         // M#3: random-dream 读取 contract progress 走 ContractSystem API（phase 1104）
         const contractSystemCache = new Map<string, import('../core/contract/index.js').ContractSystem>();
         disposeContractSystems = () => {
+          for (const cs of contractSystemCache.values()) {
+            cs.close();
+          }
           contractSystemCache.clear();
         };
         const getContractProgress = async (clawId: string, contractId: string): Promise<import('../core/contract/index.js').ProgressData> => {

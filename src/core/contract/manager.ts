@@ -44,6 +44,7 @@ import {
   emitContractCreated,
   emitContractProgressSchemaInvalid,
 } from './audit-emit.js';
+import { CONTRACT_AUDIT_EVENTS } from './audit-events.js';
 import { CONTRACT_ACTIVE_DIR, CONTRACT_PAUSED_DIR, CONTRACT_ARCHIVE_DIR } from './dirs.js';
 import { UUID_SHORT_LEN } from '../../constants.js';
 
@@ -586,5 +587,26 @@ export class ContractSystem {
     artifacts: string[],
   ): Promise<VerificationResult> {
     return runLLMVerificationFn(this._verificationCtx(), promptFile, contractAbsDir, contractId, subtaskId, subtaskDesc, evidence, artifacts);
+  }
+
+  /**
+   * phase 1217 (r131 C fork): true disposable / abort all active verifier controllers
+   * 替代 phase 1200 浅 dispose (cache.clear() 仅 Map.clear() refs drop)
+   */
+  close(): void {
+    // Abort all per-contract verifier controllers (phase 1020 _activeContractControllers)
+    for (const [, controllers] of this._activeContractControllers) {
+      for (const ctrl of controllers) {
+        try {
+          ctrl.abort();
+        } catch {
+          // silent: abort 失败不影响 dispose 流程 / best-effort cleanup
+        }
+      }
+    }
+    this._activeContractControllers.clear();
+    this.contractCompletedCallbacks.clear();
+    // audit emit close event (additive const)
+    this.audit?.write(CONTRACT_AUDIT_EVENTS.CONTRACT_SYSTEM_CLOSED, `clawId=${this.clawId}`);
   }
 }
