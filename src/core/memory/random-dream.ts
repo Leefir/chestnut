@@ -408,7 +408,6 @@ export async function runRandomDream(opts: RandomDreamOptions): Promise<void> {
     priority: 'low',
     body: dreamOutput,
     idPrefix: `${Date.now()}_random_dream`,
-    filenameTag: 'random_dream',
     extraFields: { dream_count: String(outputs.length) },
   });
 }
