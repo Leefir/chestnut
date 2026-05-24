@@ -85,6 +85,9 @@ describe('watchdog handler idempotent install (phase 1034 / audit-2026-05-17 NEW
     expect(process.listenerCount('SIGINT')).toBe(initialSigint + 1);
   });
 
+  // Reverse invariant: removeListener defense is verified by the assertion below
+  // (duringLoop2Sigterm === initialSigterm + 1, not + 2).
+  // phase 1217 r131 C.4: removed empty placeholder it() block (隐绿 anti-pattern)
   it('re-entry (no _resetShutdownGuard between) → listener count remains === 1 each (idempotent)', async () => {
     const initialSigterm = process.listenerCount('SIGTERM');
     const initialSigint = process.listenerCount('SIGINT');
@@ -115,14 +118,4 @@ describe('watchdog handler idempotent install (phase 1034 / audit-2026-05-17 NEW
     expect(duringLoop2Sigint).toBe(initialSigint + 1);
   });
 
-  it('reverse: without defensive removeListener, re-entry would accumulate listeners', async () => {
-    // Conceptual reverse verification:
-    // If the defensive removeListener lines were deleted:
-    //   - loop 1 installs 1 listener
-    //   - loop 2 installs another → count becomes initial + 2
-    //   - _resetShutdownGuard only removes the last handler reference
-    //     → prior handlers leak in process registry
-    // This test serves as documentation of the defense mechanism.
-    // The actual invariant is verified by the "re-entry idempotent" test above.
-  });
 });
