@@ -10,7 +10,7 @@ import type { Watcher, WatchEvent, WatchEventType, WatcherErrorContext } from '.
 /**
  * Fallback poller consecutive failure limit. Mirror reader.ts CONSECUTIVE_PARSE_FAIL_LIMIT
  * pattern. After N consecutive callback throws, the fallback poller is disabled and the
- * watcher notifies caller via onError(err, 'fallback_disabled'). Caller decides recovery.
+ * watcher notifies caller via onError(err, 'fallback_limit_reset'). Caller decides recovery.
  *
  * Value: 5 = empirical（mirror stream/reader.ts:25 CONSECUTIVE_PARSE_FAIL_LIMIT 同模板 / 平衡
  * transient FS error 容忍 vs 系统真坏立 fail-loud / 调小过敏 / 调大延迟 fail-loud）
@@ -230,7 +230,7 @@ export function createWatcher(
           const disableErr = new Error(
             `fallback poller callback failure limit reached: ${e.message}`,
           );
-          try { options?.onError?.(disableErr, 'fallback_disabled'); } catch { /* silent: secondary callback error swallowed / onError 已报 primary / 不重复抛 */ }
+          try { options?.onError?.(disableErr, 'fallback_limit_reset'); } catch { /* silent: secondary callback error swallowed / onError 已报 primary / 不重复抛 */ }
         }
       }
     }, intervalMs);

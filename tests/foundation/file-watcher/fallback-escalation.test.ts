@@ -39,17 +39,17 @@ describe('fallback poller escalation (macOS only)', () => {
         },
       });
 
-      // Wait for fallback_disabled context (replaces fixed setTimeout(100)).
+      // Wait for fallback_limit_reset context (replaces fixed setTimeout(100)).
       await waitFor(
-        () => errors.some(e => e.context === 'fallback_disabled'),
+        () => errors.some(e => e.context === 'fallback_limit_reset'),
         5000,
         10,
       );
 
       // Assert escalation
-      const fallbackDisabled = errors.find(e => e.context === 'fallback_disabled');
-      expect(fallbackDisabled, 'expected fallback_disabled context').toBeDefined();
-      expect(fallbackDisabled!.err.message).toMatch(/callback failure limit reached/);
+      const fallbackLimitReset = errors.find(e => e.context === 'fallback_limit_reset');
+      expect(fallbackLimitReset, 'expected fallback_limit_reset context').toBeDefined();
+      expect(fallbackLimitReset!.err.message).toMatch(/callback failure limit reached/);
 
       // phase 1082: poller is NOT permanently disabled — it resets counter and continues.
       // Verify callbacks keep accumulating after the limit is reached.
@@ -90,8 +90,8 @@ describe('fallback poller escalation (macOS only)', () => {
       );
       await watcher.close();
 
-      const fallbackDisabled = errors.find(e => e.context === 'fallback_disabled');
-      expect(fallbackDisabled).toBeUndefined(); // no escalation
+      const fallbackLimitReset = errors.find(e => e.context === 'fallback_limit_reset');
+      expect(fallbackLimitReset).toBeUndefined(); // no escalation
     },
   );
 });
