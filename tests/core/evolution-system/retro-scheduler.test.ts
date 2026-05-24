@@ -8,6 +8,7 @@ import { scheduleRetro } from '../../../src/core/evolution-system/retro-schedule
 import type { RetroConfig } from '../../../src/core/evolution-system/retro-scheduler.js';
 import type { FileSystem } from '../../../src/foundation/fs/types.js';
 import type { AuditLog } from '../../../src/foundation/audit/index.js';
+import { SUBAGENT_TIMEOUT_MS } from '../../../src/core/subagent/constants.js';
 
 const { mockSkillLoadAll, mockSkillFormat, mockWritePending } = vi.hoisted(() => ({
   mockSkillLoadAll: vi.fn().mockResolvedValue(undefined),
@@ -57,7 +58,7 @@ describe('scheduleRetro (phase 990)', () => {
       expect.objectContaining({
         kind: 'subagent',
         intent: expect.stringContaining('yaml: true'),
-        timeoutMs: 600000,
+        timeoutMs: SUBAGENT_TIMEOUT_MS * 2,  // phase 1159: retro 任务 = 2 × subagent default timeout
         parentClawId: 'motion',
         originClawId: 'motion',
       }),

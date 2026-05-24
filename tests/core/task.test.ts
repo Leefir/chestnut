@@ -24,6 +24,7 @@ import { waitFor } from '../helpers/wait-for.js';
 import { TASK_AUDIT_EVENTS } from '../../src/core/async-task-system/audit-events.js';
 import { SUBAGENT_AUDIT_EVENTS } from '../../src/core/subagent/audit-events.js';
 import { TEST_LLM_TIMEOUT_MS, SUBAGENT_DEFAULT_TIMEOUT_MS, SUBAGENT_WAIT_TIMEOUT_MS, SUBAGENT_LONG_TIMEOUT_MS } from '../helpers/test-timeouts.js';
+import { SUBAGENT_TIMEOUT_MS } from '../../src/core/subagent/constants.js';
 
 /**
  * Convert LLMResponse to stream chunks for mock
@@ -306,7 +307,7 @@ describe('Task System + SubAgent', () => {
       const taskId = await taskSystem.scheduleSubAgent({
         kind: 'subagent',
         intent: 'Long running task',
-        timeoutMs: 300000,
+        timeoutMs: SUBAGENT_TIMEOUT_MS,  // phase 1159: 用 src 真常量替 magic 300000
         maxSteps: 10,
         parentClawId: 'parent-claw',
       });

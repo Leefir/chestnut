@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { AuditLog } from '../../../src/foundation/audit/index.js';
+import { CRON_TICK_INTERVAL_MS } from '../../../src/core/cron/constants.js';
 import { CronRunner, type CronJob } from '../../../src/core/cron/runner.js';
 
 // mock helper (mirror runner-stop-drain.test.ts)
@@ -62,7 +63,7 @@ describe('phase 946: cron handler AbortSignal propagation', () => {
     const start = Date.now();
     await runner.stop(30_000);  // cap 30s
     const elapsed = Date.now() - start;
-    expect(elapsed).toBeLessThan(1000);  // early abort < 1s
+    expect(elapsed).toBeLessThan(CRON_TICK_INTERVAL_MS);  // phase 1159: early abort < 1 cron tick (CRON_TICK_INTERVAL_MS = 1s production)
   });
 
   it('backward compat: handler 不接 signal 0 break', async () => {
