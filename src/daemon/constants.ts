@@ -15,3 +15,18 @@ export const LLM_RETRY_INITIAL_DELAY_MS = 30_000;
 
 /** Maximum retry delay for LLM failures (ms) — caps exponential backoff */
 export const LLM_RETRY_MAX_DELAY_MS = 300_000;
+
+/** Interrupt poller 轮询间隔（ms）/ daemon 内 inbox.priority queue 检测频率 */
+export const INTERRUPT_POLL_INTERVAL_MS = 200;
+
+/** Interrupt poller 连续错误时 warn 触发频次（每 N 次 emit 1 warn）*/
+export const INTERRUPT_POLL_WARN_EVERY = 5;
+
+/** Interrupt poller 连续错误上限（达后禁 poller + emit LOOP_INTERRUPT_POLLER_DISABLED audit）*/
+export const INTERRUPT_POLL_MAX_ERRORS = 20;
+
+/**
+ * ReAct chain 单 tick 内 batch 最大轮数 / 防 runaway 安全闸.
+ * 达 cap 时 emit LOOP_ITERATION_TYPES.CHAIN_LIMITED audit / chain 强制结束本 tick.
+ */
+export const REACT_CHAIN_MAX_ITERATIONS = 100;
