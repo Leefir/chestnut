@@ -6,6 +6,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { executeStep } from '../../../src/core/step-executor/index.js';
 import { IdleTimeoutSignal } from '../../../src/core/signals.js';
+import { INIT_LLM_IDLE_TIMEOUT_MS } from '../../../src/foundation/llm-orchestrator/index.js';
 import type { LLMOrchestrator } from '../../../src/foundation/llm-orchestrator/index.js';
 import type { StreamChunk } from '../../../src/foundation/llm-orchestrator/types.js';
 import type { Message, LLMResponse } from '../../../src/foundation/llm-provider/types.js';
@@ -66,7 +67,7 @@ describe('StepExecutor abort handling (Phase 538)', () => {
 
   it('abort-during-tool-call: signal 不剥除 / executeToolCalls 开头立即 throw / 工具不执行', async () => {
     const abortController = new AbortController();
-    abortController.abort({ type: 'idle_timeout', ms: 120000 });
+    abortController.abort({ type: 'idle_timeout', ms: INIT_LLM_IDLE_TIMEOUT_MS });
 
     const exec = {
       execute: vi.fn(async () => ({ success: true, content: 'done' })),
@@ -97,7 +98,7 @@ describe('StepExecutor abort handling (Phase 538)', () => {
     async function* stream(): AsyncIterableIterator<StreamChunk> {
       yield { type: 'tool_use_start', toolUse: { id: 'tu1', name: 'testTool', partialInput: '' } };
       yield { type: 'tool_use_delta', toolUse: { id: '', name: '', partialInput: '{"path":"foo' } };
-      abortController.abort({ type: 'idle_timeout', ms: 120000 });
+      abortController.abort({ type: 'idle_timeout', ms: INIT_LLM_IDLE_TIMEOUT_MS });
       throw new Error('Execution aborted');
     }
 
@@ -126,7 +127,7 @@ describe('StepExecutor abort handling (Phase 538)', () => {
 
     async function* stream(): AsyncIterableIterator<StreamChunk> {
       yield { type: 'text_delta', delta: 'Hello' };
-      abortController.abort({ type: 'idle_timeout', ms: 120000 });
+      abortController.abort({ type: 'idle_timeout', ms: INIT_LLM_IDLE_TIMEOUT_MS });
       throw new Error('Execution aborted');
     }
 
