@@ -776,6 +776,8 @@ export class LLMOrchestratorImpl implements LLMOrchestrator {
           primaryProvider: this.primary.name,
           primaryError: 'A succeeded but race lost (commit fallback for low latency)',
           primaryErrorClass: 'unknown', // A succeeded、no real error; 'unknown' enum value 不误导 (LLMErrorClass 无 'none')
+          cacheCreationInputTokens: winner.response.usage?.cache_creation_input_tokens ?? undefined,
+          cacheReadInputTokens: winner.response.usage?.cache_read_input_tokens ?? undefined,
         });
       } else {
         // A-error (含 AbortError from primaryCtrl.abort propagated to iterator)
@@ -787,11 +789,15 @@ export class LLMOrchestratorImpl implements LLMOrchestrator {
           primaryProvider: this.primary.name,
           primaryError: primaryErr.message,
           primaryErrorClass: primaryErrClass,
+          cacheCreationInputTokens: winner.response.usage?.cache_creation_input_tokens ?? undefined,
+          cacheReadInputTokens: winner.response.usage?.cache_read_input_tokens ?? undefined,
         });
       }
 
       this.currentProviderIndex = winner.providerIndex;
       this.updateLastSuccess(winner.provider, true);
+      // NEW: drain primary generator (mirror L821 double-fail template)
+      try { await primaryIter.return?.(); } catch { /* silent: generator already closed, ignore */ }
       cleanupSignals();
       yield* wrapResponseAsStream(winner.response, winner.provider);
       return;
@@ -808,6 +814,8 @@ export class LLMOrchestratorImpl implements LLMOrchestrator {
           primaryProvider: this.primary.name,
           primaryError: winner.error.message,
           primaryErrorClass: classifyLLMError(winner.error),
+          cacheCreationInputTokens: bResult.response.usage?.cache_creation_input_tokens ?? undefined,
+          cacheReadInputTokens: bResult.response.usage?.cache_read_input_tokens ?? undefined,
         });
         this.currentProviderIndex = bResult.providerIndex;
         this.updateLastSuccess(bResult.provider, true);
@@ -898,7 +906,12 @@ async function* wrapResponseAsStream(
     type: 'done',
     stopReason: typeof response.stop_reason === 'string' ? response.stop_reason : 'end_turn',
     usage: response.usage
-      ? { inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens }
+      ? {
+          inputTokens: response.usage.input_tokens,
+          outputTokens: response.usage.output_tokens,
+          cacheCreationInputTokens: response.usage.cache_creation_input_tokens ?? undefined,
+          cacheReadInputTokens: response.usage.cache_read_input_tokens ?? undefined,
+        }
       : undefined,
   };
 }

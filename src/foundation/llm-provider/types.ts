@@ -62,6 +62,8 @@ export interface LLMResponse {
   usage?: {
     input_tokens: number;
     output_tokens: number;
+    cache_creation_input_tokens?: number | null;
+    cache_read_input_tokens?: number | null;
   };
   model?: string;
 }
@@ -142,6 +144,17 @@ export interface StreamChunk {
   toolUse?: {
     id: string;
     name: string;
+    /**
+     * Partial input data for tool_use_delta events.
+     *
+     * **Protocol-layer note**: Provider SSE protocols differ in delivery mode:
+     * - Anthropic SDK: incremental `partial_json` chunk (accumulate deltas to get full input)
+     * - OpenAI: full `arguments` string batch (single chunk = complete)
+     * - Gemini: `JSON.stringify(args)` batch (single chunk = complete)
+     *
+     * **Safe default**: string concatenation of all deltas works for all providers
+     * (all are monotonically accumulating). Do **not** assume incremental semantics.
+     */
     partialInput?: string;
   };
 
@@ -149,6 +162,8 @@ export interface StreamChunk {
   usage?: {
     inputTokens: number;
     outputTokens: number;
+    cacheCreationInputTokens?: number;
+    cacheReadInputTokens?: number;
   };
 
   /** Thinking block signature (for Anthropic extended thinking) */
