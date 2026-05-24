@@ -72,6 +72,7 @@ import {
   runAcceptancePipeline,
   runScriptAcceptance as runScriptAcceptanceFn,
   runLLMAcceptance as runLLMAcceptanceFn,
+  writeAcceptanceError,
   type AcceptanceContext,
 } from './acceptance.js';
 
@@ -549,6 +550,10 @@ export class ContractSystem {
 
   private async loadContractYaml(contractId: string): Promise<ContractYaml> {
     return loadYaml(this._persistenceCtx(), contractId);
+  }
+
+  async _writeAcceptanceError(contractId: string, subtaskId: string, error: unknown): Promise<void> {
+    return writeAcceptanceError(this._acceptanceCtx(), contractId, subtaskId, error);
   }
 
   private async loadContract(contractId: string): Promise<Contract> {
