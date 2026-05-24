@@ -90,4 +90,26 @@ describe('ready-spawn integration', () => {
       }),
     ).rejects.toThrow(`Process "${clawId}" failed to become ready (alive=true)`);
   });
+
+  it('spawn 失败时 cleanup 路径走真 audit emit + 状态文件 0 残留', async () => {
+    const { audit, events } = makeAudit();
+    const clawId = 'cleanup-test-claw';
+    const ctx: ProcessManagerContext = {
+      fs: nodeFs,
+      audit,
+      resolveDir: (id: string) => path.join(tempDir, 'claws', id),
+    };
+
+    await expect(
+      spawnProcess(ctx, clawId, {
+        command: 'node',
+        args: ['/fake/daemon-entry.js', clawId],
+        logFile: path.join(tempDir, 'claws', clawId, 'logs', 'daemon.log'),
+      }),
+    ).rejects.toThrow(/failed to become ready/);
+
+    expect(events.some(e => e[0] === 'process_spawn_failed')).toBe(true);
+    await expect(fs.access(path.join(tempDir, 'claws', clawId, 'status', 'ready')))
+      .rejects.toThrow();
+  });
 });
