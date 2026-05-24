@@ -292,7 +292,8 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     }
     // phase438: 注册 PostProcessors（装配期）
     taskSystem.addPostProcessor('summon-contract-extract', summonContractExtractPostProcessor);
-    // backwards-compat: 既有 pending tasks/queues/pending/<id>.json 内 `postProcessor: 'dispatch-contract-extract'` 仍认
+    // backwards-compat (phase 1142 dispatch→summon migrate): 既有 pending tasks/queues/pending/<id>.json 内 `postProcessor: 'dispatch-contract-extract'` 仍认
+    // SUNSET (per phase 1180 r129 E fork sunset SOP): 30 天 audit 0 触发 LEGACY_POST_PROCESSOR_INVOKED → r130+ phase 删本 fallback + subagent-helpers.ts:52 sibling
     taskSystem.addPostProcessor('dispatch-contract-extract', summonContractExtractPostProcessor);
 
     // NOTE: taskSystem.initialize() / startDispatch() 属 AsyncTaskSystem 业务语义，由 Runtime.initialize() 调用

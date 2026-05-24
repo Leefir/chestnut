@@ -143,31 +143,31 @@
     },
     {
       "file": "src/cli/commands/subagent-helpers.ts",
-      "line": 116,
+      "line": 117,
       "body_excerpt": "} catch { /* ignore */ }",
       "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
     },
     {
       "file": "src/cli/commands/subagent-helpers.ts",
-      "line": 59,
+      "line": 60,
       "body_excerpt": "} catch { /* ignore parse errors */ }",
       "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
     },
     {
       "file": "src/cli/commands/subagent-helpers.ts",
-      "line": 69,
+      "line": 70,
       "body_excerpt": "} catch { /* ignore */ }",
       "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
     },
     {
       "file": "src/cli/commands/subagent-helpers.ts",
-      "line": 88,
+      "line": 89,
       "body_excerpt": "} catch { /* ignore */ }",
       "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
     },
     {
       "file": "src/cli/commands/subagent-helpers.ts",
-      "line": 102,
+      "line": 103,
       "body_excerpt": "} catch { /* ignore */ }",
       "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
     },
@@ -263,7 +263,7 @@
     },
     {
       "file": "src/watchdog/watchdog-state.ts",
-      "line": 114,
+      "line": 115,
       "body_excerpt": "} catch { /* ignore: crash handler 不抛 */ }",
       "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
     },

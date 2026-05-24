@@ -12,7 +12,8 @@ const CURRENT_WATCHDOG_SCHEMA_VERSION = 1;
 
 interface WatchdogState {
   schema_version?: number;  // v1 current; legacy read
-  /** @deprecated legacy fallback */
+  /** @deprecated legacy fallback (pre-phase-1134 watchdog-state schema_version invariant land)
+   *  SUNSET per phase 1180 r129 E fork: 30 天 audit 0 触发 `WATCHDOG_STATE_LEGACY_VERSION_FALLBACK` (NEW const if needed) → r130+ phase 删 version? field + cascade reader */
   version?: number;
   lastInactivityNotified: Record<string, number>;
   inactivityNotifyCount: Record<string, number>;

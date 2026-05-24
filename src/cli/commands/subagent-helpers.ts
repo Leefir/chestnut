@@ -49,6 +49,7 @@ export function inferKind(id: string, clawDir: string): SubagentKind {
         if (task.systemPrompt?.includes('RANDOM_DREAM') || task.intent?.includes('[DREAM_OUTPUT]')) {
           return 'random_dream';
         }
+        // SUNSET (per phase 1180): 'dispatch-contract-extract' branch 与 assemble.ts:295 sibling、同步删 if audit 0 触发 30 天
         if (task.callerType === 'shadow' || task.callerType === 'miner' || task.postProcessor === 'summon-contract-extract' || task.postProcessor === 'dispatch-contract-extract') {
           return 'summon';
         }

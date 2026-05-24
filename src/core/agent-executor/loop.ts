@@ -1,10 +1,13 @@
 /**
- * ReAct loop - backwards-compat shim over AgentExecutor + StepExecutor
+ * ReAct loop - **facade pattern (long-term ratify per phase 1180 r129 E fork)**
  *
- * 对外保持原 runReact 签名不变。内部把旧的 11 个平铺回调 + onStepComplete
- * 适配到新契约：StepCallbacks（给 StepExecutor） + onAfterStep（给 AgentExecutor）。
- *
+ * 对外保持原 `runReact` 签名（11 平铺回调 + onStepComplete）作为稳定 API、
+ * 内部 adapt 到新契约：StepCallbacks（给 StepExecutor） + onAfterStep（给 AgentExecutor）。
  * 真实实现见 step-executor.ts 和 agent-executor.ts。
+ *
+ * **NOT a transitional shim** — runtime.ts 3 site 真生产依赖、tests/ 6 file mock + import
+ * facade-pattern 长留稳定、0 sunset 计划 / 升档锚：if NEW caller 同型「11 平铺回调展平」需求出现 N≥2
+ * → 抽 generic `ReactFacade` (per phase 1180 升档锚 (a))
  */
 
 import type { Message, ToolDefinition } from '../../foundation/llm-provider/types.js';

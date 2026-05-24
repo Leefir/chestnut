@@ -31,9 +31,10 @@ export function readLockPid(
     } catch {
       /* silent: JSON parse fail, fall through to legacy int parse */
     }
-    // Legacy raw int format
+    // Legacy raw int format (phase 1023 lock file format JSON migration / SUNSET per phase 1180: sibling to pid.ts:34 / 同 audit const 共用)
     const legacyPid = parseInt(content, 10);
     if (Number.isFinite(legacyPid)) {
+      ctx.audit.write(PROCESS_MANAGER_AUDIT_EVENTS.PID_FILE_LEGACY_FORMAT, `claw=${clawId}`, `pid=${legacyPid}`, `file=lock`);
       return { pid: legacyPid, startTime: undefined };
     }
     return null;

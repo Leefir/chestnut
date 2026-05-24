@@ -42,7 +42,7 @@ describe('Phase 86: clean stop 生命周期修复', () => {
   describe('Step 1: clawPreviouslyAlive + everSpawned 持久化', () => {
     it('WatchdogState 接口应包含 clawPreviouslyAlive 字段', () => {
       const interfaceMatch = watchdogSource.match(
-        /interface WatchdogState \{[\s\S]{0,400}?\}/
+        /interface WatchdogState \{[\s\S]{0,800}?\}/
       );
       expect(interfaceMatch).toBeTruthy();
       expect(interfaceMatch![0]).toContain('clawPreviouslyAlive');
@@ -50,7 +50,7 @@ describe('Phase 86: clean stop 生命周期修复', () => {
 
     it('WatchdogState 接口应包含 everSpawned 字段', () => {
       const interfaceMatch = watchdogSource.match(
-        /interface WatchdogState \{[\s\S]{0,400}?\}/
+        /interface WatchdogState \{[\s\S]{0,800}?\}/
       );
       expect(interfaceMatch).toBeTruthy();
       expect(interfaceMatch![0]).toContain('everSpawned');
