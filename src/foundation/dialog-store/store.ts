@@ -168,6 +168,112 @@ export class DialogStore {
   }
 
   /**
+   * Load session with mtime consistency check + truncate to last complete turn boundary.
+   *
+   * phase 1184: protects against mid-turn 逻辑边界 race where Motion saves between
+   * tool_use emission and tool_result completion → snapshot contains unpaired tool_use
+   * → caller LLM API 400 (e.g., Kimi/Anthropic "tool_calls must be followed by tool messages").
+   *
+   * Returns Message[] callable as LLM API messages parameter without 400 errors:
+   * - If last assistant message contains tool_use blocks with no matching tool_result
+   *   in subsequent user messages, truncate the unpaired assistant message + everything after
+   * - Pairing matched by tool_use_id field
+   * - 0 truncate if snapshot already at paired boundary
+   *
+   * Caller: cross-claw read of motion's dialog snapshot at LLM call time
+   * (currently ask-motion.ts; future cross-claw readers can adopt this method).
+   */
+  async loadStableTurnBoundary(maxRetries = 3): Promise<LoadResult> {
+    const result = await this.loadStable(maxRetries);
+    const messages = result.session.messages;
+
+    // Scan backwards for last unpaired tool_use
+    const unpairedToolUseId = this._findLastUnpairedToolUseId(messages);
+    if (unpairedToolUseId === null) {
+      return result;  // already at paired boundary
+    }
+
+    // Find truncate point: the index of the assistant message containing unpaired tool_use
+    let truncateFromIdx = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg.role !== 'assistant') continue;
+      const content = Array.isArray(msg.content) ? msg.content : null;
+      if (!content) continue;
+      const hasUnpaired = content.some(
+        (b) => b.type === 'tool_use' && b.id === unpairedToolUseId,
+      );
+      if (hasUnpaired) {
+        truncateFromIdx = i;
+        break;
+      }
+    }
+
+    if (truncateFromIdx === -1) {
+      // Defensive: scan inconsistent, return original (should not happen given findLastUnpairedToolUseId returned non-null)
+      return result;
+    }
+
+    const truncated = messages.slice(0, truncateFromIdx);
+    const truncatedCount = messages.length - truncated.length;
+
+    this.audit.write(
+      DIALOG_AUDIT_EVENTS.TURN_BOUNDARY_TRUNCATED,
+      `truncated_count=${truncatedCount}`,
+      `unpaired_tool_use_id=${unpairedToolUseId}`,
+      `last_complete_turn_idx=${truncateFromIdx - 1}`,
+    );
+
+    return {
+      ...result,
+      session: {
+        ...result.session,
+        messages: truncated,
+      },
+    };
+  }
+
+  /**
+   * Find the tool_use_id of the last unpaired tool_use in messages.
+   * Returns null if all tool_use are paired.
+   *
+   * Algorithm:
+   * - Collect tool_use_id set from assistant messages
+   * - Collect tool_result tool_use_id set from user messages (after each tool_use's assistant message)
+   * - Return the latest (highest index) tool_use_id not in tool_result set
+   */
+  private _findLastUnpairedToolUseId(messages: Message[]): string | null {
+    const seenToolResultIds = new Set<string>();
+    // Scan all messages first, collect all tool_result IDs
+    for (const msg of messages) {
+      if (msg.role !== 'user') continue;
+      const content = Array.isArray(msg.content) ? msg.content : null;
+      if (!content) continue;
+      for (const block of content) {
+        if (block.type === 'tool_result') {
+          seenToolResultIds.add((block as ToolResultBlock).tool_use_id);
+        }
+      }
+    }
+    // Scan assistant messages reverse, find latest tool_use without matching tool_result
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg.role !== 'assistant') continue;
+      const content = Array.isArray(msg.content) ? msg.content : null;
+      if (!content) continue;
+      for (const block of content) {
+        if (block.type === 'tool_use') {
+          const id = (block as ToolUseBlock).id;
+          if (!seenToolResultIds.has(id)) {
+            return id;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
    * Save session to current.json
    * phase 713: 扩 snapshot 参 / atomic write systemPrompt + messages + toolsForLLM 3 件
    */

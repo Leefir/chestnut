@@ -314,6 +314,7 @@
       "dialog_invariant_failed",
       "dialog_session_version_migrate",
       "dialog_session_version_unknown",
+      "dialog_turn_boundary_truncated",
       "session_archive_dir_failed",
       "session_archive_failed",
       "session_archive_parse_failed",

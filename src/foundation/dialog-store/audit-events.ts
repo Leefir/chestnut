@@ -20,5 +20,6 @@ export const DIALOG_AUDIT_EVENTS = {
   COLD_START: 'dialog_cold_start',              // ← NEW phase 1054
   ARCHIVE_EMPTY: 'dialog_archive_empty',         // ← NEW phase 1054
   ARCHIVE_ALL_CORRUPTED: 'dialog_archive_all_corrupted', // ← NEW phase 1054
+  TURN_BOUNDARY_TRUNCATED: 'dialog_turn_boundary_truncated', // ← NEW phase 1184 (mid-turn 逻辑边界 race protection layer 2)
   FLUSH_CHAIN_ERROR: 'dialog_flush_chain_error',
 } as const;

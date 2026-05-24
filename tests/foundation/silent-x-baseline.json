@@ -345,7 +345,7 @@
     },
     {
       "file": "src/foundation/dialog-store/store.ts",
-      "line": 213,
+      "line": 319,
       "body_excerpt": ".catch(() => {",
       "reason": "phase 1149 D fork ratify accepted-stable α / shadow promise 三件套 by-design / 12 caller universe 全 await + audit emit 实证齐全",
       "form": "promise"
