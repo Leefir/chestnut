@@ -142,6 +142,17 @@ export interface StreamChunk {
   toolUse?: {
     id: string;
     name: string;
+    /**
+     * Partial input data for tool_use_delta events.
+     *
+     * **Protocol-layer note**: Provider SSE protocols differ in delivery mode:
+     * - Anthropic SDK: incremental `partial_json` chunk (accumulate deltas to get full input)
+     * - OpenAI: full `arguments` string batch (single chunk = complete)
+     * - Gemini: `JSON.stringify(args)` batch (single chunk = complete)
+     *
+     * **Safe default**: string concatenation of all deltas works for all providers
+     * (all are monotonically accumulating). Do **not** assume incremental semantics.
+     */
     partialInput?: string;
   };
 
