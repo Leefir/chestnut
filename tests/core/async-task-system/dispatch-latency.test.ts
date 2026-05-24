@@ -24,6 +24,10 @@ import { makeAudit } from '../../helpers/audit.js';
 import { createTestTaskSystem } from '../../helpers/task-system.js';
 import { waitFor } from '../../helpers/wait-for.js';
 import { writePendingSubagentTaskFile } from '../../../src/core/async-task-system/tools/_pending-task-writer.js';
+import {
+  CHOKIDAR_STABILITY_THRESHOLD_MS,
+  CHOKIDAR_POLL_INTERVAL_MS,
+} from '../../../src/foundation/file-watcher/watcher.js';
 import type { LLMOrchestrator } from '../../../src/foundation/llm-orchestrator/index.js';
 import type { StreamChunk } from '../../../src/foundation/llm-orchestrator/types.js';
 
@@ -83,10 +87,11 @@ describe('AsyncTaskSystem dispatch latency (phase 1147 r127 B fork)', () => {
     await waitFor(() => mockFs.exists(`tasks/queues/running/${taskId}.json`), 5_000);
     const elapsedMs = Date.now() - startMs;
 
-    // 'immediate' mode should fire within ~200ms on macOS FSEvents
-    // 'stable' mode would be ≥ 150ms (100ms stabilityThreshold + 50ms pollInterval + overhead)
-    // Threshold chosen to reliably pass under 'immediate' and fail under 'stable'.
-    expect(elapsedMs).toBeLessThan(200);
+    // phase 1167: 用 src 真常量表达「'immediate' mode < 'stable' mode floor」watcher 契约不变式
+    // 'stable' mode floor = stabilityThreshold + pollInterval（写完成检测的最小 latency）
+    // 'immediate' mode 应显著快于 floor / safety margin disambiguate 防 contention 假性 fail
+    const STABLE_MODE_FLOOR_MS = CHOKIDAR_STABILITY_THRESHOLD_MS + CHOKIDAR_POLL_INTERVAL_MS;
+    expect(elapsedMs).toBeLessThan(STABLE_MODE_FLOOR_MS + 50);  // 50ms safety margin
   });
 
   it('atomic write invariant: non-.json files are ignored by watcher callback', async () => {
