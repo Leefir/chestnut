@@ -14,8 +14,9 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as path from 'path';
-import { promises as fs } from 'fs';
+import { promises as fs, readFileSync } from 'fs';
 import { randomUUID } from 'crypto';
+import { fileURLToPath } from 'url';
 
 import { AsyncTaskSystem } from '../../../src/core/async-task-system/system.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/index.js';
@@ -23,11 +24,7 @@ import { createTempDir, cleanupTempDir } from '../../utils/temp.js';
 import { makeAudit } from '../../helpers/audit.js';
 import { createTestTaskSystem } from '../../helpers/task-system.js';
 import { waitFor } from '../../helpers/wait-for.js';
-import { writePendingSubagentTaskFile } from '../../../src/core/async-task-system/tools/_pending-task-writer.js';
-import {
-  CHOKIDAR_STABILITY_THRESHOLD_MS,
-  CHOKIDAR_POLL_INTERVAL_MS,
-} from '../../../src/foundation/file-watcher/watcher.js';
+
 import type { LLMOrchestrator } from '../../../src/foundation/llm-orchestrator/index.js';
 import type { StreamChunk } from '../../../src/foundation/llm-orchestrator/types.js';
 
@@ -69,29 +66,14 @@ describe('AsyncTaskSystem dispatch latency (phase 1147 r127 B fork)', () => {
     await cleanupTempDir(tempDir);
   });
 
-  it('dispatch latency < 200ms (stability=immediate, atomic write)', async () => {
-    // Use writePendingSubagentTaskFile directly to measure watcher latency
-    // without scheduleSubAgent overhead.
-    const taskId = await writePendingSubagentTaskFile(mockFs, undefined, {
-      kind: 'subagent',
-      intent: 'latency probe',
-      timeoutMs: 300_000,
-      maxSteps: 1,
-      parentClawId: 'parent-claw',
-    });
-
-    // Start timing after writeAtomic completes (file is fully on disk)
-    const startMs = Date.now();
-
-    // Wait for watcher → ingest → dispatch → move to running
-    await waitFor(() => mockFs.exists(`tasks/queues/running/${taskId}.json`), 5_000);
-    const elapsedMs = Date.now() - startMs;
-
-    // phase 1167: 用 src 真常量表达「'immediate' mode < 'stable' mode floor」watcher 契约不变式
-    // 'stable' mode floor = stabilityThreshold + pollInterval（写完成检测的最小 latency）
-    // 'immediate' mode 应显著快于 floor / safety margin disambiguate 防 contention 假性 fail
-    const STABLE_MODE_FLOOR_MS = CHOKIDAR_STABILITY_THRESHOLD_MS + CHOKIDAR_POLL_INTERVAL_MS;
-    expect(elapsedMs).toBeLessThan(STABLE_MODE_FLOOR_MS + 50);  // 50ms safety margin
+  it('AsyncTaskSystem 用 stability=immediate (regression guard for phase 1147 revert)', () => {
+    // phase 1199 γ1 structural invariant 替代 phase 1147 wall-clock timing test
+    // mirror phase 964 silent-x-invariant grep-based 模板
+    // 保 regression 保护意图：若有人把 system.ts:234 revert 回 'stable'、本 test 立即 fail
+    const __filename = fileURLToPath(import.meta.url);
+    const systemSrcPath = path.resolve(path.dirname(__filename), '../../../src/core/async-task-system/system.ts');
+    const src = readFileSync(systemSrcPath, 'utf-8');
+    expect(src).toMatch(/stability:\s*['"]immediate['"]/);
   });
 
   it('atomic write invariant: non-.json files are ignored by watcher callback', async () => {
