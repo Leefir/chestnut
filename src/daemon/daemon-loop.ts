@@ -34,6 +34,10 @@ import type { Heartbeat } from '../core/runtime/index.js';
 import {
   DAEMON_FALLBACK_TIMEOUT_MS,
   INTERRUPT_RECOVERY_DELAY_MS,
+  INTERRUPT_POLL_INTERVAL_MS,
+  INTERRUPT_POLL_MAX_ERRORS,
+  INTERRUPT_POLL_WARN_EVERY,
+  REACT_CHAIN_MAX_ITERATIONS,
   STARTUP_CHECK_COOLDOWN_MS,
   LLM_MAX_RETRIES,
   LLM_RETRY_INITIAL_DELAY_MS,
@@ -45,10 +49,6 @@ import { LLMAllProvidersFailedError } from '../foundation/llm-orchestrator/error
 import { CONTRACT_DIR } from '../core/contract/index.js';
 import { STATUS_SUBDIR } from '../foundation/process-manager/index.js';
 
-// Interrupt poller constants
-const INTERRUPT_POLL_INTERVAL_MS = 200;
-const INTERRUPT_POLL_WARN_EVERY = 5;
-const INTERRUPT_POLL_MAX_ERRORS = 20;
 
 /**
  * 创建 StreamCallbacks 实现，将业务事件转为 StreamEvent 写入 StreamLog。
@@ -410,18 +410,17 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
             const injected = await runtime.processBatch(wrappedCallbacks);
             if (injected > 0) {
               // chain reaction: keep processing until the backlog is clear
-              const MAX_CHAIN_ITERATIONS = 100;
               let more = injected;
               let chainTotal = injected;
               let chainIters = 0;
-              while (more > 0 && !stopped && chainIters < MAX_CHAIN_ITERATIONS) {
+              while (more > 0 && !stopped && chainIters < REACT_CHAIN_MAX_ITERATIONS) {
                 more = await runtime.processBatch(wrappedCallbacks);
                 chainTotal += more;
                 chainIters++;
               }
 
               // AuditLog: chain reaction 完成
-              const chainType = chainIters >= MAX_CHAIN_ITERATIONS ? LOOP_ITERATION_TYPES.CHAIN_LIMITED : LOOP_ITERATION_TYPES.CHAIN;
+              const chainType = chainIters >= REACT_CHAIN_MAX_ITERATIONS ? LOOP_ITERATION_TYPES.CHAIN_LIMITED : LOOP_ITERATION_TYPES.CHAIN;
               options.audit.write(DAEMON_AUDIT_EVENTS.LOOP_ITERATION, `type=${chainType}`, `injected=${injected}`, `chain_total=${chainTotal}`);
 
               // Turn finished (not interrupted) — reset LLM retry state
