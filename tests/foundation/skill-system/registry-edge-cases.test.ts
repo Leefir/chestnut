@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { SkillSystem } from '../../../src/foundation/skill-system/registry.js';
+import { SkillSystem, SkillDuplicateError } from '../../../src/foundation/skill-system/registry.js';
 import type { FileSystem, FileEntry } from '../../../src/foundation/fs/types.js';
 import type { AuditLog } from '../../../src/foundation/audit/index.js';
 
@@ -108,7 +108,7 @@ describe('skill-system registry edge cases (phase 953)', () => {
     expect(sys.getMeta('bar')?.name).toBe('bar');
   });
 
-  it('B2: duplicate dirName fallback collision audit 含 name_source=fallback_dirname × 2', async () => {
+  it('B2: duplicate dirName fallback collision → throw SkillDuplicateError + audit DUPLICATE_REJECTED with name_source=fallback_dirname × 2', async () => {
     const skillsDir = '/skills';
     const dir1 = '/skills/foo';
     const dir2 = '/skills/sub/foo';
@@ -125,10 +125,10 @@ describe('skill-system registry edge cases (phase 953)', () => {
 
     // Manually register both (simulating loadAll discovery order)
     await sys.register(dir1);
-    await sys.register(dir2);
+    await expect(sys.register(dir2)).rejects.toThrow(SkillDuplicateError);
 
     const dupAudit = audit.calls.find(
-      c => c[0] === 'skill_duplicate_skipped',
+      c => c[0] === 'skill_duplicate_rejected',
     );
     expect(dupAudit).toBeDefined();
     // Assert both name_source fields present + value 'fallback_dirname'
@@ -140,7 +140,7 @@ describe('skill-system registry edge cases (phase 953)', () => {
     );
   });
 
-  it('B2 hybrid case: existing=frontmatter, attempted=fallback_dirname recorded distinctly', async () => {
+  it('B2 hybrid case: existing=frontmatter, attempted=fallback_dirname → throw SkillDuplicateError + audit DUPLICATE_REJECTED recorded distinctly', async () => {
     const skillsDir = '/skills';
     const dir1 = '/skills/explicit';
     const dir2 = '/skills/sub/foo';
@@ -155,10 +155,10 @@ describe('skill-system registry edge cases (phase 953)', () => {
     const sys = new SkillSystem(fs, skillsDir, audit);
 
     await sys.register(dir1);
-    await sys.register(dir2);
+    await expect(sys.register(dir2)).rejects.toThrow(SkillDuplicateError);
 
     const dupAudit = audit.calls.find(
-      c => c[0] === 'skill_duplicate_skipped',
+      c => c[0] === 'skill_duplicate_rejected',
     );
     expect(dupAudit).toBeDefined();
     expect(dupAudit!.slice(1)).toEqual(

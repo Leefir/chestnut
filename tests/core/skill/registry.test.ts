@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { SkillSystem } from '../../../src/foundation/skill-system/registry.js';
+import { SkillSystem, SkillDuplicateError } from '../../../src/foundation/skill-system/registry.js';
 import type { FileSystem } from '../../../src/foundation/fs/types.js';
 import type { AuditLog } from '../../../src/foundation/audit/index.js';
 import { ToolError } from '../../../src/foundation/errors.js';
@@ -123,14 +123,13 @@ describe('SkillSystem', () => {
       expect(registry.getMeta('gamma')).toEqual(meta);
     });
 
-    it('duplicate 同名 → skill_duplicate_skipped + 返回 existing', async () => {
+    it('duplicate 同名 → skill_duplicate_rejected + throw SkillDuplicateError', async () => {
       (mockFs.read as any).mockResolvedValue(makeSkillMd({ name: 'delta', description: 'D', version: '1.0' }));
       const registry = new SkillSystem(mockFs, SKILLS_DIR_DEFAULT, mockAudit);
       const first = await registry.register('skills/delta');
-      const second = await registry.register('skills/delta-dup');
-      expect(second.skillDir).toBe(first.skillDir);
+      await expect(registry.register('skills/delta-dup')).rejects.toThrow(SkillDuplicateError);
 
-      const dupCall = (mockAudit.write as any).mock.calls.find((c: any[]) => c[0] === 'skill_duplicate_skipped');
+      const dupCall = (mockAudit.write as any).mock.calls.find((c: any[]) => c[0] === 'skill_duplicate_rejected');
       expect(dupCall).toBeTruthy();
       expect(dupCall[1]).toBe('name=delta');
       expect(dupCall[2]).toBe('existing_skill_dir=skills/delta');

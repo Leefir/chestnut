@@ -11,6 +11,21 @@ import type { AuditLog } from '../../foundation/audit/index.js';
 import { ToolError } from '../errors.js';
 import { SKILL_AUDIT_EVENTS } from './audit-events.js';
 
+// phase 1235 B.1: namespace pattern + duplicate reject
+const SKILL_NAME_NAMESPACE_PATTERN = /^[a-z0-9-]+(\/[a-z0-9-]+)?$/;
+
+export class SkillDuplicateError extends Error {
+  constructor(
+    public readonly skillName: string,
+    public readonly existingDir: string,
+    public readonly attemptedDir: string,
+  ) {
+    super(
+      `Skill duplicate registration rejected: ${skillName} (existing=${existingDir}, attempted=${attemptedDir}). per DP 不丢弃 + ML#3 资源唯一归属`,
+    );
+  }
+}
+
 /**
  * Parse YAML frontmatter (industry standard syntax / per practices.md §DRY reflex 反例落地 / phase 461)
  * 1:1 inline copy from deleted src/foundation/frontmatter/ / 各 caller 自治 / format schema 业务归 caller。
@@ -157,11 +172,24 @@ export class SkillSystem {
     // Phase 1200: ratify first-wins design row + audit fallback usage
     const versionSource: 'frontmatter' | 'fallback_default' = frontmatter.version ? 'frontmatter' : 'fallback_default';
 
-    // Duplicate check: preserve first registration, skip later ones
+    // phase 1235 B.1: namespace validation
+    if (!SKILL_NAME_NAMESPACE_PATTERN.test(meta.name)) {
+      this.audit?.write(
+        SKILL_AUDIT_EVENTS.NAMESPACE_INVALID,
+        `name=${meta.name}`,
+        `expected=<author>/<skill> or simple-kebab-name`,
+        `skillDir=${skillDir}`,
+      );
+      throw new Error(
+        `Skill name namespace invalid: ${meta.name}. expected <author>/<skill> or simple-kebab-name matching ${SKILL_NAME_NAMESPACE_PATTERN.source}`,
+      );
+    }
+
+    // Duplicate check: reject duplicate registration (phase 1235 B.1)
     if (this.metaMap.has(meta.name)) {
       const existing = this.metaMap.get(meta.name)!;
       const existingNameSource = this.nameSourceMap.get(meta.name) || 'unknown';
-      this.audit?.write(SKILL_AUDIT_EVENTS.DUPLICATE_SKIPPED,
+      this.audit?.write(SKILL_AUDIT_EVENTS.DUPLICATE_REJECTED,
         `name=${meta.name}`,
         `existing_skill_dir=${existing.skillDir}`,
         `attempted_skill_dir=${skillDir}`,
@@ -172,7 +200,7 @@ export class SkillSystem {
         `version_source=${versionSource}`,
         `skills_dir=${this.skillsDir}`,
       );
-      return existing;
+      throw new SkillDuplicateError(meta.name, existing.skillDir, skillDir);
     }
     this.metaMap.set(meta.name, meta);
     this.nameSourceMap.set(meta.name, nameSource);
