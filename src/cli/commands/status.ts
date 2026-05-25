@@ -16,6 +16,7 @@ import {
   isWatchdogAlive,
   getWatchdogEntryPath,
 } from '../../watchdog/watchdog.js';
+import { MOTION_CLAW_ID } from '../../constants.js';
 
 export function findOrphanProcesses(
   pm: ProcessManager,
@@ -45,7 +46,7 @@ export async function statusCommand(): Promise<void> {
   // 2. Motion
   const baseDir = path.dirname(getMotionDir());
   const pm = createProcessManagerForCLI();
-  const motionStatus = pm.getAliveStatus('motion');
+  const motionStatus = pm.getAliveStatus(MOTION_CLAW_ID);
   console.log(`motion:   ${motionStatus.alive ? `running (${motionStatus.reason})` : `stopped (${motionStatus.reason})`}`);
 
   // 3. Claws
