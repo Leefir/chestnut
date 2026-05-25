@@ -8,7 +8,7 @@ import { getNamedSubrootDir, loadGlobalConfig } from '../../src/foundation/confi
 import { setAuditWriter, getAuditWriter } from '../../src/watchdog/watchdog-context.js';
 import { ensureAuditWired } from '../../src/watchdog/ensure.js';
 import { WATCHDOG_AUDIT_EVENTS } from '../../src/watchdog/audit-events.js';
-import { AuditWriter } from '../../src/foundation/audit/writer.js';
+import { makeMockAudit } from '../helpers/audit.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 
 const mockFindProcesses = vi.hoisted(() => vi.fn().mockReturnValue([]));
@@ -81,8 +81,8 @@ describe('audit wired in CLI', () => {
   });
 
   it('daemon process: existing audit writer is preserved by ensureAuditWired', () => {
-    const mockWriter = { write: vi.fn(), dispose: vi.fn() };
-    setAuditWriter(mockWriter as unknown as AuditWriter);
+    const mockWriter = makeMockAudit();
+    setAuditWriter(mockWriter);
 
     ensureAuditWired();
 
