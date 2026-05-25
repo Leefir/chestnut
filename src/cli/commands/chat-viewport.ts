@@ -134,7 +134,6 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
   const clawTrackMap = new Map<string, ClawTrack>();
 
   const clawPanel = createClawPanel({ attachedClawBar });
-  const updateClawPanel = () => clawPanel.updateClawPanel(clawTrackMap);
 
   // Display 使用 mutable holder pattern 让后续赋值的 mainUI 可被 display 读取
   const mainUIHolder: { ref?: MainTurnUIController } = {};
@@ -144,7 +143,8 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
     tui,
     observability,
     get mainUI() { return mainUIHolder.ref; },
-    updateClawPanel,
+    updateClawPanel: clawPanel.updateClawPanel,
+    clawTrackMap,
     spawnText,
     shadowText,
     taskStatusBar,
@@ -203,7 +203,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
 
   const clawManager = createClawManager({
     fs: clawsFs, pm, audit: options.audit, isMotion, clawsDir, clawTrackMap,
-    updateClawPanel,
+    updateClawPanel: clawPanel.updateClawPanel,
     requestRender: () => tui.requestRender(),
   });
 
@@ -215,7 +215,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
 
   const clawPanelTickInterval = setInterval(() => {
     if (clawTrackMap.size > 0) {
-      updateClawPanel();
+      clawPanel.updateClawPanel(clawTrackMap);
       tui.requestRender();
     }
   }, CLAW_PANEL_TICK_INTERVAL_MS);
@@ -270,7 +270,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
     appendOutput: displayWithHolder.appendOutput,
     invalidateBodyCache: displayWithHolder.invalidateBodyCache,
     clearOutputLines: displayWithHolder.clearOutputLines,
-    mainUI, clawManager, updateClawPanel,
+    mainUI, clawManager, updateClawPanel: clawPanel.updateClawPanel,
     getThinkingMode: () => thinkingMode,
     setThinkingMode: (m) => { thinkingMode = m; },
     getRegistry: () => commandRegistry,
@@ -388,7 +388,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
   if (clawsDir) {
     const rescanClawsDir = createRescanClawsDir({
       clawsFs, clawsDir, clawTrackMap, clawManager,
-      audit: options.audit, agentDir: options.agentDir, updateClawPanel,
+      audit: options.audit, agentDir: options.agentDir, updateClawPanel: clawPanel.updateClawPanel,
     });
     clawManager.refreshAllClawStatus();
     rescanClawsDir();
