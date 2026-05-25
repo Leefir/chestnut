@@ -16,6 +16,7 @@ import type { ContextInjector } from '../dialog/index.js';
 import type { SkillSystem } from '../../foundation/skill-system/index.js';
 import type { ContractSystem } from '../contract/index.js';
 import type { AsyncTaskSystem } from '../async-task-system/index.js';
+import type { PermissionChecker } from '../permissions/claw-permissions.js';
 
 import type { InboxMessage } from '../../foundation/messaging/types.js';
 import type { ToolProfile } from '../../foundation/tool-protocol/index.js';
@@ -39,6 +40,9 @@ export interface RuntimeDependencies {
   readonly contractManager: ContractSystem;
   readonly taskSystem: AsyncTaskSystem;
   readonly skillRegistry: SkillSystem;
+
+  // === L4 (phase 1273) ===
+  readonly permissionChecker: PermissionChecker;  // required / 编译期 enforce ML#9
 
   // 构造期注入（phase182 B.p166-5 升档：setter 双阶段消除）
   readonly parentStreamLog?: import('../../foundation/stream/types.js').StreamLog;

@@ -177,6 +177,7 @@ export class Runtime {
       syncDir: path.join(this.options.clawDir, TASKS_SYNC_DIR),
       profile: this.options.toolProfile ?? 'full',
       callerType: this.options.systemPromptBuilder ? 'motion' : 'claw',
+      permissionChecker: deps.permissionChecker,  // NEW phase 1273
       fs: this.systemFs,
       fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir }),
       llm: this.llm,

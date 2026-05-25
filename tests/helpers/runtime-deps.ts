@@ -10,6 +10,7 @@ import { LLMOrchestratorImpl } from '../../src/foundation/llm-orchestrator/orche
 import { ToolRegistryImpl } from '../../src/foundation/tools/registry.js';
 import { ToolExecutorImpl } from '../../src/foundation/tools/executor.js';
 import { createSkillSystem } from '../../src/foundation/skill-system/index.js';
+import { createClawPermissionChecker } from '../../src/core/permissions/claw-permissions.js';
 import { ContractSystem } from '../../src/core/contract/manager.js';
 import { AsyncTaskSystem } from '../../src/core/async-task-system/system.js';
 import { ContextInjector } from '../../src/core/dialog/injector.js';
@@ -53,11 +54,13 @@ export async function makeRuntimeDeps(input: MakeRuntimeDepsInput): Promise<Runt
     auditWriter, llm, contractManager, outboxWriter, registry: toolRegistry,
   });
   const toolExecutor = new ToolExecutorImpl(toolRegistry, 60000);
+  const permissionChecker = createClawPermissionChecker({ clawDir, strict: true, audit: auditWriter, fs: clawFs });
 
   return {
     systemFs, clawFs, auditWriter, snapshot, sessionManager,
     inboxReader, outboxWriter, llm, toolRegistry, toolExecutor,
     skillRegistry, contractManager, taskSystem,
+    permissionChecker,
     parentStreamLog: undefined,
     contractNotifyCallback: undefined,
     // phase 521 mock
