@@ -292,14 +292,14 @@
     },
     {
       "file": "src/core/async-task-system/task-recovery.ts",
-      "line": 121,
+      "line": 122,
       "body_excerpt": ".catch(() => {}",
       "reason": "phase 989 C.3 retry-count cleanup hygiene / D5 align",
       "form": "promise"
     },
     {
       "file": "src/core/async-task-system/task-recovery.ts",
-      "line": 198,
+      "line": 199,
       "body_excerpt": ".catch(() => {}",
       "reason": "retryPath delete 失败无害 / 残文件下次 startup 覆盖",
       "form": "promise"

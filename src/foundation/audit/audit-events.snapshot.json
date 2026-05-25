@@ -66,6 +66,7 @@
       "viewport_unknown_event"
     ],
     "core_async-task-system_audit-events": [
+      "legacy_pending_task_no_mode",
       "pending_ingest_failed",
       "result_delivery_ensure_dir_failed",
       "task_cancel_promise_rejected",
@@ -170,7 +171,9 @@
       "cron_retention_cleanup_delete_failed",
       "cron_runner_started",
       "cron_runner_stopped",
-      "cron_state_save_failed"
+      "cron_state_save_failed",
+      "sunset_query_fail",
+      "sunset_ready"
     ],
     "core_evolution-system_retro-audit-events": [
       "contract_retro_cleanup_failed",

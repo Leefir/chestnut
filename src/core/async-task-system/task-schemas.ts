@@ -57,7 +57,10 @@ const subAgentTaskDiscriminatedUnion = z.discriminatedUnion('mode', [
 /**
  * Backwards-compat: old pendingTask files may lack `mode` field.
  * Preprocess injects `mode: 'standard'` for legacy files.
- * TODO(phase 1186+): remove this compatibility layer once all old pending files are drained.
+ *
+ * SUNSET per phase 1258: 30 天 audit LEGACY_PENDING_TASK_NO_MODE 0 触发
+ * → r+ phase 删 preprocess hook + cascade reader (sunset-monitor cron job 周期 query)
+ * Original TODO(phase 1186+) 过期 64 phase / replaced by sunset trigger metadata.
  */
 export const SubAgentTaskSchema = z.preprocess(
   (val) => {

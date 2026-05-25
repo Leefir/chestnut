@@ -34,4 +34,5 @@ export const TASK_AUDIT_EVENTS = {
   RESULT_DELIVERY_ENSURE_DIR_FAILED: 'result_delivery_ensure_dir_failed',  // ← NEW (phase 878 / B-β2)
   PARSE_FAILED: 'task_parse_failed', // ← NEW (phase 1013 / r123 E fork E.4)
   RESULT_DELIVERY_FAILED: 'task_result_delivery_failed', // ← NEW (phase 1069 / T3)
+  LEGACY_PENDING_TASK_NO_MODE: 'legacy_pending_task_no_mode', // ← NEW (phase 1258 / F.2 sunset observability)
 } as const;

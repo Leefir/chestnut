@@ -1,7 +1,7 @@
 /**
  * spawn-system runtime helpers
  *
- * phase 766 Phase Y 加，封装 spawn 工具 sync 路径调用。
+ * phase 766 sync 路径 wire (Phase YYY ratified)，封装 spawn 工具 sync 路径调用。
  * async 路径继续走 writePendingSubagentTaskFile（spawn.ts execute() 内直调）。
  */
 

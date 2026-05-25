@@ -33,4 +33,6 @@ export const CRON_AUDIT_EVENTS = {
   OUTBOX_DRAIN_FAILED: 'cron_outbox_drain_failed',                         // NEW phase 1210
   OUTBOX_DRAIN_RACE_LOST: 'cron_outbox_drain_race_lost',                   // NEW phase 1222 α-2: atomic claim loser
   STATE_SAVE_FAILED: 'cron_state_save_failed',                             // NEW phase 1210
+  SUNSET_READY: 'sunset_ready',                                             // NEW phase 1258 F.22
+  SUNSET_QUERY_FAIL: 'sunset_query_fail',                                   // NEW phase 1258 F.22
 } as const;

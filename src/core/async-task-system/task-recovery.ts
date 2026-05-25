@@ -15,6 +15,7 @@ import {
   emitRecoveryFailed,
   emitRecoveryDeadLetter,
 } from './audit-emit.js';
+import { TASK_AUDIT_EVENTS } from './audit-events.js';
 import { validateTaskShape, backupCorruptTask } from './task-corrupt-helpers.js';
 import { isFileNotFound } from '../../foundation/fs/types.js';
 import { sendFallbackError, sendResult, SENT_MARKER } from './result-delivery.js';
@@ -309,9 +310,13 @@ async function _loadPendingTasks(deps: RecoverTasksDeps): Promise<void> {
         await backupCorruptTask(fs, auditWriter, entry.path, content, e);
         continue;
       }
+      const rawHasMode = typeof parsed === 'object' && parsed !== null && 'mode' in parsed;
       if (!validateTaskShape(parsed)) {
         await backupCorruptTask(fs, auditWriter, entry.path, content, new Error('shape_mismatch'));
         continue;
+      }
+      if (!rawHasMode) {
+        auditWriter.write(TASK_AUDIT_EVENTS.LEGACY_PENDING_TASK_NO_MODE, `file=${entry.path}`);
       }
       // 文件保留 / by _initialScanPending 入队
     } catch (err) {
