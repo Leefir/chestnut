@@ -12,7 +12,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
-import { loadGlobalConfig, getMotionDir } from '../../foundation/config/index.js';
+import { loadGlobalConfig, getNamedSubrootDir } from '../../foundation/config/index.js';
 import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
 import { PROCESS_SPAWN_CONFIRM_MS, STATUS_SUBDIR } from '../../foundation/process-manager/index.js';
 
@@ -128,7 +128,7 @@ async function writeTemplate(filePath: string, content: string): Promise<boolean
  */
 export async function initCommand(silent = false, deps?: { audit?: AuditLog }): Promise<void> {
   const audit = deps?.audit;
-  const motionDir = getMotionDir();
+  const motionDir = getNamedSubrootDir('motion');
   const motionConfigDir = getMotionConfigDir();
   
   console.log(`Initializing Motion at: ${motionDir}`);
@@ -194,7 +194,7 @@ export async function initCommand(silent = false, deps?: { audit?: AuditLog }): 
  */
 export async function chatCommand(): Promise<void> {
   const globalConfig = loadGlobalConfig(CONFIG_DEFAULTS);
-  const motionDir = getMotionDir();
+  const motionDir = getNamedSubrootDir('motion');
   const { audit: systemAudit } = createDirContext(motionDir);
 
   // Check whether Motion has been initialized

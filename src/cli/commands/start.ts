@@ -12,7 +12,7 @@ import { fileURLToPath } from 'url';
 import * as fs from 'fs';
 import * as readline from 'readline';
 import type { ProgressData } from '../../core/contract/types.js';
-import { isInitialized, loadGlobalConfig, getMotionDir, buildLLMConfig, patchGlobalConfigPrimary, FORMAT_MAP } from '../../foundation/config/index.js';
+import { isInitialized, loadGlobalConfig, getNamedSubrootDir, buildLLMConfig, patchGlobalConfigPrimary, FORMAT_MAP } from '../../foundation/config/index.js';
 import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
 import { createLLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
 import { PRESETS } from '../../foundation/config/index.js';
@@ -335,7 +335,7 @@ export async function startCommand(deps?: { audit?: AuditLog }): Promise<void> {
 
 async function _start(audit?: AuditLog): Promise<void> {
   // Step 1: workspace init
-  const motionDir = getMotionDir();
+  const motionDir = getNamedSubrootDir('motion');
   const snapshot = getInitializationSnapshot(motionDir);
   const wasFirstRun = !snapshot.isInitialized;
   if (wasFirstRun) {
