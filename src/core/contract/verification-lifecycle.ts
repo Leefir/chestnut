@@ -108,7 +108,7 @@ export async function completeSubtaskSync(
 
     const currentStatus = progress.subtasks[subtaskId].status;
     if (currentStatus === 'in_progress') {
-      result = { passed: false, feedback: `Subtask "${subtaskId}" verification is already in progress — duplicate done() call ignored.` };
+      result = { passed: false, feedback: `Subtask "${subtaskId}" verification is already in progress — duplicate submit_subtask call ignored.` };
       emitContractSubtaskDuplicateDone(ctx.audit, { contractId, subtaskId });
       return;
     }

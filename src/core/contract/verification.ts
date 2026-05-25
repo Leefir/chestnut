@@ -251,7 +251,7 @@ export async function runVerificationPipeline(
     }
     const currentStatus = progress.subtasks[subtaskId].status;
     if (currentStatus === 'in_progress') {
-      throw new ToolError(`Subtask "${subtaskId}" verification is already in progress — duplicate done() call ignored.`);
+      throw new ToolError(`Subtask "${subtaskId}" verification is already in progress — duplicate submit_subtask call ignored.`);
     }
     if (currentStatus === 'completed') {
       throw new ToolError(`Subtask "${subtaskId}" is already completed.`);

@@ -260,7 +260,7 @@ describe('ContractSystem', () => {
     expect(progress.subtasks['task-1'].status).toBe('todo');
   });
 
-  it('should return error feedback on duplicate done() call for already-completed subtask', async () => {
+  it('should return error feedback on duplicate submit_subtask call for already-completed subtask', async () => {
     const contractId = await manager.create(makeContractYaml({
       title: 'Test',
       goal: 'Test',
