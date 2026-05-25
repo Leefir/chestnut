@@ -32,7 +32,6 @@ import { MOTION_CLAW_ID } from '../../constants.js';
 import { PROCESS_SPAWN_CONFIRM_MS } from '../../foundation/process-manager/index.js';
 import { CliError } from '../errors.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
-import { startCommand as watchdogStart, isWatchdogAlive } from '../../watchdog/watchdog.js';
 import { CONTRACT_ACTIVE_DIR, CONTRACT_PAUSED_DIR, CONTRACT_ARCHIVE_DIR } from '../../core/contract/index.js';
 import { getWorkspaceRoot } from '../../foundation/paths.js';
 import { DAEMON_LOG } from '../constants.js';
@@ -390,7 +389,8 @@ async function _start(audit?: AuditLog): Promise<void> {
       await pm.spawn('motion', motionSpawnOptions);
       await new Promise(r => setTimeout(r, PROCESS_SPAWN_CONFIRM_MS));
     }
-    if (!isWatchdogAlive()) await watchdogStart();
+    const { ensureWatchdog } = await import('../../watchdog/ensure.js');
+    await ensureWatchdog();
     await motionChatCommand();
     return;
   }
@@ -419,7 +419,8 @@ async function _start(audit?: AuditLog): Promise<void> {
 
     const language = await pickLanguage();
     await daemonReady;
-    if (!isWatchdogAlive()) await watchdogStart();
+    const { ensureWatchdog } = await import('../../watchdog/ensure.js');
+    await ensureWatchdog();
 
     const manager = new ContractSystem(motionDir, MOTION_CLAW_ID, notifyFs, notifyAudit, undefined, createToolRegistry());
     const contractId = await manager.create({
@@ -445,7 +446,8 @@ async function _start(audit?: AuditLog): Promise<void> {
       await pm.spawn('motion', motionSpawnOptions);
       await new Promise(r => setTimeout(r, PROCESS_SPAWN_CONFIRM_MS));
     }
-    if (!isWatchdogAlive()) await watchdogStart();
+    const { ensureWatchdog } = await import('../../watchdog/ensure.js');
+    await ensureWatchdog();
 
     
     if (onboarding.state === 'not_found') {

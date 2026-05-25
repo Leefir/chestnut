@@ -224,9 +224,9 @@ export async function chatCommand(): Promise<void> {
         console.log(`✓ Started (PID: ${pid})`);
         await new Promise(resolve => setTimeout(resolve, PROCESS_SPAWN_CONFIRM_MS));
       }
-      // 确保 watchdog 在运行（idempotent）
-      const { startCommand: startWatchdog } = await import('../../watchdog/watchdog.js');
-      await startWatchdog();
+      // 确保 watchdog 在运行（唯一入口、phase 1269 ML#1）
+      const { ensureWatchdog } = await import('../../watchdog/ensure.js');
+      await ensureWatchdog();
     },
     showRecapStream: globalConfig.viewport?.show_recap_stream,
     showSystemMessages: globalConfig.viewport?.show_system_messages,
