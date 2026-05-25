@@ -38,6 +38,13 @@ export async function stopAllCommand(deps?: { audit?: AuditLog }): Promise<void>
   // 1. Stop watchdog first (prevents it from restarting motion)
   await watchdogStop();
 
+  // 1b. phase 1269 sub-4: sweep orphan watchdogs (恢复 commit 4b5bf0b7 精确化版)
+  const { sweepOrphanWatchdogs } = await import('../../watchdog/orphan-sweep.js');
+  const killed = await sweepOrphanWatchdogs({ excludePid: null });  // stop 不留任何
+  if (killed.length > 0) {
+    console.log(`Cleaned up ${killed.length} orphan watchdog process(es): ${killed.join(', ')}`);
+  }
+
   // 2. Stop motion
   await motionStop();
 

@@ -35,6 +35,10 @@ export async function ensureWatchdog(): Promise<void> {
   try {
     // double-check under lock
     if (!isWatchdogAlive()) {
+      // phase 1269 sub-4: sweep stray watchdogs 先 (commit ece0926c 精确化恢复)
+      // 防 silent removal / TOCTOU / crash 残留 → pid 0 但进程在
+      const { sweepOrphanWatchdogs } = await import('./orphan-sweep.js');
+      await sweepOrphanWatchdogs({ excludePid: null });
       await rawStartCommand();
     }
   } finally {
