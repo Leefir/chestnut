@@ -460,6 +460,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       contractManager,
       taskSystem,
       skillRegistry,
+      permissionChecker,  // NEW phase 1273 / 复用 line 287 既有构造
       parentStreamLog: streamWriter!,
       contractNotifyCallback,
       // phase 521: regime switch coordination / Assembly own factory / closure capture 5 const
