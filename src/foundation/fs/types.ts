@@ -110,7 +110,7 @@ export interface FileSystem {
   list(path: string, options?: {
     recursive?: boolean;
     includeDirs?: boolean;
-    pattern?: string;  // glob pattern
+    pattern?: string;  // regular expression pattern
   }): Promise<FileEntry[]>;
   
   // ========================================================================
@@ -225,8 +225,26 @@ export interface FileSystem {
   listSync(path: string, options?: {
     recursive?: boolean;
     includeDirs?: boolean;
-    pattern?: string;
+    pattern?: string;  // regular expression pattern
   }): FileEntry[];
+
+  /**
+   * Remove directory and all contents (sync).
+   * @throws if path is not a directory or other I/O error
+   */
+  removeDirSync(path: string): void;
+
+  /**
+   * Resolve symlinks to canonical absolute path (sync).
+   * @throws if path does not exist
+   */
+  realpathSync(path: string): string;
+
+  /**
+   * Check if path is a directory (sync).
+   * Returns false if path does not exist.
+   */
+  isDirectorySync(path: string): boolean;
 
   /**
    * Delete a file synchronously.

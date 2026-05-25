@@ -26,6 +26,7 @@ import {
   exists,
   stat,
   isDirectory,
+  IGNORE_PATTERN,
 } from './atomic.js';
 import { FileNotFoundError } from './types.js';
 import { PermissionError } from '../errors.js';
@@ -73,10 +74,7 @@ export class NodeFileSystem implements FileSystem {
   /**
    * Resolve relative path to absolute, with base-dir traversal guard
    */
-  private resolveAndCheck(
-    relativePath: string, 
-    _operation: 'read' | 'write'
-  ): string {
+  private resolveAndCheck(relativePath: string): string {
     // Resolve symlinks to prevent traversal via symlinks (OS-level guard)
     const realBase = (() => {
       try { return realpathSync(this.options.baseDir); }
@@ -157,12 +155,12 @@ export class NodeFileSystem implements FileSystem {
   // ========================================================================
   
   async read(relativePath: string): Promise<string> {
-    const absolute = this.resolveAndCheck(relativePath, 'read');
+    const absolute = this.resolveAndCheck(relativePath);
     return wrapENOENT(relativePath, () => readFile(absolute));
   }
 
   async writeAtomic(relativePath: string, content: string): Promise<void> {
-    const absolute = this.resolveAndCheck(relativePath, 'write');
+    const absolute = this.resolveAndCheck(relativePath);
     
     // Ensure parent directory exists
     const dir = path.dirname(absolute);
@@ -172,7 +170,7 @@ export class NodeFileSystem implements FileSystem {
   }
   
   async append(relativePath: string, content: string): Promise<void> {
-    const absolute = this.resolveAndCheck(relativePath, 'write');
+    const absolute = this.resolveAndCheck(relativePath);
     
     // Ensure parent directory exists
     const dir = path.dirname(absolute);
@@ -182,7 +180,7 @@ export class NodeFileSystem implements FileSystem {
   }
   
   async delete(relativePath: string): Promise<void> {
-    const absolute = this.resolveAndCheck(relativePath, 'write');
+    const absolute = this.resolveAndCheck(relativePath);
     return wrapENOENT(relativePath, () => deleteFile(absolute));
   }
   
@@ -191,12 +189,12 @@ export class NodeFileSystem implements FileSystem {
   // ========================================================================
   
   async ensureDir(relativePath: string): Promise<void> {
-    const absolute = this.resolveAndCheck(relativePath, 'write');
+    const absolute = this.resolveAndCheck(relativePath);
     await ensureDir(absolute);
   }
   
   async removeDir(relativePath: string): Promise<void> {
-    const absolute = this.resolveAndCheck(relativePath, 'write');
+    const absolute = this.resolveAndCheck(relativePath);
     await removeDir(absolute);
   }
   
@@ -208,7 +206,7 @@ export class NodeFileSystem implements FileSystem {
       pattern?: string;
     }
   ): Promise<FileEntry[]> {
-    const absolute = this.resolveAndCheck(relativePath, 'read');
+    const absolute = this.resolveAndCheck(relativePath);
     
     if (!(await isDirectory(absolute))) {
       throw new FileNotFoundError(relativePath);
@@ -270,14 +268,14 @@ export class NodeFileSystem implements FileSystem {
   // ========================================================================
   
   async realpath(relativePath: string): Promise<string> {
-    const absolute = this.resolveAndCheck(relativePath, 'read');
+    const absolute = this.resolveAndCheck(relativePath);
     return await fs.realpath(absolute);
   }
 
   async exists(relativePath: string): Promise<boolean> {
     let absolute: string;
     try {
-      absolute = this.resolveAndCheck(relativePath, 'read');
+      absolute = this.resolveAndCheck(relativePath);
     } catch (err) {
       if (err instanceof PermissionError) {
         throw err;  // P1.5 hardening: 安全 signal 不静默 / D2+D11 align
@@ -288,18 +286,18 @@ export class NodeFileSystem implements FileSystem {
   }
   
   async isDirectory(relativePath: string): Promise<boolean> {
-    const absolute = this.resolveAndCheck(relativePath, 'read');
+    const absolute = this.resolveAndCheck(relativePath);
     return await isDirectory(absolute);
   }
   
   async stat(relativePath: string): Promise<StatInfo> {
-    const absolute = this.resolveAndCheck(relativePath, 'read');
+    const absolute = this.resolveAndCheck(relativePath);
     return wrapENOENT(relativePath, () => stat(absolute));
   }
 
   async move(fromPath: string, toPath: string): Promise<void> {
-    const fromAbsolute = this.resolveAndCheck(fromPath, 'write');
-    const toAbsolute = this.resolveAndCheck(toPath, 'write');
+    const fromAbsolute = this.resolveAndCheck(fromPath);
+    const toAbsolute = this.resolveAndCheck(toPath);
 
     // Ensure destination directory exists
     await ensureDir(path.dirname(toAbsolute));
@@ -308,7 +306,7 @@ export class NodeFileSystem implements FileSystem {
   }
 
   resolve(relativePath: string): string {
-    return this.resolveAndCheck(relativePath, 'read');
+    return this.resolveAndCheck(relativePath);
   }
 
   // ========================================================================
@@ -316,10 +314,10 @@ export class NodeFileSystem implements FileSystem {
   // ========================================================================
 
   writeAtomicSync(relativePath: string, content: string): void {
-    const absolute = this.resolveAndCheck(relativePath, 'write');
+    const absolute = this.resolveAndCheck(relativePath);
     const dir = path.dirname(absolute);
     fsSync.mkdirSync(dir, { recursive: true });
-    const tmpFile = path.join(dir, `.tmp_${randomUUID()}`);
+    const tmpFile = path.join(dir, `${IGNORE_PATTERN}${randomUUID()}`);
 
     try {
       fsSync.writeFileSync(tmpFile, content, { encoding: 'utf-8', mode: 0o644 });
@@ -334,7 +332,7 @@ export class NodeFileSystem implements FileSystem {
   }
 
   writeExclusiveSync(relativePath: string, content: string): void {
-    const absolute = this.resolveAndCheck(relativePath, 'write');
+    const absolute = this.resolveAndCheck(relativePath);
     const dir = path.dirname(absolute);
     fsSync.mkdirSync(dir, { recursive: true }); // phase 948: mirror writeAtomicSync 对称 invariant（防 latent ENOENT 跨 caller）
     // 'wx' = write + exclusive, throws EEXIST if file exists
@@ -351,12 +349,12 @@ export class NodeFileSystem implements FileSystem {
   }
 
   readSync(relativePath: string): string {
-    const absolute = this.resolveAndCheck(relativePath, 'read');
+    const absolute = this.resolveAndCheck(relativePath);
     return wrapENOENTSync(relativePath, () => fsSync.readFileSync(absolute, 'utf-8'));
   }
 
   readBytesSync(relativePath: string, start: number, end: number): Buffer {
-    const absolute = this.resolveAndCheck(relativePath, 'read');
+    const absolute = this.resolveAndCheck(relativePath);
     return wrapENOENTSync(relativePath, () => {
       const fd = fsSync.openSync(absolute, 'r');
       try {
@@ -372,7 +370,7 @@ export class NodeFileSystem implements FileSystem {
   }
 
   appendSync(relativePath: string, content: string): void {
-    const absolute = this.resolveAndCheck(relativePath, 'write');
+    const absolute = this.resolveAndCheck(relativePath);
     const dir = path.dirname(absolute);
     fsSync.mkdirSync(dir, { recursive: true });
     fsSync.appendFileSync(absolute, content, 'utf-8');
@@ -380,20 +378,20 @@ export class NodeFileSystem implements FileSystem {
 
   moveSync(fromPath: string, toPath: string): void {
     return wrapENOENTSync(fromPath, () => {
-      const fromAbsolute = this.resolveAndCheck(fromPath, 'write');
-      const toAbsolute = this.resolveAndCheck(toPath, 'write');
+      const fromAbsolute = this.resolveAndCheck(fromPath);
+      const toAbsolute = this.resolveAndCheck(toPath);
       fsSync.mkdirSync(path.dirname(toAbsolute), { recursive: true });
       fsSync.renameSync(fromAbsolute, toAbsolute);
     });
   }
 
   existsSync(relativePath: string): boolean {
-    const absolute = this.resolveAndCheck(relativePath, 'read');
+    const absolute = this.resolveAndCheck(relativePath);
     return fsSync.existsSync(absolute);
   }
 
   ensureDirSync(relativePath: string): void {
-    const absolute = this.resolveAndCheck(relativePath, 'write');
+    const absolute = this.resolveAndCheck(relativePath);
     fsSync.mkdirSync(absolute, { recursive: true });
   }
 
@@ -402,7 +400,7 @@ export class NodeFileSystem implements FileSystem {
     includeDirs?: boolean;
     pattern?: string;
   }): FileEntry[] {
-    const absolute = this.resolveAndCheck(relativePath, 'read');
+    const absolute = this.resolveAndCheck(relativePath);
     let stat: fsSync.Stats;
     try {
       stat = fsSync.statSync(absolute);
@@ -471,7 +469,7 @@ export class NodeFileSystem implements FileSystem {
     isFile: boolean;
     isDirectory: boolean;
   } {
-    const absolute = this.resolveAndCheck(relativePath, 'read');
+    const absolute = this.resolveAndCheck(relativePath);
     return wrapENOENTSync(relativePath, () => {
       const s = fsSync.statSync(absolute);
       return {
@@ -485,12 +483,32 @@ export class NodeFileSystem implements FileSystem {
   }
 
   deleteSync(relativePath: string): void {
-    const absolute = this.resolveAndCheck(relativePath, 'write');
+    const absolute = this.resolveAndCheck(relativePath);
     return wrapENOENTSync(relativePath, () => fsSync.unlinkSync(absolute));
   }
 
+  removeDirSync(relativePath: string): void {
+    const absolute = this.resolveAndCheck(relativePath);
+    fsSync.rmSync(absolute, { recursive: true, force: true });
+  }
+
+  realpathSync(relativePath: string): string {
+    const absolute = this.resolveAndCheck(relativePath);
+    return fsSync.realpathSync(absolute);
+  }
+
+  isDirectorySync(relativePath: string): boolean {
+    try {
+      const absolute = this.resolveAndCheck(relativePath);
+      return fsSync.statSync(absolute).isDirectory();
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false;
+      throw err;
+    }
+  }
+
   syncSync(relativePath: string): void {
-    const absolute = this.resolveAndCheck(relativePath, 'write');
+    const absolute = this.resolveAndCheck(relativePath);
     const fd = fsSync.openSync(absolute, 'r+');
     try {
       fsSync.fsyncSync(fd);
