@@ -111,6 +111,7 @@ export class SkillSystem {
     const exists = await this.fs.exists(this.skillsDir);
     if (!exists) {
       this.audit?.write(SKILL_AUDIT_EVENTS.DIR_NOT_FOUND, `dir=${this.skillsDir}`);
+      this._loaded = true; // 空目录也算加载完成
       return; // 空目录，不报错
     }
 
@@ -131,6 +132,7 @@ export class SkillSystem {
       try {
         await this.register(skillDir);
       } catch (err) {
+        if (err instanceof SkillDuplicateError) throw err;
         this.audit?.write(SKILL_AUDIT_EVENTS.LOAD_FAILED,
           `skill_dir=${skillDir}`,
           `skills_dir=${this.skillsDir}`,
@@ -145,6 +147,7 @@ export class SkillSystem {
       `skills_dir=${this.skillsDir}`,
       `count=${this.metaMap.size}`,
     );
+    this._loaded = true;
   }
 
   /**
@@ -186,8 +189,12 @@ export class SkillSystem {
     }
 
     // Duplicate check: reject duplicate registration (phase 1235 B.1)
+    // phase 1267 D.2: idempotent when same skillDir (prevents _ensureLoaded cascade duplicate)
     if (this.metaMap.has(meta.name)) {
       const existing = this.metaMap.get(meta.name)!;
+      if (existing.skillDir === skillDir) {
+        return existing;
+      }
       const existingNameSource = this.nameSourceMap.get(meta.name) || 'unknown';
       this.audit?.write(SKILL_AUDIT_EVENTS.DUPLICATE_REJECTED,
         `name=${meta.name}`,
