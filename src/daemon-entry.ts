@@ -1,6 +1,7 @@
 import { NodeFileSystem } from './foundation/fs/node-fs.js';
 import { createSystemAudit, type AuditLog } from './foundation/audit/index.js';
 import { getClawDir, getMotionDir } from './foundation/config/index.js';
+import { MOTION_CLAW_ID } from './constants.js';
 
 // shim pre-assemble audit sink（phase189 §7.A7 清零）
 // 独立于 daemon.ts 的 preAssembleAudit：shim 在 daemon.ts 未入时兜底
@@ -12,7 +13,7 @@ try {
     throw new Error(`Invalid daemon argv[2]: ${JSON.stringify(rawName)}`);
   }
   const name = rawName;
-  const dir = name === 'motion' ? getMotionDir() : getClawDir(name);
+  const dir = name === MOTION_CLAW_ID ? getMotionDir() : getClawDir(name);
   const shimFs = new NodeFileSystem({ baseDir: dir });
   shimAudit = createSystemAudit(shimFs, dir);
 } catch {
