@@ -1,14 +1,58 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach, afterAll, afterEach } from 'vitest';
+
+// ─────────────────────────────────────────────────────────────────────
+// File-level shared mocks (vi.mock hoists / phase 1240 refactor)
+// ─────────────────────────────────────────────────────────────────────
+
+const mockAuditWrite = vi.fn();
+
+vi.mock('../../src/foundation/fs/node-fs.js', () => ({
+  NodeFileSystem: vi.fn().mockImplementation(() => ({})),
+}));
+
+vi.mock('../../src/foundation/audit/index.js', () => ({
+  createSystemAudit: vi.fn(() => ({ write: mockAuditWrite })),
+  AUDIT_FILE: 'audit.tsv',
+}));
+
+vi.mock('../../src/foundation/config/index.js', () => ({
+  getClawDir: vi.fn(() => '/tmp/test-claw'),
+  getMotionDir: vi.fn(() => '/tmp/test-motion'),
+}));
+
+vi.mock('../../src/daemon/daemon.js', () => ({
+  createDaemonCommand: vi.fn(() => vi.fn().mockResolvedValue(undefined)),
+}));
 
 describe('daemon-entry shim audit', () => {
   let originalArgv: string[];
-  let mockAuditWrite: vi.Mock;
   let errorSpy: vi.SpyInstance;
   let mockExit: vi.SpyInstance;
 
-  beforeEach(() => {
+  beforeAll(async () => {
     originalArgv = process.argv;
-    mockAuditWrite = vi.fn();
+    process.argv = ['node', 'daemon-entry', 'test-claw'];
+    // 单次 import 触发 daemon-entry.js top-level 副作用 (装配 audit sink + register handler)
+    await import('../../src/daemon-entry.js');
+    await Promise.resolve(); // 让 top-level await 完成
+  });
+
+  afterAll(() => {
+    process.argv = originalArgv;
+    // 清本 file 注册 handler、保 vitest 原有
+    const isOurUncaught = (h: any) => h.toString().includes('daemon_uncaught_exception');
+    const isOurUnhandled = (h: any) => h.toString().includes('daemon_unhandled_rejection');
+    const otherUncaught = process.listeners('uncaughtException').filter(h => !isOurUncaught(h));
+    const otherUnhandled = process.listeners('unhandledRejection').filter(h => !isOurUnhandled(h));
+    process.removeAllListeners('uncaughtException');
+    process.removeAllListeners('unhandledRejection');
+    otherUncaught.forEach(h => process.on('uncaughtException', h));
+    otherUnhandled.forEach(h => process.on('unhandledRejection', h));
+  });
+
+  beforeEach(() => {
+    mockAuditWrite.mockClear();
+    mockAuditWrite.mockImplementation(() => {}); // 默 noop
     errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockExit = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
       throw new Error(`process.exit(${code})`);
@@ -16,74 +60,19 @@ describe('daemon-entry shim audit', () => {
   });
 
   afterEach(() => {
-    process.argv = originalArgv;
     errorSpy.mockRestore();
     mockExit.mockRestore();
-    // 清理本测试注册的 handler，保留 vitest 原有 handler
-    const originalUncaught = process.listeners('uncaughtException').filter(
-      h => !h.toString().includes('daemon_uncaught_exception')
-    );
-    const originalUnhandled = process.listeners('unhandledRejection').filter(
-      h => !h.toString().includes('daemon_unhandled_rejection')
-    );
-    process.removeAllListeners('uncaughtException');
-    process.removeAllListeners('unhandledRejection');
-    originalUncaught.forEach(h => process.on('uncaughtException', h));
-    originalUnhandled.forEach(h => process.on('unhandledRejection', h));
-    vi.restoreAllMocks();
   });
 
-  it('shim 加载时构造 audit sink 并注册 handler', async () => {
-    process.argv = ['node', 'daemon-entry', 'test-claw'];
-
-    vi.doMock('../../src/foundation/fs/node-fs.js', () => ({
-      NodeFileSystem: vi.fn().mockImplementation(() => ({})),
-    }));
-    vi.doMock('../../src/foundation/audit/index.js', () => ({
-      createSystemAudit: vi.fn(() => ({ write: mockAuditWrite })),
-      AUDIT_FILE: 'audit.tsv',
-    }));
-    vi.doMock('../../src/foundation/config/index.js', () => ({
-      getClawDir: vi.fn(() => '/tmp/test-claw'),
-      getMotionDir: vi.fn(() => '/tmp/test-motion'),
-    }));
-    vi.doMock('../../src/daemon/daemon.js', () => ({
-      createDaemonCommand: vi.fn(() => vi.fn().mockResolvedValue(undefined)),
-    }));
-
-    vi.resetModules();
-    await import('../../src/daemon-entry.js');
-    await Promise.resolve(); // 让 top-level await 完成
-
-    // handler 已注册
+  it('shim 加载时构造 audit sink 并注册 handler', () => {
+    // beforeAll 已 import / handler 应已注册
     const uncaughtHandlers = process.listeners('uncaughtException');
     const unhandledHandlers = process.listeners('unhandledRejection');
     expect(uncaughtHandlers.length).toBeGreaterThanOrEqual(1);
     expect(unhandledHandlers.length).toBeGreaterThanOrEqual(1);
-  }, 30000);
+  });
 
-  it('shim uncaughtException → audit daemon_uncaught_exception + console + exit(1)', async () => {
-    process.argv = ['node', 'daemon-entry', 'test-claw'];
-
-    vi.doMock('../../src/foundation/fs/node-fs.js', () => ({
-      NodeFileSystem: vi.fn().mockImplementation(() => ({})),
-    }));
-    vi.doMock('../../src/foundation/audit/index.js', () => ({
-      createSystemAudit: vi.fn(() => ({ write: mockAuditWrite })),
-      AUDIT_FILE: 'audit.tsv',
-    }));
-    vi.doMock('../../src/foundation/config/index.js', () => ({
-      getClawDir: vi.fn(() => '/tmp/test-claw'),
-      getMotionDir: vi.fn(() => '/tmp/test-motion'),
-    }));
-    vi.doMock('../../src/daemon/daemon.js', () => ({
-      createDaemonCommand: vi.fn(() => vi.fn().mockResolvedValue(undefined)),
-    }));
-
-    vi.resetModules();
-    await import('../../src/daemon-entry.js');
-    await Promise.resolve();
-
+  it('shim uncaughtException → audit daemon_uncaught_exception + console + exit(1)', () => {
     const handler = process.listeners('uncaughtException').find(
       h => h.toString().includes('daemon_uncaught_exception')
     );
@@ -98,30 +87,9 @@ describe('daemon-entry shim audit', () => {
       expect.stringContaining('error=test shim uncaught'),
     );
     expect(errorSpy).toHaveBeenCalledWith('[daemon] Uncaught exception:', testErr);
-  }, 30000);
+  });
 
-  it('shim unhandledRejection → audit daemon_unhandled_rejection + console + exit(1)', async () => {
-    process.argv = ['node', 'daemon-entry', 'test-claw'];
-
-    vi.doMock('../../src/foundation/fs/node-fs.js', () => ({
-      NodeFileSystem: vi.fn().mockImplementation(() => ({})),
-    }));
-    vi.doMock('../../src/foundation/audit/index.js', () => ({
-      createSystemAudit: vi.fn(() => ({ write: mockAuditWrite })),
-      AUDIT_FILE: 'audit.tsv',
-    }));
-    vi.doMock('../../src/foundation/config/index.js', () => ({
-      getClawDir: vi.fn(() => '/tmp/test-claw'),
-      getMotionDir: vi.fn(() => '/tmp/test-motion'),
-    }));
-    vi.doMock('../../src/daemon/daemon.js', () => ({
-      createDaemonCommand: vi.fn(() => vi.fn().mockResolvedValue(undefined)),
-    }));
-
-    vi.resetModules();
-    await import('../../src/daemon-entry.js');
-    await Promise.resolve();
-
+  it('shim unhandledRejection → audit daemon_unhandled_rejection + console + exit(1)', () => {
     const handler = process.listeners('unhandledRejection').find(
       h => h.toString().includes('daemon_unhandled_rejection')
     );
@@ -134,68 +102,13 @@ describe('daemon-entry shim audit', () => {
       expect.stringContaining('error=test rejection'),
     );
     expect(errorSpy).toHaveBeenCalledWith('[daemon] Unhandled rejection:', reason);
-  }, 30000);
+  });
 
-  it('shim audit 构造失败 → fallback console 保 exit(1) 语义', async () => {
-    process.argv = ['node', 'daemon-entry', 'test-claw'];
-
-    vi.doMock('../../src/foundation/fs/node-fs.js', () => ({
-      NodeFileSystem: vi.fn().mockImplementation(() => {
-        throw new Error('fs init failed');
-      }),
-    }));
-    vi.doMock('../../src/foundation/audit/index.js', () => ({
-      createSystemAudit: vi.fn(() => ({ write: mockAuditWrite })),
-      AUDIT_FILE: 'audit.tsv',
-    }));
-    vi.doMock('../../src/foundation/config/index.js', () => ({
-      getClawDir: vi.fn(() => '/tmp/test-claw'),
-      getMotionDir: vi.fn(() => '/tmp/test-motion'),
-    }));
-    vi.doMock('../../src/daemon/daemon.js', () => ({
-      createDaemonCommand: vi.fn(() => vi.fn().mockResolvedValue(undefined)),
-    }));
-
-    vi.resetModules();
-    await import('../../src/daemon-entry.js');
-    await Promise.resolve();
-
-    const handler = process.listeners('uncaughtException').find(
-      h => h.toString().includes('daemon_uncaught_exception')
-    );
-    expect(handler).toBeDefined();
-
-    const testErr = new Error('test with no audit');
-    expect(() => handler!(testErr)).toThrow('process.exit(1)');
-    // audit 未被调用（构造失败导致 shimAudit=null）
-    expect(mockAuditWrite).not.toHaveBeenCalled();
-    expect(errorSpy).toHaveBeenCalledWith('[daemon] Uncaught exception:', testErr);
-  }, 30000);
-
-  it('shim audit write 抛 → 静默 fallback console', async () => {
-    process.argv = ['node', 'daemon-entry', 'test-claw'];
-
-    const throwingWrite = vi.fn().mockImplementation(() => {
+  it('shim audit write 抛 → 静默 fallback console', () => {
+    // 切换 mock 行为：本 it write 抛错
+    mockAuditWrite.mockImplementation(() => {
       throw new Error('audit disk full');
     });
-    vi.doMock('../../src/foundation/fs/node-fs.js', () => ({
-      NodeFileSystem: vi.fn().mockImplementation(() => ({})),
-    }));
-    vi.doMock('../../src/foundation/audit/index.js', () => ({
-      createSystemAudit: vi.fn(() => ({ write: throwingWrite })),
-      AUDIT_FILE: 'audit.tsv',
-    }));
-    vi.doMock('../../src/foundation/config/index.js', () => ({
-      getClawDir: vi.fn(() => '/tmp/test-claw'),
-      getMotionDir: vi.fn(() => '/tmp/test-motion'),
-    }));
-    vi.doMock('../../src/daemon/daemon.js', () => ({
-      createDaemonCommand: vi.fn(() => vi.fn().mockResolvedValue(undefined)),
-    }));
-
-    vi.resetModules();
-    await import('../../src/daemon-entry.js');
-    await Promise.resolve();
 
     const handler = process.listeners('uncaughtException').find(
       h => h.toString().includes('daemon_uncaught_exception')
@@ -204,7 +117,7 @@ describe('daemon-entry shim audit', () => {
 
     const testErr = new Error('test write throw');
     expect(() => handler!(testErr)).toThrow('process.exit(1)');
-    expect(throwingWrite).toHaveBeenCalled();
+    expect(mockAuditWrite).toHaveBeenCalled();
     expect(errorSpy).toHaveBeenCalledWith('[daemon] Uncaught exception:', testErr);
-  }, 30000);
+  });
 });

@@ -19,6 +19,7 @@ const VI_MOCK_FILES = [
   'tests/assembly/assemble.test.ts',
   'tests/assembly/detect-unclean-exit.test.ts',
   'tests/cli/already-running-sentinel.test.ts',
+  'tests/cli/daemon-entry.test.ts',
   'tests/cli/chat-viewport-claw-manager-narrow.test.ts',
   'tests/cli/chat-viewport-stream-reader-start-fail.test.ts',
   'tests/cli/claw-send-confinement.test.ts',
@@ -130,7 +131,6 @@ const VI_MOCK_FILES = [
  *    归 isolated project 无影响 (ISOLATED_FILES 数组展开后重复 include  harmless)
  */
 const VI_DOMOCK_FILES = [
-  'tests/cli/daemon-entry.test.ts',
   'tests/foundation/audit/writer-fallback.test.ts',
 ];
 
