@@ -1,5 +1,3 @@
-import type { CallerType } from '../../core/caller-types.js';
-
 export interface AsyncToolTaskArgs {
   toolName: string;
   args: Record<string, unknown>;
@@ -8,7 +6,6 @@ export interface AsyncToolTaskArgs {
   isIdempotent: boolean;
   maxRetries: number;
   retryCount: number;
-  callerType?: CallerType;
   /** phase 1337: opaque audit label (replaces callerType semantic) */
   callerLabel?: string;
   toolUseId?: string;

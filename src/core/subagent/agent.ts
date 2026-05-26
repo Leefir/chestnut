@@ -310,7 +310,6 @@ private callerType?: CallerType;
             clawId: this.agentId,
             maxSteps: this.maxSteps,
             signal: timeoutController.signal,
-            callerType,
             allowedGroups: CALLER_TYPE_TO_GROUPS[callerType],
             callerLabel: callerType,
             originClawId: this.originClawId,

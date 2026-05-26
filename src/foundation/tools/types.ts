@@ -11,7 +11,6 @@ import type { LLMOrchestrator } from '../llm-orchestrator/index.js';
 import type { AuditLog } from '../audit/index.js';
 import type { ToolDescriptor, ToolResult } from '../tool-protocol/index.js';
 import type { ScheduleAsyncTool } from './async-dispatch.js';
-import type { CallerType } from '../../core/caller-types.js';
 import type { PermissionChecker } from '../tool-protocol/permission.js';
 
 /**
@@ -66,11 +65,11 @@ export interface ExecContext {
   /** Caller type for spawn recursion prevention
    * @deprecated phase 1337 r138 D fork sunset by sub-4 / use allowedGroups + callerLabel
    */
-  callerType: CallerType;
+  callerType?: import('../../core/caller-types.js').CallerType;
   /** phase 1337: capability-tag based group filtering (replaces callerType) */
-  allowedGroups?: ReadonlySet<ToolGroup>;
+  allowedGroups: ReadonlySet<ToolGroup>;
   /** phase 1337: opaque audit label (replaces callerType semantic) */
-  callerLabel?: string;
+  callerLabel: string;
   fs: FileSystem;
   fsFactory?: (baseDir: string) => FileSystem;
   llm?: LLMOrchestrator;
@@ -121,7 +120,7 @@ export interface Tool extends ToolDescriptor {
   /** Which profiles this tool belongs to. Each tool declares its own (M#3). */
   profiles: readonly ToolProfile[];
   /** phase 1337: capability group this tool belongs to (replaces profile-based implicit filtering) */
-  group?: ToolGroup;
+  group: ToolGroup;
   execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult>;
 }
 

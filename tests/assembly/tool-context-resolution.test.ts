@@ -22,7 +22,7 @@ describe('ToolContext assembly resolution', () => {
     expect(allowedGroups.has('fs-write')).toBe(false);
   });
 
-  it('ExecContextImpl constructor accepts allowedGroups + callerLabel (additive)', () => {
+  it('ExecContextImpl constructor accepts allowedGroups + callerLabel', () => {
     const allowedGroups = new Set<ToolGroup>(['fs-read', 'audit']);
     const ctx = new ExecContextImpl({
       clawId: 'test-claw',
@@ -36,23 +36,5 @@ describe('ToolContext assembly resolution', () => {
     });
     expect(ctx.allowedGroups).toBe(allowedGroups);
     expect(ctx.callerLabel).toBe('subagent');
-    expect(ctx.callerType).toBe('claw'); // default fallback
-  });
-
-  it('ExecContextImpl preserves callerType when both fields provided', () => {
-    const ctx = new ExecContextImpl({
-      clawId: 'test-claw',
-      clawDir: '/tmp/test',
-      syncDir: '/tmp/test/sync',
-      profile: 'full',
-      fs: {} as import('../../src/foundation/fs/types.js').FileSystem,
-      maxSteps: 10,
-      callerType: 'motion',
-      allowedGroups: CALLER_TYPE_TO_GROUPS.motion,
-      callerLabel: 'motion',
-    });
-    expect(ctx.callerType).toBe('motion');
-    expect(ctx.callerLabel).toBe('motion');
-    expect(ctx.allowedGroups).toBe(CALLER_TYPE_TO_GROUPS.motion);
   });
 });

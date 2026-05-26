@@ -178,7 +178,6 @@ export class Runtime {
       clawDir: this.options.clawDir,
       syncDir: path.join(this.options.clawDir, TASKS_SYNC_DIR),
       profile: this.options.toolProfile ?? 'full',
-      callerType: this.options.systemPromptBuilder ? MOTION_CLAW_ID : 'claw',
       allowedGroups: CALLER_TYPE_TO_GROUPS[this.options.systemPromptBuilder ? MOTION_CLAW_ID : 'claw'],
       callerLabel: this.options.systemPromptBuilder ? MOTION_CLAW_ID : 'claw',
       permissionChecker: deps.permissionChecker,  // NEW phase 1273
