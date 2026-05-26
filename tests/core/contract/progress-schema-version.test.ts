@@ -35,7 +35,14 @@ afterEach(async () => {
 describe('progress.json schema_version invariant — phase 1134', () => {
   it('getProgress rejects schema_version > CURRENT and emits PROGRESS_SCHEMA_INVALID', async () => {
     const mockAudit = { write: vi.fn() };
-    const manager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry(), undefined, fsFactory);
+    const manager = new ContractSystem({
+      clawDir,
+      clawId: 'test-claw',
+      fs: nodeFs,
+      audit: mockAudit as any,
+      toolRegistry: createToolRegistry(),
+      fsFactory
+    });
 
     const contractId = await manager.create(makeContractYaml({
       title: 'Test',
@@ -71,7 +78,14 @@ describe('progress.json schema_version invariant — phase 1134', () => {
 
   it('getProgress accepts legacy progress.json without schema_version', async () => {
     const mockAudit = { write: vi.fn() };
-    const manager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry(), undefined, fsFactory);
+    const manager = new ContractSystem({
+      clawDir,
+      clawId: 'test-claw',
+      fs: nodeFs,
+      audit: mockAudit as any,
+      toolRegistry: createToolRegistry(),
+      fsFactory
+    });
 
     const contractId = await manager.create(makeContractYaml({
       title: 'Test',

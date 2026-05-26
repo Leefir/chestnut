@@ -58,7 +58,14 @@ describe('EvolutionSystem — clawContractManagerFactory injection (phase 619 ca
     const { contractId, motionFs, motionAudit, mockAudit, clawsBaseDir, tmpBase } = fixtures;
 
     const factorySpy = vi.fn().mockImplementation((clawDir: string, targetClaw: string, fs: NodeFileSystem) => {
-      return new ContractSystem(clawDir, targetClaw, fs, { write: vi.fn() } as any, undefined, createToolRegistry(), undefined, (dir: string) => new NodeFileSystem({ baseDir: dir }));
+      return new ContractSystem({
+        clawDir,
+        clawId: targetClaw,
+        fs,
+        audit: { write: vi.fn() } as any,
+        toolRegistry: createToolRegistry(),
+        fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir })
+      });
     });
 
     const ctx: MotionReviewContext = {
@@ -95,7 +102,14 @@ describe('EvolutionSystem — clawContractManagerFactory injection (phase 619 ca
     const { contractId, motionFs, motionAudit, mockAudit, clawsBaseDir, tmpBase } = fixtures;
 
     const factorySpy = vi.fn().mockImplementation((clawDir: string, targetClaw: string, fs: NodeFileSystem) => {
-      return new ContractSystem(clawDir, targetClaw, fs, { write: vi.fn() } as any, undefined, createToolRegistry(), undefined, (dir: string) => new NodeFileSystem({ baseDir: dir }));
+      return new ContractSystem({
+        clawDir,
+        clawId: targetClaw,
+        fs,
+        audit: { write: vi.fn() } as any,
+        toolRegistry: createToolRegistry(),
+        fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir })
+      });
     });
 
     const ctx: MotionReviewContext = {

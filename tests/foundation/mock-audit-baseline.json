@@ -1,12 +1,4 @@
 {
-  "version": 1,
-  "phase": "1244",
-  "round": "r133",
-  "fork": "C",
-  "description": "Mock audit helper invariant baseline. Raw write: vi.fn() sites grandfather list. Ratchet: allow shrink (migrate-on-touch), forbid grow (NEW raw site catches in CI).",
-  "policy_ref": "design/practices.md §makeMockAudit gradual migration policy ratify",
-  "helper_ref": "tests/helpers/audit.ts makeMockAudit()",
-  "allowed_patterns": [],
   "entries": [
     {
       "file": "assembly/assemble-dream-trigger-guard.test.ts",
@@ -239,11 +231,6 @@
       "excerpt": "    const mockAudit = { write: vi.fn() } as unknown as AuditLog;"
     },
     {
-      "file": "cli/debug-list.test.ts",
-      "line": 28,
-      "excerpt": "  createDirContext: vi.fn((deps: any) => ({ audit: { write: vi.fn() } })),"
-    },
-    {
       "file": "cli/main-turn-ui-controller.test.ts",
       "line": 11,
       "excerpt": "    audit: { write: vi.fn() },"
@@ -305,32 +292,32 @@
     },
     {
       "file": "core/builtins.test.ts",
-      "line": 713,
+      "line": 720,
       "excerpt": "      const mockAudit = { write: vi.fn() };"
     },
     {
       "file": "core/builtins.test.ts",
-      "line": 738,
+      "line": 752,
       "excerpt": "      const mockAudit = { write: vi.fn() };"
     },
     {
       "file": "core/builtins.test.ts",
-      "line": 816,
+      "line": 837,
       "excerpt": "      const mockAudit = { write: vi.fn() };"
     },
     {
       "file": "core/builtins.test.ts",
-      "line": 871,
+      "line": 899,
       "excerpt": "      const auditWriter = { write: vi.fn() };"
     },
     {
       "file": "core/builtins.test.ts",
-      "line": 894,
+      "line": 922,
       "excerpt": "      const auditWriter = { write: vi.fn() };"
     },
     {
       "file": "core/builtins.test.ts",
-      "line": 918,
+      "line": 946,
       "excerpt": "      const auditWriter = { write: vi.fn() };"
     },
     {
@@ -345,8 +332,8 @@
     },
     {
       "file": "core/contract/contract-system-close.test.ts",
-      "line": 158,
-      "excerpt": "      { write: vi.fn() } as any,"
+      "line": 166,
+      "excerpt": "      audit: { write: vi.fn() } as any,"
     },
     {
       "file": "core/contract/contract-yaml-backwards-compat.test.ts",
@@ -370,7 +357,7 @@
     },
     {
       "file": "core/contract/progress-schema-version.test.ts",
-      "line": 73,
+      "line": 80,
       "excerpt": "    const mockAudit = { write: vi.fn() };"
     },
     {
@@ -380,42 +367,42 @@
     },
     {
       "file": "core/contract/schema-sweep.test.ts",
-      "line": 76,
+      "line": 83,
       "excerpt": "    const mockAudit = { write: vi.fn() };"
     },
     {
       "file": "core/contract/schema-sweep.test.ts",
-      "line": 111,
+      "line": 125,
       "excerpt": "    const mockAudit = { write: vi.fn() };"
     },
     {
       "file": "core/contract/schema-sweep.test.ts",
-      "line": 144,
+      "line": 158,
       "excerpt": "    const mockAudit = { write: vi.fn() };"
     },
     {
       "file": "core/contract/schema-sweep.test.ts",
-      "line": 172,
+      "line": 186,
       "excerpt": "    const mockAudit = { write: vi.fn() };"
     },
     {
       "file": "core/contract/schema-sweep.test.ts",
-      "line": 229,
+      "line": 243,
       "excerpt": "    const mockAudit = { write: vi.fn() };"
     },
     {
       "file": "core/contract/schema-sweep.test.ts",
-      "line": 298,
+      "line": 312,
       "excerpt": "    const mockAudit = { write: vi.fn() };"
     },
     {
       "file": "core/contract/schema-sweep.test.ts",
-      "line": 329,
+      "line": 343,
       "excerpt": "    const mockAudit = { write: vi.fn() };"
     },
     {
       "file": "core/contract/schema-sweep.test.ts",
-      "line": 363,
+      "line": 377,
       "excerpt": "    const mockAudit = { write: vi.fn() };"
     },
     {
@@ -440,7 +427,7 @@
     },
     {
       "file": "core/contract-concurrency.test.ts",
-      "line": 188,
+      "line": 195,
       "excerpt": "    const mockAudit = { write: vi.fn() };"
     },
     {
@@ -450,12 +437,12 @@
     },
     {
       "file": "core/contract-review-request.test.ts",
-      "line": 95,
-      "excerpt": "    clawContractManagerFactory: (clawDir, targetClaw, fs) => new ContractSystem(clawDir, targetClaw, fs, { write: vi.fn() } as any, undefined, createToolRegistry(), undefined, (dir: string) => new NodeFileSystem({ baseDir: dir })),"
+      "line": 99,
+      "excerpt": "      audit: { write: vi.fn() } as any,"
     },
     {
       "file": "core/contract.test.ts",
-      "line": 349,
+      "line": 419,
       "excerpt": "      const mockAudit = { write: vi.fn() };"
     },
     {
@@ -575,8 +562,8 @@
     },
     {
       "file": "core/evolution-system/state-file.test.ts",
-      "line": 103,
-      "excerpt": "    clawContractManagerFactory: (clawDir, targetClaw, fs) => new ContractSystem(clawDir, targetClaw, fs, { write: vi.fn() } as any, undefined, createToolRegistry(), undefined, (dir: string) => new NodeFileSystem({ baseDir: dir })),"
+      "line": 107,
+      "excerpt": "      audit: { write: vi.fn() } as any,"
     },
     {
       "file": "core/evolution-system/system-clawfs-factory.test.ts",
@@ -590,18 +577,18 @@
     },
     {
       "file": "core/evolution-system/system-clawfs-factory.test.ts",
-      "line": 68,
-      "excerpt": "      clawContractManagerFactory: (clawDir, targetClaw, fs) => new ContractSystem(clawDir, targetClaw, fs, { write: vi.fn() } as any, undefined, createToolRegistry(), undefined, (dir: string) => new NodeFileSystem({ baseDir: dir })),"
+      "line": 72,
+      "excerpt": "        audit: { write: vi.fn() } as any,"
     },
     {
       "file": "core/evolution-system/system-clawfs-factory.test.ts",
-      "line": 101,
-      "excerpt": "      clawContractManagerFactory: (clawDir, targetClaw, fs) => new ContractSystem(clawDir, targetClaw, fs, { write: vi.fn() } as any, undefined, createToolRegistry(), undefined, (dir: string) => new NodeFileSystem({ baseDir: dir })),"
+      "line": 112,
+      "excerpt": "        audit: { write: vi.fn() } as any,"
     },
     {
       "file": "core/evolution-system/system-clawfs-factory.test.ts",
-      "line": 141,
-      "excerpt": "      clawContractManagerFactory: (clawDir, targetClaw, fs) => new ContractSystem(clawDir, targetClaw, fs, { write: vi.fn() } as any, undefined, createToolRegistry(), undefined, (dir: string) => new NodeFileSystem({ baseDir: dir })),"
+      "line": 159,
+      "excerpt": "        audit: { write: vi.fn() } as any,"
     },
     {
       "file": "core/evolution-system/system-contract-factory.test.ts",
@@ -615,13 +602,13 @@
     },
     {
       "file": "core/evolution-system/system-contract-factory.test.ts",
-      "line": 61,
-      "excerpt": "      return new ContractSystem(clawDir, targetClaw, fs, { write: vi.fn() } as any, undefined, createToolRegistry(), undefined, (dir: string) => new NodeFileSystem({ baseDir: dir }));"
+      "line": 65,
+      "excerpt": "        audit: { write: vi.fn() } as any,"
     },
     {
       "file": "core/evolution-system/system-contract-factory.test.ts",
-      "line": 98,
-      "excerpt": "      return new ContractSystem(clawDir, targetClaw, fs, { write: vi.fn() } as any, undefined, createToolRegistry(), undefined, (dir: string) => new NodeFileSystem({ baseDir: dir }));"
+      "line": 109,
+      "excerpt": "        audit: { write: vi.fn() } as any,"
     },
     {
       "file": "core/evolution-system.test.ts",
@@ -630,8 +617,8 @@
     },
     {
       "file": "core/evolution-system.test.ts",
-      "line": 88,
-      "excerpt": "    clawContractManagerFactory: (clawDir, targetClaw, fs) => new ContractSystem(clawDir, targetClaw, fs, { write: vi.fn() } as any, undefined, createToolRegistry(), undefined, (dir: string) => new NodeFileSystem({ baseDir: dir })),"
+      "line": 92,
+      "excerpt": "      audit: { write: vi.fn() } as any,"
     },
     {
       "file": "core/gateway/broadcast-after-stop.test.ts",
@@ -978,5 +965,6 @@
       "line": 112,
       "excerpt": "    const mockAudit = { write: vi.fn() } as unknown as AuditLog;"
     }
-  ]
+  ],
+  "allowed_patterns": []
 }

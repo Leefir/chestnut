@@ -48,7 +48,15 @@ describe('phase 1217 (r131 C fork) B.1 — ContractSystem.close() true disposabl
     auditWrite = vi.fn();
     const mockAudit = { write: auditWrite };
     const mockLlm = { id: 'mock-llm' } as any;
-    manager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, mockLlm, createToolRegistry(), undefined, (dir: string) => new NodeFileSystem({ baseDir: dir }));
+    manager = new ContractSystem({
+      clawDir,
+      clawId: 'test-claw',
+      fs: nodeFs,
+      audit: mockAudit as any,
+      llm: mockLlm,
+      toolRegistry: createToolRegistry(),
+      fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir })
+    });
     mockRunContractVerifier.mockReset();
   });
 
@@ -151,16 +159,14 @@ describe('phase 1217 (r131 C fork) B.1 — ContractSystem.close() true disposabl
 
     // 创建两个 mock ContractSystem（只 spy close）
     const cs1 = manager;
-    const cs2 = new ContractSystem(
+    const cs2 = new ContractSystem({
       clawDir,
-      'test-claw-2',
-      nodeFs,
-      { write: vi.fn() } as any,
-      undefined,
-      createToolRegistry(),
-      undefined,
-      (dir: string) => new NodeFileSystem({ baseDir: dir }),
-    );
+      clawId: 'test-claw-2',
+      fs: nodeFs,
+      audit: { write: vi.fn() } as any,
+      toolRegistry: createToolRegistry(),
+      fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir })
+    });
 
     // 用 vi.spyOn 包装 close
     const spy1 = vi.spyOn(cs1, 'close').mockImplementation(() => {});

@@ -700,7 +700,14 @@ describe('Builtin Tools', () => {
 
     it('should show "No active contract" when contractManager has no active contract', async () => {
       const mockAudit = { write: vi.fn() };
-      const manager = new ContractSystem(tempDir, 'test-claw', mockFs, mockAudit as any, undefined, createToolRegistry(), undefined, fsFactory);
+      const manager = new ContractSystem({
+        clawDir: tempDir,
+        clawId: 'test-claw',
+        fs: mockFs,
+        audit: mockAudit as any,
+        toolRegistry: createToolRegistry(),
+        fsFactory
+      });
       const statusTool = createStatusTool(manager);
 
       const result = await statusTool.execute({}, ctx);
@@ -711,7 +718,14 @@ describe('Builtin Tools', () => {
 
     it('should show subtask list with ○ icons when contract is active', async () => {
       const mockAudit = { write: vi.fn() };
-      const manager = new ContractSystem(tempDir, 'test-claw', mockFs, mockAudit as any, undefined, createToolRegistry(), undefined, fsFactory);
+      const manager = new ContractSystem({
+        clawDir: tempDir,
+        clawId: 'test-claw',
+        fs: mockFs,
+        audit: mockAudit as any,
+        toolRegistry: createToolRegistry(),
+        fsFactory
+      });
       await manager.create(makeContractYaml({
         title: 'Test Contract',
         goal: 'Test',
@@ -736,7 +750,14 @@ describe('Builtin Tools', () => {
 
     it('should show ✓ for completed subtask and ○ for todo subtask', async () => {
       const mockAudit = { write: vi.fn() };
-      const manager = new ContractSystem(tempDir, 'test-claw', mockFs, mockAudit as any, undefined, createToolRegistry(), undefined, fsFactory);
+      const manager = new ContractSystem({
+        clawDir: tempDir,
+        clawId: 'test-claw',
+        fs: mockFs,
+        audit: mockAudit as any,
+        toolRegistry: createToolRegistry(),
+        fsFactory
+      });
       const contractId = await manager.create(makeContractYaml({
         title: 'Mixed Status',
         goal: 'Test',
@@ -814,7 +835,14 @@ describe('Builtin Tools', () => {
     // subtask failed 状态显示 ✗
     it('should show ✗ icon for failed subtask', async () => {
       const mockAudit = { write: vi.fn() };
-      const manager = new ContractSystem(tempDir, 'test-claw', mockFs, mockAudit as any, undefined, createToolRegistry(), undefined, fsFactory);
+      const manager = new ContractSystem({
+        clawDir: tempDir,
+        clawId: 'test-claw',
+        fs: mockFs,
+        audit: mockAudit as any,
+        toolRegistry: createToolRegistry(),
+        fsFactory
+      });
       const contractId = await manager.create({
         title: 'Fail Test',
         goal: 'test',

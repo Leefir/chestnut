@@ -38,9 +38,14 @@ describe('ContractSystem lifecycle race (phase 791 / P0.16 + P0.18)', () => {
         auditCalls.push({ type, args });
       },
     };
-    manager = new ContractSystem(
-      clawDir, 'test-claw', nodeFs, captureAudit as any, undefined, createToolRegistry(), undefined, (dir: string) => new NodeFileSystem({ baseDir: dir })
-    );
+    manager = new ContractSystem({
+      clawDir,
+      clawId: 'test-claw',
+      fs: nodeFs,
+      audit: captureAudit as any,
+      toolRegistry: createToolRegistry(),
+      fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir })
+    });
   });
 
   afterEach(async () => {
@@ -116,9 +121,15 @@ describe('ContractSystem lifecycle race (phase 791 / P0.16 + P0.18)', () => {
       stream: vi.fn(),
     } as unknown as LLMOrchestrator;
 
-    const testManager = new ContractSystem(
-      clawDir, 'test-claw', manager['fs'], manager['audit'] as any, mockLLM, createToolRegistry(), undefined, (dir: string) => new NodeFileSystem({ baseDir: dir })
-    );
+    const testManager = new ContractSystem({
+      clawDir,
+      clawId: 'test-claw',
+      fs: manager['fs'],
+      audit: manager['audit'] as any,
+      llm: mockLLM,
+      toolRegistry: createToolRegistry(),
+      fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir })
+    });
 
     // Mock runLLMVerification to delay, simulating slow background verification
     vi.spyOn(testManager as any, 'runLLMVerification').mockImplementation(async () => {

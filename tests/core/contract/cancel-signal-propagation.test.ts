@@ -45,7 +45,15 @@ describe('phase 1020 / r124 C fork — cancel propagation 装配端真实施', (
     nodeFs = new NodeFileSystem({ baseDir: clawDir });
     const mockAudit = { write: vi.fn() };
     const mockLlm = { id: 'mock-llm' } as any;
-    manager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, mockLlm, createToolRegistry(), undefined, (dir: string) => new NodeFileSystem({ baseDir: dir }));
+    manager = new ContractSystem({
+      clawDir,
+      clawId: 'test-claw',
+      fs: nodeFs,
+      audit: mockAudit as any,
+      llm: mockLlm,
+      toolRegistry: createToolRegistry(),
+      fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir })
+    });
     mockRunContractVerifier.mockReset();
   });
 

@@ -40,16 +40,14 @@ afterEach(async () => {
 describe('no verification path', () => {
   it('submit with no verification → immediately completed', async () => {
     const { audit, events, emitter } = makeAudit();
-    const manager = new ContractSystem(
+    const manager = new ContractSystem({
       clawDir,
-      'test-claw',
-      nodeFs,
+      clawId: 'test-claw',
+      fs: nodeFs,
       audit,
-      undefined,
-      createToolRegistry(),
-      undefined,
-      fsFactory,
-    );
+      toolRegistry: createToolRegistry(),
+      fsFactory
+    });
 
     const contractId = await manager.create(
       makeContractYaml({
@@ -82,16 +80,14 @@ describe('no verification path', () => {
 
   it('submit with verification → goes to background path', async () => {
     const { audit, events, emitter } = makeAudit();
-    const manager = new ContractSystem(
+    const manager = new ContractSystem({
       clawDir,
-      'test-claw',
-      nodeFs,
+      clawId: 'test-claw',
+      fs: nodeFs,
       audit,
-      undefined,
-      createToolRegistry(),
-      undefined,
-      fsFactory,
-    );
+      toolRegistry: createToolRegistry(),
+      fsFactory
+    });
 
     const contractId = await manager.create(
       makeContractYaml({
@@ -143,16 +139,14 @@ describe('no verification path', () => {
 
   it('submit with no verification notifies caller', async () => {
     const { audit } = makeAudit();
-    const manager = new ContractSystem(
+    const manager = new ContractSystem({
       clawDir,
-      'test-claw',
-      nodeFs,
+      clawId: 'test-claw',
+      fs: nodeFs,
       audit,
-      undefined,
-      createToolRegistry(),
-      undefined,
-      fsFactory,
-    );
+      toolRegistry: createToolRegistry(),
+      fsFactory
+    });
 
     const contractId = await manager.create(
       makeContractYaml({

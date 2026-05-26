@@ -47,7 +47,14 @@ describe('ContractSystem — 并发幂等与锁', () => {
     await fs.mkdir(clawDir, { recursive: true });
     nodeFs = new NodeFileSystem({ baseDir: clawDir });
     const mockAudit = { write: vi.fn() };
-    manager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry(), undefined, fsFactory);
+    manager = new ContractSystem({
+      clawDir,
+      clawId: 'test-claw',
+      fs: nodeFs,
+      audit: mockAudit as any,
+      toolRegistry: createToolRegistry(),
+      fsFactory
+    });
   });
 
   afterEach(async () => {
@@ -186,9 +193,14 @@ describe('ContractSystem — 并发幂等与锁', () => {
 
   it('writes CONTRACT_LOCK_CLEARED audit when force clearing stale timeout lock', async () => {
     const mockAudit = { write: vi.fn() };
-    const auditManager = new ContractSystem(
-      clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry(), undefined, fsFactory
-    );
+    const auditManager = new ContractSystem({
+      clawDir,
+      clawId: 'test-claw',
+      fs: nodeFs,
+      audit: mockAudit as any,
+      toolRegistry: createToolRegistry(),
+      fsFactory
+    });
 
     const contractId = await auditManager.create(BASE_YAML);
 

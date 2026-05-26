@@ -90,6 +90,17 @@ export {
   type VerifierResult,
 };
 
+export interface ContractSystemDeps {
+  clawDir: string;
+  clawId: string;
+  fs: FileSystem;
+  audit: AuditLog;
+  llm?: LLMOrchestrator;
+  toolRegistry: ToolRegistry;
+  toolTimeoutMs?: number;
+  fsFactory: (baseDir: string) => FileSystem;
+}
+
 export class ContractSystem {
   private fs: FileSystem;
   private clawDir: string;
@@ -163,24 +174,15 @@ export class ContractSystem {
     }
   }
 
-  constructor(
-    clawDir: string,
-    clawId: string,
-    fs: FileSystem,
-    audit: AuditLog,
-    llm: LLMOrchestrator | undefined,
-    toolRegistry: ToolRegistry,
-    toolTimeoutMs: number | undefined,
-    fsFactory: (baseDir: string) => FileSystem,
-  ) {
-    this.clawDir = clawDir;
-    this.clawId = clawId;
-    this.fs = fs;
-    this.audit = audit;
-    this.llm = llm;
-    this.toolRegistry = toolRegistry;
-    this.toolTimeoutMs = toolTimeoutMs;
-    this.fsFactory = fsFactory;
+  constructor(deps: ContractSystemDeps) {
+    this.clawDir = deps.clawDir;
+    this.clawId = deps.clawId;
+    this.fs = deps.fs;
+    this.audit = deps.audit;
+    this.llm = deps.llm;
+    this.toolRegistry = deps.toolRegistry;
+    this.toolTimeoutMs = deps.toolTimeoutMs;
+    this.fsFactory = deps.fsFactory;
   }
 
   setOnNotify(cb: (type: string, data: Record<string, unknown>) => void): void {

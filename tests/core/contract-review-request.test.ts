@@ -92,7 +92,14 @@ async function setupFixtures(): Promise<TestFixtures> {
     motionAudit,
     clawsBaseDir,
     clawFsFactory: (clawDir) => new NodeFileSystem({ baseDir: clawDir }),
-    clawContractManagerFactory: (clawDir, targetClaw, fs) => new ContractSystem(clawDir, targetClaw, fs, { write: vi.fn() } as any, undefined, createToolRegistry(), undefined, (dir: string) => new NodeFileSystem({ baseDir: dir })),
+    clawContractManagerFactory: (clawDir, targetClaw, fs) => new ContractSystem({
+      clawDir,
+      clawId: targetClaw,
+      fs,
+      audit: { write: vi.fn() } as any,
+      toolRegistry: createToolRegistry(),
+      fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir })
+    }),
   };
 
   return { motionDir, clawsBaseDir, targetClawDir, contractId, ctx, evolutionSystem, mockAudit };

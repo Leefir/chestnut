@@ -43,7 +43,14 @@ describe('submitSubtaskTool', () => {
     await fs.mkdir(clawDir, { recursive: true });
     nodeFs = new NodeFileSystem({ baseDir: clawDir });
     const mockAudit = { write: vi.fn() };
-    manager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit as any, undefined, createToolRegistry(), undefined, fsFactory);
+    manager = new ContractSystem({
+      clawDir,
+      clawId: 'test-claw',
+      fs: nodeFs,
+      audit: mockAudit as any,
+      toolRegistry: createToolRegistry(),
+      fsFactory
+    });
     submitSubtaskTool = createSubmitSubtaskTool(manager);
   });
 

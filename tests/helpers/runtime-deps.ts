@@ -48,9 +48,15 @@ export async function makeRuntimeDeps(input: MakeRuntimeDepsInput): Promise<Runt
   const skillRegistry = createSkillSystem(systemFs, 'skills');
   const verifierRegistry = new ToolRegistryImpl();
   const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });
-  const contractManager = new ContractSystem(
-    clawDir, clawId, systemFs, auditWriter, llm, verifierRegistry, undefined, fsFactory,
-  );
+  const contractManager = new ContractSystem({
+    clawDir,
+    clawId,
+    fs: systemFs,
+    audit: auditWriter,
+    llm,
+    toolRegistry: verifierRegistry,
+    fsFactory
+  });
   const taskSystem = new AsyncTaskSystem(clawDir, systemFs, {
     auditWriter, llm, contractManager, outboxWriter, registry: toolRegistry,
   });

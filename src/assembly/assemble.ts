@@ -258,12 +258,12 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     // --- L3-L5: contractManager ---
     let contractManager: ContractSystem;
     try {
-      contractManager = createContractSystem(
-        clawDir, clawId, systemFs, auditWriter, llm,
+      contractManager = createContractSystem({
+        clawDir, clawId, fs: systemFs, audit: auditWriter, llm,
         toolRegistry,   // phase 704: toolRegistry 注入 ContractSystem
         toolTimeoutMs,  // phase 1029 / F-2
         fsFactory,
-      );
+      });
     } catch (e) {
       auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=contract_manager`, `phase=construct`, `reason=${errMsg(e)}`);
       throw new Error(`Assembly: ContractSystem construct failed: ${errMsg(e)}`, { cause: e });
@@ -333,7 +333,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
         motionAudit: auditWriter,
         clawsBaseDir: path.resolve(clawDir, '..', CLAWS_DIR),
         clawFsFactory: fsFactory,
-        clawContractManagerFactory: (d: string, id: string, fs: FileSystem) => createContractSystem(d, id, fs, createSystemAudit(fs, d), undefined, toolRegistry, toolTimeoutMs, fsFactory),
+        clawContractManagerFactory: (d: string, id: string, fs: FileSystem) => createContractSystem({ clawDir: d, clawId: id, fs, audit: createSystemAudit(fs, d), toolRegistry, toolTimeoutMs, fsFactory }),
       };
       contractManager.onContractCompleted(async (contractId) => {
         if (!evolutionSystem) return; // P1.NPE guard (phase 620 / mirror phase 607 dream-trigger)
@@ -581,7 +581,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
             const cDir = path.join(clawforumDir, CLAWS_DIR, clawId);
             const cFs = fsFactory(cDir);
             const cAudit = createSystemAudit(cFs, cDir);
-            cs = createContractSystem(cDir, clawId, cFs, cAudit, llm, toolRegistry, toolTimeoutMs, fsFactory);
+            cs = createContractSystem({ clawDir: cDir, clawId, fs: cFs, audit: cAudit, llm, toolRegistry, toolTimeoutMs, fsFactory });
             contractSystemCache.set(clawId, cs);
           }
           return cs.getProgress(contractId);

@@ -37,9 +37,14 @@ describe('CONTRACT_AUDIT_EVENTS.COMPLETED single emit (phase 791 / P0.17)', () =
         auditCalls.push({ type, args });
       },
     };
-    manager = new ContractSystem(
-      clawDir, 'test-claw', nodeFs, captureAudit as any, undefined, createToolRegistry(), undefined, (dir: string) => new NodeFileSystem({ baseDir: dir })
-    );
+    manager = new ContractSystem({
+      clawDir,
+      clawId: 'test-claw',
+      fs: nodeFs,
+      audit: captureAudit as any,
+      toolRegistry: createToolRegistry(),
+      fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir })
+    });
   });
 
   afterEach(async () => {

@@ -32,9 +32,14 @@ describe('moveContractToArchive lock acquire (phase 860 / P0-B)', () => {
     const captureAudit = {
       write: () => {},
     };
-    manager = new ContractSystem(
-      clawDir, 'test-claw', nodeFs, captureAudit as any, undefined, createToolRegistry(), undefined, (dir: string) => new NodeFileSystem({ baseDir: dir })
-    );
+    manager = new ContractSystem({
+      clawDir,
+      clawId: 'test-claw',
+      fs: nodeFs,
+      audit: captureAudit as any,
+      toolRegistry: createToolRegistry(),
+      fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir })
+    });
   });
 
   afterEach(async () => {

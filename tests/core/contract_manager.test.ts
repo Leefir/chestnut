@@ -1,7 +1,7 @@
 /**
  * ContractSystem 测试 - 状态转换
  * 
- * 构造函数: new ContractSystem(clawDir, clawId, fs, audit, llm?, verifierScheduler?)
+ * 构造函数: new ContractSystem({ clawDir, clawId, fs, audit, llm?, toolRegistry, toolTimeoutMs?, fsFactory })
  * 
  * 新增测试：
  * - loadActive() 按 started_at 排序
@@ -60,7 +60,7 @@ describe('ContractSystem', () => {
 
     nodeFs = new NodeFileSystem({ baseDir: clawDir });
     const mockAudit = makeMockAudit();
-    manager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+    manager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
   });
 
   it('should create contract with running status and todo subtasks', async () => {
@@ -376,11 +376,14 @@ describe('ContractSystem', () => {
 
   it('should audit cleanup failure when unlinking stale lock fails (EACCES)', async () => {
     const mockAudit = makeMockAudit();
-    const testManager = new ContractSystem(
-      clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(),
-      undefined,
-      fsFactory,
-    );
+    const testManager = new ContractSystem({
+      clawDir,
+      clawId: 'test-claw',
+      fs: nodeFs,
+      audit: mockAudit,
+      toolRegistry: createToolRegistry(),
+      fsFactory
+    });
 
     const contractId = await testManager.create(makeContractYaml({
       title: 'Lock Cleanup AuditLog',
@@ -427,11 +430,14 @@ describe('ContractSystem', () => {
 
   it('should NOT audit when stale lock is already gone (ENOENT)', async () => {
     const mockAudit = makeMockAudit();
-    const testManager = new ContractSystem(
-      clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(),
-      undefined,
-      fsFactory,
-    );
+    const testManager = new ContractSystem({
+      clawDir,
+      clawId: 'test-claw',
+      fs: nodeFs,
+      audit: mockAudit,
+      toolRegistry: createToolRegistry(),
+      fsFactory
+    });
 
     const contractId = await testManager.create(makeContractYaml({
       title: 'Lock Cleanup ENOENT',
@@ -478,11 +484,14 @@ describe('ContractSystem', () => {
 
   it('should return allCompleted=true and archive contract when last subtask completes', async () => {
     const onNotifySpy = vi.fn();
-    const testManager = new ContractSystem(
-      clawDir, 'test-claw', nodeFs, makeMockAudit(), undefined, createToolRegistry(),
-      undefined,
-      fsFactory,
-    );
+    const testManager = new ContractSystem({
+      clawDir,
+      clawId: 'test-claw',
+      fs: nodeFs,
+      audit: makeMockAudit(),
+      toolRegistry: createToolRegistry(),
+      fsFactory
+    });
     testManager.setOnNotify(onNotifySpy);
 
     const contractId = await testManager.create(makeContractYaml({
@@ -540,7 +549,7 @@ describe('ContractSystem', () => {
   describe('monitor error reporting', () => {
     it('should log error to monitor when loadActive finds corrupted progress.json', async () => {
       const mockAudit = makeMockAudit();
-      const monitorManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const monitorManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
 
       // 写入损坏的 progress.json
       const contractId = 'corrupt-contract';
@@ -560,7 +569,7 @@ describe('ContractSystem', () => {
 
     it('should log error to monitor when loadPaused finds corrupted progress.json', async () => {
       const mockAudit = makeMockAudit();
-      const monitorManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const monitorManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
 
       const contractId = 'corrupt-paused-contract';
       const contractDir = path.join(clawDir, 'contract', 'paused', contractId);
@@ -579,7 +588,7 @@ describe('ContractSystem', () => {
 
     it('should log warn to monitor when unknown subtaskId is used in completeSubtask', async () => {
       const mockAudit = makeMockAudit();
-      const monitorManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const monitorManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
 
       const contractId = await monitorManager.create(makeContractYaml({
         title: 'Test',
@@ -614,7 +623,7 @@ describe('ContractSystem', () => {
       });
 
       const mockAudit = makeMockAudit();
-      const failManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const failManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
       await expect(failManager.create(makeContractYaml({
         title: 'Test',
         deliverables: [],
@@ -670,7 +679,14 @@ describe('ContractSystem', () => {
       await fs.writeFile(scriptPath, 'echo ok\n', { mode: 0o644 });
 
       const mockAudit = makeMockAudit();
-      const testManager = new ContractSystem(testClawDir, 'test-claw', new NodeFileSystem({ baseDir: testClawDir }), mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const testManager = new ContractSystem({
+        clawDir: testClawDir,
+        clawId: 'test-claw',
+        fs: new NodeFileSystem({ baseDir: testClawDir }),
+        audit: mockAudit,
+        toolRegistry: createToolRegistry(),
+        fsFactory
+      });
       // @ts-expect-error - runScriptVerification is private
       const result = await testManager.runScriptVerification('task-1.sh', path.join(testClawDir, 'verification'));
 
@@ -681,11 +697,14 @@ describe('ContractSystem', () => {
   describe('phase230 audit events', () => {
     it('writes CONTRACT_ARCHIVE_STARTED audit when auto-archiving existing contract', async () => {
       const mockAudit = makeMockAudit();
-      const testManager = new ContractSystem(
-        clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(),
-        undefined,
-        fsFactory,
-      );
+      const testManager = new ContractSystem({
+        clawDir,
+        clawId: 'test-claw',
+        fs: nodeFs,
+        audit: mockAudit,
+        toolRegistry: createToolRegistry(),
+        fsFactory
+      });
 
       const contract1 = await testManager.create(makeContractYaml({
         title: 'First',
@@ -718,11 +737,14 @@ describe('ContractSystem', () => {
       vi.spyOn(nodeFs, 'removeDir').mockRejectedValue(new Error('rm failed'));
 
       const mockAudit = makeMockAudit();
-      const failManager = new ContractSystem(
-        clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(),
-        undefined,
-        fsFactory,
-      );
+      const failManager = new ContractSystem({
+        clawDir,
+        clawId: 'test-claw',
+        fs: nodeFs,
+        audit: mockAudit,
+        toolRegistry: createToolRegistry(),
+        fsFactory
+      });
 
       await expect(failManager.create(makeContractYaml({
         title: 'Test',
@@ -740,11 +762,14 @@ describe('ContractSystem', () => {
 
     it('writes CONTRACT_NOTIFY_FAILED audit when onNotify throws during create', async () => {
       const mockAudit = makeMockAudit();
-      const testManager = new ContractSystem(
-        clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(),
-        undefined,
-        fsFactory,
-      );
+      const testManager = new ContractSystem({
+        clawDir,
+        clawId: 'test-claw',
+        fs: nodeFs,
+        audit: mockAudit,
+        toolRegistry: createToolRegistry(),
+        fsFactory
+      });
 
       testManager.setOnNotify(() => {
         throw new Error('notify crash');
@@ -767,11 +792,14 @@ describe('ContractSystem', () => {
     it('writes CONTRACT_MOVE_ARCHIVE_FAILED audit when moveToArchive fails on completion', async () => {
       const mockAudit = makeMockAudit();
       const onNotifySpy = vi.fn();
-      const testManager = new ContractSystem(
-        clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(),
-        undefined,
-        fsFactory,
-      );
+      const testManager = new ContractSystem({
+        clawDir,
+        clawId: 'test-claw',
+        fs: nodeFs,
+        audit: mockAudit,
+        toolRegistry: createToolRegistry(),
+        fsFactory
+      });
       testManager.setOnNotify(onNotifySpy);
 
       const contractId = await testManager.create(makeContractYaml({
@@ -804,7 +832,7 @@ describe('ContractSystem', () => {
   describe('moveToArchive and audit consistency', () => {
     it('should NOT write audit when moveToArchive fails', async () => {
       const mockAudit = makeMockAudit();
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const testManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
 
       // Create contract with no-op verification (no script_file/prompt_file = no verification)
       const contractId = await testManager.create(makeContractYaml({
@@ -839,7 +867,7 @@ describe('ContractSystem', () => {
 
     it('should write audit when moveToArchive succeeds', async () => {
       const mockAudit = makeMockAudit();
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const testManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
 
       const contractId = await testManager.create(makeContractYaml({
         title: 'Test',
@@ -863,7 +891,7 @@ describe('ContractSystem', () => {
   describe('LLM verification', () => {
     it('should reset subtask to todo when verifier throws exception', async () => {
       const mockAudit = makeMockAudit();
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const testManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
 
       // Create contract with LLM verification
       const contractId = await testManager.create(makeContractYaml({
@@ -923,7 +951,7 @@ describe('ContractSystem', () => {
   describe('escalation writes escalated_at', () => {
     it('should set escalated_at after reaching max retries', async () => {
       const mockAudit = makeMockAudit();
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const testManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
 
       const contractId = await testManager.create(makeContractYaml({
         title: 'Escalation Test',
@@ -975,7 +1003,7 @@ describe('ContractSystem', () => {
 
     it('should not set escalated_at before reaching max retries', async () => {
       const mockAudit = makeMockAudit();
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const testManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
 
       const contractId = await testManager.create(makeContractYaml({
         title: 'No Escalation Test',
@@ -1093,7 +1121,7 @@ describe('ContractSystem', () => {
   describe('phase239 audit lifecycle events', () => {
     it('writes CONTRACT_CREATED audit on contract creation', async () => {
       const mockAudit = makeMockAudit();
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const testManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
 
       const contractId = await testManager.create(makeContractYaml({
         title: 'AuditLog Lifecycle Test',
@@ -1113,7 +1141,7 @@ describe('ContractSystem', () => {
 
     it('writes CONTRACT_VERIFICATION_STARTED audit when async verification begins', async () => {
       const mockAudit = makeMockAudit();
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const testManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
 
       // Create contract with script verification (triggers async background verification)
       const contractId = await testManager.create(makeContractYaml({
@@ -1143,7 +1171,7 @@ describe('ContractSystem', () => {
 
     it('writes CONTRACT_UPDATED audit on subtask completion', async () => {
       const mockAudit = makeMockAudit();
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const testManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
 
       const contractId = await testManager.create(makeContractYaml({
         title: 'Contract Updated Test',
@@ -1167,7 +1195,7 @@ describe('ContractSystem', () => {
   describe('fire-and-forget 失败状态机（phase 468 / feedback driven）', () => {
     it('LLM judged failed → cause=llm_rejected + reset todo + retry_count++', async () => {
       const mockAudit = makeMockAudit();
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const testManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
 
       const contractId = await testManager.create(makeContractYaml({
         title: 'Test',
@@ -1207,7 +1235,7 @@ describe('ContractSystem', () => {
 
     it('programming bug throw → cause=programming_bug + reset todo', async () => {
       const mockAudit = makeMockAudit();
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const testManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
 
       const contractId = await testManager.create(makeContractYaml({
         title: 'Test',
@@ -1249,7 +1277,7 @@ describe('ContractSystem', () => {
     it('subagent timeout → cause=subagent_timeout + reset todo', async () => {
       const { ToolTimeoutError } = await import('../../src/foundation/errors.js');
       const mockAudit = makeMockAudit();
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const testManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
 
       const contractId = await testManager.create(makeContractYaml({
         title: 'Test',
@@ -1284,7 +1312,7 @@ describe('ContractSystem', () => {
 
     it('onNotify verification_failed payload schema = AcceptanceFailedNotification', async () => {
       const mockAudit = makeMockAudit();
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const testManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
       const onNotifySpy = vi.fn();
       testManager.setOnNotify(onNotifySpy);
 
@@ -1331,7 +1359,7 @@ describe('ContractSystem', () => {
 
     it('max_retries 后 subtask 仍 todo（不进 failed）', async () => {
       const mockAudit = makeMockAudit();
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const testManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
 
       const contractId = await testManager.create(makeContractYaml({
         title: 'Test',
@@ -1390,7 +1418,7 @@ describe('ContractSystem', () => {
     it('retry_count 跨多次失败递增', async () => {
       const { ToolTimeoutError } = await import('../../src/foundation/errors.js');
       const mockAudit = makeMockAudit();
-      const testManager = new ContractSystem(clawDir, 'test-claw', nodeFs, mockAudit, undefined, createToolRegistry(), undefined, fsFactory);
+      const testManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory });
 
       const contractId = await testManager.create(makeContractYaml({
         title: 'Test',

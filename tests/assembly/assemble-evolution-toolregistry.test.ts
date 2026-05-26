@@ -258,15 +258,15 @@ describe('assemble evolution clawContractManagerFactory toolRegistry (phase 951)
     // 2. factory call inside runRetroForContract
     expect(createContractSystemCalls.length).toBeGreaterThanOrEqual(2);
 
-    // Find the main call (args[0] === clawDir)
-    const mainCall = createContractSystemCalls.find((args) => args[0] === baseConfig.clawDir);
+    // Find the main call (deps.clawDir === clawDir)
+    const mainCall = createContractSystemCalls.find((args) => args[0].clawDir === baseConfig.clawDir);
     expect(mainCall).toBeDefined();
-    const mainRegistry = mainCall![5];
+    const mainRegistry = mainCall![0].toolRegistry;
 
-    // Find the factory call (args[0] !== clawDir)
-    const factoryCall = createContractSystemCalls.find((args) => args[0] !== baseConfig.clawDir && args[5] !== undefined);
+    // Find the factory call (deps.clawDir !== clawDir)
+    const factoryCall = createContractSystemCalls.find((args) => args[0].clawDir !== baseConfig.clawDir && args[0].toolRegistry !== undefined);
     expect(factoryCall).toBeDefined();
-    const factoryRegistry = factoryCall![5];
+    const factoryRegistry = factoryCall![0].toolRegistry;
 
     // The factory must pass the SAME main registry instance (not a new empty one)
     expect(factoryRegistry).toBe(mainRegistry);
