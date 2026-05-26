@@ -14,10 +14,9 @@ export const CONTRACT_OBSERVER_CRON_TIMEOUT_MS = 5 * 60_000;
 
 export interface ContractObserverOptions {
   clawforumDir: string;       // .clawforum/ 目录
-  motionInboxDir: string;     // motion inbox/pending/ 路径
   fs: FileSystem;             // baseDir = clawforumDir (装配方预 build)
   motionAudit: AuditLog;      // motion system audit (装配方预 build)
-  notifyInbox: (payload: InboxMessageOptionsBase & { inboxDir: string }, audit: AuditLog) => void; // 装配方 closure 包装
+  notifyClaw: (fs: FileSystem, clawforumRoot: string, targetClawId: string, payload: InboxMessageOptionsBase, audit: AuditLog) => void; // 装配方 closure 包装
   signal?: AbortSignal;
 }
 
@@ -25,7 +24,7 @@ export interface ContractObserverOptions {
 const STATE_FILE = 'status/contract-observer-state.json';
 
 export async function runContractObserver(options: ContractObserverOptions): Promise<void> {
-  const { clawforumDir, motionInboxDir, fs, motionAudit, notifyInbox } = options;
+  const { clawforumDir, fs, motionAudit, notifyClaw: notifyClawFn } = options;
 
   // 读上次观察时间戳
   const stateFile = path.join(clawforumDir, 'motion', STATE_FILE);
@@ -93,8 +92,7 @@ export async function runContractObserver(options: ContractObserverOptions): Pro
 
   // 有事件时写 motion inbox
   if (events.length > 0) {
-    notifyInbox({
-      inboxDir: motionInboxDir,
+    notifyClawFn(fs, clawforumDir, 'motion', {
       type: 'contract_events',
       source: 'system',
       priority: 'high',

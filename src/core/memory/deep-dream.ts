@@ -1,3 +1,4 @@
+import * as path from 'path';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { MEMORY_AUDIT_EVENTS } from './audit-events.js';
 import type { AuditLog } from '../../foundation/audit/index.js';

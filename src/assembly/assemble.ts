@@ -42,7 +42,7 @@ import { DEFAULT_DISK_WARNING_MB } from '../watchdog/constants.js';
 import { spawnTool } from '../core/spawn-system/index.js';
 import { createShadowTool } from '../core/shadow-system/index.js';
 import { cleanupOrphanedTemp } from './cleanup.js';
-import { createInboxReader, createOutboxWriter, notifyInbox, InboxWriter } from '../foundation/messaging/index.js';
+import { createInboxReader, createOutboxWriter, notifyInbox, notifyClaw, InboxWriter } from '../foundation/messaging/index.js';
 import { createSubmitSubtaskTool } from '../core/contract/index.js';
 import { createDoneTool } from '../core/subagent/index.js';
 import { createStatusTool } from '../core/status-service/index.js';
@@ -672,10 +672,9 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
             schedule: parseSchedule(globalConfig.cron?.jobs?.contract_observer?.schedule ?? 'interval:1m', auditWriter),
             handler: (signal) => runContractObserver({
               clawforumDir,
-              motionInboxDir,
               fs: clawforumFs,
               motionAudit: auditWriter,  // phase 724 α：主 auditWriter 单 instance 复用
-              notifyInbox: (payload, audit) => notifyInbox(clawforumFs, payload, audit),
+              notifyClaw: (fs, clawforumRoot, targetClawId, payload, audit) => notifyClaw(fs, clawforumRoot, targetClawId, payload, audit),
               signal,
             }),
             timeoutMs: CONTRACT_OBSERVER_CRON_TIMEOUT_MS,
