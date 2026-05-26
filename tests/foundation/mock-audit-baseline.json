@@ -964,6 +964,11 @@
       "file": "watchdog/watchdog-state-schema-version.test.ts",
       "line": 112,
       "excerpt": "    const mockAudit = { write: vi.fn() } as unknown as AuditLog;"
+    },
+    {
+      "file": "core/task-system-tool-executor-routing.test.ts",
+      "line": 25,
+      "excerpt": "  write: vi.fn().mockResolvedValue(undefined),"
     }
   ],
   "allowed_patterns": []
