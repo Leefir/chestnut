@@ -189,6 +189,14 @@ export class ToolExecutorImpl implements IToolExecutor {
   }
 
   /**
+   * Get tool schema by name
+   */
+  getToolSchema(name: string): import('../llm-provider/types.js').JSONSchema7 | undefined {
+    const tool = this.registry.get(name);
+    return tool?.schema;
+  }
+
+  /**
    * Execute multiple read-only tools in parallel
    */
   async executeParallel(

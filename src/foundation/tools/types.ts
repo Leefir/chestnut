@@ -4,6 +4,7 @@
  */
 
 import type { JSONSchema7 } from '../llm-provider/types.js';
+export type { JSONSchema7 };
 import type { ToolProfile } from '../tool-protocol/index.js';
 import type { FileSystem } from '../fs/types.js';
 import type { LLMOrchestrator } from '../llm-orchestrator/index.js';
@@ -138,6 +139,7 @@ export interface IToolExecutor {
     ctx: ExecContext
   ): Promise<(ToolResult | null)[]>;
   validateArgs(toolName: string, args: Record<string, unknown>): { valid: boolean; errors?: string[] };
+  getToolSchema?(name: string): JSONSchema7 | undefined;
 }
 
 /**
