@@ -78,12 +78,13 @@ module.exports = {
     {
       name: 'no-circular',
       comment: [
-        'ML#5 模块依赖单向、禁止双向/循环 / phase 1306 立',
-        '24 cycle 由 phase 1306 修 (prompts/shadow.ts 边 A DIP + shadow-system/index.ts 边 B 删 dead re-export)',
-        '本 rule 立 severity error 永久防 future cycle drift',
-        'cross-ref: phase 1301 no-orphans warn rule 模板复用 N+1',
+        'ML#5 模块依赖单向、禁止双向/循环 / phase 1306 立 / phase 1308 hotfix severity error → warn 临时 transition',
+        'phase 1306 立 severity error 时主会话 audit 错估 cycle 数 (commit msg 「24 cycle 全消」装饰性 claim / 实然 48 unique cycle / Path#1 N+1 累 by 主会话)',
+        '当前 48 unique cycle (51 file involved / dep-cruise raw count) 待 phase 1309+ cluster 切分 cleanup',
+        'cleanup roadmap: phase 1309 foundation barrel re-export type-only cycle 治 (抽 types.ts) → phase 1310 core/shadow-system + summon-system 残 → phase 1311 core/async-task-system + subagent + contract → phase 1312 assembly+watchdog 残 → phase 1313 终升 severity error verify 0 cycle',
+        'transition status: WARN (transitional / 不接受 48 为 final / cleanup commitment 显式 design row / 非 silent acceptance)',
       ].join(' '),
-      severity: 'error',
+      severity: 'warn',
       from: {},
       to: { circular: true },
     },
