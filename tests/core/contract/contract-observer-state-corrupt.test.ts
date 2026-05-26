@@ -40,10 +40,9 @@ describe('contract observer state file shape_mismatch emits OBSERVER_STATE_PARSE
 
     await runContractObserver({
       clawforumDir: '/tmp/test',
-      motionInboxDir: '/tmp/test/motion/inbox/pending',
       fs,
       motionAudit: audit,
-      notifyInbox: vi.fn(),
+      notifyClaw: vi.fn(),
     });
 
     const parseFailedEvents = events.filter(
@@ -65,10 +64,9 @@ describe('contract observer state file shape_mismatch emits OBSERVER_STATE_PARSE
 
     await runContractObserver({
       clawforumDir: '/tmp/test',
-      motionInboxDir: '/tmp/test/motion/inbox/pending',
       fs,
       motionAudit: audit,
-      notifyInbox: vi.fn(),
+      notifyClaw: vi.fn(),
     });
 
     const parseFailedEvents = events.filter(
@@ -89,10 +87,9 @@ describe('contract observer state file shape_mismatch emits OBSERVER_STATE_PARSE
 
     await runContractObserver({
       clawforumDir: '/tmp/test',
-      motionInboxDir: '/tmp/test/motion/inbox/pending',
       fs,
       motionAudit: audit,
-      notifyInbox: vi.fn(),
+      notifyClaw: vi.fn(),
     });
 
     const parseFailedEvents = events.filter(

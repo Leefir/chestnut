@@ -157,10 +157,9 @@ describe('phase 1010 — silent X TODO cluster narrow', () => {
     const notifyInbox = vi.fn();
     await runContractObserver({
       clawforumDir: '/tmp/test',
-      motionInboxDir: '/tmp/test/motion/inbox/pending',
       fs,
       motionAudit: audit,
-      notifyInbox,
+      notifyClaw: notifyInbox,
     });
     expect(events).toHaveLength(0);
     // 无事件、不 notify
@@ -183,10 +182,9 @@ describe('phase 1010 — silent X TODO cluster narrow', () => {
     const notifyInbox = vi.fn();
     await runContractObserver({
       clawforumDir: '/tmp/test',
-      motionInboxDir: '/tmp/test/motion/inbox/pending',
       fs,
       motionAudit: audit,
-      notifyInbox,
+      notifyClaw: notifyInbox,
     });
     expect(events).toHaveLength(1);
     expect(events[0][0]).toBe(CONTRACT_AUDIT_EVENTS.OBSERVER_STATE_LOAD_FAILED);

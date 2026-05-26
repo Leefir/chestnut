@@ -4,14 +4,61 @@
  * Standardizes error handling and formatting for inbox notifications.
  */
 
+import * as path from 'path';
 import { InboxWriter } from './inbox-writer.js';
 import type { InboxMessageOptionsBase } from './inbox-writer.js';
+import type { InboxMessage } from './types.js';
 import type { FileSystem } from '../fs/types.js';
 import type { AuditLog } from '../audit/index.js';
+import { MOTION_CLAW_ID } from '../../constants.js';
+
+/**
+ * NEW: phase 1334 r138 E fork — abstract destination-level inbox notification.
+ * Caller expresses targetClawId business semantics; Messaging internally resolves
+ * inbox path + codec.
+ */
+export function notifyClaw(
+  fs: FileSystem,
+  clawforumRoot: string,
+  targetClawId: string,
+  message: InboxMessageOptionsBase,
+  audit: AuditLog,
+): void {
+  const targetInboxDir = targetClawId === MOTION_CLAW_ID
+    ? path.join(clawforumRoot, MOTION_CLAW_ID, 'inbox', 'pending')
+    : path.join(clawforumRoot, 'claws', targetClawId, 'inbox', 'pending');
+
+  try {
+    new InboxWriter(fs, targetInboxDir, audit).writeSync(message);
+  } catch {
+    // InboxWriter.writeSync already audits INBOX_WRITE_FAILED.
+    // This catch is a best-effort barrier against TUI raw-mode render pollution.
+    // Do not rethrow — notify is a side-channel, failure must not affect main flow.
+  }
+}
+
+/**
+ * Async inbox write with error propagation.
+ * Used by result-delivery where fallback-path retry requires throw semantics.
+ * Kept in Messaging module so InboxWriter direct construct stays within module boundary.
+ */
+export async function writeInboxAsync(
+  fs: FileSystem,
+  inboxDir: string,
+  message: InboxMessage,
+  audit: AuditLog,
+): Promise<void> {
+  await new InboxWriter(fs, inboxDir, audit).write(message);
+}
 
 /**
  * Send an inbox notification with standardized error handling.
  * Logs warning on failure but does not throw.
+ *
+ * @deprecated since phase 1334 — use notifyClaw(fs, clawforumRoot, targetClawId, ...) instead.
+ * Caller expressing fs path inboxDir is the wrong abstraction level;
+ * cross-claw delivery destination = Messaging business semantics;
+ * caller should express targetClawId.
  */
 export function notifyInbox(
   fs: FileSystem,
@@ -31,6 +78,8 @@ export function notifyInbox(
 /**
  * Send a system message to inbox with high priority.
  * Convenience wrapper for common system notification pattern.
+ *
+ * @deprecated since phase 1334 — use notifyClaw(fs, clawforumRoot, MOTION_CLAW_ID, ...) instead.
  */
 export function notifySystem(
   fs: FileSystem,
@@ -52,5 +101,3 @@ export function notifySystem(
     idPrefix: options?.idPrefix,
   }, audit);
 }
-
-

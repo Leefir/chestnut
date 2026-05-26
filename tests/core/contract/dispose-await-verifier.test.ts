@@ -10,6 +10,7 @@ import * as path from 'path';
 import { ContractSystem } from '../../../src/core/contract/manager.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
 import { createToolRegistry } from '../../../src/foundation/tools/index.js';
+import { makeMockAudit } from '../../helpers/audit.js';
 
 const { mockRunContractVerifier } = vi.hoisted(() => ({
   mockRunContractVerifier: vi.fn(),
@@ -39,7 +40,7 @@ describe('ContractSystem.close() async await verifier termination', () => {
     await fs.mkdir(clawDir, { recursive: true });
 
     nodeFs = new NodeFileSystem({ baseDir: clawDir });
-    const mockAudit = { write: vi.fn() };
+    const mockAudit = makeMockAudit();
     const mockLlm = { id: 'mock-llm' } as any;
     manager = new ContractSystem({
       clawDir,
@@ -116,7 +117,7 @@ describe('ContractSystem.close() async await verifier termination', () => {
       clawDir,
       clawId: 'test-claw-2',
       fs: nodeFs,
-      audit: { write: vi.fn() } as any,
+      audit: makeMockAudit() as any,
       toolRegistry: createToolRegistry(),
       fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir }),
     });

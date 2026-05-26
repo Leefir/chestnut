@@ -5,14 +5,13 @@
 
 import * as path from 'path';
 import type { VerificationContext } from './verification-types.js';
-import { InboxWriter } from '../../foundation/messaging/index.js';
+import { notifyClaw } from '../../foundation/messaging/index.js';
 
 import { formatErr } from '../../foundation/utils/format.js';
 import { ToolTimeoutError } from '../../foundation/errors.js';
 import type { LastFailedFeedback, AcceptanceFailedNotification } from './types.js';
 import {
   emitContractNotifyFailed,
-  emitContractVerificationInboxFailed,
   emitContractEscalated,
   emitContractVerificationResetFailed,
 } from './audit-emit.js';
@@ -59,19 +58,15 @@ export function writeVerificationInbox(
     body = feedback || 'No feedback provided';
   }
 
-  const audit = ctx.audit;
-  new InboxWriter(
-    ctx.fs,
-    path.join(ctx.clawDir, 'inbox', 'pending'),
-    audit,
-  ).writeSync({
+  const clawforumRoot = path.dirname(path.dirname(ctx.clawDir));
+  notifyClaw(ctx.fs, clawforumRoot, ctx.clawId, {
     type: verdict === 'passed' ? 'verification_result' : 'verification_rejection',
     source: 'contract_system',
     to: ctx.clawId,
     priority: verdict === 'rejected' ? 'high' : 'normal',
     body,
     extraFields,
-  });
+  }, ctx.audit);
 }
 
 export async function writeVerificationError(
@@ -88,30 +83,19 @@ export async function writeVerificationError(
       ? `Acceptance verifier timed out after ${(error as ToolTimeoutError).context?.timeoutMs ?? '?'}ms. 资源 / 网络问题 / 重试可能修复。Error: ${errorMsg}`
       : `Acceptance verification crashed (system bug). Error: ${errorMsg}. 修代码后再 retry。`;
 
-  try {
-    const audit = ctx.audit;
-    new InboxWriter(
-      ctx.fs,
-      path.join(ctx.clawDir, 'inbox', 'pending'),
-      audit,
-    ).writeSync({
-      type: 'verification_error',
-      source: 'contract_system',
-      to: ctx.clawId,
-      priority: 'high',
-      body: `Acceptance verification failed with error: ${errorMsg}`,
-      idPrefix: 'verification_error',
-      extraFields: {
-        contract_id: contractId,
-        subtask_id: subtaskId,
-      },
-    });
-  } catch (e) {
-    emitContractVerificationInboxFailed(
-      ctx.audit,
-      { context: 'ContractSystem._writeVerificationError', error: formatErr(e) },
-    );
-  }
+  const clawforumRoot = path.dirname(path.dirname(ctx.clawDir));
+  notifyClaw(ctx.fs, clawforumRoot, ctx.clawId, {
+    type: 'verification_error',
+    source: 'contract_system',
+    to: ctx.clawId,
+    priority: 'high',
+    body: `Acceptance verification failed with error: ${errorMsg}`,
+    idPrefix: 'verification_error',
+    extraFields: {
+      contract_id: contractId,
+      subtask_id: subtaskId,
+    },
+  }, ctx.audit);
 
   try {
     await ctx.withProgressLock(contractId, async () => {

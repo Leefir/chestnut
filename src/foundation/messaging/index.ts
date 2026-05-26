@@ -51,7 +51,7 @@ export function createOutboxWriter(
 
 export { emitOutboxSent, emitOutboxSendFailed } from './audit-emit.js';
 
-export { notifyInbox, notifySystem } from './notify.js';
+export { notifyInbox, notifySystem, notifyClaw, writeInboxAsync } from './notify.js';
 
 import * as path from 'path';
 import { MESSAGING_AUDIT_EVENTS } from './audit-events.js';

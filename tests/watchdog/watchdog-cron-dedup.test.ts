@@ -12,7 +12,7 @@ import { clawPreviouslyAlive, everSpawned, clawPreviouslyNotified } from '../../
 import { WATCHDOG_AUDIT_EVENTS } from '../../src/watchdog/audit-events.js';
 import { getNamedSubrootDir, loadGlobalConfig } from '../../src/foundation/config/index.js';
 import { clawHasContract, gatherClawSnapshot } from '../../src/watchdog/watchdog-utils.js';
-import { InboxWriter } from '../../src/foundation/messaging/index.js';
+import { notifyClaw } from '../../src/foundation/messaging/index.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import type { ProcessManager } from '../../src/foundation/process-manager/index.js';
 const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });
@@ -39,9 +39,7 @@ vi.mock('../../src/foundation/messaging/index.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/foundation/messaging/index.js')>();
   return {
     ...actual,
-    InboxWriter: vi.fn().mockImplementation(() => ({
-      writeSync: vi.fn(),
-    })),
+    notifyClaw: vi.fn(),
   };
 });
 
@@ -69,7 +67,7 @@ describe('watchdog crash_notification dedup (phase 1207 gap A)', () => {
     mockPm = { isAlive: vi.fn() } as unknown as ProcessManager;
     mockAudit = { write: vi.fn() };
     inboxWriteMock = vi.fn();
-    vi.mocked(InboxWriter).mockImplementation(() => ({ writeSync: inboxWriteMock } as any));
+    vi.mocked(notifyClaw).mockImplementation(inboxWriteMock);
 
     // Reset state
     clawPreviouslyAlive.clear();
@@ -95,7 +93,11 @@ describe('watchdog crash_notification dedup (phase 1207 gap A)', () => {
 
     expect(inboxWriteMock).toHaveBeenCalledTimes(1);
     expect(inboxWriteMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'motion',
       expect.objectContaining({ type: 'crash_notification', source: clawId }),
+      expect.anything(),
     );
     expect(clawPreviouslyNotified.has(clawId)).toBe(true);
     expect(mockAudit.write).toHaveBeenCalledWith(
@@ -159,7 +161,11 @@ describe('watchdog crash_notification dedup (phase 1207 gap A)', () => {
 
     expect(inboxWriteMock).toHaveBeenCalledTimes(1);
     expect(inboxWriteMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'motion',
       expect.objectContaining({ type: 'crash_notification', source: clawId }),
+      expect.anything(),
     );
   });
 

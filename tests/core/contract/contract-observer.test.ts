@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { makeMockAudit } from '../../helpers/audit.js';
 import { runContractObserver } from '../../../src/core/contract/jobs/contract-observer.js';
 import type { FileSystem } from '../../../src/foundation/fs/types.js';
 import type { AuditLog } from '../../../src/foundation/audit/index.js';
@@ -57,46 +58,51 @@ function makeFsMock(scenario: 'empty' | 'completed' | 'escalated'): FileSystem {
 }
 
 function makeAuditMock(): AuditLog {
-  return { write: vi.fn() };
+  return makeMockAudit();
 }
 
 function makeOpts(overrides: Partial<{
   fs: FileSystem;
   motionAudit: AuditLog;
-  notifyInbox: ReturnType<typeof vi.fn>;
+  notifyClaw: ReturnType<typeof vi.fn>;
 }> = {}) {
   return {
     clawforumDir: '/tmp/test',
-    motionInboxDir: '/tmp/test/motion/inbox/pending',
     fs: makeFsMock('empty'),
     motionAudit: makeAuditMock(),
-    notifyInbox: vi.fn(),
+    notifyClaw: vi.fn(),
     ...overrides,
   };
 }
 
 describe('Phase 542 — contract-observer deps 装配方注入', () => {
-  it('completed contract events → notifyInbox called', async () => {
+  it('completed contract events → notifyClaw called', async () => {
     const opts = makeOpts({ fs: makeFsMock('completed') });
     await runContractObserver(opts);
-    expect(opts.notifyInbox).toHaveBeenCalledWith(
+    expect(opts.notifyClaw).toHaveBeenCalledWith(
+      opts.fs,
+      opts.clawforumDir,
+      'motion',
       expect.objectContaining({ type: 'contract_events' }),
-      opts.motionAudit
+      opts.motionAudit,
     );
   });
 
-  it('escalated contract events → notifyInbox called', async () => {
+  it('escalated contract events → notifyClaw called', async () => {
     const opts = makeOpts({ fs: makeFsMock('escalated') });
     await runContractObserver(opts);
-    expect(opts.notifyInbox).toHaveBeenCalledWith(
+    expect(opts.notifyClaw).toHaveBeenCalledWith(
+      opts.fs,
+      opts.clawforumDir,
+      'motion',
       expect.objectContaining({ type: 'contract_events' }),
-      opts.motionAudit
+      opts.motionAudit,
     );
   });
 
-  it('no events → notifyInbox NOT called', async () => {
+  it('no events → notifyClaw NOT called', async () => {
     const opts = makeOpts({ fs: makeFsMock('empty') });
     await runContractObserver(opts);
-    expect(opts.notifyInbox).not.toHaveBeenCalled();
+    expect(opts.notifyClaw).not.toHaveBeenCalled();
   });
 });
