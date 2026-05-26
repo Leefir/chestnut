@@ -92,7 +92,7 @@ describe('runtime.stop shutdown timeout (phase 1332 N4)', () => {
 
   it('shutdown timeout hit — abort path + TASK_SHUTDOWN_TIMEOUT_HIT audit', async () => {
     const abortImpl = vi.fn();
-    const shutdownImpl = vi.fn().mockRejectedValue(new Error('Shutdown timeout'));
+    const shutdownImpl = vi.fn().mockResolvedValue(true);
 
     const { runtime, auditEvents } = makeRuntime({ shutdownImpl, abortImpl });
 
@@ -108,7 +108,7 @@ describe('runtime.stop shutdown timeout (phase 1332 N4)', () => {
   });
 
   it('llm.close is called after shutdown even when timeout occurs', async () => {
-    const shutdownImpl = vi.fn().mockRejectedValue(new Error('Shutdown timeout'));
+    const shutdownImpl = vi.fn().mockResolvedValue(true);
     const { runtime } = makeRuntime({ shutdownImpl });
 
     await runtime.stop();

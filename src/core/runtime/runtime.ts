@@ -293,16 +293,14 @@ export class Runtime {
    */
   async stop(): Promise<void> {
     this.abort();
-    try {
-      await this.taskSystem.shutdown(120_000);
-    } catch (err) {
+    const timedOut = await this.taskSystem.shutdown(120_000);
+    if (timedOut) {
       // phase 1332 N4: timeout edge case abort path — ensure tasks are killed before llm.close
       // 防 phase 1286 100M tokens cascade 后 task 长跑 1-2min / 子代理资源继承
       this.taskSystem.abort();
       this.auditWriter.write(
         TASK_AUDIT_EVENTS.TASK_SHUTDOWN_TIMEOUT_HIT,
         `timeout_ms=120000`,
-        `reason=${err instanceof Error ? err.message : String(err)}`,
       );
     }
     // phase 1024 G.3: await pending dialogStore.save() flush before close

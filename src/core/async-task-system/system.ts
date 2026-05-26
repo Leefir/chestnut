@@ -705,7 +705,7 @@ export class AsyncTaskSystem {
     }
   }
 
-  async shutdown(timeoutMs: number = 30000): Promise<void> {
+  async shutdown(timeoutMs: number = 30000): Promise<boolean> {
     this._shuttingDown = true;
     // 顺序：先关 watcher（避免 shutdown 期间新事件进队）→ 旧 shutdown 流程
     await this.pendingWatcher?.close();
@@ -748,8 +748,6 @@ export class AsyncTaskSystem {
     this.runningTasks.clear();
     this.pendingQueue = [];
 
-    if (timedOut) {
-      throw new Error('Shutdown timeout');
-    }
+    return timedOut;
   }
 }

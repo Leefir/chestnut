@@ -13,7 +13,6 @@ import type { ToolDescriptor, ToolResult } from '../tool-protocol/index.js';
 import type { ScheduleAsyncTool } from './async-dispatch.js';
 import type { CallerType } from '../../core/caller-types.js';
 import type { PermissionChecker } from '../tool-protocol/permission.js';
-import type { AsyncTaskSystem } from '../../core/async-task-system/system.js';
 
 /**
  * Escape multi-line content for audit TSV log (used by ToolExecutorImpl).
@@ -81,8 +80,16 @@ export interface ExecContext {
   requestStop(): void;
   /** Assembly-injected per-claw permission checker (replaces module-level factory pattern, phase 1006) */
   permissionChecker?: PermissionChecker;
-  /** phase 1332: injected AsyncTaskSystem for subagent scheduling (N2 cross-L4 leak fix) */
-  taskSystem?: AsyncTaskSystem;
+  /** phase 1332: injected task scheduler for subagent scheduling (N2 cross-L4 leak fix) */
+  taskSystem?: TaskScheduler;
+}
+
+/**
+ * Minimal task scheduler interface injected into ExecContext.
+ * Mirrors AsyncTaskSystem.schedule() without introducing L2→L4 dependency.
+ */
+export interface TaskScheduler {
+  schedule(kind: 'subagent', payload: Record<string, unknown>): Promise<string>;
 }
 
 /**

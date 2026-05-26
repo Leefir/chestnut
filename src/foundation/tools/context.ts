@@ -21,7 +21,6 @@ import type { AuditLog } from '../audit/index.js';
 import type { CallerType } from '../../core/caller-types.js';
 import type { ToolRegistry } from './types.js';
 import type { PermissionChecker } from '../tool-protocol/permission.js';
-import type { AsyncTaskSystem } from '../../core/async-task-system/system.js';
 
 /**
  * Options for creating execution context
@@ -81,8 +80,8 @@ export interface ExecContextImplOptions {
   permissionChecker?: PermissionChecker;
   /** Tool-level wall-clock timeout, inherited from globalConfig.tool_timeout_ms / Assembly 装配期注入 (phase 1029 / F-2) */
   toolTimeoutMs?: number;
-  /** phase 1332: injected AsyncTaskSystem for subagent scheduling (N2 cross-L4 leak fix) */
-  taskSystem?: AsyncTaskSystem;
+  /** phase 1332: injected task scheduler for subagent scheduling (N2 cross-L4 leak fix) */
+  taskSystem?: import('./types.js').TaskScheduler;
 }
 
 /**
@@ -148,7 +147,7 @@ export class ExecContextImpl implements ExecContext {
   isShadow?: boolean;
   permissionChecker?: PermissionChecker;
   toolTimeoutMs?: number;
-  taskSystem?: AsyncTaskSystem;
+  taskSystem?: import('./types.js').TaskScheduler;
   stopRequested: boolean = false;
   
   private startTime: number;
