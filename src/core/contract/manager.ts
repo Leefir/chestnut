@@ -168,24 +168,18 @@ export class ContractSystem {
     clawId: string,
     fs: FileSystem,
     audit: AuditLog,
-    llm?: LLMOrchestrator,
-    toolRegistry?: ToolRegistry,
-    toolTimeoutMs?: number,
-    fsFactory?: (baseDir: string) => FileSystem,
+    llm: LLMOrchestrator | undefined,
+    toolRegistry: ToolRegistry,
+    toolTimeoutMs: number | undefined,
+    fsFactory: (baseDir: string) => FileSystem,
   ) {
     this.clawDir = clawDir;
     this.clawId = clawId;
     this.fs = fs;
     this.audit = audit;
     this.llm = llm;
-    if (!toolRegistry) {
-      throw new Error('ContractSystem: toolRegistry required (phase 704 / verifier subagent toolset injection)');
-    }
     this.toolRegistry = toolRegistry;
     this.toolTimeoutMs = toolTimeoutMs;
-    if (!fsFactory) {
-      throw new Error('ContractManager: fsFactory required (per ML#3 file I/O resource unique ownership). See phase 1283.');
-    }
     this.fsFactory = fsFactory;
   }
 

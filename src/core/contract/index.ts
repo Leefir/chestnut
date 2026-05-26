@@ -53,10 +53,10 @@ export function createContractSystem(
   clawId: string,
   fs: FileSystem,
   audit: AuditLog,
-  llm?: LLMOrchestrator,
-  toolRegistry?: ToolRegistry,
-  toolTimeoutMs?: number,
-  fsFactory?: (baseDir: string) => FileSystem,
+  llm: LLMOrchestrator | undefined,
+  toolRegistry: ToolRegistry,
+  toolTimeoutMs: number | undefined,
+  fsFactory: (baseDir: string) => FileSystem,
 ): ContractSystem {
   return new ContractSystem(clawDir, clawId, fs, audit, llm, toolRegistry, toolTimeoutMs, fsFactory);
 }

@@ -6,6 +6,8 @@ import { MOTION_CLAW_ID } from './constants.js';
 
 // shim pre-assemble audit sink（phase189 §7.A7 清零）
 // 独立于 daemon.ts 的 preAssembleAudit：shim 在 daemon.ts 未入时兜底
+const fsFactory = (baseDir: string): FileSystem => new NodeFileSystem({ baseDir });
+
 let shimAudit: AuditLog | null = null;
 try {
   const rawName = process.argv[2];
@@ -15,7 +17,6 @@ try {
   }
   const name = rawName;
   const dir = name === MOTION_CLAW_ID ? getNamedSubrootDir('motion') : getClawDir(name);
-  const fsFactory = (baseDir: string): FileSystem => new NodeFileSystem({ baseDir });
   const shimFs: FileSystem = fsFactory(dir);
   shimAudit = createSystemAudit(shimFs, dir);
 } catch {
@@ -47,8 +48,6 @@ import { createDaemonCommand } from './daemon/daemon.js';
 import { CONFIG_DEFAULTS } from './assembly/config-defaults.js';
 import { assemble, disassemble } from './assembly/index.js';
 import { ASSEMBLY_AUDIT_EVENTS } from './assembly/audit-events.js';
-
-const fsFactory = (baseDir: string): FileSystem => new NodeFileSystem({ baseDir });
 
 const daemonCommand = createDaemonCommand({
   fsFactory,

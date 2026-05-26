@@ -84,7 +84,7 @@ export async function contractCreateCommand(deps: { fsFactory: (baseDir: string)
 
   const clawDir = getClawDir(clawId);
   const clawFs = deps.fsFactory(clawDir);
-  const manager = new ContractSystem(clawDir, clawId, clawFs, createSystemAudit(clawFs, clawDir), undefined, createToolRegistry());
+  const manager = new ContractSystem(clawDir, clawId, clawFs, createSystemAudit(clawFs, clawDir), undefined, createToolRegistry(), undefined, deps.fsFactory);
 
   const contractId = await manager.create(contract);
   audit?.write(CLI_AUDIT_EVENTS.CONTRACT_CREATE, `claw=${clawId}`, `contract=${contractId}`, `mode=file`);
@@ -106,7 +106,7 @@ export async function contractCreateFromDirCommand(deps: { fsFactory: (baseDir: 
 
   const clawDir = getClawDir(clawId);
   const clawFs = deps.fsFactory(clawDir);
-  const manager = new ContractSystem(clawDir, clawId, clawFs, createSystemAudit(clawFs, clawDir), undefined, createToolRegistry());
+  const manager = new ContractSystem(clawDir, clawId, clawFs, createSystemAudit(clawFs, clawDir), undefined, createToolRegistry(), undefined, deps.fsFactory);
 
   const contractId = await manager.create(contract);
   audit?.write(CLI_AUDIT_EVENTS.CONTRACT_CREATE, `claw=${clawId}`, `contract=${contractId}`, `mode=dir`);
@@ -148,7 +148,7 @@ export async function contractEventsCommand(deps: { fsFactory: (baseDir: string)
 export async function contractLogCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, clawId: string, contractId?: string): Promise<void> {
   const clawDir = getClawDir(clawId);
   const clawFs = deps.fsFactory(clawDir);
-  const manager = new ContractSystem(clawDir, clawId, clawFs, createSystemAudit(clawFs, clawDir), undefined, createToolRegistry());
+  const manager = new ContractSystem(clawDir, clawId, clawFs, createSystemAudit(clawFs, clawDir), undefined, createToolRegistry(), undefined, deps.fsFactory);
 
   // 若未指定 contractId，用 active 契约
   let resolvedId = contractId;
