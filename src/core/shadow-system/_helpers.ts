@@ -6,6 +6,7 @@
  */
 
 import type { Message } from '../../foundation/llm-provider/types.js';
+import { SHADOW_TOOL_NAME } from './tools/shadow.js';
 import { buildShadowInstruction, type BuildShadowInstructionArgs } from '../../prompts/index.js';
 
 /**
@@ -30,9 +31,12 @@ export function stripIncompleteToolUse(msgs: Message[] | undefined): Message[] |
  */
 export function synthesizeFormB(args: {
   mainMessagesBeforeMarker: Message[];   // already sliced from ctx.dialogMessages
-  instructionArgs: BuildShadowInstructionArgs;
+  instructionArgs: Omit<BuildShadowInstructionArgs, 'shadowToolName'>;
 }): Message[] {
-  const instruction = buildShadowInstruction({ ...args.instructionArgs });
+  const instruction = buildShadowInstruction({
+    ...args.instructionArgs,
+    shadowToolName: SHADOW_TOOL_NAME,
+  } as BuildShadowInstructionArgs);
   return [
     ...args.mainMessagesBeforeMarker,
     { role: 'user', content: instruction },

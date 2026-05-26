@@ -83,7 +83,7 @@ export async function runShadow(opts: RunShadowOptions): Promise<ToolResult> {
   let synthesizedMessages: Message[];
 
   try {
-    const instructionArgs: BuildShadowInstructionArgs = {
+    const instructionArgs: Omit<BuildShadowInstructionArgs, 'shadowToolName'> = {
       shadowId,
       spawnedAt,
       spawnedByClawId: opts.ctx.clawId,

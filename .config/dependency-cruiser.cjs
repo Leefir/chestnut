@@ -75,6 +75,18 @@ module.exports = {
         path: '^src/foundation/fs/node-fs(\\.ts)?$',
       },
     },
+    {
+      name: 'no-circular',
+      comment: [
+        'ML#5 模块依赖单向、禁止双向/循环 / phase 1306 立',
+        '24 cycle 由 phase 1306 修 (prompts/shadow.ts 边 A DIP + shadow-system/index.ts 边 B 删 dead re-export)',
+        '本 rule 立 severity error 永久防 future cycle drift',
+        'cross-ref: phase 1301 no-orphans warn rule 模板复用 N+1',
+      ].join(' '),
+      severity: 'error',
+      from: {},
+      to: { circular: true },
+    },
   ],
   options: {
     tsConfig: { fileName: 'tsconfig.json' },

@@ -8,8 +8,6 @@
  * 调整时确认是 const 文本变化（一次性影响后续所有 shadow，archive 不影响）。
  */
 
-import { SHADOW_TOOL_NAME } from '../core/shadow-system/index.js';
-
 export const SHADOW_INSTRUCTION_PREFIX = `[SHADOW INSTRUCTION — YOU ARE NO LONGER THE MAIN AGENT]`;
 
 export interface BuildShadowInstructionArgs {
@@ -18,6 +16,11 @@ export interface BuildShadowInstructionArgs {
   spawnedByClawId: string;
   toolUseId: string;
   task: string;
+  /**
+   * Shadow tool name (caller injected / phase 1306 DIP / 防 prompts/ 反向 import core/ 违 ML#5).
+   * Caller (core/shadow-system/_helpers.ts) 传 SHADOW_TOOL_NAME from tools/shadow.
+   */
+  shadowToolName: string;
 }
 
 export function buildShadowInstruction(args: BuildShadowInstructionArgs): string {
@@ -34,7 +37,7 @@ from the main agent up to this point. You have the same system prompt and tools 
 main agent. But you are NOT the main agent — you are a transient worker.
 
 Constraints:
-- You CANNOT call \`${SHADOW_TOOL_NAME}\` (no recursion). Calling shadow from within shadow will be rejected.
+- You CANNOT call \`${args.shadowToolName}\` (no recursion). Calling shadow from within shadow will be rejected.
 - You CAN call \`spawn\` but MUST set \`async=false\` (sync mode). spawn with \`async=true\` from within shadow will be rejected (async-scheduled tasks would orphan to main inbox after shadow exits).
 - You CANNOT call \`summon\` (async-only routing, same orphan problem).
 

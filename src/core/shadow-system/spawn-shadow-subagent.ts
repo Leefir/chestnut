@@ -47,7 +47,7 @@ export async function spawnShadowSubagent(
   const prefix = opts.shadowIdPrefix ?? 'shadow';
   const shadowId = `${prefix}-${randomUUID().slice(0, 8)}`;
 
-  const instructionArgs: BuildShadowInstructionArgs = {
+  const instructionArgs: Omit<BuildShadowInstructionArgs, 'shadowToolName'> = {
     shadowId,
     spawnedAt: new Date().toISOString(),
     spawnedByClawId: opts.ctx.clawId ?? '',
