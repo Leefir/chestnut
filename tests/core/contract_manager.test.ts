@@ -986,9 +986,17 @@ describe('ContractSystem', () => {
         );
       }
 
-      // Escalation saveProgress runs after inbox write; poll for escalated_at
+      // phase 1305: poll for BOTH escalated_at AND ESCALATED audit emit
+      // (race fix: escalated_at saveProgress 可能在 audit emit 前 land /
+      //  N=2 累 flaky 实证 phase 1290 R5 + main 复测 2026-05-26)
       await waitFor(
-        async () => Boolean((await testManager.getProgress(contractId)).subtasks['t1'].escalated_at),
+        async () => {
+          const escalated = Boolean((await testManager.getProgress(contractId)).subtasks['t1'].escalated_at);
+          const escalationEmitted = mockAudit.write.mock.calls.some(
+            (c: any[]) => c[0] === CONTRACT_AUDIT_EVENTS.ESCALATED,
+          );
+          return escalated && escalationEmitted;
+        },
         5000,
         10,
       );
