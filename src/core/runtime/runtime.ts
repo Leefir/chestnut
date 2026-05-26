@@ -688,9 +688,18 @@ export class Runtime {
     } catch (err) {
       // Turn-level error/interrupt event
       this._handleTurnInterrupt(err, callbacks);
-      await this.sessionManager.rollbackTurn(formatErr(err));
-      for (const h of addressedHandles) {
-        await this.inboxReader.nack(h, formatErr(err));
+      if (err instanceof PriorityInboxInterrupt) {
+        // 步间优先消息中断：上一步已在 onStepComplete 中 save() 落盘
+        // commitTurn + ack 保留已完成工作，消息不退回 pending/
+        await this.sessionManager.commitTurn();
+        for (const h of addressedHandles) {
+          await this.inboxReader.ack(h);
+        }
+      } else {
+        await this.sessionManager.rollbackTurn(formatErr(err));
+        for (const h of addressedHandles) {
+          await this.inboxReader.nack(h, formatErr(err));
+        }
       }
       // Notify each inbox sender so they're not left hanging
       if (err instanceof MaxStepsExceededError) {
