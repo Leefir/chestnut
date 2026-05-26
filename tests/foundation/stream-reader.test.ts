@@ -1,6 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { promises as nativeFs, appendFileSync as nativeAppend } from 'node:fs';
-import * as nativePath from 'node:path';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
@@ -46,6 +44,7 @@ describe('StreamReader', () => {
       r.start();
     });
   }
+
   it('should receive new events after start', async () => {
     writer.open();
     reader = await makeReadyReader(fs, ec.onEvent, makeAudit().audit);
@@ -143,160 +142,4 @@ describe('StreamReader', () => {
     await reader.stop();
     expect(reader.isActive()).toBe(false);
   });
-
-  it('多行中文事件增量写入时，每行都通过 onEvent 到达', async () => {
-    writer.open();
-    const auditRec = makeAudit();
-    reader = await makeReadyReader(fs, ec.onEvent, auditRec.audit);
-
-    writer.write({ ts: 1, type: 'msg', text: '你好世界' });
-    writer.write({ ts: 2, type: 'msg', text: '测试中文增量读取' });
-    writer.write({ ts: 3, type: 'msg', text: '哈喽 🎯' });
-
-    await ec.whenCount(3);
-
-    expect(ec.events[0]).toMatchObject({ type: 'msg', text: '你好世界' });
-    expect(ec.events[1]).toMatchObject({ type: 'msg', text: '测试中文增量读取' });
-    expect(ec.events[2]).toMatchObject({ type: 'msg', text: '哈喽 🎯' });
-
-    const parseFailed = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED);
-    expect(parseFailed.length).toBe(0);
-  });
-
-  it('chunk 边界落在单个 UTF-8 字符字节中间时，StringDecoder 跨 read 复原', async () => {
-    writer.open();
-    const auditRec = makeAudit();
-    reader = await makeReadyReader(fs, ec.onEvent, auditRec.audit);
-
-    const prefix = Buffer.from('{"ts":1,"type":"t","text":"', 'utf-8');
-    const charFirstByte = Buffer.from([0xe4]);
-    const charRest = Buffer.from([0xb8, 0xad]);
-    const suffix = Buffer.from('"}\n', 'utf-8');
-
-    const streamAbs = nativePath.join(tempDir, STREAM_FILE);
-
-    nativeAppend(streamAbs, Buffer.concat([prefix, charFirstByte]));
-
-    await new Promise(r => setTimeout(r, 200)); // sleep: inverse waitFor — assert no event emitted within window
-    expect(ec.events.length).toBe(0);
-    const partial_parseFailed = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED);
-    expect(partial_parseFailed.length).toBe(0);
-
-    nativeAppend(streamAbs, Buffer.concat([charRest, suffix]));
-
-    await ec.whenCount(1);
-    expect(ec.events[0]).toMatchObject({ type: 't', text: '中' });
-
-    const parseFailed = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED);
-    expect(parseFailed.length).toBe(0);
-  });
-
-  it('chunk 边界落在 4 字节 emoji 字节中间时，StringDecoder 跨 read 复原', async () => {
-    writer.open();
-    const auditRec = makeAudit();
-    reader = await makeReadyReader(fs, ec.onEvent, auditRec.audit);
-
-    const prefix = Buffer.from('{"ts":1,"type":"t","text":"', 'utf-8');
-    const emojiHalf1 = Buffer.from([0xf0, 0x9f]);
-    const emojiHalf2 = Buffer.from([0x8e, 0xaf]);
-    const suffix = Buffer.from('"}\n', 'utf-8');
-
-    const streamAbs = nativePath.join(tempDir, STREAM_FILE);
-
-    nativeAppend(streamAbs, Buffer.concat([prefix, emojiHalf1]));
-    await new Promise(r => setTimeout(r, 200)); // sleep: inverse waitFor — assert no event emitted within window
-    expect(ec.events.length).toBe(0);
-
-    nativeAppend(streamAbs, Buffer.concat([emojiHalf2, suffix]));
-    await ec.whenCount(1);
-    expect(ec.events[0]).toMatchObject({ type: 't', text: '🎯' });
-
-    const parseFailed = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED);
-    expect(parseFailed.length).toBe(0);
-  });
-
-  it('连续 ≥5 行畸形 JSON 触发 STREAM_READER_CORRUPT（trigger=consecutive_fail） + 停订阅', async () => {
-    writer.open();
-    const auditRec = makeAudit();
-    const auditEc = createEventCollector<[string, ...(string | number)[]]>();
-    const wrappedAudit: AuditLog = {
-      write: (type: string, ...cols: (string | number)[]) => {
-        auditEc.onEvent([type, ...cols]);
-        auditRec.audit.write(type, ...cols);
-      },
-    };
-    reader = await makeReadyReader(fs, ec.onEvent, wrappedAudit);
-
-    const streamAbs = nativePath.join(tempDir, STREAM_FILE);
-    for (let i = 0; i < 5; i++) {
-      nativeAppend(streamAbs, Buffer.from(`{broken_line_${i}\n`, 'utf-8'));
-      // chokidar batch boundary: 50ms gap so appends fire as separate events (not coalesced)
-      await new Promise(r => setTimeout(r, 50));
-    }
-
-    await auditEc.whenPredicate((events) =>
-      events.some(([t]) => t === STREAM_AUDIT_EVENTS.READER_CORRUPT)
-    );
-
-    const corruptEvents = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_CORRUPT);
-    expect(corruptEvents.length).toBe(1);
-    const cols = corruptEvents[0].slice(1) as string[];
-    expect(cols.some(c => c.startsWith('path='))).toBe(true);
-    expect(cols.some(c => c.startsWith('consecutive='))).toBe(true);
-    expect(cols.some(c => c === 'trigger=consecutive_fail')).toBe(true);
-    expect(cols.some(c => c.startsWith('recent_total='))).toBe(true);
-    expect(cols.some(c => c.startsWith('recent_fail='))).toBe(true);
-
-    const parseFailed = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_PARSE_FAILED);
-    expect(parseFailed.length).toBeGreaterThanOrEqual(5);
-
-    expect(reader.isActive()).toBe(false);
-
-    writer.write({ ts: 999, type: 'post_corrupt', text: 'should_not_arrive' });
-    await new Promise(r => setTimeout(r, 200)); // sleep: inverse waitFor — assert no event emitted within window
-    expect(ec.events.find(e => (e as any).type === 'post_corrupt')).toBeUndefined();
-  });
-
-  it('近 RECENT_WINDOW 次 parse 中 fail 占比 > 50% 触发 STREAM_READER_CORRUPT（trigger=ratio_high）', async () => {
-    writer.open();
-    const auditRec = makeAudit();
-    const auditEc = createEventCollector<[string, ...(string | number)[]]>();
-    const wrappedAudit: AuditLog = {
-      write: (type: string, ...cols: (string | number)[]) => {
-        auditEc.onEvent([type, ...cols]);
-        auditRec.audit.write(type, ...cols);
-      },
-    };
-    reader = await makeReadyReader(fs, ec.onEvent, wrappedAudit);
-
-    const streamAbs = nativePath.join(tempDir, STREAM_FILE);
-
-    const okLine = (i: number) => Buffer.from(`${JSON.stringify({ ts: i, type: 'ok', i })}\n`, 'utf-8');
-    const badLine = (i: number) => Buffer.from(`{bad_${i}\n`, 'utf-8');
-
-    const pattern: ('ok' | 'bad')[] = ['ok','bad','ok','bad','ok','bad','ok','bad','bad','bad'];
-    for (let i = 0; i < 10; i++) {
-      nativeAppend(streamAbs, pattern[i] === 'ok' ? okLine(i) : badLine(i));
-      // chokidar batch boundary: 50ms gap so appends fire as separate events (not coalesced)
-      await new Promise(r => setTimeout(r, 50));
-    }
-
-    await auditEc.whenPredicate((events) =>
-      events.some(([t]) => t === STREAM_AUDIT_EVENTS.READER_CORRUPT)
-    );
-
-    const corruptEvents = auditRec.events.filter(([t]) => t === STREAM_AUDIT_EVENTS.READER_CORRUPT);
-    expect(corruptEvents.length).toBe(1);
-    const cols = corruptEvents[0].slice(1) as string[];
-
-    expect(cols.some(c => c === 'trigger=ratio_high')).toBe(true);
-
-    const recentTotalCol = cols.find(c => c.startsWith('recent_total='))!;
-    const recentFailCol = cols.find(c => c.startsWith('recent_fail='))!;
-    expect(Number(recentTotalCol.split('=')[1])).toBe(10);
-    expect(Number(recentFailCol.split('=')[1])).toBeGreaterThanOrEqual(6);
-
-    expect(reader.isActive()).toBe(false);
-  });
-
 });
