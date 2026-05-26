@@ -150,7 +150,7 @@ async function providerAdd(deps: { fsFactory: (baseDir: string) => FileSystem })
     const model = await question(rl, 'Model', defaultModel);
     
     // Max tokens
-    const maxTokensStr = await question(rl, 'Max tokens', '4096');
+    const maxTokensStr = await question(rl, 'Max tokens', '100000000');
     const max_tokens = parseInt(maxTokensStr, 10) || REACT_DEFAULT_MAX_TOKENS;
     
     // Role selection

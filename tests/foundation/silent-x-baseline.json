@@ -288,14 +288,14 @@
         },
         {
             "file": "src/core/async-task-system/system.ts",
-            "line": 477,
+            "line": 478,
             "body_excerpt": ".catch(() => {}",
             "reason": "best-effort cleanup before throw / throw 真传播 / cleanup 失败无害",
             "form": "promise"
         },
         {
             "file": "src/core/async-task-system/system.ts",
-            "line": 674,
+            "line": 675,
             "body_excerpt": ".catch(() => {",
             "reason": "fs.move 路径仍 cover 持久化",
             "form": "promise"
@@ -351,7 +351,7 @@
         },
         {
             "file": "src/foundation/dialog-store/store.ts",
-            "line": 319,
+            "line": 332,
             "body_excerpt": ".catch(() => {",
             "reason": "phase 1149 D fork ratify accepted-stable α / shadow promise 三件套 by-design / 12 caller universe 全 await + audit emit 实证齐全",
             "form": "promise"
