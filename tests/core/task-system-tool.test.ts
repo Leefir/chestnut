@@ -736,6 +736,16 @@ describe('AsyncTaskSystem Tool Tasks', () => {
         JSON.stringify(task)
       );
 
+      // phase 1309 α-1: capture audit events for diagnostic + positive assertion (mirror phase 1307)
+      const auditEvents: Array<{ type: string; cols: any[] }> = [];
+      const baseAudit = makeAudit().audit;
+      const instrumentedAudit = {
+        write: (type: string, ...cols: any[]) => {
+          auditEvents.push({ type, cols });
+          baseAudit.write(type, ...cols);
+        },
+      };
+
       const taskSystem2 = new AsyncTaskSystem(
         testClawDir,
         {
@@ -758,7 +768,7 @@ describe('AsyncTaskSystem Tool Tasks', () => {
         },
         moveSync: (from: string, to: string) => fsSync.renameSync(path.join(testClawDir, from), path.join(testClawDir, to)),
         } as any,
-        { maxConcurrent: TEST_MAX_CONCURRENT, retryBaseDelayMs: TEST_RETRY_BASE_DELAY_MS, auditWriter: makeAudit().audit, ...makeTaskSystemDeps() }
+        { maxConcurrent: TEST_MAX_CONCURRENT, retryBaseDelayMs: TEST_RETRY_BASE_DELAY_MS, auditWriter: instrumentedAudit, ...makeTaskSystemDeps() }
       );
       (taskSystem2 as any).registry.register({
         name: 'pendingTool',
@@ -770,13 +780,51 @@ describe('AsyncTaskSystem Tool Tasks', () => {
         execute: async () => ({ success: true, content: 'recovered' }),
       });
       await taskSystem2.initialize();
+
+      // phase 1309 α-1: positive audit guard — corrupt/failed path must NOT be taken for valid task
+      const corruptEventsEarly = auditEvents.filter(
+        e => e.type === TASK_AUDIT_EVENTS.TASK_CORRUPT,
+      );
+      const recoveryFailedEventsEarly = auditEvents.filter(
+        e => e.type === TASK_AUDIT_EVENTS.RECOVERY_FAILED,
+      );
+      if (corruptEventsEarly.length > 0 || recoveryFailedEventsEarly.length > 0) {
+        console.error('[phase1309-α-1] corrupt/fail audit during recovery (silent path detected):', {
+          corruptEventsEarly,
+          recoveryFailedEventsEarly,
+          allAuditEventsCount: auditEvents.length,
+          last10AuditEvents: auditEvents.slice(-10),
+        });
+      }
+      expect(corruptEventsEarly).toHaveLength(0);
+      expect(recoveryFailedEventsEarly).toHaveLength(0);
+
       taskSystem2.startDispatch();
 
-      // phase432: pending tool task 被 ingest 并执行
-      await waitFor(async () => {
-        const doneExists = await fs.access(path.join(testClawDir, 'tasks', 'queues', 'done', `${taskId}.json`)).then(() => true).catch(() => false);
-        return doneExists;
-      });
+      // phase432: pending tool task 被 ingest 并执行 / phase 1309 α-1: timeout dump diagnostic
+      try {
+        await waitFor(async () => {
+          const doneExists = await fs.access(path.join(testClawDir, 'tasks', 'queues', 'done', `${taskId}.json`)).then(() => true).catch(() => false);
+          return doneExists;
+        });
+      } catch (waitForErr) {
+        const failedEvents = auditEvents.filter(e =>
+          e.type === TASK_AUDIT_EVENTS.TASK_FAILED ||
+          e.type === TASK_AUDIT_EVENTS.RETRY_EXHAUSTED ||
+          e.type === TASK_AUDIT_EVENTS.TASK_CORRUPT ||
+          e.type === TASK_AUDIT_EVENTS.RECOVERY_FAILED,
+        );
+        const doneDirFiles = await fs.readdir(path.join(testClawDir, 'tasks', 'queues', 'done')).catch(() => [] as string[]);
+        const pendingDirFiles = await fs.readdir(path.join(testClawDir, 'tasks', 'queues', 'pending')).catch(() => [] as string[]);
+        console.error('[phase1309-α-1] waitFor timeout diagnostic:', {
+          failedEvents,
+          doneDirFiles,
+          pendingDirFiles,
+          allAuditEventsCount: auditEvents.length,
+          last20AuditEvents: auditEvents.slice(-20),
+        });
+        throw waitForErr;
+      }
 
       const doneExists = await fs.access(path.join(testClawDir, 'tasks', 'queues', 'done', `${taskId}.json`)).then(() => true).catch(() => false);
       expect(doneExists).toBe(true);
