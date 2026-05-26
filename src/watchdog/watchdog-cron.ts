@@ -15,7 +15,7 @@ import { log, writeWatchdogInboxMessage } from './watchdog-log.js';
 import { clawHasContract, getClawActivityInfo, gatherClawSnapshot, getEffectiveInterval, shouldResetNotifyCount } from './watchdog-utils.js';
 import { getContractCreatedMs } from '../core/contract/index.js';
 import { getNamedSubrootDir } from '../foundation/config/index.js';
-import { InboxWriter } from '../foundation/messaging/index.js';
+import { notifyClaw } from '../foundation/messaging/index.js';
 import { WATCHDOG_AUDIT_EVENTS } from './audit-events.js';
 import { CLAWS_DIR } from '../foundation/paths.js';
 
@@ -158,16 +158,13 @@ export function maybeCronClawCrash(pm: ProcessManager, audit: AuditLog, fsFactor
       const body = `contract: ${snapshot.contract}, outbox_pending: ${snapshot.outboxPending}${lastEventsStr}`;
 
       const { fs: motionFs, audit: motionAudit } = getMotionContext(fsFactory);
-      try {
-        new InboxWriter(motionFs, path.join(getNamedSubrootDir('motion'), 'inbox', 'pending'), motionAudit).writeSync({
-          type: 'crash_notification',
-          source: clawId,
-          priority: 'high',
-          body,
-        });
-      } catch (err) {
-        audit.write(WATCHDOG_AUDIT_EVENTS.CLAW_CRASH_NOTIFY_DROPPED, `claw=${clawId}`, `error=${err instanceof Error ? err.message : String(err)}`);
-      }
+      const clawforumRoot = path.dirname(getNamedSubrootDir('motion'));
+      notifyClaw(motionFs, clawforumRoot, 'motion', {
+        type: 'crash_notification',
+        source: clawId,
+        priority: 'high',
+        body,
+      }, motionAudit);
 
       clawPreviouslyNotified.set(clawId, Date.now());
     }

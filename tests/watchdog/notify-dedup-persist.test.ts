@@ -18,7 +18,7 @@ import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });
 import { maybeCronClawCrash } from '../../src/watchdog/watchdog-cron.js';
 import { clawHasContract, gatherClawSnapshot } from '../../src/watchdog/watchdog-utils.js';
-import { InboxWriter } from '../../src/foundation/messaging/index.js';
+import { notifyClaw } from '../../src/foundation/messaging/index.js';
 import type { ProcessManager } from '../../src/foundation/process-manager/index.js';
 
 vi.mock('../../src/foundation/config/index.js', async (importOriginal) => {
@@ -43,9 +43,7 @@ vi.mock('../../src/foundation/messaging/index.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/foundation/messaging/index.js')>();
   return {
     ...actual,
-    InboxWriter: vi.fn().mockImplementation(() => ({
-      writeSync: vi.fn(),
-    })),
+    notifyClaw: vi.fn(),
   };
 });
 
@@ -82,7 +80,7 @@ describe('watchdog notify dedup persist (phase 1269 sub-3)', () => {
 
     mockPm = { isAlive: vi.fn() } as unknown as ProcessManager;
     inboxWriteMock = vi.fn();
-    vi.mocked(InboxWriter).mockImplementation(() => ({ writeSync: inboxWriteMock } as any));
+    vi.mocked(notifyClaw).mockImplementation(inboxWriteMock);
 
     // Reset state
     clawPreviouslyAlive.clear();
@@ -180,7 +178,11 @@ describe('watchdog notify dedup persist (phase 1269 sub-3)', () => {
 
     expect(inboxWriteMock).toHaveBeenCalledTimes(1);
     expect(inboxWriteMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'motion',
       expect.objectContaining({ type: 'crash_notification', source: clawId }),
+      expect.anything(),
     );
   });
 

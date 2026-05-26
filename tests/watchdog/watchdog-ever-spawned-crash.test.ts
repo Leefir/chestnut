@@ -12,7 +12,7 @@ import { clawPreviouslyAlive, everSpawned } from '../../src/watchdog/watchdog-co
 import { WATCHDOG_AUDIT_EVENTS } from '../../src/watchdog/audit-events.js';
 import { getNamedSubrootDir, loadGlobalConfig } from '../../src/foundation/config/index.js';
 import { clawHasContract, gatherClawSnapshot } from '../../src/watchdog/watchdog-utils.js';
-import { InboxWriter } from '../../src/foundation/messaging/index.js';
+import { notifyClaw } from '../../src/foundation/messaging/index.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import type { ProcessManager } from '../../src/foundation/process-manager/index.js';
 const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });
@@ -39,9 +39,7 @@ vi.mock('../../src/foundation/messaging/index.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/foundation/messaging/index.js')>();
   return {
     ...actual,
-    InboxWriter: vi.fn().mockImplementation(() => ({
-      writeSync: vi.fn(),
-    })),
+    notifyClaw: vi.fn(),
   };
 });
 

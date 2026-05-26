@@ -4,9 +4,8 @@
  * 间隔可配置（heartbeat_interval_ms），默认禁用（0）。开启后向 motion inbox 写入 heartbeat 消息
  */
 
-import * as path from 'path';
 import type { FileSystem } from '../../foundation/fs/types.js';
-import { InboxWriter } from '../../foundation/messaging/index.js';
+import { notifyClaw } from '../../foundation/messaging/index.js';
 import type { InboxReader } from '../../foundation/messaging/index.js';
 import { HEARTBEAT_AUDIT_EVENTS } from './heartbeat-audit-events.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
@@ -52,9 +51,6 @@ export class Heartbeat {
    */
   async fire(): Promise<void> {
     try {
-      const inboxDir = path.join(this.baseDir, 'motion', 'inbox', 'pending');
-      this.fs.ensureDirSync(inboxDir);
-
       // 走 InboxReader 受信路径（phase1059）：peek 不消费，带 dedup + race 处理
       const metas = await this.inboxReader.peekMetas();
       const hasPendingHeartbeat = metas.some((m) => m.type === 'heartbeat');
@@ -63,13 +59,13 @@ export class Heartbeat {
         return;
       }
 
-      new InboxWriter(this.fs, inboxDir, this.audit).writeSync({
+      notifyClaw(this.fs, this.baseDir, 'motion', {
         type: 'heartbeat',
         source: 'system',
         priority: 'low',
         body: '心跳触发，请巡查。',
         idPrefix: 'hb',
-      });
+      }, this.audit);
       this.lastRun = Date.now();  // 只在成功写入后更新
     } catch (error) {
       this.audit.write(
