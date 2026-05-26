@@ -37,6 +37,9 @@ import { summonContractExtractPostProcessor } from '../core/summon-system/index.
 import { createFileTools, TASKS_SYNC_WRITE_DIR } from '../foundation/file-tool/index.js';
 import { createCommandTools, TASKS_SYNC_EXEC_DIR } from '../foundation/command-tool/index.js';
 import { createClawPermissionChecker } from '../core/permissions/claw-permissions.js';
+import { TASKS_SYNC_SUBAGENT_DIR } from '../core/subagent/index.js';
+import { TASKS_SYNC_SPAWN_DIR } from '../core/spawn-system/index.js';
+import { TASKS_SYNC_SHADOW_DIR } from '../core/shadow-system/index.js';
 import { CRON_TICK_INTERVAL_MS } from '../core/cron/constants.js';
 import { DEFAULT_DISK_WARNING_MB } from '../watchdog/constants.js';
 import { spawnTool } from '../core/spawn-system/index.js';
@@ -191,7 +194,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   let llm: LLMOrchestrator | undefined;
   let streamWriter: StreamWriter | undefined;
   // Phase 1200: contractSystemCache dispose hook (motion lifecycle end-of-life)
-  let disposeContractSystems: (() => void) | undefined;
+  let disposeContractSystems: (() => Promise<void>) | undefined;
 
   try {
     // --- 3. Runtime (daemon.ts L111-137) ---
@@ -269,6 +272,12 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=contract_manager`, `phase=construct`, `reason=${errMsg(e)}`);
       throw new Error(`Assembly: ContractSystem construct failed: ${errMsg(e)}`, { cause: e });
     }
+    try {
+      await contractManager.init();
+    } catch (e) {
+      auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=contract_manager`, `phase=init`, `reason=${errMsg(e)}`);
+      throw new Error(`Assembly: ContractSystem.init failed: ${errMsg(e)}`, { cause: e });
+    }
 
     // --- L2: outboxWriter ---
     let outboxWriter: OutboxWriter;
@@ -280,7 +289,19 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     }
 
     // A.6 motionInboxDir 提前到 taskSystem / callback 定义前（双链路保险 / cron job 注册块同步引用）
-    const permissionChecker = createClawPermissionChecker({ clawDir, strict: true, audit: auditWriter, fs: clawFs });
+    const permissionChecker = createClawPermissionChecker({
+      clawDir,
+      strict: true,
+      audit: auditWriter,
+      fs: clawFs,
+      taskSyncDirs: [
+        TASKS_SYNC_EXEC_DIR,
+        TASKS_SYNC_WRITE_DIR,
+        TASKS_SYNC_SUBAGENT_DIR,
+        TASKS_SYNC_SPAWN_DIR,
+        TASKS_SYNC_SHADOW_DIR,
+      ],
+    });
     const motionInboxDir = path.join(clawDir, 'inbox', 'pending');
     const motionInbox = new InboxWriter(systemFs, motionInboxDir, auditWriter);
 
@@ -325,6 +346,12 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       } catch (e) {
         auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=evolution_system`, `phase=construct`, `reason=${errMsg(e)}`);
         throw new Error(`Assembly: EvolutionSystem construct failed: ${errMsg(e)}`, { cause: e });
+      }
+      try {
+        await evolutionSystem.init();
+      } catch (e) {
+        auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=evolution_system`, `phase=init`, `reason=${errMsg(e)}`);
+        throw new Error(`Assembly: EvolutionSystem.init failed: ${errMsg(e)}`, { cause: e });
       }
 
       // Wire ContractSystem.contract_completed → EvolutionSystem.runRetroForContract
@@ -573,9 +600,9 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       if (isMotion) {
         // M#3: random-dream 读取 contract progress 走 ContractSystem API（phase 1104）
         const contractSystemCache = new Map<string, import('../core/contract/index.js').ContractSystem>();
-        disposeContractSystems = () => {
+        disposeContractSystems = async () => {
           for (const cs of contractSystemCache.values()) {
-            cs.close();
+            await cs.close();
           }
           contractSystemCache.clear();
         };

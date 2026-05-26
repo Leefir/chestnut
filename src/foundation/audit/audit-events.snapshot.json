@@ -100,6 +100,7 @@
     ],
     "core_contract_audit-events": [
       "contract_archive_started",
+      "contract_boot_reconcile",
       "contract_cancelled",
       "contract_complete_on_cancelled",
       "contract_completed",
@@ -181,6 +182,7 @@
     "core_evolution-system_retro-audit-events": [
       "contract_retro_cleanup_failed",
       "contract_retro_index_failed",
+      "evolution_boot_reconcile",
       "contract_retro_mining_failed",
       "contract_retro_schedule_failed",
       "contract_retro_skill_failed",
