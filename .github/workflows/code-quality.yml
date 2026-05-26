@@ -31,6 +31,9 @@ jobs:
       - name: Type check
         run: pnpm run typecheck
 
+      - name: Arch invariants (dependency-cruiser)
+        run: pnpm run lint:arch
+
       - name: Check for console.log statements
         run: |
           if grep -r "console.log" src/ --include="*.ts" | grep -v "console.warn\|console.error"; then

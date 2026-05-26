@@ -25,8 +25,9 @@
     "test:fast": "vitest run --exclude 'tests/e2e/**' --exclude 'tests/foundation/process-*' --exclude 'tests/foundation/process-exec/**' --exclude 'tests/cli/daemon-entry.test.ts' --exclude 'tests/cli/already-running-sentinel.test.ts'",
     "typecheck": "tsc --noEmit",
     "typecheck:tests": "tsc --noEmit --project tsconfig.test.json",
-    "lint": "tsc --noEmit",
-    "migrate:claw-agents-versions": "bash scripts/migrate-claw-agents-versions.sh"
+    "lint": "pnpm run typecheck && pnpm run lint:arch",
+    "migrate:claw-agents-versions": "bash scripts/migrate-claw-agents-versions.sh",
+    "lint:arch": "depcruise --config .dependency-cruiser.cjs src"
   },
   "keywords": [
     "ai",
@@ -54,6 +55,7 @@
     "@types/node": "^22.13.10",
     "@types/react": "^18.3.18",
     "@vitest/coverage-v8": "^3.2.4",
+    "dependency-cruiser": "^16.10.0",
     "tsup": "^8.4.0",
     "typescript": "^5.8.2",
     "vitest": "^3.0.8"

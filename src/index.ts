@@ -43,7 +43,7 @@ export { Runtime, type RuntimeOptions } from './core/runtime/index.js';
 
 // Foundation modules (selective exports)
 export type { FileSystem, FileEntry, FileSystemOptions } from './foundation/fs/types.js';
-export { NodeFileSystem } from './foundation/fs/node-fs.js';
+export { NodeFileSystem } from './foundation/fs/index.js';
 
 export { Heartbeat, createHeartbeat } from './core/runtime/index.js';
 
