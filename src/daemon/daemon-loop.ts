@@ -433,8 +433,6 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
           interruptPoller = null;
         }
 
-        clearInterval(livenessTimer);
-
         // Distinguish system idle timeout, user interrupts from genuine errors
         if (err instanceof IdleTimeoutSignal) {
           // System idle timeout — turn_interrupted already written by processBatch/retryLastTurn via callbacks
@@ -474,6 +472,7 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
         }
       }
     }
+    clearInterval(livenessTimer);
   })();
 
   return { promise, stop };
