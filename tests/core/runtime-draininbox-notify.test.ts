@@ -104,9 +104,9 @@ Test message`;
         path.join(outboxDir, responseFiles[0]),
         'utf-8'
       );
-      expect(responseContent).toContain('# RESPONSE');
-      expect(responseContent).toContain('**To:** motion');
-      expect(responseContent).toContain('**Contract_id:** test-contract');
+      expect(responseContent).toContain('type: response');
+      expect(responseContent).toContain('to: "motion"');
+      expect(responseContent).toContain('contract_id: "test-contract"');
       expect(responseContent).toContain('Error: LLM API crashed');
     });
 

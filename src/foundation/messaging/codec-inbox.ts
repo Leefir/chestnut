@@ -52,7 +52,7 @@ function yamlUnquote(v: string): string {
 /**
  * Quote a value for safe YAML insertion.
  */
-function yamlQuote(v: string): string {
+export function yamlQuote(v: string): string {
   if (/^-?\d+(\.\d+)?$/.test(v) || v === 'true' || v === 'false') return v;
   return '"' + v.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r') + '"';
 }

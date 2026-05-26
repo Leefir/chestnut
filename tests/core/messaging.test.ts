@@ -296,7 +296,7 @@ describe('Messaging', () => {
       // filePath is relative to fs baseDir, so read via mockFs
       const content = await mockFs.read(filePath);
       expect(content).toContain('Hello!');
-      expect(content).toContain('RESPONSE');
+      expect(content).toContain('type: response');
     });
 
     it('should include all message fields', async () => {
