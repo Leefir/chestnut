@@ -62,10 +62,6 @@ export interface ExecContext {
   workspaceDir: string;
   /** 装配-level 共享 sync dir（兜底落盘 + FileTool write_backups 共用 / 应然 §A.7）/ Assembly 装配期注入 */
   syncDir: string;
-  /** Caller type for spawn recursion prevention
-   * @deprecated phase 1337 r138 D fork sunset by sub-4 / use allowedGroups + callerLabel
-   */
-  callerType?: import('../../core/caller-types.js').CallerType;
   /** phase 1337: capability-tag based group filtering (replaces callerType) */
   allowedGroups: ReadonlySet<ToolGroup>;
   /** phase 1337: opaque audit label (replaces callerType semantic) */

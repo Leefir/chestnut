@@ -673,7 +673,6 @@ export class AsyncTaskSystem {
       clawDir: task.parentClawDir,
       workspaceDir: path.join(task.parentClawDir, CLAWSPACE_DIR),
       syncDir: path.join(task.parentClawDir, TASKS_SYNC_DIR),
-      callerType: task.callerType ?? 'claw',
       allowedGroups: CALLER_TYPE_TO_GROUPS[task.callerType ?? 'claw'],
       callerLabel: task.callerType ?? 'claw',
       fs: this.fs,
