@@ -3,14 +3,13 @@
  * List all claws + status
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
 import {
   loadGlobalConfig, getGlobalConfigPath,
 } from '../../foundation/config/index.js';
 import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
 import { createDirContext, createProcessManagerForCLI } from '../utils/factories.js';
-import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 import { CONTRACT_DIR } from '../../core/contract/index.js';
 import { CLAWS_DIR } from '../../foundation/paths.js';
 import { getLastActiveMs } from './claw-shared.js';
@@ -19,80 +18,80 @@ import { handleCliError } from '../errors.js';
 /**
  * List all Claws and their status
  */
-export async function listCommand(opts?: { json?: boolean }): Promise<void> {
-  loadGlobalConfig(CONFIG_DEFAULTS);
+export async function listCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, opts?: { json?: boolean }): Promise<void> {
+  loadGlobalConfig(deps, CONFIG_DEFAULTS);
 
   const globalConfigPath = getGlobalConfigPath();
   const baseDir = path.dirname(globalConfigPath);
   const clawsDir = path.join(baseDir, CLAWS_DIR);
 
-  const processManager = createProcessManagerForCLI();
-  const { audit: systemAudit } = createDirContext(baseDir);
+  const processManager = createProcessManagerForCLI(deps);
+  const { audit: systemAudit } = createDirContext(deps, baseDir);
 
   // Helper: check contract status
-  function getContractStatus(clawPath: string): string {
+  function getContractStatus(clawFs: FileSystem): string {
     for (const sub of ['active', 'paused']) {
       try {
-        const entries = fs.readdirSync(path.join(clawPath, CONTRACT_DIR, sub), { withFileTypes: true });
-        if (entries.some(e => e.isDirectory())) return sub;
-      } catch { /* skip */ }
+        const entries = clawFs.listSync(path.join(CONTRACT_DIR, sub), { includeDirs: true });
+        if (entries.some(e => e.isDirectory)) return sub;
+      } catch { /* silent: skip */ }
     }
     return '-';
   }
 
   // Helper: count unread outbox messages
-  function getOutboxCount(clawPath: string): number {
+  function getOutboxCount(clawFs: FileSystem): number {
     try {
-      return fs.readdirSync(path.join(clawPath, 'outbox', 'pending')).length;
+      return clawFs.listSync(path.join('outbox', 'pending')).map(e => e.name).length;
     } catch { return 0; }
   }
 
-  async function formatLastActiveMs(clawPath: string): Promise<number | undefined> {
-    const clawFs = new NodeFileSystem({ baseDir: clawPath });
+  async function formatLastActiveMs(clawFs: FileSystem): Promise<number | undefined> {
     return await getLastActiveMs(clawFs, systemAudit);
   }
 
   // Helper: get latest contract title (active > paused > most recent archive)
-  function getLatestContractTitle(clawPath: string): string {
+  function getLatestContractTitle(clawFs: FileSystem): string {
     for (const sub of ['active', 'paused']) {
       try {
-        const dirs = fs.readdirSync(path.join(clawPath, CONTRACT_DIR, sub));
+        const dirs = clawFs.listSync(path.join(CONTRACT_DIR, sub), { includeDirs: true }).map(e => e.name);
         for (const dir of dirs) {
-          const yamlPath = path.join(clawPath, 'contract', sub, dir, 'contract.yaml');
-          if (fs.existsSync(yamlPath)) {
-            const content = fs.readFileSync(yamlPath, 'utf-8');
+          const relYamlPath = path.join('contract', sub, dir, 'contract.yaml');
+          if (clawFs.existsSync(relYamlPath)) {
+            const content = clawFs.readSync(relYamlPath);
             const match = content.match(/^title:\s*["']?(.+?)["']?\s*$/m);
             if (match) return match[1].slice(0, 28);
           }
         }
-      } catch { /* skip */ }
+      } catch { /* silent: skip */ }
     }
     try {
-      const archiveDir = path.join(clawPath, CONTRACT_DIR, 'archive');
-      const dirs = fs.readdirSync(archiveDir);
+      const dirs = clawFs.listSync(path.join(CONTRACT_DIR, 'archive'), { includeDirs: true }).map(e => e.name);
       let latest = { mtime: 0, title: '' };
       for (const dir of dirs) {
-        const yamlPath = path.join(archiveDir, dir, 'contract.yaml');
-        if (fs.existsSync(yamlPath)) {
-          const stat = fs.statSync(yamlPath);
-          if (stat.mtimeMs > latest.mtime) {
-            const content = fs.readFileSync(yamlPath, 'utf-8');
+        const relYamlPath = path.join(CONTRACT_DIR, 'archive', dir, 'contract.yaml');
+        if (clawFs.existsSync(relYamlPath)) {
+          const stat = clawFs.statSync(relYamlPath);
+          if (stat.mtime.getTime() > latest.mtime) {
+            const content = clawFs.readSync(relYamlPath);
             const match = content.match(/^title:\s*["']?(.+?)["']?\s*$/m);
-            if (match) latest = { mtime: stat.mtimeMs, title: match[1].slice(0, 28) };
+            if (match) latest = { mtime: stat.mtime.getTime(), title: match[1].slice(0, 28) };
           }
         }
       }
       if (latest.title) return latest.title;
-    } catch { /* skip */ }
+    } catch { /* silent: skip */ }
     return '-';
   }
 
   try {
+    const baseDirFs = deps.fsFactory(baseDir);
     // Ensure claws directory exists
-    if (!fs.existsSync(clawsDir)) {
-      fs.mkdirSync(clawsDir, { recursive: true });
+    if (!baseDirFs.existsSync(CLAWS_DIR)) {
+      baseDirFs.ensureDirSync(CLAWS_DIR);
     }
-    const entries = fs.readdirSync(clawsDir);
+    const clawsDirFs = deps.fsFactory(clawsDir);
+    const entries = clawsDirFs.listSync('.', { includeDirs: true }).map(e => e.name);
     const claws: Array<{
       name: string;
       status: string;
@@ -105,9 +104,8 @@ export async function listCommand(opts?: { json?: boolean }): Promise<void> {
     }> = [];
 
     for (const entry of entries) {
-      const clawPath = path.join(clawsDir, entry);
-      const configPath = path.join(clawPath, 'config.yaml');
-      if (fs.existsSync(configPath)) {
+      const clawFs = deps.fsFactory(path.join(clawsDir, entry));
+      if (clawFs.existsSync('config.yaml')) {
         const isRunning = processManager.isAlive(entry);
         let pid: number | undefined;
 
@@ -115,10 +113,10 @@ export async function listCommand(opts?: { json?: boolean }): Promise<void> {
           try {
             const stored = await processManager.readPid(entry);
             if (stored !== null) pid = stored.pid;
-          } catch { /* ignore read errors */ }
+          } catch { /* silent: ignore read errors */ }
         }
 
-        const lastMs = await formatLastActiveMs(clawPath);
+        const lastMs = await formatLastActiveMs(clawFs);
         let lastActive = '-';
         if (lastMs !== undefined) {
           const age = Date.now() - lastMs;
@@ -132,11 +130,11 @@ export async function listCommand(opts?: { json?: boolean }): Promise<void> {
           name: entry,
           status: isRunning ? 'running' : 'stopped',
           pid,
-          contract: getContractStatus(clawPath),
-          outbox: getOutboxCount(clawPath),
+          contract: getContractStatus(clawFs),
+          outbox: getOutboxCount(clawFs),
           lastActive,
           lastActiveIso: lastMs !== undefined ? new Date(lastMs).toISOString() : null,
-          lastContract: getLatestContractTitle(clawPath),
+          lastContract: getLatestContractTitle(clawFs),
         });
       }
     }

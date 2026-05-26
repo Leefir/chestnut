@@ -13,9 +13,7 @@
  * Shared by both motion and claw
  */
 
-import * as fsNative from 'fs';
 import * as path from 'path';
-import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import type { FileSystem } from '../foundation/fs/types.js';
 import type { Runtime, StreamCallbacks } from '../core/runtime/index.js';
 import type { InboxMessage } from '../foundation/messaging/types.js';
@@ -145,6 +143,7 @@ interface DaemonMotionExtensions {
 
 export interface DaemonLoopOptions {
   // 核心驱动（5 必填）
+  fsFactory: (baseDir: string) => FileSystem;
   runtime: Runtime;
   agentDir: string;          // agent root directory (listens for interrupt signals)
   clawId: string;            // agent identifier (kebab-case)
@@ -233,12 +232,13 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
   promise: Promise<void>;
   stop: () => void;
 } {
-  const { runtime, agentDir, audit, inbox, motion, onBatchComplete, streamWriter } = options;
+  const { fsFactory, runtime, agentDir, audit, inbox, motion, onBatchComplete, streamWriter } = options;
   const { pendingDir: inboxPendingDir } = inbox;
   const fallbackTimeout = inbox.fallbackTimeoutMs ?? DAEMON_FALLBACK_TIMEOUT_MS;
   const heartbeat = motion?.heartbeat;
   const onInboxMessages = motion?.onInboxMessages;
-  const loopFs = new NodeFileSystem({ baseDir: path.join(agentDir, '..') });
+  const loopFs = fsFactory(path.join(agentDir, '..'));
+  const agentFs = fsFactory(agentDir);
   let stopped = false;
   let startupFired = false;
 
@@ -258,28 +258,15 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
   let llmRetryDelayMs = LLM_RETRY_INITIAL_DELAY_MS;
   let llmRetryPending = false; // set by catch, consumed by next iteration's try
 
-  // 状态文件路径
-  const llmRetryStateFile = path.join(agentDir, STATUS_SUBDIR, 'llm-retry-state.json');
-
   // 内联辅助：保存当前 retry 状态
   const saveLlmRetryState = () => {
     try {
-      fsNative.mkdirSync(path.join(agentDir, STATUS_SUBDIR), { recursive: true });
-      // phase 1024 G.1 + phase 1214: atomic tmp+rename + fsync — write tmp 同 dir + fsync + renameSync POSIX atomic / 防 crash 中 torn-write
-      const tmpFile = `${llmRetryStateFile}.${process.pid}.${Date.now()}.tmp`;
-      fsNative.writeFileSync(tmpFile, JSON.stringify({
+      agentFs.ensureDirSync(STATUS_SUBDIR);
+      agentFs.writeAtomicSync(path.join(STATUS_SUBDIR, 'llm-retry-state.json'), JSON.stringify({
         llmRetryCount,
         llmRetryDelayMs,
         llmRetryPending,
       }));
-      // fsync for durability before atomic rename (phase 1214)
-      const fd = fsNative.openSync(tmpFile, 'r+');
-      try {
-        fsNative.fsyncSync(fd);
-      } finally {
-        fsNative.closeSync(fd);
-      }
-      fsNative.renameSync(tmpFile, llmRetryStateFile);
     } catch (e) {
       options.audit.write(DAEMON_AUDIT_EVENTS.LOOP_FATAL, `context=saveLlmRetryState`, `reason=${(e as Error).message}`);
     }
@@ -287,10 +274,9 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
 
   // 检查 clean-stop 标记（仅 motion daemon）：intentional stop → 清零退避状态
   const isCleanStop = (() => {
-    const cleanStopFile = path.join(path.dirname(agentDir), 'clean-stop');
     try {
-      fsNative.accessSync(cleanStopFile);
-      fsNative.unlinkSync(cleanStopFile);   // 消费标记，只生效一次
+      if (!loopFs.existsSync('clean-stop')) return false;
+      loopFs.deleteSync('clean-stop');   // 消费标记，只生效一次
       return true;
     } catch {
       return false;
@@ -300,7 +286,7 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
   // 启动时恢复（崩溃重启继续退避；clean stop 后跳过，保持默认值）
   if (!isCleanStop) {
     try {
-      const saved = JSON.parse(fsNative.readFileSync(llmRetryStateFile, 'utf-8'));
+      const saved = JSON.parse(agentFs.readSync(path.join(STATUS_SUBDIR, 'llm-retry-state.json')));
       if (typeof saved.llmRetryCount === 'number') llmRetryCount = saved.llmRetryCount;
       if (typeof saved.llmRetryDelayMs === 'number') llmRetryDelayMs = saved.llmRetryDelayMs;
       if (typeof saved.llmRetryPending === 'boolean') llmRetryPending = saved.llmRetryPending;
@@ -316,30 +302,29 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
         startupFired = true;
         const inboxEmpty = (() => {
           try {
-            return fsNative.readdirSync(inboxPendingDir).filter(f => f.endsWith('.md')).length === 0;
+            return agentFs.listSync('inbox/pending').filter(e => e.name.endsWith('.md')).length === 0;
           } catch { /* Ignore: inbox check failure, assume not empty to be safe */ return true; }
         })();
         const hasActive = (() => {
           try {
-            return fsNative.readdirSync(path.join(agentDir, CONTRACT_DIR, 'active'), { withFileTypes: true }).some(e => e.isDirectory());
+            return agentFs.listSync(path.join(CONTRACT_DIR, 'active'), { includeDirs: true }).some(e => e.isDirectory);
           } catch { /* Ignore: contract check failure, assume no active contracts */ return false; }
         })();
         if (inboxEmpty && hasActive) {
           // Dedup: only write if no startup_check already pending (heartbeat pattern)
           const alreadyPending = (() => {
             try {
-              return fsNative.readdirSync(inboxPendingDir).some(f => f.includes('_startup_check_'));
+              return agentFs.listSync('inbox/pending').map(e => e.name).some(f => f.includes('_startup_check_'));
             } catch { /* Ignore: pending check failure, assume no pending startup_check */ return false; }
           })();
           // Cooldown: prevent spam from rapid daemon restarts
-          const startupCheckTsFile = path.join(agentDir, STATUS_SUBDIR, 'startup_check_ts');
           const startupCheckCooledDown = (() => {
             try {
-              const raw = fsNative.readFileSync(startupCheckTsFile, 'utf-8').trim();
+              const raw = agentFs.readSync(path.join(STATUS_SUBDIR, 'startup_check_ts')).trim();
               const ts = parseInt(raw, 10);
               if (isNaN(ts) || ts < 0) {
                 // corrupt — treat as cooled down (remove file)
-                fsNative.unlinkSync(startupCheckTsFile);
+                agentFs.deleteSync(path.join(STATUS_SUBDIR, 'startup_check_ts'));
                 return true;
               }
               return Date.now() - ts >= STARTUP_CHECK_COOLDOWN_MS;
@@ -347,18 +332,8 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
           })();
 
           if (!alreadyPending && startupCheckCooledDown) {
-            fsNative.mkdirSync(path.join(agentDir, STATUS_SUBDIR), { recursive: true });
-            // r126 F fork + phase 1214: atomic tmp+rename + fsync mirror phase 1024 G.1 / 防 crash 中 torn-write
-            const tmpFile = `${startupCheckTsFile}.${process.pid}.${Date.now()}.tmp`;
-            fsNative.writeFileSync(tmpFile, String(Date.now()));
-            // fsync for durability before atomic rename (phase 1214)
-            const fd = fsNative.openSync(tmpFile, 'r+');
-            try {
-              fsNative.fsyncSync(fd);
-            } finally {
-              fsNative.closeSync(fd);
-            }
-            fsNative.renameSync(tmpFile, startupCheckTsFile);
+            agentFs.ensureDirSync(STATUS_SUBDIR);
+            agentFs.writeAtomicSync(path.join(STATUS_SUBDIR, 'startup_check_ts'), String(Date.now()));
             notifyInbox(loopFs, {
               inboxDir: inboxPendingDir,
               type: 'startup_check',
@@ -386,16 +361,15 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
 
       try {
         // Start polling for the interrupt file
-        const interruptFile = path.join(agentDir, 'interrupt');
         let interruptErrCount = 0;
         interruptPoller = setInterval(() => {
           try {
-            fsNative.unlinkSync(interruptFile);
+            agentFs.deleteSync('interrupt');
             // Reached here: file existed and was deleted — trigger abort
             runtime.abort();
             interruptErrCount = 0;
           } catch (err) {
-            if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') {
+            if ((err as NodeJS.ErrnoException)?.code === 'ENOENT' || (err as NodeJS.ErrnoException)?.code === 'FS_NOT_FOUND') {
               // No interrupt file — normal case, reset error count
               interruptErrCount = 0;
               return;

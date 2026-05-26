@@ -3,7 +3,6 @@
  * Shared helpers for subagent CLI commands
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
 import {
   getClawDir,
@@ -20,6 +19,7 @@ import { TASKS_SYNC_SUBAGENT_DIR } from '../../core/subagent/index.js';
 import { TASKS_SYNC_SPAWN_DIR } from '../../core/spawn-system/index.js';
 import { TASKS_SYNC_SHADOW_DIR } from '../../core/shadow-system/index.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 
 export type SubagentKind = 'summon' | 'spawn' | 'shadow' | 'verifier' | 'random_dream' | 'cron';
 export type SubagentStatus = 'completed' | 'running' | 'failed';
@@ -38,15 +38,17 @@ export function resolveClawDir(clawId: string): string {
   return clawId === MOTION_CLAW_ID ? getNamedSubrootDir(MOTION_CLAW_ID) : getClawDir(clawId);
 }
 
-export function inferKind(id: string, clawDir: string): SubagentKind {
+export function inferKind(deps: { fsFactory: (baseDir: string) => FileSystem }, id: string, clawDir: string): SubagentKind {
   if (id.startsWith('verifier-')) return 'verifier';
+
+  const clawFs = deps.fsFactory(clawDir);
 
   // Try to find task.json in queue dirs
   for (const qdir of QUEUE_DIRS) {
-    const taskPath = path.join(clawDir, qdir, `${id}.json`);
-    if (fs.existsSync(taskPath)) {
+    const taskRel = path.join(qdir, `${id}.json`);
+    if (clawFs.existsSync(taskRel)) {
       try {
-        const task = JSON.parse(fs.readFileSync(taskPath, 'utf-8'));
+        const task = JSON.parse(clawFs.readSync(taskRel));
         const intentText = task.mode === 'shadow' ? task.intentPreview : task.intent;
         if (task.systemPrompt?.includes('RANDOM_DREAM') || intentText?.includes('[DREAM_OUTPUT]')) {
           return 'random_dream';
@@ -59,64 +61,68 @@ export function inferKind(id: string, clawDir: string): SubagentKind {
           return 'spawn';
         }
         return 'spawn';
-      } catch { /* ignore parse errors */ }
+      } catch { /* silent: ignore parse errors */ }
     }
   }
 
   // Fallback: check audit.tsv for random_dream signals
-  const auditPath = path.join(clawDir, TASKS_QUEUES_RESULTS_DIR, id, 'audit.tsv');
-  if (fs.existsSync(auditPath)) {
+  const auditRel = path.join(TASKS_QUEUES_RESULTS_DIR, id, 'audit.tsv');
+  if (clawFs.existsSync(auditRel)) {
     try {
-      const audit = fs.readFileSync(auditPath, 'utf-8');
+      const audit = clawFs.readSync(auditRel);
       if (audit.includes('cron_random_dream_job')) return 'random_dream';
-    } catch { /* ignore */ }
+    } catch { /* silent: ignore */ }
   }
 
   return 'spawn';
 }
 
-export function inferStatus(resultDir: string): SubagentStatus {
-  if (fs.existsSync(path.join(resultDir, 'result.txt'))) return 'completed';
+export function inferStatus(deps: { fsFactory: (baseDir: string) => FileSystem }, resultDir: string): SubagentStatus {
+  const resultFs = deps.fsFactory(resultDir);
+  if (resultFs.existsSync('result.txt')) return 'completed';
 
-  const auditPath = path.join(resultDir, 'audit.tsv');
-  if (fs.existsSync(auditPath)) {
+  const auditRel = path.join(resultDir, 'audit.tsv');
+  if (resultFs.existsSync(auditRel)) {
     try {
-      const content = fs.readFileSync(auditPath, 'utf-8');
+      const content = resultFs.readSync(auditRel);
       const lines = content.split('\n').filter(l => l.trim());
       for (let i = lines.length - 1; i >= 0; i--) {
         const line = lines[i];
         if (line.includes('task_failed') || line.includes('task_handler_failed') || line.includes('task_start_failed')) return 'failed';
         if (line.includes('task_completed')) return 'completed';
       }
-    } catch { /* ignore */ }
+    } catch { /* silent: ignore */ }
   }
 
   return 'running';
 }
 
-export function getStartedAt(resultDir: string, id: string, clawDir: string): Date | undefined {
+export function getStartedAt(deps: { fsFactory: (baseDir: string) => FileSystem }, resultDir: string, id: string, clawDir: string): Date | undefined {
+  const clawFs = deps.fsFactory(clawDir);
+
   // Try task.json createdAt first
   for (const qdir of QUEUE_DIRS) {
-    const taskPath = path.join(clawDir, qdir, `${id}.json`);
-    if (fs.existsSync(taskPath)) {
+    const taskRel = path.join(qdir, `${id}.json`);
+    if (clawFs.existsSync(taskRel)) {
       try {
-        const task = JSON.parse(fs.readFileSync(taskPath, 'utf-8'));
+        const task = JSON.parse(clawFs.readSync(taskRel));
         if (task.createdAt) return new Date(task.createdAt);
-      } catch { /* ignore */ }
+      } catch { /* silent: ignore */ }
     }
   }
 
   // Fallback to audit.tsv first line timestamp
-  const auditPath = path.join(resultDir, 'audit.tsv');
-  if (fs.existsSync(auditPath)) {
+  const resultFs = deps.fsFactory(resultDir);
+  const auditRel = path.join(resultDir, 'audit.tsv');
+  if (resultFs.existsSync(auditRel)) {
     try {
-      const content = fs.readFileSync(auditPath, 'utf-8');
+      const content = resultFs.readSync(auditRel);
       const firstLine = content.split('\n').find(l => l.trim());
       if (firstLine) {
         const ts = firstLine.split('\t')[0];
         if (ts) return new Date(ts);
       }
-    } catch { /* ignore */ }
+    } catch { /* silent: ignore */ }
   }
 
   return undefined;
@@ -151,30 +157,32 @@ export interface SubagentEntry {
   contractId?: string;
 }
 
-export function scanSubagentResults(clawDir: string): SubagentEntry[] {
+export function scanSubagentResults(deps: { fsFactory: (baseDir: string) => FileSystem }, clawDir: string): SubagentEntry[] {
   const entries: SubagentEntry[] = [];
+  const clawFs = deps.fsFactory(clawDir);
 
   // Scan async path: tasks/queues/results/<taskId>/
-  const asyncDir = path.join(clawDir, TASKS_QUEUES_RESULTS_DIR);
-  if (fs.existsSync(asyncDir)) {
-    const ids = fs.readdirSync(asyncDir);
+  const asyncRel = TASKS_QUEUES_RESULTS_DIR;
+  if (clawFs.existsSync(asyncRel)) {
+    const ids = clawFs.listSync(asyncRel, { includeDirs: true }).map(e => e.name);
     for (const id of ids) {
-      const resultDir = path.join(asyncDir, id);
-      const stat = fs.statSync(resultDir);
-      if (!stat.isDirectory()) continue;
-      const kind = inferKind(id, clawDir);
-      const status = inferStatus(resultDir);
-      const startedAt = getStartedAt(resultDir, id, clawDir);
+      const resultDir = path.join(clawDir, asyncRel, id);
+      const resultFs = deps.fsFactory(resultDir);
+      const stat = resultFs.statSync('.');
+      if (!stat.isDirectory) continue;
+      const kind = inferKind(deps, id, clawDir);
+      const status = inferStatus(deps, resultDir);
+      const startedAt = getStartedAt(deps, resultDir, id, clawDir);
       let durationMs: number | undefined;
       if (startedAt) {
         // Use result.txt mtime or audit last event ts as end time
-        const resultTxt = path.join(resultDir, 'result.txt');
-        if (fs.existsSync(resultTxt)) {
-          durationMs = fs.statSync(resultTxt).mtimeMs - startedAt.getTime();
+        const resultTxtRel = path.join(asyncRel, id, 'result.txt');
+        if (clawFs.existsSync(resultTxtRel)) {
+          durationMs = clawFs.statSync(resultTxtRel).mtime.getTime() - startedAt.getTime();
         } else {
-          const auditPath = path.join(resultDir, 'audit.tsv');
-          if (fs.existsSync(auditPath)) {
-            durationMs = fs.statSync(auditPath).mtimeMs - startedAt.getTime();
+          const auditRel = path.join(asyncRel, id, 'audit.tsv');
+          if (clawFs.existsSync(auditRel)) {
+            durationMs = clawFs.statSync(auditRel).mtime.getTime() - startedAt.getTime();
           }
         }
       }
@@ -183,36 +191,39 @@ export function scanSubagentResults(clawDir: string): SubagentEntry[] {
   }
 
   // Scan sync paths: tasks/sync/subagent/ + tasks/sync/spawn/ + tasks/sync/shadow/
-  entries.push(...scanSyncDir(clawDir, TASKS_SYNC_SUBAGENT_DIR, 'verifier-'));
-  entries.push(...scanSyncDir(clawDir, TASKS_SYNC_SPAWN_DIR, undefined, 'spawn'));
-  entries.push(...scanSyncDir(clawDir, TASKS_SYNC_SHADOW_DIR, undefined, 'shadow'));
+  entries.push(...scanSyncDir(deps, clawDir, TASKS_SYNC_SUBAGENT_DIR, 'verifier-'));
+  entries.push(...scanSyncDir(deps, clawDir, TASKS_SYNC_SPAWN_DIR, undefined, 'spawn'));
+  entries.push(...scanSyncDir(deps, clawDir, TASKS_SYNC_SHADOW_DIR, undefined, 'shadow'));
 
   return entries;
 }
 
 function scanSyncDir(
+  deps: { fsFactory: (baseDir: string) => FileSystem },
   clawDir: string,
   syncSubDir: string,
   filterPrefix?: string,
   defaultKind?: SubagentKind,
 ): SubagentEntry[] {
-  const dirPath = path.join(clawDir, syncSubDir);
-  if (!fs.existsSync(dirPath)) return [];
+  const clawFs = deps.fsFactory(clawDir);
+  const dirRel = syncSubDir;
+  if (!clawFs.existsSync(dirRel)) return [];
   const results: SubagentEntry[] = [];
-  const ids = fs.readdirSync(dirPath);
+  const ids = clawFs.listSync(dirRel, { includeDirs: true }).map(e => e.name);
   for (const id of ids) {
-    const resultDir = path.join(dirPath, id);
-    const stat = fs.statSync(resultDir);
-    if (!stat.isDirectory()) continue;
+    const resultDir = path.join(clawDir, dirRel, id);
+    const resultFs = deps.fsFactory(resultDir);
+    const stat = resultFs.statSync('.');
+    if (!stat.isDirectory) continue;
     if (filterPrefix && !id.startsWith(filterPrefix)) continue;
-    const kind = defaultKind ?? inferKind(id, clawDir);
-    const status = inferStatus(resultDir);
-    const startedAt = getStartedAt(resultDir, id, clawDir);
+    const kind = defaultKind ?? inferKind(deps, id, clawDir);
+    const status = inferStatus(deps, resultDir);
+    const startedAt = getStartedAt(deps, resultDir, id, clawDir);
     let durationMs: number | undefined;
     if (startedAt) {
-      const auditPath = path.join(resultDir, 'audit.tsv');
-      if (fs.existsSync(auditPath)) {
-        durationMs = fs.statSync(auditPath).mtimeMs - startedAt.getTime();
+      const auditRel = path.join(dirRel, id, 'audit.tsv');
+      if (clawFs.existsSync(auditRel)) {
+        durationMs = clawFs.statSync(auditRel).mtime.getTime() - startedAt.getTime();
       }
     }
     // contractId only meaningful for verifier-<contractId>-<subtaskId>

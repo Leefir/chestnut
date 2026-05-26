@@ -6,8 +6,9 @@
 import { Command } from 'commander';
 import { subagentListCommand } from './subagent-list.js';
 import { subagentStepsCommand, subagentStepCommand } from './subagent-steps.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 
-export function createSubagentCommand(): Command {
+export function createSubagentCommand(deps: { fsFactory: (baseDir: string) => FileSystem }): Command {
   const cmd = new Command('subagent')
     .description('Subagent log observability commands');
 
@@ -23,7 +24,7 @@ export function createSubagentCommand(): Command {
     .option('--to <ts>', 'Filter started_at <= ts')
     .option('--json', 'Output as JSON (machine-readable)')
     .action(async (opts) => {
-      await subagentListCommand(opts);
+      await subagentListCommand(deps, opts);
     });
 
   cmd
@@ -32,7 +33,7 @@ export function createSubagentCommand(): Command {
     .requiredOption('-c, --claw <claw>', 'Claw to query')
     .option('--json', 'Output as JSON (machine-readable)')
     .action(async (id: string, opts: { claw: string; json?: boolean }) => {
-      await subagentStepsCommand(id, opts.claw, { json: opts.json });
+      await subagentStepsCommand(deps, id, opts.claw, { json: opts.json });
     });
 
   cmd
@@ -41,7 +42,7 @@ export function createSubagentCommand(): Command {
     .requiredOption('-c, --claw <claw>', 'Claw to query')
     .option('--json', 'Output as JSON (machine-readable)')
     .action(async (n: string, id: string, opts: { claw: string; json?: boolean }) => {
-      await subagentStepCommand(n, id, opts.claw, { json: opts.json });
+      await subagentStepCommand(deps, n, id, opts.claw, { json: opts.json });
     });
 
   return cmd;

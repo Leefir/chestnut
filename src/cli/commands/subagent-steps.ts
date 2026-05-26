@@ -4,7 +4,6 @@
  */
 
 import * as path from 'path';
-import * as fs from 'fs';
 import { resolveClawDir } from './subagent-helpers.js';
 import { CliError } from '../errors.js';
 import {
@@ -17,21 +16,24 @@ import {
 import { TASKS_QUEUES_RESULTS_DIR } from '../../core/async-task-system/dirs.js';
 import { TASKS_SUBAGENTS_DIR } from '../../core/subagent/constants.js';
 import { TASKS_SYNC_SUBAGENT_DIR } from '../../core/subagent/index.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 
 // ─── Resolve result dir ──────────────────────────────────────
 
-function resolveResultDir(clawDir: string, id: string): string {
+function resolveResultDir(deps: { fsFactory: (baseDir: string) => FileSystem }, clawDir: string, id: string): string {
+  const clawFs = deps.fsFactory(clawDir);
+
   // Try async path first
-  const asyncDir = path.join(clawDir, TASKS_QUEUES_RESULTS_DIR, id);
-  if (fs.existsSync(asyncDir)) return asyncDir;
+  const asyncRel = path.join(TASKS_QUEUES_RESULTS_DIR, id);
+  if (clawFs.existsSync(asyncRel)) return path.join(clawDir, asyncRel);
 
   // Try sync path (verifier)
-  const syncDir = path.join(clawDir, TASKS_SYNC_SUBAGENT_DIR, id);
-  if (fs.existsSync(syncDir)) return syncDir;
+  const syncRel = path.join(TASKS_SYNC_SUBAGENT_DIR, id);
+  if (clawFs.existsSync(syncRel)) return path.join(clawDir, syncRel);
 
   // Try tasks/subagents (legacy / fallback)
-  const subagentDir = path.join(clawDir, TASKS_SUBAGENTS_DIR, id);
-  if (fs.existsSync(subagentDir)) return subagentDir;
+  const subagentRel = path.join(TASKS_SUBAGENTS_DIR, id);
+  if (clawFs.existsSync(subagentRel)) return path.join(clawDir, subagentRel);
 
   throw new CliError(`Subagent "${id}" not found in claw directory. Try \`clawforum subagent list --claw <name>\` to see subagents.`);
 }
@@ -48,14 +50,15 @@ function turnToJson(turn: Turn): unknown {
   };
 }
 
-export async function subagentStepsCommand(id: string, clawId: string, opts?: { json?: boolean }): Promise<void> {
+export async function subagentStepsCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, id: string, clawId: string, opts?: { json?: boolean }): Promise<void> {
   const clawDir = resolveClawDir(clawId);
-  if (!fs.existsSync(clawDir)) {
+  const clawFs = deps.fsFactory(clawDir);
+  if (!clawFs.existsSync('.')) {
     throw new CliError(`Claw "${clawId}" does not exist. Try \`clawforum claw list\` to see existing claws.`);
   }
 
-  const resultDir = resolveResultDir(clawDir, id);
-  const session = loadSessionFromFile(path.join(resultDir, 'messages.json'));
+  const resultDir = resolveResultDir(deps, clawDir, id);
+  const session = loadSessionFromFile(deps, path.join(resultDir, 'messages.json'));
   const turns = parseMessagesFromSession(session);
 
   if (turns.length === 0) {
@@ -87,14 +90,15 @@ function parseStepRef(s: string): { turn: number; slot?: number } {
   return { turn, slot };
 }
 
-export async function subagentStepCommand(n: string, id: string, clawId: string, opts?: { json?: boolean }): Promise<void> {
+export async function subagentStepCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, n: string, id: string, clawId: string, opts?: { json?: boolean }): Promise<void> {
   const clawDir = resolveClawDir(clawId);
-  if (!fs.existsSync(clawDir)) {
+  const clawFs = deps.fsFactory(clawDir);
+  if (!clawFs.existsSync('.')) {
     throw new CliError(`Claw "${clawId}" does not exist. Try \`clawforum claw list\` to see existing claws.`);
   }
 
-  const resultDir = resolveResultDir(clawDir, id);
-  const session = loadSessionFromFile(path.join(resultDir, 'messages.json'));
+  const resultDir = resolveResultDir(deps, clawDir, id);
+  const session = loadSessionFromFile(deps, path.join(resultDir, 'messages.json'));
   const turns = parseMessagesFromSession(session);
 
   if (turns.length === 0) {

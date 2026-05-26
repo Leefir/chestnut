@@ -1,4 +1,5 @@
 import { NodeFileSystem } from './foundation/fs/node-fs.js';
+import type { FileSystem } from './foundation/fs/types.js';
 import { createSystemAudit, type AuditLog } from './foundation/audit/index.js';
 import { getClawDir, getNamedSubrootDir } from './foundation/config/index.js';
 import { MOTION_CLAW_ID } from './constants.js';
@@ -14,7 +15,8 @@ try {
   }
   const name = rawName;
   const dir = name === MOTION_CLAW_ID ? getNamedSubrootDir('motion') : getClawDir(name);
-  const shimFs = new NodeFileSystem({ baseDir: dir });
+  const fsFactory = (baseDir: string): FileSystem => new NodeFileSystem({ baseDir });
+  const shimFs: FileSystem = fsFactory(dir);
   shimAudit = createSystemAudit(shimFs, dir);
 } catch {
   shimAudit = null;  // audit sink 构造失败 → handler fallback console
@@ -46,7 +48,10 @@ import { CONFIG_DEFAULTS } from './assembly/config-defaults.js';
 import { assemble, disassemble } from './assembly/index.js';
 import { ASSEMBLY_AUDIT_EVENTS } from './assembly/audit-events.js';
 
+const fsFactory = (baseDir: string): FileSystem => new NodeFileSystem({ baseDir });
+
 const daemonCommand = createDaemonCommand({
+  fsFactory,
   configDefaults: CONFIG_DEFAULTS,
   assemble,
   disassemble,

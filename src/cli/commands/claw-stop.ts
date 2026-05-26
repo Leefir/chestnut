@@ -11,16 +11,17 @@ import { CliError } from '../errors.js';
 import { createProcessManagerForCLI } from '../utils/factories.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { CLI_AUDIT_EVENTS } from '../audit-events.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 
-export async function stopCommand(name: string, deps?: { audit?: AuditLog }): Promise<void> {
-  const audit = deps?.audit;
-  loadGlobalConfig(CONFIG_DEFAULTS);
+export async function stopCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, name: string, extraDeps?: { audit?: AuditLog }): Promise<void> {
+  const audit = extraDeps?.audit;
+  loadGlobalConfig(deps, CONFIG_DEFAULTS);
   
-  if (!clawExists(name)) {
+  if (!clawExists(deps, name)) {
     throw new CliError(`Claw "${name}" does not exist`);
   }
 
-  const processManager = createProcessManagerForCLI();
+  const processManager = createProcessManagerForCLI(deps);
 
   // Check if running
   if (!processManager.isAlive(name)) {

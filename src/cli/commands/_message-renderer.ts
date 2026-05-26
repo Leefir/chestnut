@@ -4,8 +4,8 @@
  * Used by subagent-steps, claw-steps, and motion-steps.
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
+import type { FileSystem } from '../../foundation/fs/types.js';
 import type { Message, TextBlock, ToolUseBlock, ToolResultBlock, ThinkingBlock } from '../../foundation/llm-provider/types.js';
 import { CliError } from '../errors.js';
 import { migrateAndValidateSession, validateSessionData } from '../../foundation/dialog-store/store.js';
@@ -258,11 +258,14 @@ export function renderStepFull(turn: Turn, slotIdx?: number): string {
 
 // ─── Session loading ─────────────────────────────────────────
 
-export function loadSessionFromFile(filePath: string): SessionLike {
-  if (!fs.existsSync(filePath)) {
+export function loadSessionFromFile(deps: { fsFactory: (baseDir: string) => FileSystem }, filePath: string): SessionLike {
+  const baseDir = path.dirname(filePath);
+  const relPath = path.basename(filePath);
+  const fileSystem = deps.fsFactory(baseDir);
+  if (!fileSystem.existsSync(relPath)) {
     throw new CliError(`dialog session not found: ${filePath}`);
   }
-  const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  const raw = JSON.parse(fileSystem.readSync(relPath));
   const filename = path.basename(filePath);
   const session = migrateAndValidateSession(raw, filename);
   if (!session) throw new CliError(`dialog session version unknown: ${filePath}`);

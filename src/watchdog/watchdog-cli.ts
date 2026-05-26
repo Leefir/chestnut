@@ -5,6 +5,7 @@
 
 import { spawnDetached, kill } from '../foundation/process-exec/index.js';
 import { setTimeout } from 'timers/promises';
+import type { FileSystem } from '../foundation/fs/types.js';
 import {
   getWatchdogEntryPath,
 } from './watchdog-context.js';
@@ -34,13 +35,13 @@ const WATCHDOG_STOP_MAX_ATTEMPTS = 50;
 const WATCHDOG_SIGKILL_GRACE_MS = 500;
 
 /** 1:1 保 watchdog.ts:514-543 / startCommand */
-export async function startCommand(): Promise<void> {
-  const watchdogEntryPath = getWatchdogEntryPath();
+export async function startCommand(fsFactory: (baseDir: string) => FileSystem): Promise<void> {
+  const watchdogEntryPath = getWatchdogEntryPath(fsFactory);
 
   // 幂等：本 workspace 的 watchdog 已在运行则直接返回
   try {
-    if (isWatchdogAlive()) {
-      console.log(`Watchdog already running (PID: ${getWatchdogPid()})`);
+    if (isWatchdogAlive(fsFactory)) {
+      console.log(`Watchdog already running (PID: ${getWatchdogPid(fsFactory)})`);
       return;
     }
   } catch (err) {
@@ -63,12 +64,12 @@ export async function startCommand(): Promise<void> {
 
   // 等待 PID 文件写入
   let attempts = 0;
-  while (!isWatchdogAlive() && attempts < WATCHDOG_START_MAX_ATTEMPTS) {
+  while (!isWatchdogAlive(fsFactory) && attempts < WATCHDOG_START_MAX_ATTEMPTS) {
     await setTimeout(WATCHDOG_POLL_INTERVAL_MS);
     attempts++;
   }
 
-  const pid = getWatchdogPid();
+  const pid = getWatchdogPid(fsFactory);
   if (pid) {
     console.log(`Watchdog started (PID: ${pid})`);
   } else {
@@ -77,12 +78,12 @@ export async function startCommand(): Promise<void> {
 }
 
 /** 1:1 保 watchdog.ts:545-580 / stopCommand */
-export async function stopCommand(): Promise<void> {
-  const pid = getWatchdogPid();
+export async function stopCommand(fsFactory: (baseDir: string) => FileSystem): Promise<void> {
+  const pid = getWatchdogPid(fsFactory);
   
-  if (!pid || !isWatchdogAlive()) {
+  if (!pid || !isWatchdogAlive(fsFactory)) {
     console.log('Watchdog is not running');
-    removeWatchdogPid();
+    removeWatchdogPid(fsFactory);
     return;
   }
   
@@ -96,12 +97,12 @@ export async function stopCommand(): Promise<void> {
   
   // Wait up to 5s
   let attempts = 0;
-  while (isWatchdogAlive() && attempts < WATCHDOG_STOP_MAX_ATTEMPTS) {
+  while (isWatchdogAlive(fsFactory) && attempts < WATCHDOG_STOP_MAX_ATTEMPTS) {
     await setTimeout(WATCHDOG_POLL_INTERVAL_MS);
     attempts++;
   }
   
-  if (isWatchdogAlive()) {
+  if (isWatchdogAlive(fsFactory)) {
     console.log('Watchdog still alive, sending SIGKILL...');
     try {
       kill(pid, 'KILL');
@@ -111,6 +112,6 @@ export async function stopCommand(): Promise<void> {
     await setTimeout(WATCHDOG_SIGKILL_GRACE_MS);
   }
   
-  removeWatchdogPid();
+  removeWatchdogPid(fsFactory);
   console.log('Watchdog stopped');
 }

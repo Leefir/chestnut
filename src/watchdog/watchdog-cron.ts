@@ -4,6 +4,7 @@
  */
 
 import * as path from 'path';
+import type { FileSystem } from '../foundation/fs/types.js';
 import type { ProcessManager } from '../foundation/process-manager/index.js';
 import type { AuditLog } from '../foundation/audit/index.js';
 import {
@@ -13,7 +14,6 @@ import {
 import { log, writeWatchdogInboxMessage } from './watchdog-log.js';
 import { clawHasContract, getClawActivityInfo, gatherClawSnapshot, getEffectiveInterval, shouldResetNotifyCount } from './watchdog-utils.js';
 import { getContractCreatedMs } from '../core/contract/index.js';
-import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import { getNamedSubrootDir } from '../foundation/config/index.js';
 import { InboxWriter } from '../foundation/messaging/index.js';
 import { WATCHDOG_AUDIT_EVENTS } from './audit-events.js';
@@ -21,9 +21,9 @@ import { CLAWS_DIR } from '../foundation/paths.js';
 
 // Check for claws with an active contract but no progress for a long time, and send a reminder
 /** 1:1 保 watchdog.ts:271-349 / 78 行 / inactivity timeout + backoff */
-export async function maybeCronClawInactivity(pm: ProcessManager, audit: AuditLog): Promise<void> {
-  const timeoutMs = getGlobalConfig().watchdog?.claw_inactivity_timeout_ms ?? 300000;
-  const fs = getClawforumFs();
+export async function maybeCronClawInactivity(pm: ProcessManager, audit: AuditLog, fsFactory: (baseDir: string) => FileSystem): Promise<void> {
+  const timeoutMs = getGlobalConfig(fsFactory).watchdog?.claw_inactivity_timeout_ms ?? 300000;
+  const fs = getClawforumFs(fsFactory);
   if (!fs.existsSync(CLAWS_DIR)) return;
 
   // 清理已不存在的 claw 的 Map 条目
@@ -43,10 +43,10 @@ export async function maybeCronClawInactivity(pm: ProcessManager, audit: AuditLo
       const clawDir = path.join(getClawforumDir(), CLAWS_DIR, clawId);
 
       // Has an active contract?
-      if (!clawHasContract(clawDir, audit)) continue;
+      if (!clawHasContract(clawDir, fsFactory, audit)) continue;
 
       // Parse stream.jsonl to get real progress
-      const clawFs = new NodeFileSystem({ baseDir: clawDir });
+      const clawFs = fsFactory(clawDir);
       const { lastEventMs, lastError } = await getClawActivityInfo(clawFs, audit);
 
       // Merge with contract creation time to handle contract recreation scenario
@@ -70,7 +70,7 @@ export async function maybeCronClawInactivity(pm: ProcessManager, audit: AuditLo
       if (now - lastNotified < effectiveInterval) continue;
 
       // Collect snapshot info
-      const snapshot = gatherClawSnapshot(clawDir, pm, clawId);
+      const snapshot = gatherClawSnapshot(clawDir, fsFactory, pm, clawId);
       const inactiveMin = Math.round((now - referenceMs) / 60000);
 
       // Body without directives: pure factual data (including notification number)
@@ -78,8 +78,8 @@ export async function maybeCronClawInactivity(pm: ProcessManager, audit: AuditLo
       let body = `Claw ${clawId} no progress for ${inactiveMin}m (notification #${displayCount}). Status: ${snapshot.status}, contract: ${snapshot.contract}, inbox_pending: ${snapshot.inboxPending}, outbox_pending: ${snapshot.outboxPending}`;
       if (lastError) body += `, last error: ${lastError}`;
 
-      log(`[watchdog] Claw ${clawId} no progress ${inactiveMin}m (notify #${displayCount}) with active contract${lastError ? ` (last error: ${lastError})` : ''}`);
-      writeWatchdogInboxMessage('claw_inactivity', {
+      log(fsFactory, `[watchdog] Claw ${clawId} no progress ${inactiveMin}m (notify #${displayCount}) with active contract${lastError ? ` (last error: ${lastError})` : ''}`);
+      writeWatchdogInboxMessage(fsFactory, 'claw_inactivity', {
         message: body,
         claw_id: clawId,
         inactive_ms: now - referenceMs,
@@ -94,15 +94,15 @@ export async function maybeCronClawInactivity(pm: ProcessManager, audit: AuditLo
       inactivityNotifyCount.set(clawId, displayCount);
       lastInactivityNotified.set(clawId, now);
     } catch (err) {
-      log(`[watchdog] Error checking claw ${clawId}: ${err instanceof Error ? err.message : String(err)}`);
+      log(fsFactory, `[watchdog] Error checking claw ${clawId}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 }
 
 // Detect claw process crashes and notify motion
 /** 1:1 保 watchdog.ts:350-401 / 51 行 / crash 检测 */
-export function maybeCronClawCrash(pm: ProcessManager, audit: AuditLog): void {
-  const fs = getClawforumFs();
+export function maybeCronClawCrash(pm: ProcessManager, audit: AuditLog, fsFactory: (baseDir: string) => FileSystem): void {
+  const fs = getClawforumFs(fsFactory);
   if (!fs.existsSync(CLAWS_DIR)) return;
 
   // 清理已不存在的 claw 的 Map 条目
@@ -141,23 +141,23 @@ export function maybeCronClawCrash(pm: ProcessManager, audit: AuditLog): void {
       }
 
       // Only notify motion when there is an active/paused contract (no notification needed if claw stops without a contract)
-      if (!clawHasContract(clawDir, audit)) {
-        log(`[watchdog] Claw ${clawId} stopped (no active contract, skipping notification) [${detectMethod}]`);
+      if (!clawHasContract(clawDir, fsFactory, audit)) {
+        log(fsFactory, `[watchdog] Claw ${clawId} stopped (no active contract, skipping notification) [${detectMethod}]`);
         audit.write(WATCHDOG_AUDIT_EVENTS.CLAW_CRASH_DETECTED, `claw=${clawId}`, 'has_contract=false', `detected_by=${detectMethod}`);
         clawPreviouslyAlive.set(clawId, currentlyAlive);
         continue;
       }
-      log(`[watchdog] Claw ${clawId} crashed (${detectMethod}, was alive, now stopped)`);
+      log(fsFactory, `[watchdog] Claw ${clawId} crashed (${detectMethod}, was alive, now stopped)`);
       audit.write(WATCHDOG_AUDIT_EVENTS.CLAW_CRASH_DETECTED, `claw=${clawId}`, 'has_contract=true', `detected_by=${detectMethod}`);
 
       // Collect snapshot info
-      const snapshot = gatherClawSnapshot(clawDir, pm, clawId);
+      const snapshot = gatherClawSnapshot(clawDir, fsFactory, pm, clawId);
       const lastEventsStr = snapshot.lastAuditEvents?.length
         ? `; last_events: ${snapshot.lastAuditEvents.map(e => e.replace(/\t/g, '|')).join(' >> ')}`
         : '';
       const body = `contract: ${snapshot.contract}, outbox_pending: ${snapshot.outboxPending}${lastEventsStr}`;
 
-      const { fs: motionFs, audit: motionAudit } = getMotionContext();
+      const { fs: motionFs, audit: motionAudit } = getMotionContext(fsFactory);
       try {
         new InboxWriter(motionFs, path.join(getNamedSubrootDir('motion'), 'inbox', 'pending'), motionAudit).writeSync({
           type: 'crash_notification',

@@ -13,7 +13,6 @@ import { fileURLToPath } from 'url';
 import { getNamedSubrootDir, loadGlobalConfig } from '../foundation/config/index.js';
 import { CONFIG_DEFAULTS } from '../assembly/config-defaults.js';
 import type { FileSystem } from '../foundation/fs/types.js';
-import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import type { AuditLog } from '../foundation/audit/index.js';
 import { createDirContext } from '../foundation/process-manager/factories.js';
 
@@ -39,7 +38,7 @@ export const clawPreviouslyNotified: Map<string, number> = new Map();
 // === Lazy cache state（封装 / 经 getter） ===
 
 let _motionCtx: { fs: FileSystem; audit: AuditLog } | null = null;
-let _clawforumFs: NodeFileSystem | null = null;
+let _clawforumFs: FileSystem | null = null;
 let _clawforumFsBaseDir: string | null = null;
 let globalConfigCache: ReturnType<typeof loadGlobalConfig> | null = null;
 let _auditWriter: AuditLog | null = null;
@@ -54,12 +53,12 @@ export function getClawforumDir(): string {
  * Used as the pgrep pattern to scope process operations to the current install.
  */
 /** 1:1 保 watchdog.ts:37-47 */
-export function getWatchdogEntryPath(): string {
+export function getWatchdogEntryPath(fsFactory: (baseDir: string) => FileSystem): string {
   const thisDir = path.dirname(fileURLToPath(import.meta.url));
   const bundleEntry = path.join(thisDir, 'watchdog-entry.js');
   const fallbackEntry = path.resolve(thisDir, '..', '..', 'dist', 'watchdog-entry.js');
   const projectRoot = path.resolve(thisDir, '..', '..');
-  const fsProj = new NodeFileSystem({ baseDir: projectRoot });
+  const fsProj = fsFactory(projectRoot);
   const relBundle = path.relative(projectRoot, bundleEntry);
   return fsProj.existsSync(relBundle)
     ? bundleEntry
@@ -70,9 +69,9 @@ export function getWatchdogEntryPath(): string {
 // 命名契约：内部可变变量 `_motionCtx`（下划线前缀 = 模块私有），外部访问仅经 `getMotionContext()`
 // 唯一管理者：watchdog.ts 模块；进程级单例，lazy init
 /** 1:1 保 watchdog.ts:58-67 */
-export function getMotionContext(): { fs: FileSystem; audit: AuditLog } {
+export function getMotionContext(fsFactory: (baseDir: string) => FileSystem): { fs: FileSystem; audit: AuditLog } {
   if (!_motionCtx) {
-    _motionCtx = createDirContext(getNamedSubrootDir('motion'));
+    _motionCtx = createDirContext({ fsFactory }, getNamedSubrootDir('motion'));
     // 失败契约（fail-fast）：createDirContext 抛错 → 直接上抛
     //   - _motionCtx 保持 null，调用方（watchdog 主循环）整个 iteration 失败
     //   - 不做 catch 重建、不降级写 stdout；watchdog 进程应由 SIGTERM 或 uncaughtException 兜底
@@ -84,10 +83,10 @@ export function getMotionContext(): { fs: FileSystem; audit: AuditLog } {
 // clawforum FileSystem lazy singleton（mirror getMotionContext 模式）
 // 增加 baseDir 缓存校验，使测试环境在 getClawforumDir() 变化时自动重建实例
 /** 1:1 保 watchdog.ts:73-80 */
-export function getClawforumFs(): NodeFileSystem {
+export function getClawforumFs(fsFactory: (baseDir: string) => FileSystem): FileSystem {
   const baseDir = getClawforumDir();
   if (!_clawforumFs || _clawforumFsBaseDir !== baseDir) {
-    _clawforumFs = new NodeFileSystem({ baseDir });
+    _clawforumFs = fsFactory(baseDir);
     _clawforumFsBaseDir = baseDir;
   }
   return _clawforumFs;
@@ -95,9 +94,9 @@ export function getClawforumFs(): NodeFileSystem {
 
 // Global config (loaded lazily on first access)
 /** 1:1 保 watchdog.ts:252-257 */
-export function getGlobalConfig() {
+export function getGlobalConfig(fsFactory: (baseDir: string) => FileSystem) {
   if (!globalConfigCache) {
-    globalConfigCache = loadGlobalConfig(CONFIG_DEFAULTS);
+    globalConfigCache = loadGlobalConfig({ fsFactory }, CONFIG_DEFAULTS);
   }
   return globalConfigCache;
 }

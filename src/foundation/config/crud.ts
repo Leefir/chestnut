@@ -4,7 +4,6 @@
  * CRUD operations for global + claw configs / phase 500 sub-file extraction
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import {
@@ -18,7 +17,7 @@ import {
   getGlobalConfigPath,
   getClawConfigPath,
 } from '../paths.js';
-import { NodeFileSystem } from '../fs/index.js';
+import type { FileSystem } from '../fs/types.js';
 
 // Expand ${ENV_VAR} syntax in config values
 function expandEnvVars(obj: unknown): unknown {
@@ -45,10 +44,12 @@ function expandEnvVars(obj: unknown): unknown {
 }
 
 // Load global config
-export function loadGlobalConfig(defaults: ConfigDefaults): ClawGlobalConfig {
+export function loadGlobalConfig(deps: { fsFactory: (baseDir: string) => FileSystem }, defaults: ConfigDefaults): ClawGlobalConfig {
   const configPath = getGlobalConfigPath();
+  const dir = path.dirname(configPath);
+  const fs = deps.fsFactory(dir);
 
-  if (!fs.existsSync(configPath)) {
+  if (!fs.existsSync(path.basename(configPath))) {
     throw new Error(
       'Global config not found. Run "clawforum init" first.'
     );
@@ -56,7 +57,7 @@ export function loadGlobalConfig(defaults: ConfigDefaults): ClawGlobalConfig {
 
   let content: string;
   try {
-    content = fs.readFileSync(configPath, 'utf-8');
+    content = fs.readSync(path.basename(configPath));
   } catch (err) {
     throw new Error(`Failed to read config: ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -86,31 +87,35 @@ export function loadGlobalConfig(defaults: ConfigDefaults): ClawGlobalConfig {
 }
 
 // Check if initialized
-export function isInitialized(): boolean {
-  return fs.existsSync(getGlobalConfigPath());
+export function isInitialized(deps: { fsFactory: (baseDir: string) => FileSystem }): boolean {
+  const configPath = getGlobalConfigPath();
+  const dir = path.dirname(configPath);
+  const fs = deps.fsFactory(dir);
+  return fs.existsSync(path.basename(configPath));
 }
 
 // Save global config
-export function saveGlobalConfig(config: ClawGlobalConfig): void {
+export function saveGlobalConfig(deps: { fsFactory: (baseDir: string) => FileSystem }, config: ClawGlobalConfig): void {
   const configPath = getGlobalConfigPath();
   const dir = path.dirname(configPath);
-  fs.mkdirSync(dir, { recursive: true });
+  const fileSystem = deps.fsFactory(dir);
   const content = yaml.dump(config);
-  const fileSystem = new NodeFileSystem({ baseDir: dir });
   fileSystem.writeAtomicSync(path.basename(configPath), content);
 }
 
 // Load claw config
-export function loadClawConfig(name: string, defaults: ConfigDefaults): ClawConfig {
+export function loadClawConfig(deps: { fsFactory: (baseDir: string) => FileSystem }, name: string, defaults: ConfigDefaults): ClawConfig {
   const configPath = getClawConfigPath(name);
+  const dir = path.dirname(configPath);
+  const fs = deps.fsFactory(dir);
 
-  if (!fs.existsSync(configPath)) {
+  if (!fs.existsSync(path.basename(configPath))) {
     throw new Error(`Claw "${name}" not found.`);
   }
 
   let content: string;
   try {
-    content = fs.readFileSync(configPath, 'utf-8');
+    content = fs.readSync(path.basename(configPath));
   } catch (err) {
     throw new Error(`Failed to read config: ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -139,9 +144,11 @@ export function loadClawConfig(name: string, defaults: ConfigDefaults): ClawConf
 }
 
 // Patch the primary LLM config in-place (raw YAML read/write, no Zod round-trip)
-export function patchGlobalConfigPrimary(patch: Record<string, unknown>): void {
+export function patchGlobalConfigPrimary(deps: { fsFactory: (baseDir: string) => FileSystem }, patch: Record<string, unknown>): void {
   const configPath = getGlobalConfigPath();
-  const loaded = yaml.load(fs.readFileSync(configPath, 'utf-8'));
+  const dir = path.dirname(configPath);
+  const fs = deps.fsFactory(dir);
+  const loaded = yaml.load(fs.readSync(path.basename(configPath)));
   if (typeof loaded !== 'object' || loaded === null || Array.isArray(loaded)) {
     throw new Error(`config parse failed: expected object, got ${typeof loaded}`);
   }
@@ -151,22 +158,22 @@ export function patchGlobalConfigPrimary(patch: Record<string, unknown>): void {
   llm.primary = { ...primary, ...patch };
   cfg.llm = llm;
   const content = yaml.dump(cfg);
-  const dir = path.dirname(configPath);
-  const fileSystem = new NodeFileSystem({ baseDir: dir });
-  fileSystem.writeAtomicSync(path.basename(configPath), content);
+  fs.writeAtomicSync(path.basename(configPath), content);
 }
 
 // Save claw config
-export function saveClawConfig(name: string, config: ClawConfig): void {
+export function saveClawConfig(deps: { fsFactory: (baseDir: string) => FileSystem }, name: string, config: ClawConfig): void {
   const configPath = getClawConfigPath(name);
   const dir = path.dirname(configPath);
-  fs.mkdirSync(dir, { recursive: true });
+  const fileSystem = deps.fsFactory(dir);
   const content = yaml.dump(config);
-  const fileSystem = new NodeFileSystem({ baseDir: dir });
   fileSystem.writeAtomicSync(path.basename(configPath), content);
 }
 
 // Check if claw exists
-export function clawExists(name: string): boolean {
-  return fs.existsSync(getClawConfigPath(name));
+export function clawExists(deps: { fsFactory: (baseDir: string) => FileSystem }, name: string): boolean {
+  const configPath = getClawConfigPath(name);
+  const dir = path.dirname(configPath);
+  const fs = deps.fsFactory(dir);
+  return fs.existsSync(path.basename(configPath));
 }

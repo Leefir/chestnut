@@ -44,6 +44,9 @@ export interface RuntimeDependencies {
   // === L4 (phase 1273) ===
   readonly permissionChecker: PermissionChecker;  // required / 编译期 enforce ML#9
 
+  // phase 1283: fsFactory inject (ML#3 file I/O resource unique ownership)
+  readonly fsFactory: (baseDir: string) => FileSystem;
+
   // 构造期注入（phase182 B.p166-5 升档：setter 双阶段消除）
   readonly parentStreamLog?: import('../../foundation/stream/types.js').StreamLog;
   readonly contractNotifyCallback?: (type: string, data: Record<string, unknown>) => void;

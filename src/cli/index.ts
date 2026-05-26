@@ -13,8 +13,9 @@ import { withCliErrorHandling } from './with-cli-error-handling.js';
 import { initCommand } from './commands/init.js';
 import { startCommand } from './commands/start.js';
 import * as path from 'path';
-import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
+import { NodeFileSystem } from '../foundation/fs/node-fs.js';
+import type { FileSystem } from '../foundation/fs/types.js';
 import { 
   createCommand, 
   chatCommand, 
@@ -33,7 +34,7 @@ import {
 import { contractCreateCommand, contractCreateFromDirCommand, contractLogCommand, contractEventsCommand } from './commands/contract.js';
 import { skillInstallUserCommand, skillInstallClawCommand } from './commands/skill.js';
 import { runWatchdogLoop, startCommand as watchdogStart, stopCommand as watchdogStop } from '../watchdog/watchdog.js';
-import { configCommand } from './commands/config.js';
+import { createConfigCommand } from './commands/config.js';
 import { stopAllCommand } from './commands/stop.js';
 import { statusCommand } from './commands/status.js';
 import { createSubagentCommand } from './commands/subagent.js';
@@ -46,21 +47,23 @@ import { getClawforumRoot, getClawDir, loadGlobalConfig } from '../foundation/co
 import { CONFIG_DEFAULTS } from '../assembly/config-defaults.js';
 import { parseIntOption } from './parse-int-option.js';
 
+const fsFactory = (baseDir: string): FileSystem => new NodeFileSystem({ baseDir });
+
 program
   .name('clawforum')
   .description('AI Agent Orchestration System')
   .version('0.1.0');
 
 // config command
-program.addCommand(configCommand);
+program.addCommand(createConfigCommand({ fsFactory }));
 
 // stop command
 program
   .command('stop')
   .description('Stop all clawforum processes (watchdog → motion → claws)')
   .action(withCliErrorHandling(async () => {
-    const { audit } = createDirContext(getClawforumRoot());
-    await stopAllCommand({ audit });
+    const { audit } = createDirContext({ fsFactory }, getClawforumRoot());
+    await stopAllCommand({ fsFactory }, { audit });
   }));
 
 // status command
@@ -68,7 +71,7 @@ program
   .command('status')
   .description('Show status of all clawforum processes')
   .action(withCliErrorHandling(async () => {
-    await statusCommand();
+    await statusCommand({ fsFactory });
   }));
 
 // start command
@@ -76,8 +79,8 @@ program
   .command('start')
   .description('Start the system (initializes if needed) and open Motion chat')
   .action(withCliErrorHandling(async () => {
-    const { audit } = createDirContext(getClawforumRoot());
-    await startCommand({ audit });
+    const { audit } = createDirContext({ fsFactory }, getClawforumRoot());
+    await startCommand({ fsFactory }, { audit });
   }));
 
 // init command
@@ -85,8 +88,8 @@ program
   .command('init')
   .description('Initialize clawforum workspace')
   .action(withCliErrorHandling(async () => {
-    const { audit } = createDirContext(getClawforumRoot());
-    await initCommand(false, { audit });
+    const { audit } = createDirContext({ fsFactory }, getClawforumRoot());
+    await initCommand({ fsFactory }, false, { audit });
   }));
 
 // claw command group
@@ -99,9 +102,9 @@ clawCmd
   .command('create <name>')
   .description('Create a new Claw')
   .action(withCliErrorHandling(async (name: string) => {
-    loadGlobalConfig(CONFIG_DEFAULTS);
-    const { audit } = createDirContext(getClawDir(name));
-    await createCommand(name, { audit });
+    loadGlobalConfig({ fsFactory }, CONFIG_DEFAULTS);
+    const { audit } = createDirContext({ fsFactory }, getClawDir(name));
+    await createCommand({ fsFactory }, name, { audit });
   }));
 
 // claw chat
@@ -109,7 +112,7 @@ clawCmd
   .command('chat <name>')
   .description('Chat with a Claw')
   .action(withCliErrorHandling(async (name: string) => {
-    await chatCommand(name);
+    await chatCommand({ fsFactory }, name);
   }));
 
 // claw stop
@@ -117,9 +120,9 @@ clawCmd
   .command('stop <name>')
   .description('Stop Claw daemon')
   .action(withCliErrorHandling(async (name: string) => {
-    loadGlobalConfig(CONFIG_DEFAULTS);
-    const { audit } = createDirContext(getClawDir(name));
-    await stopCommand(name, { audit });
+    loadGlobalConfig({ fsFactory }, CONFIG_DEFAULTS);
+    const { audit } = createDirContext({ fsFactory }, getClawDir(name));
+    await stopCommand({ fsFactory }, name, { audit });
   }));
 
 // claw list
@@ -128,7 +131,7 @@ clawCmd
   .description('List all Claws and their status')
   .option('--json', 'Output as JSON (machine-readable)')
   .action(withCliErrorHandling(async (opts: { json?: boolean }) => {
-    await listCommand(opts);
+    await listCommand({ fsFactory }, opts);
   }));
 
 // claw health
@@ -137,7 +140,7 @@ clawCmd
   .description('Show Claw health status')
   .option('--json', 'Output as JSON (machine-readable)')
   .action(withCliErrorHandling(async (name: string, opts: { json?: boolean }) => {
-    await healthCommand(name, opts);
+    await healthCommand({ fsFactory }, name, opts);
   }));
 
 // claw send
@@ -151,7 +154,7 @@ clawCmd
     if (!validPriorities.includes(opts.priority)) {
       throw new CliError(`Invalid priority: ${opts.priority}. Must be one of: ${validPriorities.join(', ')}`);
     }
-    await sendCommand(name, message, { priority: opts.priority as 'critical' | 'high' | 'normal' | 'low' });
+    await sendCommand({ fsFactory }, name, message, { priority: opts.priority as 'critical' | 'high' | 'normal' | 'low' });
   }));
 
 // claw outbox
@@ -160,10 +163,10 @@ clawCmd
   .description('Read and consume outbox messages from a Claw')
   .option('--limit <n>', 'Max messages to read (default: 1)', '1')
   .action(withCliErrorHandling(async (name: string, opts: { limit: string }) => {
-    loadGlobalConfig(CONFIG_DEFAULTS);
-    const { audit } = createDirContext(getClawDir(name));
+    loadGlobalConfig({ fsFactory }, CONFIG_DEFAULTS);
+    const { audit } = createDirContext({ fsFactory }, getClawDir(name));
     const limit = parseIntOption(opts.limit, '--limit must be a non-negative integer');
-    await outboxCommand(name, { limit }, { audit });
+    await outboxCommand({ fsFactory }, name, { limit }, { audit });
   }));
 
 // claw trace
@@ -175,7 +178,7 @@ clawCmd
   .option('--step <n>', 'Show full content of step N (no truncation)', parseInt)
   .action(withCliErrorHandling(async (opts: { claw: string; contract: string; step?: number }) => {
     const { clawTraceCommand } = await import('./commands/claw.js');
-    await clawTraceCommand(opts.claw, opts.contract, opts.step);
+    await clawTraceCommand({ fsFactory }, opts.claw, opts.contract, opts.step);
   }));
 
 // claw steps
@@ -183,7 +186,7 @@ clawCmd
   .command('steps <name>')
   .description('Show main agent turn steps (name = "motion" or claw name)')
   .action(withCliErrorHandling(async (name: string) => {
-    await clawStepsCommand(name);
+    await clawStepsCommand({ fsFactory }, name);
   }));
 
 // claw step
@@ -191,7 +194,7 @@ clawCmd
   .command('step <n> <name>')
   .description('Show full detail of a single turn (n = "N" for whole turn, "N.x" for slot x)')
   .action(withCliErrorHandling(async (n: string, name: string) => {
-    await clawStepCommand(n, name);
+    await clawStepCommand({ fsFactory }, n, name);
   }));
 
 // claw daemon (auto-backgrounds)
@@ -202,25 +205,26 @@ clawCmd
     // 前台入口：后台启动
     const { loadGlobalConfig, clawExists, getClawDir, getGlobalConfigPath } = await import('../foundation/config/index.js');
     const { CONFIG_DEFAULTS } = await import('../assembly/config-defaults.js');
-    const { NodeFileSystem } = await import('../foundation/fs/node-fs.js');
     const { createSystemAudit } = await import('../foundation/audit/index.js');
     const { createAgentProcessManager } = await import('../foundation/process-manager/agent-factory.js');
-    loadGlobalConfig(CONFIG_DEFAULTS);
-    if (!clawExists(name)) {
+    loadGlobalConfig({ fsFactory }, CONFIG_DEFAULTS);
+    if (!clawExists({ fsFactory }, name)) {
       throw new CliError(`Claw "${name}" does not exist. Try \`clawforum claw list\` to see existing claws.`);
     }
     const clawDir = getClawDir(name);
     const baseDir = path.dirname(getGlobalConfigPath());
-    const nodeFs = new NodeFileSystem({ baseDir });
+    const nodeFs = fsFactory(baseDir);
     const systemAudit = createSystemAudit(nodeFs, baseDir);
-    const pm = createAgentProcessManager(systemAudit);
+    const pm = createAgentProcessManager({ fsFactory }, systemAudit);
     if (pm.isAlive(name)) {
       console.warn(`⚠ Claw "${name}" is already running`);
       return;
     }
     const thisDir = path.dirname(fileURLToPath(import.meta.url));
     const bundleEntry = path.join(thisDir, 'daemon-entry.js');
-    const daemonEntryPath = existsSync(bundleEntry) ? bundleEntry : path.resolve(thisDir, '..', 'daemon-entry.js');
+    const bundleFs = fsFactory(thisDir);
+    const relBundle = path.relative(thisDir, bundleEntry);
+    const daemonEntryPath = bundleFs.existsSync(relBundle) ? bundleEntry : path.resolve(thisDir, '..', 'daemon-entry.js');
     const pid = await pm.spawn(name, {
       command: 'node',
       args: [daemonEntryPath, name],
@@ -249,8 +253,8 @@ motionCmd
   .command('init')
   .description('Initialize Motion configuration')
   .action(withCliErrorHandling(async () => {
-    const { audit } = createDirContext(getClawforumRoot());
-    await motionInitCommand(false, { audit });
+    const { audit } = createDirContext({ fsFactory }, getClawforumRoot());
+    await motionInitCommand({ fsFactory }, false, { audit });
   }));
 
 // motion chat
@@ -258,7 +262,7 @@ motionCmd
   .command('chat')
   .description('Chat with Motion')
   .action(withCliErrorHandling(async () => {
-    await motionChatCommand();
+    await motionChatCommand({ fsFactory });
   }));
 
 // motion stop
@@ -266,8 +270,8 @@ motionCmd
   .command('stop')
   .description('Stop Motion daemon')
   .action(withCliErrorHandling(async () => {
-    const { audit } = createDirContext(getClawforumRoot());
-    await motionStopCommand({ audit });
+    const { audit } = createDirContext({ fsFactory }, getClawforumRoot());
+    await motionStopCommand({ fsFactory }, { audit });
   }));
 
 // motion steps
@@ -275,7 +279,7 @@ motionCmd
   .command('steps')
   .description('Show motion turn steps')
   .action(withCliErrorHandling(async () => {
-    await motionStepsCommand();
+    await motionStepsCommand({ fsFactory });
   }));
 
 // motion step
@@ -283,7 +287,7 @@ motionCmd
   .command('step <n>')
   .description('Show full detail of a single motion turn')
   .action(withCliErrorHandling(async (n: string) => {
-    await motionStepCommand(n);
+    await motionStepCommand({ fsFactory }, n);
   }));
 
 // motion daemon (auto-backgrounds)
@@ -294,22 +298,22 @@ motionCmd
     // 前台入口
     const { loadGlobalConfig, getNamedSubrootDir } = await import('../foundation/config/index.js');
     const { CONFIG_DEFAULTS } = await import('../assembly/config-defaults.js');
-    const { NodeFileSystem } = await import('../foundation/fs/node-fs.js');
     const { createSystemAudit } = await import('../foundation/audit/index.js');
     const { createAgentProcessManager } = await import('../foundation/process-manager/agent-factory.js');
-    loadGlobalConfig(CONFIG_DEFAULTS);
+    loadGlobalConfig({ fsFactory }, CONFIG_DEFAULTS);
     const motionDir = getNamedSubrootDir('motion');
     const baseDir = path.dirname(motionDir);
-    const nodeFs = new NodeFileSystem({ baseDir });
+    const nodeFs = fsFactory(baseDir);
     const systemAudit = createSystemAudit(nodeFs, baseDir);
-    const pm = createAgentProcessManager(systemAudit);
+    const pm = createAgentProcessManager({ fsFactory }, systemAudit);
     if (pm.isAlive('motion')) {
       console.warn('⚠ Motion is already running');
       return;
     }
     const thisDir = path.dirname(fileURLToPath(import.meta.url));
     const bundleEntry = path.join(thisDir, 'daemon-entry.js');
-    const daemonEntryPath = existsSync(bundleEntry) ? bundleEntry : path.resolve(thisDir, '..', 'daemon-entry.js');
+    const bundleFs = fsFactory(thisDir);
+    const daemonEntryPath = bundleFs.existsSync('daemon-entry.js') ? bundleEntry : path.resolve(thisDir, '..', 'daemon-entry.js');
     const pid = await pm.spawn('motion', {
       command: 'node',
       args: [daemonEntryPath, 'motion'],
@@ -341,14 +345,14 @@ contractCmd
   .option('--file <path>', 'Path to contract YAML file')
   .option('--dir <path>', 'Directory containing contract.yaml and verification/ folder')
   .action(withCliErrorHandling(async (opts: { claw: string; file?: string; dir?: string }) => {
-    loadGlobalConfig(CONFIG_DEFAULTS);
-    const { audit } = createDirContext(getClawDir(opts.claw));
+    loadGlobalConfig({ fsFactory }, CONFIG_DEFAULTS);
+    const { audit } = createDirContext({ fsFactory }, getClawDir(opts.claw));
     if (opts.file && opts.dir) {
       throw new CliError('--file and --dir are mutually exclusive. Use one of --file or --dir, not both.');
     } else if (opts.file) {
-      await contractCreateCommand(opts.claw, opts.file, { audit });
+      await contractCreateCommand({ fsFactory }, opts.claw, opts.file, { audit });
     } else if (opts.dir) {
-      await contractCreateFromDirCommand(opts.claw, opts.dir, { audit });
+      await contractCreateFromDirCommand({ fsFactory }, opts.claw, opts.dir, { audit });
     } else {
       throw new CliError('must provide --file or --dir');
     }
@@ -360,7 +364,7 @@ contractCmd
   .requiredOption('-c, --claw <id>', 'Target claw ID')
   .option('--contract <id>', 'Contract ID (default: active contract)')
   .action(withCliErrorHandling(async (opts: { claw: string; contract?: string }) => {
-    await contractLogCommand(opts.claw, opts.contract);
+    await contractLogCommand({ fsFactory }, opts.claw, opts.contract);
   }));
 
 contractCmd
@@ -369,7 +373,7 @@ contractCmd
   .requiredOption('--since <timestamp>', 'Unix timestamp in milliseconds')
   .action(withCliErrorHandling(async (claw: string, opts: { since: string }) => {
     const since = parseIntOption(opts.since, '--since must be a Unix timestamp in milliseconds');
-    await contractEventsCommand(claw, since);
+    await contractEventsCommand({ fsFactory }, claw, since);
   }));
 
 contractCmd.on('command:*', (ops) => {
@@ -396,15 +400,15 @@ skillCmd
       if (!opts.skill) {
         throw new CliError('--skill <name> is required with --claw');
       }
-      loadGlobalConfig(CONFIG_DEFAULTS);
-      const { audit } = createDirContext(getClawDir(opts.claw));
-      await skillInstallClawCommand(opts.claw, opts.skill, { audit });
+      loadGlobalConfig({ fsFactory }, CONFIG_DEFAULTS);
+      const { audit } = createDirContext({ fsFactory }, getClawDir(opts.claw));
+      await skillInstallClawCommand({ fsFactory }, opts.claw, opts.skill, { audit });
     } else {
       if (!source) {
         throw new CliError('source path is required');
       }
-      const { audit } = createDirContext(getClawforumRoot());
-      await skillInstallUserCommand(source, { audit });
+      const { audit } = createDirContext({ fsFactory }, getClawforumRoot());
+      await skillInstallUserCommand({ fsFactory }, source, { audit });
     }
   }));
 
@@ -427,7 +431,7 @@ watchdogCmd
   .command('start')
   .description('Start watchdog')
   .action(withCliErrorHandling(async () => {
-    await watchdogStart();
+    await watchdogStart(fsFactory);
   }));
 
 // watchdog stop
@@ -435,7 +439,7 @@ watchdogCmd
   .command('stop')
   .description('Stop watchdog')
   .action(withCliErrorHandling(async () => {
-    await watchdogStop();
+    await watchdogStop(fsFactory);
   }));
 
 // watchdog daemon (internal command, spawned by startCommand)
@@ -443,7 +447,7 @@ watchdogCmd
   .command('daemon')
   .description('Run watchdog daemon (internal)')
   .action(withCliErrorHandling(async () => {
-    await runWatchdogLoop();
+    await runWatchdogLoop(fsFactory);
   }));
 
 watchdogCmd.on('command:*', (ops) => {
@@ -456,6 +460,6 @@ watchdogCmd.on('command:*', (ops) => {
 });
 
 // subagent command group
-program.addCommand(createSubagentCommand());
+program.addCommand(createSubagentCommand({ fsFactory }));
 
 program.parse();

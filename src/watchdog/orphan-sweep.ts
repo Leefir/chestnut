@@ -3,6 +3,7 @@
  * 恢复 commit ece0926c + 4b5bf0b7 的 orphan sweep / 按 workspace root 精确化
  * （commit 16ba139b 当年删此逻辑改 isWatchdogAlive 幂等、phase 1269 实证假设破）
  */
+import type { FileSystem } from '../foundation/fs/types.js';
 import { kill, isAlive } from '../foundation/process-exec/index.js';
 import { createProcessManagerForCLI } from '../cli/utils/factories.js';
 import { getWatchdogEntryPath } from './watchdog-context.js';
@@ -18,11 +19,14 @@ const SWEEP_GRACE_MS = 1000;
  * 不跨 workspace（process_exec.findProcesses 按 entry path 精确匹配、entry path
  * 本身就 workspace-specific via getWatchdogEntryPath / dist path）
  */
-export async function sweepOrphanWatchdogs(opts: { excludePid?: number | null } = {}): Promise<number[]> {
-  ensureAuditWired();
-  const pm = createProcessManagerForCLI();
-  const wdPath = getWatchdogEntryPath();
-  const keepPid = opts.excludePid ?? getWatchdogPid();  // 默认保 pid file 那个
+export async function sweepOrphanWatchdogs(
+  fsFactory: (baseDir: string) => FileSystem,
+  opts: { excludePid?: number | null } = {},
+): Promise<number[]> {
+  ensureAuditWired(fsFactory);
+  const pm = createProcessManagerForCLI({ fsFactory });
+  const wdPath = getWatchdogEntryPath(fsFactory);
+  const keepPid = opts.excludePid ?? getWatchdogPid(fsFactory);  // 默认保 pid file 那个
 
   let allPids: number[];
   try {

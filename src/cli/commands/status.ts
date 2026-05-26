@@ -2,9 +2,7 @@
  * Status command - Show status of all clawforum processes
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
-import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { loadGlobalConfig, getNamedSubrootDir } from '../../foundation/config/index.js';
 import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
@@ -17,6 +15,7 @@ import {
   getWatchdogEntryPath,
 } from '../../watchdog/watchdog.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 
 export function findOrphanProcesses(
   pm: ProcessManager,
@@ -35,26 +34,26 @@ export function findOrphanProcesses(
   }
 }
 
-export async function statusCommand(): Promise<void> {
-  loadGlobalConfig(CONFIG_DEFAULTS);
+export async function statusCommand(deps: { fsFactory: (baseDir: string) => FileSystem }): Promise<void> {
+  loadGlobalConfig(deps, CONFIG_DEFAULTS);
 
   // 1. Watchdog
-  const watchdogPid = getWatchdogPid();
-  const watchdogAlive = isWatchdogAlive();
+  const watchdogPid = getWatchdogPid(deps.fsFactory);
+  const watchdogAlive = isWatchdogAlive(deps.fsFactory);
   console.log(`watchdog: ${watchdogAlive ? `running (PID=${watchdogPid})` : 'stopped'}`);
 
   // 2. Motion
   const baseDir = path.dirname(getNamedSubrootDir(MOTION_CLAW_ID));
-  const pm = createProcessManagerForCLI();
+  const pm = createProcessManagerForCLI(deps);
   const motionStatus = pm.getAliveStatus(MOTION_CLAW_ID);
   console.log(`motion:   ${motionStatus.alive ? `running (${motionStatus.reason})` : `stopped (${motionStatus.reason})`}`);
 
   // 3. Claws
-  const clawsDir = path.join(baseDir, CLAWS_DIR);
   const clawStatuses: { name: string; status: { alive: boolean; reason: string; pid?: number } }[] = [];
-  if (fs.existsSync(clawsDir)) {
-    const clawEntries = fs.readdirSync(clawsDir, { withFileTypes: true })
-      .filter(e => e.isDirectory())
+  const baseFs = deps.fsFactory(baseDir);
+  if (baseFs.existsSync(CLAWS_DIR)) {
+    const clawEntries = baseFs.listSync(CLAWS_DIR, { includeDirs: true })
+      .filter(e => e.isDirectory)
       .map(e => e.name);
 
     for (const name of clawEntries) {
@@ -68,17 +67,15 @@ export async function statusCommand(): Promise<void> {
   const thisDir = path.dirname(fileURLToPath(import.meta.url));
 
   // Watchdog orphans
-  const wdPath = getWatchdogEntryPath();
+  const wdPath = getWatchdogEntryPath(deps.fsFactory);
   const wdPids = findOrphanProcesses(pm, wdPath, [watchdogPid]);
   if (wdPids.length > 0) {
     console.log(`  ⚠ orphan watchdog(s): PIDs ${wdPids.join(', ')}`);
   }
 
   // Daemon orphans
-  const bundleEntry = path.join(thisDir, 'daemon-entry.js');
-  const daemonEntryPath = existsSync(bundleEntry)
-    ? bundleEntry
-    : path.resolve(thisDir, '..', '..', 'daemon-entry.js');
+  const thisFs = deps.fsFactory(thisDir);
+  const daemonEntryPath = thisFs.existsSync('daemon-entry.js') ? path.join(thisDir, 'daemon-entry.js') : path.resolve(thisDir, '..', '..', 'daemon-entry.js');
   const motionPid = motionStatus.pid;
   const trackedPids = [motionPid, ...clawStatuses.map(s => s.status.pid)].filter((p): p is number => p !== undefined);
   const orphanDaemons = findOrphanProcesses(pm, daemonEntryPath, trackedPids);

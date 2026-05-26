@@ -43,7 +43,7 @@ import {
   type DaemonStreamCallbacks,
 } from './types.js';
 import { TASKS_SYNC_DIR } from '../async-task-system/index.js';
-import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
+
 import { formatTimeAgo } from './utils.js';
 
 function auditError(
@@ -180,7 +180,7 @@ export class Runtime {
       callerType: this.options.systemPromptBuilder ? MOTION_CLAW_ID : 'claw',
       permissionChecker: deps.permissionChecker,  // NEW phase 1273
       fs: this.systemFs,
-      fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir }),
+      fsFactory: this.options.dependencies.fsFactory,
       llm: this.llm,
       maxSteps: this.options.maxSteps ?? DEFAULT_MAX_STEPS,
       auditWriter: this.auditWriter,

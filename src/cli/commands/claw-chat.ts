@@ -2,7 +2,6 @@
  * @module L6.CLI.Claw.Chat
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import {
@@ -15,28 +14,32 @@ import { createDirContext, createProcessManagerForCLI } from '../utils/factories
 import { getWorkspaceRoot } from '../../foundation/paths.js';
 import { DAEMON_LOG } from '../constants.js';
 import { PROCESS_SPAWN_CONFIRM_MS } from '../../foundation/process-manager/index.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 
-export async function chatCommand(name: string): Promise<void> {
-  loadGlobalConfig(CONFIG_DEFAULTS);
+export async function chatCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, name: string): Promise<void> {
+  loadGlobalConfig(deps, CONFIG_DEFAULTS);
 
-  if (!clawExists(name)) {
+  if (!clawExists(deps, name)) {
     throw new CliError(`Claw "${name}" does not exist. Try \`clawforum claw list\` to see existing claws.`);
   }
 
   const clawDir = getClawDir(name);
-  const globalConfig = loadGlobalConfig(CONFIG_DEFAULTS);
-  const { audit: systemAudit } = createDirContext(clawDir);
+  const globalConfig = loadGlobalConfig(deps, CONFIG_DEFAULTS);
+  const { audit: systemAudit } = createDirContext(deps, clawDir);
   await runChatViewport({
     agentDir: clawDir,
     label: name,
     audit: systemAudit,
+    fsFactory: deps.fsFactory,
     ensureDaemon: async () => {
-      const pm = createProcessManagerForCLI();
+      const pm = createProcessManagerForCLI(deps);
       if (!pm.isAlive(name)) {
         console.log(`Starting Claw "${name}" daemon...`);
         const thisDir = path.dirname(fileURLToPath(import.meta.url));
         const bundleEntry = path.join(thisDir, 'daemon-entry.js');
-        const daemonEntryPath = fs.existsSync(bundleEntry) ? bundleEntry : path.resolve(thisDir, '..', '..', 'daemon-entry.js');
+        const bundleFs = deps.fsFactory(thisDir);
+        const relBundle = path.relative(thisDir, bundleEntry);
+        const daemonEntryPath = bundleFs.existsSync(relBundle) ? bundleEntry : path.resolve(thisDir, '..', '..', 'daemon-entry.js');
         const pid = await pm.spawn(name, {
           command: 'node',
           args: [daemonEntryPath, name],

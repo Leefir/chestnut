@@ -3,41 +3,39 @@
  * Read and consume Claw outbox messages
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import { getClawDir } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 import { MESSAGING_AUDIT_EVENTS } from '../../foundation/messaging/audit-events.js';
 
 export async function outboxCommand(
+  deps: { fsFactory: (baseDir: string) => FileSystem },
   name: string,
   options?: { limit?: number },
-  deps?: { audit?: AuditLog },
+  opts?: { audit?: AuditLog },
 ): Promise<void> {
-  const audit = deps?.audit;
+  const audit = opts?.audit;
   // Outbox drain is a pure filesystem operation — we don't require config.yaml.
   // Motion's outbox scanner reports any claw dir containing pending/*.md, so the
   // CLI must be able to drain the same set, including orphan claws that have
   // outbox files but no config (e.g. abandoned or half-created claws).
   const clawDir = getClawDir(name);
-  if (!fs.existsSync(clawDir)) {
+  const clawFs = deps.fsFactory(clawDir);
+  if (!clawFs.existsSync('.')) {
     throw new CliError(
       `Claw directory not found: ${clawDir}. ` +
       `Expected at {CLAWFORUM_ROOT}/.clawforum/claws/<name>/.`
     );
   }
 
-  const pendingDir = path.join(clawDir, 'outbox', 'pending');
-  const doneDir = path.join(clawDir, 'outbox', 'done');
-  const processingDir = path.join(clawDir, 'outbox', 'processing');
-
   // Read pending files
   let files: string[] = [];
   try {
-    const allFiles = await fs.promises.readdir(pendingDir);
+    const allFiles = (await clawFs.list(path.join('outbox', 'pending'))).map(e => e.name);
     files = allFiles.filter(f => f.endsWith('.md')).sort();
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
@@ -60,18 +58,18 @@ export async function outboxCommand(
 
   audit?.write(CLI_AUDIT_EVENTS.CLAW_OUTBOX_DRAIN_START, `claw=${name}`, `limit=${limit}`);
 
-  await fs.promises.mkdir(processingDir, { recursive: true });
+  await clawFs.ensureDir(path.join('outbox', 'processing'));
 
   // Read and output
   const results: string[] = [];
   for (const fileName of toRead) {
-    const filePath = path.join(pendingDir, fileName);
+    const relPendingPath = path.join('outbox', 'pending', fileName);
     const claimToken = `cli_${process.pid}_${Date.now()}_${randomUUID().slice(0, 8)}`;
-    const claimedPath = path.join(processingDir, `${claimToken}_${fileName}`);
+    const relClaimedPath = path.join('outbox', 'processing', `${claimToken}_${fileName}`);
 
     try {
       // ATOMIC CLAIM: winner-takes-all via OS rename
-      await fs.promises.rename(filePath, claimedPath);
+      await clawFs.move(relPendingPath, relClaimedPath);
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
       if (code === 'ENOENT') {
@@ -84,13 +82,14 @@ export async function outboxCommand(
     }
 
     try {
-      const content = await fs.promises.readFile(claimedPath, 'utf-8');
+      const content = await clawFs.read(relClaimedPath);
       results.push(content);
 
       // Move to done/
       try {
-        await fs.promises.mkdir(doneDir, { recursive: true });
-        await fs.promises.rename(claimedPath, path.join(doneDir, `${Date.now()}_${fileName}`));
+        await clawFs.ensureDir(path.join('outbox', 'done'));
+        const relDonePath = path.join('outbox', 'done', `${Date.now()}_${fileName}`);
+        await clawFs.move(relClaimedPath, relDonePath);
         audit?.write(
           MESSAGING_AUDIT_EVENTS.OUTBOX_DELIVERED,
           `claw=${name}`,

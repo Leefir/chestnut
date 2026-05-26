@@ -5,8 +5,8 @@
  * 自治 sub-module / 6 helper 仅 trace command 内部用 / 0 跨 command 共享
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
+import type { FileSystem } from '../../foundation/fs/types.js';
 import * as yaml from 'js-yaml';
 import {
   loadGlobalConfig, clawExists, getClawDir,
@@ -50,33 +50,35 @@ interface ToolResultBlock {
  * Show claw execution trace for a contract
  */
 export async function clawTraceCommand(
+  deps: { fsFactory: (baseDir: string) => FileSystem },
   clawId: string,
   contractId: string,
   step?: number,
 ): Promise<void> {
-  loadGlobalConfig(CONFIG_DEFAULTS);
+  loadGlobalConfig(deps, CONFIG_DEFAULTS);
 
-  if (!clawExists(clawId)) {
+  if (!clawExists(deps, clawId)) {
     throw new CliError(`Claw "${clawId}" does not exist`);
   }
 
   const clawDir = getClawDir(clawId);
+  const fileSystem = deps.fsFactory(clawDir);
 
   // 1. 读取 started_at
-  const startedAt = await readContractStartedAt(clawDir, contractId);
+  const startedAt = await readContractStartedAt(fileSystem, contractId);
   if (!startedAt) {
     throw new CliError(`Contract "${contractId}" not found for claw "${clawId}"`);
   }
 
   // 2. 扫描并过滤 stream 文件
-  const events = await readStreamEvents(clawDir, startedAt);
+  const events = await readStreamEvents(fileSystem, startedAt);
 
   // 3. 读取契约标题
-  const title = await readContractTitle(clawDir, contractId);
+  const title = await readContractTitle(fileSystem, contractId);
 
   if (step !== undefined) {
     // 单步全量输出
-    await showStepDetail(clawDir, events, step);
+    await showStepDetail(fileSystem, events, step);
   } else {
     // 概览输出
     showTraceOverview(clawId, contractId, title, startedAt, events);
@@ -90,17 +92,17 @@ export async function clawTraceCommand(
 /**
  * 读取契约开始时间
  */
-async function readContractStartedAt(clawDir: string, contractId: string): Promise<string | null> {
+async function readContractStartedAt(fileSystem: FileSystem, contractId: string): Promise<string | null> {
   // 先尝试 archive
-  const archivePath = path.join(clawDir, CONTRACT_DIR, 'archive', contractId, 'progress.json');
-  const activePath = path.join(clawDir, CONTRACT_DIR, 'active', contractId, 'progress.json');
+  const archivePath = path.join(CONTRACT_DIR, 'archive', contractId, 'progress.json');
+  const activePath = path.join(CONTRACT_DIR, 'active', contractId, 'progress.json');
 
   for (const p of [archivePath, activePath]) {
     try {
-      const content = await fs.promises.readFile(p, 'utf-8');
+      const content = await fileSystem.read(p);
       const data = JSON.parse(content);
       if (data.started_at) return data.started_at;
-    } catch { /* skip */ }
+    } catch { /* silent: skip */ }
   }
   return null;
 }
@@ -108,29 +110,29 @@ async function readContractStartedAt(clawDir: string, contractId: string): Promi
 /**
  * 读取契约标题
  */
-async function readContractTitle(clawDir: string, contractId: string): Promise<string | undefined> {
+async function readContractTitle(fileSystem: FileSystem, contractId: string): Promise<string | undefined> {
   // 从 progress.json 读取
-  const archivePath = path.join(clawDir, CONTRACT_DIR, 'archive', contractId, 'progress.json');
-  const activePath = path.join(clawDir, CONTRACT_DIR, 'active', contractId, 'progress.json');
+  const archivePath = path.join(CONTRACT_DIR, 'archive', contractId, 'progress.json');
+  const activePath = path.join(CONTRACT_DIR, 'active', contractId, 'progress.json');
 
   for (const p of [archivePath, activePath]) {
     try {
-      const content = await fs.promises.readFile(p, 'utf-8');
+      const content = await fileSystem.read(p);
       const data = JSON.parse(content);
       if (data.title) return data.title;
-    } catch { /* skip */ }
+    } catch { /* silent: skip */ }
   }
 
   // 从 contract.yaml 读取
-  const yamlPath = path.join(clawDir, CONTRACT_DIR, 'archive', contractId, 'contract.yaml');
-  const activeYamlPath = path.join(clawDir, CONTRACT_DIR, 'active', contractId, 'contract.yaml');
+  const yamlPath = path.join(CONTRACT_DIR, 'archive', contractId, 'contract.yaml');
+  const activeYamlPath = path.join(CONTRACT_DIR, 'active', contractId, 'contract.yaml');
 
   for (const p of [yamlPath, activeYamlPath]) {
     try {
-      const content = await fs.promises.readFile(p, 'utf-8');
+      const content = await fileSystem.read(p);
       const data = yaml.load(content) as { title?: string };
       if (data.title) return data.title;
-    } catch { /* skip */ }
+    } catch { /* silent: skip */ }
   }
 
   return undefined;
@@ -139,22 +141,21 @@ async function readContractTitle(clawDir: string, contractId: string): Promise<s
 /**
  * 扫描 stream*.jsonl 文件，过滤契约期间的事件
  */
-async function readStreamEvents(clawDir: string, startedAt: string): Promise<StreamEvent[]> {
+async function readStreamEvents(fileSystem: FileSystem, startedAt: string): Promise<StreamEvent[]> {
   const startedTs = Date.parse(startedAt);
   if (isNaN(startedTs)) {
     throw new CliError(`Invalid contract start time: "${startedAt}"`);
   }
 
   // 扫描所有 stream*.jsonl 文件
-  const files: Array<{ path: string; mtime: number }> = [];
+  const files: Array<{ relPath: string; mtime: number }> = [];
   try {
-    const entries = await fs.promises.readdir(clawDir, { withFileTypes: true });
+    const entries = await fileSystem.list('.');
     for (const entry of entries) {
-      if (!entry.isFile()) continue;
+      if (!entry.isFile) continue;
       if (!entry.name.startsWith('stream') || !entry.name.endsWith('.jsonl')) continue;
-      const fp = path.join(clawDir, entry.name);
-      const stat = await fs.promises.stat(fp);
-      files.push({ path: fp, mtime: stat.mtimeMs });
+      const stat = await fileSystem.stat(entry.name);
+      files.push({ relPath: entry.name, mtime: stat.mtime.getTime() });
     }
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
@@ -168,9 +169,9 @@ async function readStreamEvents(clawDir: string, startedAt: string): Promise<Str
 
   // 读取并过滤事件
   const events: StreamEvent[] = [];
-  for (const { path: fp } of files) {
+  for (const { relPath } of files) {
     try {
-      const content = await fs.promises.readFile(fp, 'utf-8');
+      const content = await fileSystem.read(relPath);
       const lines = content.trim().split('\n').filter(Boolean);
       for (const line of lines) {
         try {
@@ -178,9 +179,9 @@ async function readStreamEvents(clawDir: string, startedAt: string): Promise<Str
           if (typeof ev.ts === 'number' && ev.ts >= startedTs) {
             events.push(ev);
           }
-        } catch { /* skip invalid */ }
+        } catch { /* silent: skip invalid */ }
       }
-    } catch { /* skip */ }
+    } catch { /* silent: skip */ }
   }
 
   // 按时间戳排序
@@ -279,7 +280,7 @@ function showTraceOverview(
  * 单步全量输出
  */
 async function showStepDetail(
-  clawDir: string,
+  fileSystem: FileSystem,
   events: StreamEvent[],
   targetStep: number,
 ): Promise<void> {
@@ -304,44 +305,42 @@ async function showStepDetail(
   }
 
   // 读取 dialog/current.json + 所有 archive/*.json，按 mtime 升序合并
-  const dialogDir = path.join(clawDir, DIALOG_DIR);
-  const archiveDir = path.join(dialogDir, 'archive');
   let messages: DialogMessage[] = [];
 
   // 收集所有 dialog 文件（archive 先，current 最后）
-  const dialogFiles: Array<{ path: string; mtime: number }> = [];
+  const dialogFiles: Array<{ relPath: string; mtime: number }> = [];
   try {
-    const archiveEntries = await fs.promises.readdir(archiveDir, { withFileTypes: true });
+    const archiveEntries = await fileSystem.list(path.join(DIALOG_DIR, 'archive'));
     for (const entry of archiveEntries) {
-      if (!entry.isFile() || !entry.name.endsWith('.json')) continue;
-      const fp = path.join(archiveDir, entry.name);
-      const stat = await fs.promises.stat(fp);
-      dialogFiles.push({ path: fp, mtime: stat.mtimeMs });
+      if (!entry.isFile || !entry.name.endsWith('.json')) continue;
+      const relPath = path.join(DIALOG_DIR, 'archive', entry.name);
+      const stat = await fileSystem.stat(relPath);
+      dialogFiles.push({ relPath, mtime: stat.mtime.getTime() });
     }
-  } catch { /* no archive dir */ }
+  } catch { /* silent: no archive dir */ }
 
-  const currentPath = path.join(dialogDir, 'current.json');
+  const currentRelPath = path.join(DIALOG_DIR, 'current.json');
   try {
-    const stat = await fs.promises.stat(currentPath);
-    dialogFiles.push({ path: currentPath, mtime: stat.mtimeMs });
-  } catch { /* no current */ }
+    const stat = await fileSystem.stat(currentRelPath);
+    dialogFiles.push({ relPath: currentRelPath, mtime: stat.mtime.getTime() });
+  } catch { /* silent: no current */ }
 
   dialogFiles.sort((a, b) => {
-    const aTs = parseInt(path.basename(a.path).split('_')[0], 10);
-    const bTs = parseInt(path.basename(b.path).split('_')[0], 10);
+    const aTs = parseInt(path.basename(a.relPath).split('_')[0], 10);
+    const bTs = parseInt(path.basename(b.relPath).split('_')[0], 10);
     if (isNaN(aTs) || isNaN(bTs)) return 0;
     return aTs - bTs;
   });
 
-  for (const { path: fp } of dialogFiles) {
+  for (const { relPath } of dialogFiles) {
     try {
-      const content = await fs.promises.readFile(fp, 'utf-8');
+      const content = await fileSystem.read(relPath);
       const raw = JSON.parse(content);
-      const session = migrateAndValidateSession(raw, path.basename(fp));
+      const session = migrateAndValidateSession(raw, path.basename(relPath));
       if (!session) continue; // version unknown → skip
       const validated = validateSessionData(session);
       if (validated.messages.length > 0) messages.push(...validated.messages as DialogMessage[]);
-    } catch { /* skip */ }
+    } catch { /* silent: skip */ }
   }
 
   if (messages.length === 0) {

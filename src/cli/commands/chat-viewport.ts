@@ -12,6 +12,7 @@ import { createDirContext, createProcessManagerForCLI } from '../utils/factories
 import { isAlive } from '../../foundation/process-exec/index.js';
 import { CLAW_SCAN_INTERVAL_MS } from './constants.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 import { VIEWPORT_AUDIT_EVENTS } from './viewport-audit-events.js';
 import { isFileNotFound } from '../../foundation/fs/types.js';
 import { createStreamReader, STREAM_FILE } from '../../foundation/stream/index.js';
@@ -51,18 +52,19 @@ export interface ChatViewportOptions {
   showContractEvents?: boolean;   // contract 子任务完成信息，默认 true
   trimOutputNewlines?: boolean;   // LLM 输出首尾换行清理，默认 true
   audit: AuditLog; // audit sink for createWatcher
+  fsFactory: (baseDir: string) => FileSystem;
 }
 
 export type { TurnTracker } from './chat-viewport-types.js';
 
 export async function runChatViewport(options: ChatViewportOptions): Promise<void> {
-  const pm = createProcessManagerForCLI();
+  const pm = createProcessManagerForCLI({ fsFactory: options.fsFactory });
   // 确保 daemon 运行
   if (options.ensureDaemon) {
     await options.ensureDaemon();
   }
 
-  const { fs } = createDirContext(options.agentDir);
+  const { fs } = createDirContext({ fsFactory: options.fsFactory }, options.agentDir);
   const showSystemMessages = options.showSystemMessages ?? false;
   const showContractEvents = options.showContractEvents ?? true;
   const trimOutputNewlines = options.trimOutputNewlines ?? true;
@@ -131,7 +133,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
   // Motion viewport：各 claw 步数追踪
   const isMotion = options.label === MOTION_CLAW_ID;
   const clawsDir = isMotion ? path.join(options.agentDir, '..', CLAWS_DIR) : '';
-  const clawsFs = isMotion && clawsDir ? createDirContext(clawsDir).fs : fs;
+  const clawsFs = isMotion && clawsDir ? createDirContext({ fsFactory: options.fsFactory }, clawsDir).fs : fs;
   const clawTrackMap = new Map<string, ClawTrack>();
 
   const clawPanel = createClawPanel({ attachedClawBar });
@@ -195,6 +197,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
     handleTaskEvent,
     taskStatusBar,
     getThinkingMode: () => thinkingMode,
+    fsFactory: options.fsFactory,
   });
 
   // tail stream.jsonl
@@ -326,7 +329,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
 
     // 写入 inbox
     try {
-      writeUserChat(options.agentDir, trimmed);
+      writeUserChat(options.agentDir, trimmed, options.fsFactory);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       displayWithHolder.appendOutput('\x1b[31m', `[error] 消息发送失败：${msg}（请重试或检查磁盘 / 权限）`, true);
@@ -360,11 +363,11 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
 
   // 防御层：任何未捕获异常先还原终端，防止 terminal emulator 因 raw mode 未还原而闪退
   const crashLogPath = path.join(options.agentDir, 'logs', 'chat-crash.log');
-  const uncaughtHandler = createUncaughtHandler({ agentDir: options.agentDir, fs, tui, crashLogPath, audit: options.audit });
+  const uncaughtHandler = createUncaughtHandler({ agentDir: options.agentDir, fs, fsFactory: options.fsFactory, tui, crashLogPath, audit: options.audit });
   process.on('uncaughtException', uncaughtHandler);
   process.on('unhandledRejection', uncaughtHandler);
 
-  initOwnStateFromHistory({ isMotion, fs, streamPath, turnTracker, audit: options.audit });
+  initOwnStateFromHistory({ isMotion, fs, fsFactory: options.fsFactory, streamPath, turnTracker, audit: options.audit });
 
   // 重连状态校正：tracker 标 active 但 daemon 实际不存活 / forceReset 防误触 ESC 中断
   if (turnTracker.isActive()) {

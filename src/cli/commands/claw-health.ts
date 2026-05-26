@@ -3,7 +3,6 @@
  * Claw health report
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
 import {
   loadGlobalConfig, clawExists, getClawDir, getGlobalConfigPath,
@@ -11,26 +10,27 @@ import {
 import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
 import { CliError } from '../errors.js';
 import { createDirContext, createProcessManagerForCLI } from '../utils/factories.js';
-import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 import { CONTRACT_DIR } from '../../core/contract/index.js';
 import { formatRelativeTime, getLastActiveMs } from './claw-shared.js';
 
 /**
  * Display Claw health status (reads directory in real time)
  */
-export async function healthCommand(name: string, opts?: { json?: boolean }): Promise<void> {
-  loadGlobalConfig(CONFIG_DEFAULTS);
+export async function healthCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, name: string, opts?: { json?: boolean }): Promise<void> {
+  loadGlobalConfig(deps, CONFIG_DEFAULTS);
 
-  if (!clawExists(name)) {
+  if (!clawExists(deps, name)) {
     throw new CliError(`Claw "${name}" does not exist`);
   }
 
   const clawDir = getClawDir(name);
   const globalConfigPath = getGlobalConfigPath();
   const baseDir = path.dirname(globalConfigPath);
+  const clawFs = deps.fsFactory(clawDir);
 
-  const processManager = createProcessManagerForCLI();
-  const { audit: systemAudit } = createDirContext(baseDir);
+  const processManager = createProcessManagerForCLI(deps);
+  const { audit: systemAudit } = createDirContext(deps, baseDir);
 
   const isRunning = processManager.isAlive(name);
 
@@ -38,14 +38,14 @@ export async function healthCommand(name: string, opts?: { json?: boolean }): Pr
   let inboxPending = 0;
   let outboxPending = 0;
   try {
-    const entries = fs.readdirSync(path.join(clawDir, 'inbox', 'pending'));
+    const entries = clawFs.listSync(path.join('inbox', 'pending')).map(e => e.name);
     inboxPending = entries.length;
   } catch (err) {
     // phase 906 r115 O fork (audit-2026-05-16 F14): narrow to ENOENT (dir does not exist 注释意图)
     if ((err as { code?: string })?.code !== 'ENOENT') throw err;
   }
   try {
-    const entries = fs.readdirSync(path.join(clawDir, 'outbox', 'pending'));
+    const entries = clawFs.listSync(path.join('outbox', 'pending')).map(e => e.name);
     outboxPending = entries.length;
   } catch (err) {
     // phase 906 r115 O fork (audit-2026-05-16 F14): narrow to ENOENT (dir does not exist 注释意图)
@@ -56,10 +56,8 @@ export async function healthCommand(name: string, opts?: { json?: boolean }): Pr
   let contractStatus = 'none';
   for (const sub of ['active', 'paused']) {
     try {
-      const entries = fs.readdirSync(
-        path.join(clawDir, CONTRACT_DIR, sub), { withFileTypes: true }
-      );
-      if (entries.some(e => e.isDirectory())) {
+      const entries = clawFs.listSync(path.join(CONTRACT_DIR, sub), { includeDirs: true });
+      if (entries.some(e => e.isDirectory)) {
         contractStatus = sub;
         break;
       }
@@ -72,7 +70,6 @@ export async function healthCommand(name: string, opts?: { json?: boolean }): Pr
   // Last active time（统一使用 stream.jsonl 指标）
   let lastActive = '-';
   let lastActiveIso: string | null = null;
-  const clawFs = new NodeFileSystem({ baseDir: clawDir });
   const lastMs = await getLastActiveMs(clawFs, systemAudit);
   if (lastMs !== undefined) {
     lastActive = formatRelativeTime(Date.now() - lastMs);

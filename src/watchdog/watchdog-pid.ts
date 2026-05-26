@@ -3,6 +3,7 @@
  * PID file management — 0 module state 依赖（仅 fs）
  */
 
+import type { FileSystem } from '../foundation/fs/types.js';
 import { getClawforumFs } from './watchdog-context.js';
 import { isAlive } from '../foundation/process-exec/index.js';
 import { getWorkspaceRoot } from '../foundation/paths.js';
@@ -12,19 +13,19 @@ import { AUDIT_MESSAGE_MAX_CHARS } from '../foundation/audit/index.js';
 import { isFileNotFound } from '../foundation/fs/types.js';
 
 /** 1:1 保 watchdog.ts:85-89 */
-export function writeWatchdogPid(pid: number): void {
+export function writeWatchdogPid(fsFactory: (baseDir: string) => FileSystem, pid: number): void {
   const root = getWorkspaceRoot();
-  const fs = getClawforumFs();
+  const fs = getClawforumFs(fsFactory);
   fs.writeAtomicSync('watchdog.pid', JSON.stringify({ pid, root }));
 }
 
 /** 1:1 保 watchdog.ts:91-98 */
-export function removeWatchdogPid(): void {
+export function removeWatchdogPid(fsFactory: (baseDir: string) => FileSystem): void {
   try {
-    const fs = getClawforumFs();
+    const fs = getClawforumFs(fsFactory);
     fs.deleteSync('watchdog.pid');
   } catch {
-    // ignore
+    // silent: stale pid cleanup best-effort
   }
 }
 
@@ -41,8 +42,8 @@ function validatePidShape(parsed: unknown): parsed is WatchdogPidShape {
   );
 }
 
-function backupCorruptPid(_content: string, err: unknown): void {
-  const fs = getClawforumFs();
+function backupCorruptPid(fsFactory: (baseDir: string) => FileSystem, _content: string, err: unknown): void {
+  const fs = getClawforumFs(fsFactory);
   const backupPath = `watchdog.pid.corrupt-${Date.now()}`;
   let moveOk = true;
   let moveErr: unknown = undefined;
@@ -63,19 +64,19 @@ function backupCorruptPid(_content: string, err: unknown): void {
 }
 
 /** 1:1 保 watchdog.ts:121-130 */
-export function getWatchdogPid(): number | null {
+export function getWatchdogPid(fsFactory: (baseDir: string) => FileSystem): number | null {
   try {
-    const fs = getClawforumFs();
+    const fs = getClawforumFs(fsFactory);
     const content = fs.readSync('watchdog.pid');
     let parsed: unknown;
     try {
       parsed = JSON.parse(content);
     } catch (e) {
-      backupCorruptPid(content, e);
+      backupCorruptPid(fsFactory, content, e);
       return null;
     }
     if (!validatePidShape(parsed)) {
-      backupCorruptPid(content, new Error('shape_mismatch'));
+      backupCorruptPid(fsFactory, content, new Error('shape_mismatch'));
       return null;
     }
     return parsed.pid;
@@ -93,8 +94,8 @@ export class WatchdogPidForeignWorkspaceError extends Error {
 }
 
 /** 1:1 保 watchdog.ts:132-149 */
-export function isWatchdogAlive(): boolean {
-  const fs = getClawforumFs();
+export function isWatchdogAlive(fsFactory: (baseDir: string) => FileSystem): boolean {
+  const fs = getClawforumFs(fsFactory);
   let content: string;
   try {
     content = fs.readSync('watchdog.pid');
@@ -113,11 +114,11 @@ export function isWatchdogAlive(): boolean {
   try {
     parsed = JSON.parse(content);
   } catch (e) {
-    backupCorruptPid(content, e);
+    backupCorruptPid(fsFactory, content, e);
     return false;
   }
   if (!validatePidShape(parsed)) {
-    backupCorruptPid(content, new Error('shape_mismatch'));
+    backupCorruptPid(fsFactory, content, new Error('shape_mismatch'));
     return false;
   }
   const currentRoot = getWorkspaceRoot();
@@ -132,7 +133,7 @@ export function isWatchdogAlive(): boolean {
         `foreign_root=${parsed.root}`,
         `current_root=${currentRoot}`,
       );
-      removeWatchdogPid();
+      removeWatchdogPid(fsFactory);
       return false;
     }
     // foreign 活 → audit + throw（不删 + 不放行 spawn / user 需 cd + clawforum stop）

@@ -1,3 +1,5 @@
+import { NodeFileSystem } from './foundation/fs/node-fs.js';
+import type { FileSystem } from './foundation/fs/types.js';
 import { runWatchdogLoop, writeWatchdogCrash } from './watchdog/watchdog.js';
 
 const errMsg = (reason: unknown): string =>
@@ -23,4 +25,6 @@ process.on('unhandledRejection', (reason) => {
   process.exit(1);
 });
 
-await runWatchdogLoop();
+const fsFactory = (baseDir: string): FileSystem => new NodeFileSystem({ baseDir });
+
+await runWatchdogLoop(fsFactory);

@@ -3,9 +3,9 @@
  * subagent list command
  */
 
-import * as fs from 'fs';
 import { resolveClawDir, scanSubagentResults, formatDate, formatDuration, truncateId, type SubagentKind, type SubagentStatus } from './subagent-helpers.js';
 import { handleCliError, CliError } from '../errors.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 
 interface ListOptions {
   claw: string;
@@ -18,14 +18,15 @@ interface ListOptions {
   json?: boolean;
 }
 
-export async function subagentListCommand(options: ListOptions): Promise<void> {
+export async function subagentListCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, options: ListOptions): Promise<void> {
   try {
     const clawDir = resolveClawDir(options.claw);
-    if (!fs.existsSync(clawDir)) {
+    const clawFs = deps.fsFactory(clawDir);
+    if (!clawFs.existsSync('.')) {
       throw new CliError(`Claw "${options.claw}" does not exist`);
     }
 
-    let entries = scanSubagentResults(clawDir);
+    let entries = scanSubagentResults(deps, clawDir);
 
     // Filter by status
     if (options.status) {

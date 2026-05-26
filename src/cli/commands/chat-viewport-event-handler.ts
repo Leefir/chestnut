@@ -14,6 +14,7 @@ import { VIEWPORT_AUDIT_EVENTS } from './viewport-audit-events.js';
 import type { CallerType } from '../../core/caller-types.js';
 import type { StreamReader } from '../../foundation/stream/index.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 import type { TurnTracker } from './chat-viewport-types.js';
 import type { MainTurnUIController } from './main-turn-ui.js';
 import type { ThinkingMode } from './chat-viewport-commands.js';
@@ -42,6 +43,7 @@ export interface EventHandlerDeps {
   handleTaskEvent: (taskId: string, ev: unknown) => void;
   taskStatusBar: { addTrack(taskId: string, callerType: string): void };
   getThinkingMode: () => ThinkingMode;
+  fsFactory: (baseDir: string) => FileSystem;
 }
 
 export function createEventHandler(deps: EventHandlerDeps) {
@@ -235,7 +237,7 @@ export function createEventHandler(deps: EventHandlerDeps) {
           } catch { /* audit self-failure tolerated */ }
           break;
         }
-        const { fs: taskFs } = createDirContext(path.join(deps.agentDir, TASKS_QUEUES_RESULTS_DIR, taskId));
+        const { fs: taskFs } = createDirContext({ fsFactory: deps.fsFactory }, path.join(deps.agentDir, TASKS_QUEUES_RESULTS_DIR, taskId));
         const taskReader = createStreamReader(taskFs, STREAM_FILE, (ev) => {
           const tw = deps.taskWatchMap.get(taskId);
           if (tw) tw.lastEventMs = Date.now();

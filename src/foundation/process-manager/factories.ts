@@ -12,7 +12,6 @@
  *   - NodeFileSystem 构造签名（foundation/fs）、AuditWriter 构造签名、createAgentProcessManager 签名
  */
 
-import { NodeFileSystem } from '../fs/node-fs.js';
 import { type AuditLog, createSystemAudit } from '../audit/index.js';
 import type { FileSystem } from '../fs/types.js';
 import type { ProcessManager } from './index.js';
@@ -39,11 +38,11 @@ import { getClawforumRoot } from '../config/index.js';
  *   - 构造失败（NodeFileSystem / createSystemAudit / createAgentProcessManager 任一抛错）→ 原样上抛
  *   - 不包装；调用方（CLI 命令）通常不 catch，让错误直接打印
  */
-export function createProcessManagerForCLI(): ProcessManager {
+export function createProcessManagerForCLI(deps: { fsFactory: (baseDir: string) => FileSystem }): ProcessManager {
   const baseDir = getClawforumRoot();
-  const fs = new NodeFileSystem({ baseDir });
+  const fs = deps.fsFactory(baseDir);
   const systemAudit = createSystemAudit(fs, baseDir);
-  return createAgentProcessManager(systemAudit);
+  return createAgentProcessManager(deps, systemAudit);
 }
 
 /**
@@ -67,11 +66,11 @@ export function createProcessManagerForCLI(): ProcessManager {
  *   - audit.write 运行期失败 → AuditWriter 内部 try/catch 吞错 + console.error（沿用既有语义）
  *   - 若调用方需 fail-fast 写入语义 → 外层再包 try/catch 或绕开 audit 用裸 fs
  */
-export function createDirContext(dir: string): {
+export function createDirContext(deps: { fsFactory: (baseDir: string) => FileSystem }, dir: string): {
   fs: FileSystem;
   audit: AuditLog;
 } {
-  const fs = new NodeFileSystem({ baseDir: dir });
+  const fs = deps.fsFactory(dir);
   const audit = createSystemAudit(fs, dir);
   return { fs, audit };
 }

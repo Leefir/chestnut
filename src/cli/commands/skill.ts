@@ -6,8 +6,6 @@
  */
 
 import * as path from 'path';
-import * as fs from 'fs/promises';
-import * as fsNative from 'fs';
 import { CLAWSPACE_DIR, getWorkspaceRoot } from '../../foundation/paths.js';
 import { SKILLS_DIR_DEFAULT } from '../../foundation/skill-system/skill-paths.js';
 import { DISPATCH_SKILLS_SUBDIR } from '../../core/evolution-system/index.js';
@@ -15,20 +13,22 @@ import { getClawDir } from '../../foundation/config/index.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 import { CliError } from '../errors.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 
 /**
  * Copy directory recursively
  */
-async function copyDir(src: string, dest: string): Promise<void> {
-  await fs.mkdir(dest, { recursive: true });
-  const entries = await fs.readdir(src, { withFileTypes: true });
+async function copyDir(deps: { fsFactory: (baseDir: string) => FileSystem }, src: string, dest: string): Promise<void> {
+  const srcFs = deps.fsFactory(src);
+  const destFs = deps.fsFactory(dest);
+  await destFs.ensureDir('.');
+  const entries = await srcFs.list('.');
   for (const entry of entries) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      await copyDir(srcPath, destPath);
+    if (entry.isDirectory) {
+      await copyDir(deps, path.join(src, entry.name), path.join(dest, entry.name));
     } else {
-      await fs.copyFile(srcPath, destPath);
+      const content = await srcFs.read(entry.name);
+      await destFs.writeAtomic(entry.name, content);
     }
   }
 }
@@ -38,8 +38,8 @@ async function copyDir(src: string, dest: string): Promise<void> {
  * - Copy to root/skills/{skillName}/
  * - Sync to motion/clawspace/dispatch-skills/{skillName}/
  */
-export async function skillInstallUserCommand(sourcePath: string, deps?: { audit?: AuditLog }): Promise<void> {
-  const audit = deps?.audit;
+export async function skillInstallUserCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, sourcePath: string, extraDeps?: { audit?: AuditLog }): Promise<void> {
+  const audit = extraDeps?.audit;
   const root = getWorkspaceRoot();
   const absSource = path.resolve(sourcePath);
 
@@ -47,23 +47,25 @@ export async function skillInstallUserCommand(sourcePath: string, deps?: { audit
   const skillName = path.basename(absSource);
 
   // Verify SKILL.md exists
-  const skillMd = path.join(absSource, 'SKILL.md');
-  if (!fsNative.existsSync(skillMd)) {
+  const sourceFs = deps.fsFactory(absSource);
+  if (!sourceFs.existsSync('SKILL.md')) {
     throw new CliError(`No SKILL.md found in ${absSource}`);
   }
 
   // 1. Copy to root level skills/{skillName}/
   const destUser = path.join(root, SKILLS_DIR_DEFAULT, skillName);
-  const userExists = fsNative.existsSync(destUser);
-  await copyDir(absSource, destUser);
+  const rootFs = deps.fsFactory(root);
+  const userExists = rootFs.existsSync(path.join(SKILLS_DIR_DEFAULT, skillName));
+  await copyDir(deps, absSource, destUser);
   audit?.write(CLI_AUDIT_EVENTS.SKILL_INSTALL, `mode=user`, `skill=${skillName}`);
   console.log(`${userExists ? 'Updated' : 'Installed'} skills/${skillName}`);
 
   // 2. Sync to motion/clawspace/dispatch-skills/{skillName}/
   const motionDir = path.join(root, '.clawforum', 'motion');
   const destDispatch = path.join(motionDir, CLAWSPACE_DIR, DISPATCH_SKILLS_SUBDIR, skillName);
-  const dispatchExists = fsNative.existsSync(destDispatch);
-  await copyDir(absSource, destDispatch);
+  const motionFs = deps.fsFactory(motionDir);
+  const dispatchExists = motionFs.existsSync(path.join(CLAWSPACE_DIR, DISPATCH_SKILLS_SUBDIR, skillName));
+  await copyDir(deps, absSource, destDispatch);
   console.log(`${dispatchExists ? 'Updated' : 'Synced'} dispatch-skills/${skillName}`);
 }
 
@@ -72,8 +74,8 @@ export async function skillInstallUserCommand(sourcePath: string, deps?: { audit
  * - Copy from motion/clawspace/dispatch-skills/{skillName}/
  * - To clawDir/skills/{skillName}/
  */
-export async function skillInstallClawCommand(clawId: string, skillName: string, deps?: { audit?: AuditLog }): Promise<void> {
-  const audit = deps?.audit;
+export async function skillInstallClawCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, clawId: string, skillName: string, extraDeps?: { audit?: AuditLog }): Promise<void> {
+  const audit = extraDeps?.audit;
   // Phase 537 — traversal guard for both identifier params
   if (
     typeof clawId !== 'string' || clawId === '' || clawId === '.' || clawId.startsWith('.') ||
@@ -94,14 +96,16 @@ export async function skillInstallClawCommand(clawId: string, skillName: string,
   const clawDir = getClawDir(clawId);
   const dest = path.join(clawDir, SKILLS_DIR_DEFAULT, skillName);
 
-  if (!fsNative.existsSync(source)) {
+  const motionFs = deps.fsFactory(motionDir);
+  if (!motionFs.existsSync(path.join(CLAWSPACE_DIR, DISPATCH_SKILLS_SUBDIR, skillName))) {
     throw new CliError(`dispatch-skill "${skillName}" not found`);
   }
-  if (!fsNative.existsSync(clawDir)) {
+  const clawFs = deps.fsFactory(clawDir);
+  if (!clawFs.existsSync('.')) {
     throw new CliError(`claw "${clawId}" does not exist`);
   }
 
-  await copyDir(source, dest);
+  await copyDir(deps, source, dest);
   audit?.write(CLI_AUDIT_EVENTS.SKILL_INSTALL, `mode=claw`, `claw=${clawId}`, `skill=${skillName}`);
   console.log(`Installed ${skillName} to claw ${clawId}`);
 }

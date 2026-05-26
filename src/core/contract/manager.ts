@@ -24,7 +24,6 @@ import * as yaml from 'js-yaml';
 import { randomUUID } from 'crypto';
 
 import type { FileSystem } from '../../foundation/fs/types.js';
-import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
 import type { Contract, SubtaskStatus } from '../contract/types.js';
 import { ToolError, isProgrammingBug } from '../../foundation/errors.js';
@@ -184,7 +183,10 @@ export class ContractSystem {
     }
     this.toolRegistry = toolRegistry;
     this.toolTimeoutMs = toolTimeoutMs;
-    this.fsFactory = fsFactory ?? ((dir: string) => new NodeFileSystem({ baseDir: dir }));
+    if (!fsFactory) {
+      throw new Error('ContractManager: fsFactory required (per ML#3 file I/O resource unique ownership). See phase 1283.');
+    }
+    this.fsFactory = fsFactory;
   }
 
   setOnNotify(cb: (type: string, data: Record<string, unknown>) => void): void {

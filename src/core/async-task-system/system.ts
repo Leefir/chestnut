@@ -475,7 +475,7 @@ export class AsyncTaskSystem {
       if (task.kind === 'tool') {
         const tool = this.registry.getAll().find(t => t.name === task.toolName);
         if (!tool) {
-          await this.fs.delete(`${TASKS_QUEUES_RUNNING_DIR}/${task.id}.json`).catch(() => {});
+          await this.fs.delete(`${TASKS_QUEUES_RUNNING_DIR}/${task.id}.json`).catch(() => { /* silent: best-effort delete */ });
           throw new Error(`Tool "${task.toolName}" not found in registry`);
         }
         const reconstructedCtx = this.buildToolTaskExecContext(task, signal);
@@ -672,7 +672,7 @@ export class AsyncTaskSystem {
           }
         } catch (e) {
           if (content !== undefined) {
-            await backupCorruptTask(this.fs, this.auditWriter, filePath, content, e).catch(() => { /* fs.move 路径仍 cover */ });
+            await backupCorruptTask(this.fs, this.auditWriter, filePath, content, e).catch(() => { /* silent: fs.move path covered by backupCorruptTask */ });
           }
           // read 失败 → 跳过 / 后续 move 仍尝试
           // phase 1013 E.4: parse fail 显式 audit 留痕

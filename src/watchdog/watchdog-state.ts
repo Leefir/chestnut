@@ -3,6 +3,7 @@
  * Watchdog state persistence — load/save 2 Map + crash log
  */
 
+import type { FileSystem } from '../foundation/fs/types.js';
 import { getClawforumFs, getAuditWriter, lastInactivityNotified, inactivityNotifyCount, clawPreviouslyAlive, everSpawned, clawPreviouslyNotified } from './watchdog-context.js';
 import { WATCHDOG_AUDIT_EVENTS } from './audit-events.js';
 import { AUDIT_MESSAGE_MAX_CHARS } from '../foundation/audit/index.js';
@@ -32,9 +33,9 @@ class WatchdogSchemaError extends Error {
 }
 
 /** 1:1 保 watchdog.ts:208-238 / load 2 Map */
-export function loadWatchdogState(): void {
+export function loadWatchdogState(fsFactory: (baseDir: string) => FileSystem): void {
   try {
-    const fs = getClawforumFs();
+    const fs = getClawforumFs(fsFactory);
     const raw = fs.readSync('watchdog-state.json');
     const state = JSON.parse(raw) as WatchdogState;
     const stateVersion = state.schema_version ?? state.version;
@@ -70,7 +71,7 @@ export function loadWatchdogState(): void {
     everSpawned.clear();
     clawPreviouslyNotified.clear();
 
-    const fs = getClawforumFs();
+    const fs = getClawforumFs(fsFactory);
     const backupPath = `watchdog-state.json.corrupt-${Date.now()}`;
     let moveOk = true;
     let moveErr: unknown = undefined;
@@ -95,7 +96,7 @@ export function loadWatchdogState(): void {
 }
 
 /** 1:1 保 watchdog.ts:240-249 / save 2 Map */
-export function saveWatchdogState(): void {
+export function saveWatchdogState(fsFactory: (baseDir: string) => FileSystem): void {
   const state: WatchdogState = {
     schema_version: 2,
     lastInactivityNotified: Object.fromEntries(lastInactivityNotified),
@@ -106,7 +107,7 @@ export function saveWatchdogState(): void {
     // NEW — phase 1269
     clawPreviouslyNotified: Object.fromEntries(clawPreviouslyNotified),
   };
-  const fs = getClawforumFs();
+  const fs = getClawforumFs(fsFactory);
   fs.writeAtomicSync('watchdog-state.json', JSON.stringify(state, null, 2));
 }
 
@@ -115,5 +116,5 @@ export function writeWatchdogCrash(err: Error): void {
   try {
     const auditWriter = getAuditWriter();
     auditWriter?.write(WATCHDOG_AUDIT_EVENTS.CRASH, `error=${err.message?.slice(0, AUDIT_MESSAGE_MAX_CHARS) ?? String(err)}`);
-  } catch { /* ignore: crash handler 不抛 */ }
+  } catch { /* silent: crash handler must not throw */ }
 }

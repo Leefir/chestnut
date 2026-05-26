@@ -13,7 +13,6 @@
  */
 
 import * as path from 'path';
-import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import type { FileSystem } from '../foundation/fs/types.js';
 import { isFileNotFound } from '../foundation/fs/types.js';
 import type { AuditLog } from '../foundation/audit/index.js';
@@ -74,8 +73,8 @@ export async function getClawActivityInfo(
 }
 
 // Check if a claw has an active or paused contract
-export function clawHasContract(clawDir: string, audit?: AuditLog): boolean {
-  const fs = new NodeFileSystem({ baseDir: clawDir });
+export function clawHasContract(clawDir: string, fsFactory: (baseDir: string) => FileSystem, audit?: AuditLog): boolean {
+  const fs = fsFactory(clawDir);
   for (const sub of ['active', 'paused']) {
     try {
       const entries = fs.listSync(path.join(CONTRACT_DIR, sub), { includeDirs: true });
@@ -111,10 +110,10 @@ export interface ProcessLiveness {
 
 const AUDIT_TAIL_N = 5;
 
-export function gatherClawSnapshot(clawDir: string, pm: ProcessLiveness, clawId: string): ClawSnapshot {
+export function gatherClawSnapshot(clawDir: string, fsFactory: (baseDir: string) => FileSystem, pm: ProcessLiveness, clawId: string): ClawSnapshot {
   const status = pm.isAlive(clawId) ? 'running' : 'stopped';
 
-  const fs = new NodeFileSystem({ baseDir: clawDir });
+  const fs = fsFactory(clawDir);
   let contract = 'none';
   for (const sub of ['active', 'paused']) {
     try {

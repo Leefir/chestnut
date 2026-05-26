@@ -2,8 +2,6 @@
  * init command - Initialize clawforum workspace
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
 import * as readline from 'readline';
 import { saveGlobalConfig, isInitialized, FORMAT_MAP, getWorkspaceRoot } from '../../foundation/config/index.js';
 import { passwordQuestion } from '../utils/password-prompt.js';
@@ -26,6 +24,7 @@ import { DEFAULT_MAX_CONCURRENT_TASKS } from '../../core/async-task-system/const
 import { DEFAULT_MAX_STEPS } from '../../core/agent-executor/index.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { CLI_AUDIT_EVENTS } from '../audit-events.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 
 // Known providers shown in "Select provider" list (excludes generic custom-* entries)
 const PROVIDER_LIST = [
@@ -41,10 +40,10 @@ const PROVIDER_LIST = [
   'qwen-coder',
 ];
 
-export async function initCommand(silent = false, deps?: { audit?: AuditLog }): Promise<void> {
-  const audit = deps?.audit;
+export async function initCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, silent = false, extraDeps?: { audit?: AuditLog }): Promise<void> {
+  const audit = extraDeps?.audit;
   // Check if already initialized
-  if (isInitialized()) {
+  if (isInitialized(deps)) {
     console.log('✓ Already initialized (.clawforum/config.yaml exists)');
     return;
   }
@@ -305,11 +304,12 @@ export async function initCommand(silent = false, deps?: { audit?: AuditLog }): 
     };
 
     // Save config
-    saveGlobalConfig(config);
+    saveGlobalConfig(deps, config);
 
     // Create logs directory
-    const logsDir = path.join(getWorkspaceRoot(), '.clawforum', 'logs');
-    fs.mkdirSync(logsDir, { recursive: true });
+    const root = getWorkspaceRoot();
+    const fs = deps.fsFactory(root);
+    fs.ensureDirSync('.clawforum/logs');
 
     audit?.write(CLI_AUDIT_EVENTS.INIT_DONE);
     console.log('\n✓ Initialized successfully!');

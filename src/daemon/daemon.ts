@@ -9,16 +9,15 @@
  */
 
 import * as path from 'path';
-import * as fsNative from 'fs';
-import * as fsAsync from 'fs/promises';
 import { createHash } from 'node:crypto';
 import { loadGlobalConfig, loadClawConfig, getClawDir, getNamedSubrootDir } from '../foundation/config/index.js';
 import { MOTION_CLAW_ID } from '../constants.js';
 
 import { startDaemonLoop } from './daemon-loop.js';
-import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import { createSystemAudit, type AuditLog } from '../foundation/audit/index.js';
 import { createAgentProcessManager } from '../foundation/process-manager/agent-factory.js';
+import { isFileNotFound } from '../foundation/fs/types.js';
+import type { FileSystem } from '../foundation/fs/types.js';
 
 import { LockConflictError } from '../foundation/process-manager/index.js';
 import { DAEMON_AUDIT_EVENTS } from './audit-events.js';
@@ -26,6 +25,7 @@ import type { DaemonInstances } from './types.js';
 import type { ConfigDefaults } from '../foundation/config/schemas.js';
 
 export interface DaemonCommandDeps {
+  fsFactory: (baseDir: string) => FileSystem;
   configDefaults: ConfigDefaults;
   assemble: (config: {
     identity: 'motion' | 'claw';
@@ -44,23 +44,23 @@ export interface DaemonCommandDeps {
 
 export function createDaemonCommand(deps: DaemonCommandDeps) {
   return async function daemonCommand(name: string): Promise<void> {
-    const globalConfig = loadGlobalConfig(deps.configDefaults);
+    const globalConfig = loadGlobalConfig({ fsFactory: deps.fsFactory }, deps.configDefaults);
     const isMotion = name === MOTION_CLAW_ID;
 
     // 配置
     const dir = isMotion ? getNamedSubrootDir('motion') : getClawDir(name);
 
     // pre-assemble audit sink（phase189 §7.A3 清零；assemble 前的失败也需 audit）
-    const preAssembleFs = new NodeFileSystem({ baseDir: dir });
+    const preAssembleFs = deps.fsFactory(dir);
     const preAssembleAudit: AuditLog = createSystemAudit(preAssembleFs, dir);
 
     // ProcessManager 接管 PID 文件
-    const processManager = createAgentProcessManager(preAssembleAudit);
+    const processManager = createAgentProcessManager({ fsFactory: deps.fsFactory }, preAssembleAudit);
 
     // 写 PID 文件（兜底：无论启动方式都确保 PID 可查）
     await processManager.selfWritePid(name);
 
-    const clawConfig = isMotion ? null : loadClawConfig(name, deps.configDefaults);
+    const clawConfig = isMotion ? null : loadClawConfig({ fsFactory: deps.fsFactory }, name, deps.configDefaults);
 
     // Assembly 装配
     let instances: DaemonInstances;
@@ -96,15 +96,14 @@ export function createDaemonCommand(deps: DaemonCommandDeps) {
 
     // 清理残留心跳（上次 daemon 的遗留，重启后无需立即巡查）
     try {
-      const pendingDir = path.join(dir, 'inbox', 'pending');
-      const files = await fsAsync.readdir(pendingDir);
-      for (const f of files) {
-        if (f.includes('_heartbeat_')) {
-          await fsAsync.unlink(path.join(pendingDir, f));
+      const entries = await preAssembleFs.list('inbox/pending');
+      for (const entry of entries) {
+        if (entry.name.includes('_heartbeat_')) {
+          await preAssembleFs.delete(path.join('inbox/pending', entry.name));
         }
       }
     } catch (e: any) {
-      if (e?.code !== 'ENOENT') {
+      if (!isFileNotFound(e)) {
         auditWriter.write(DAEMON_AUDIT_EVENTS.CLEANUP_HEARTBEAT_FAILED, `reason=${e?.message}`);
       }
     }
@@ -112,7 +111,7 @@ export function createDaemonCommand(deps: DaemonCommandDeps) {
     // daemon_start: 计算 AGENTS.md 的 sha256 前 6 位作为 system prompt 版本标识
     let promptHash = 'n/a';
     try {
-      const agentsContent = fsNative.readFileSync(path.join(dir, 'AGENTS.md'), 'utf-8');
+      const agentsContent = preAssembleFs.readSync('AGENTS.md');
       promptHash = createHash('sha256').update(agentsContent).digest('hex').slice(0, 6);
     } catch { /* silent: AGENTS.md is optional, missing is expected */ }
     auditWriter.write(deps.auditEvents.daemonStart, `sha256:${promptHash}`);
@@ -156,6 +155,7 @@ export function createDaemonCommand(deps: DaemonCommandDeps) {
     });
 
     const { promise, stop } = startDaemonLoop({
+      fsFactory: deps.fsFactory,
       runtime,
       agentDir: dir,
       clawId: name,

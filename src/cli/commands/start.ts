@@ -9,7 +9,6 @@
 
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import * as fs from 'fs';
 import * as readline from 'readline';
 
 import { isInitialized, loadGlobalConfig, getNamedSubrootDir, buildLLMConfig, patchGlobalConfigPrimary, FORMAT_MAP } from '../../foundation/config/index.js';
@@ -35,6 +34,7 @@ import type { AuditLog } from '../../foundation/audit/index.js';
 import { getWorkspaceRoot } from '../../foundation/paths.js';
 import { readOnboardingStatus, type OnboardingStatus } from '../../core/contract/index.js';
 import { DAEMON_LOG } from '../constants.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 
 export function buildOnboardingSubtasks(language: string): Array<{ id: string; description: string }> {
   let langInstruction: string;
@@ -94,13 +94,13 @@ export async function pickLanguage(): Promise<string> {
  * Merges two disk reads into a single synchronous call to eliminate
  * TOCTOU window between isInitialized() and getOnboardingStatus().
  */
-export function getInitializationSnapshot(motionDir: string): {
+export function getInitializationSnapshot(deps: { fsFactory: (baseDir: string) => FileSystem }, motionDir: string): {
   isInitialized: boolean;
   onboarding: OnboardingStatus;
 } {
   return {
-    isInitialized: isInitialized(),
-    onboarding: getOnboardingStatus(motionDir),
+    isInitialized: isInitialized(deps),
+    onboarding: getOnboardingStatus(motionDir, deps),
   };
 }
 
@@ -108,8 +108,8 @@ export function getInitializationSnapshot(motionDir: string): {
  * Find the Onboarding contract and determine its completion state.
  * Wrapper around L4 readOnboardingStatus pure helper (static-phase path).
  */
-export function getOnboardingStatus(motionDir: string): OnboardingStatus {
-  return readOnboardingStatus(motionDir);
+export function getOnboardingStatus(motionDir: string, deps: { fsFactory: (baseDir: string) => FileSystem }): OnboardingStatus {
+  return readOnboardingStatus(motionDir, deps);
 }
 
 type LLMErrorType = 'auth' | 'model' | 'network' | 'rate_limit' | 'unknown';
@@ -135,10 +135,10 @@ const LLM_ERROR_LABELS: Record<LLMErrorType, string> = {
  * Test LLM connectivity with a minimal call.
  * Returns { ok: true, model } on success, { ok: false, errorType, message } on failure.
  */
-async function checkLLMConnection(): Promise<
+async function checkLLMConnection(deps: { fsFactory: (baseDir: string) => FileSystem }): Promise<
   { ok: true; model: string } | { ok: false; errorType: LLMErrorType; message: string }
 > {
-  const globalConfig = loadGlobalConfig(CONFIG_DEFAULTS);
+  const globalConfig = loadGlobalConfig(deps, CONFIG_DEFAULTS);
   const llmConfig = buildLLMConfig(globalConfig);
   const svc = createLLMOrchestrator({
     primary: llmConfig.primary,
@@ -168,7 +168,7 @@ async function checkLLMConnection(): Promise<
  * Back navigation works within each sub-flow.
  * After any change, re-tests the connection automatically.
  */
-async function promptReconfigure(rl: readline.Interface, errorType: LLMErrorType): Promise<boolean> {
+async function promptReconfigure(deps: { fsFactory: (baseDir: string) => FileSystem }, rl: readline.Interface, errorType: LLMErrorType): Promise<boolean> {
   const question = (prompt: string): Promise<string> =>
     new Promise(resolve => rl.question(`${prompt}: `, ans => resolve(ans.trim())));
 
@@ -195,13 +195,13 @@ async function promptReconfigure(rl: readline.Interface, errorType: LLMErrorType
       const raw = await passwordPrompt('New API key');
       if (raw === 'b') continue;
       if (!raw) { console.log('  API key is required.'); continue; }
-      patchGlobalConfigPrimary({ api_key: raw });
+      patchGlobalConfigPrimary(deps, { api_key: raw });
 
     } else if (choice === '2') {
       const raw = await question('New model (b = back, "auto" = preset default)');
       if (raw === 'b') continue;
       if (!raw) { console.log('  Model is required. Type "auto" to use preset default.'); continue; }
-      patchGlobalConfigPrimary({ model: raw });
+      patchGlobalConfigPrimary(deps, { model: raw });
 
     } else if (choice === '3') {
       type FmtStep = 'pick' | 'customFormat' | 'baseUrl' | 'done';
@@ -226,7 +226,7 @@ async function promptReconfigure(rl: readline.Interface, errorType: LLMErrorType
             const p = presetList[idx - 1];
             chosenPreset = p.id;
             chosenBaseUrl = p.defaultBaseUrl ?? '';
-            patchGlobalConfigPrimary({ preset: chosenPreset, base_url: chosenBaseUrl || undefined });
+            patchGlobalConfigPrimary(deps, { preset: chosenPreset, base_url: chosenBaseUrl || undefined });
             console.log(`  ✓ Set provider to ${p.displayName}`);
             step = 'done';
           } else if (idx === customIdx) {
@@ -251,7 +251,7 @@ async function promptReconfigure(rl: readline.Interface, errorType: LLMErrorType
           if (raw === 'b') { step = 'customFormat'; continue; }
           if (!raw) { console.log('  Base URL is required.'); continue; }
           chosenBaseUrl = raw;
-          patchGlobalConfigPrimary({ preset: chosenPreset, base_url: chosenBaseUrl });
+          patchGlobalConfigPrimary(deps, { preset: chosenPreset, base_url: chosenBaseUrl });
           step = 'done';
         }
       }
@@ -265,7 +265,7 @@ async function promptReconfigure(rl: readline.Interface, errorType: LLMErrorType
 
     // Re-test after any change
     console.log('  Testing connection...');
-    const result = await checkLLMConnection();
+    const result = await checkLLMConnection(deps);
     if (result.ok) {
       console.log('  ✓ Connection successful!');
       return true;
@@ -275,32 +275,32 @@ async function promptReconfigure(rl: readline.Interface, errorType: LLMErrorType
   }
 }
 
-export async function startCommand(deps?: { audit?: AuditLog }): Promise<void> {
-  const audit = deps?.audit;
+export async function startCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, extraDeps?: { audit?: AuditLog }): Promise<void> {
+  const audit = extraDeps?.audit;
   try {
-    await _start(audit);
+    await _start(deps, audit);
   } catch (error) {
     throw new CliError('clawforum start failed: ' + (error instanceof Error ? error.message : String(error)));
   }
 }
 
-async function _start(audit?: AuditLog): Promise<void> {
+async function _start(deps: { fsFactory: (baseDir: string) => FileSystem }, audit?: AuditLog): Promise<void> {
   // Step 1: workspace init
   const motionDir = getNamedSubrootDir(MOTION_CLAW_ID);
-  const snapshot = getInitializationSnapshot(motionDir);
+  const snapshot = getInitializationSnapshot(deps, motionDir);
   const wasFirstRun = !snapshot.isInitialized;
   if (wasFirstRun) {
-    await initCommand(true);
+    await initCommand(deps, true);
   }
   // Step 1b: test LLM connection; offer inline reconfigure for actionable errors
   {
     console.log('Testing LLM connection...');
-    const connResult = await checkLLMConnection();
+    const connResult = await checkLLMConnection(deps);
     if (!connResult.ok) {
       if (connResult.errorType === 'auth' || connResult.errorType === 'model') {
         const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
         try {
-          const fixed = await promptReconfigure(rl, connResult.errorType);
+          const fixed = await promptReconfigure(deps, rl, connResult.errorType);
           if (!fixed) {
             throw new CliError('LLM not configured. Run "clawforum init" or fix your config.');
           }
@@ -317,18 +317,19 @@ async function _start(audit?: AuditLog): Promise<void> {
   }
 
   // Step 2: motion init
-  const { fs: notifyFs, audit: notifyAudit } = createDirContext(motionDir);
+  const { fs: notifyFs, audit: notifyAudit } = createDirContext(deps, motionDir);
   const thisDir = path.dirname(fileURLToPath(import.meta.url));
-  const bundleEntry = path.join(thisDir, 'daemon-entry.js');
-  const daemonEntryPath = fs.existsSync(bundleEntry) ? bundleEntry : path.resolve(thisDir, '..', '..', 'daemon-entry.js');
+  const thisFs = deps.fsFactory(thisDir);
+  const daemonEntryPath = thisFs.existsSync('daemon-entry.js') ? path.join(thisDir, 'daemon-entry.js') : path.resolve(thisDir, '..', '..', 'daemon-entry.js');
   const motionSpawnOptions = {
     command: 'node' as const,
     args: [daemonEntryPath, MOTION_CLAW_ID],
     logFile: path.join(motionDir, DAEMON_LOG),
     env: { ...process.env, CLAWFORUM_ROOT: getWorkspaceRoot() } as Record<string, string | undefined>,
   };
-  if (!fs.existsSync(path.join(motionDir, 'AGENTS.md'))) {
-    await motionInitCommand(true);
+  const motionFs = deps.fsFactory(motionDir);
+  if (!motionFs.existsSync('AGENTS.md')) {
+    await motionInitCommand(deps, true);
   }
 
   // Step 3: onboarding 状态
@@ -336,14 +337,14 @@ async function _start(audit?: AuditLog): Promise<void> {
 
   // onboarding 已完成 → 直接进 chat
   if (onboarding.state === 'complete') {
-    const pm = createProcessManagerForCLI();
+    const pm = createProcessManagerForCLI(deps);
     if (!pm.isAlive(MOTION_CLAW_ID)) {
       await pm.spawn(MOTION_CLAW_ID, motionSpawnOptions);
       await new Promise(r => setTimeout(r, PROCESS_SPAWN_CONFIRM_MS));
     }
     const { ensureWatchdog } = await import('../../watchdog/ensure.js');
-    await ensureWatchdog();
-    await motionChatCommand();
+    await ensureWatchdog(deps.fsFactory);
+    await motionChatCommand(deps);
     return;
   }
 
@@ -351,7 +352,7 @@ async function _start(audit?: AuditLog): Promise<void> {
 
   if (wasFirstRun && onboarding.state === 'not_found') {
     // ★ 首次运行：后台启动 daemon，前台展示语言选择（并行）
-    const pm = createProcessManagerForCLI();
+    const pm = createProcessManagerForCLI(deps);
     const daemonReady = (async () => {
       if (!pm.isAlive(MOTION_CLAW_ID)) {
         await pm.spawn(MOTION_CLAW_ID, motionSpawnOptions);
@@ -372,7 +373,7 @@ async function _start(audit?: AuditLog): Promise<void> {
     const language = await pickLanguage();
     await daemonReady;
     const { ensureWatchdog } = await import('../../watchdog/ensure.js');
-    await ensureWatchdog();
+    await ensureWatchdog(deps.fsFactory);
 
     const manager = new ContractSystem(motionDir, MOTION_CLAW_ID, notifyFs, notifyAudit, undefined, createToolRegistry());
     const contractId = await manager.create({
@@ -393,13 +394,13 @@ async function _start(audit?: AuditLog): Promise<void> {
 
   } else {
     // 非首次但 not_found（极少），或 in_progress
-    const pm = createProcessManagerForCLI();
+    const pm = createProcessManagerForCLI(deps);
     if (!pm.isAlive(MOTION_CLAW_ID)) {
       await pm.spawn(MOTION_CLAW_ID, motionSpawnOptions);
       await new Promise(r => setTimeout(r, PROCESS_SPAWN_CONFIRM_MS));
     }
     const { ensureWatchdog } = await import('../../watchdog/ensure.js');
-    await ensureWatchdog();
+    await ensureWatchdog(deps.fsFactory);
 
     
     if (onboarding.state === 'not_found') {
@@ -427,5 +428,5 @@ async function _start(audit?: AuditLog): Promise<void> {
 
   audit?.write(CLI_AUDIT_EVENTS.DAEMON_START);
   // Step 5: 打开 chat
-  await motionChatCommand();
+  await motionChatCommand(deps);
 }

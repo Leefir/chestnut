@@ -6,7 +6,6 @@
  */
 
 import { createSystemAudit } from '../../foundation/audit/index.js';
-import { NodeFileSystem } from '../../foundation/fs/node-fs.js';
 import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 import { VIEWPORT_AUDIT_EVENTS } from './viewport-audit-events.js';
 import { isFileNotFound } from '../../foundation/fs/types.js';
@@ -17,6 +16,7 @@ import type { TurnTracker } from './chat-viewport-types.js';
 export interface UncaughtHandlerDeps {
   agentDir: string;
   fs: FileSystem;
+  fsFactory?: (baseDir: string) => FileSystem;
   tui: { stop(): void };
   crashLogPath: string;
   audit: AuditLog;
@@ -27,10 +27,8 @@ export function createUncaughtHandler(deps: UncaughtHandlerDeps) {
     // sync audit emit via motion-level audit shim（process 即将 exit、必 sync）
     // fail-soft：shim 构造或 write 失败回退 stderr-only、不抛
     try {
-      const shim = createSystemAudit(
-        new NodeFileSystem({ baseDir: deps.agentDir }),
-        deps.agentDir,
-      );
+      const shimFs = deps.fsFactory ? deps.fsFactory(deps.agentDir) : deps.fs;
+      const shim = createSystemAudit(shimFs, deps.agentDir);
       const errMsg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
       const stack = err instanceof Error && err.stack ? err.stack.split('\n').slice(0, 5).join(' | ') : '';
       shim?.write(
@@ -56,6 +54,7 @@ export function createUncaughtHandler(deps: UncaughtHandlerDeps) {
 export interface InitOwnStateDeps {
   isMotion: boolean;
   fs: FileSystem;
+  fsFactory?: (baseDir: string) => FileSystem;
   streamPath: string;
   turnTracker: TurnTracker;
   audit: AuditLog;

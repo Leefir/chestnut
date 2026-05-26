@@ -17,13 +17,14 @@ import { CliError } from '../errors.js';
 import { REACT_DEFAULT_MAX_TOKENS } from '../../core/step-executor/constants.js';
 import { DEFAULT_LLM_TIMEOUT_MS } from '../../foundation/llm-orchestrator/defaults.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
 
 /**
  * If motion daemon is running, ask user whether to restart it so config changes take effect.
  * Killing the daemon is enough — watchdog will respawn it automatically.
  */
-async function promptRestartDaemon(rl?: readline.Interface): Promise<void> {
-  const pm = createProcessManagerForCLI();
+async function promptRestartDaemon(deps: { fsFactory: (baseDir: string) => FileSystem }, rl?: readline.Interface): Promise<void> {
+  const pm = createProcessManagerForCLI(deps);
   if (!pm.isAlive(MOTION_CLAW_ID)) return;
 
   const needClose = !rl;
@@ -109,8 +110,8 @@ function findProviderIndex(config: ClawGlobalConfig, label: string): { type: 'pr
 }
 
 // provider add command
-async function providerAdd(): Promise<void> {
-  const config = loadGlobalConfig(CONFIG_DEFAULTS);
+async function providerAdd(deps: { fsFactory: (baseDir: string) => FileSystem }): Promise<void> {
+  const config = loadGlobalConfig(deps, CONFIG_DEFAULTS);
   const rl = createRL();
   
   try {
@@ -211,8 +212,8 @@ async function providerAdd(): Promise<void> {
       console.log(`\n✓ Provider "${label}" added as fallback #${position + 1}`);
     }
     
-    saveGlobalConfig(config);
-    await promptRestartDaemon(rl);
+    saveGlobalConfig(deps, config);
+    await promptRestartDaemon(deps, rl);
 
   } finally {
     rl.close();
@@ -220,8 +221,8 @@ async function providerAdd(): Promise<void> {
 }
 
 // provider list command
-async function providerList(): Promise<void> {
-  const config = loadGlobalConfig(CONFIG_DEFAULTS);
+async function providerList(deps: { fsFactory: (baseDir: string) => FileSystem }): Promise<void> {
+  const config = loadGlobalConfig(deps, CONFIG_DEFAULTS);
   
   const primary = config.llm.primary;
   const fallbacks = config.llm.fallbacks ?? [];
@@ -249,8 +250,8 @@ async function providerList(): Promise<void> {
 }
 
 // provider remove command
-async function providerRemove(label: string): Promise<void> {
-  const config = loadGlobalConfig(CONFIG_DEFAULTS);
+async function providerRemove(deps: { fsFactory: (baseDir: string) => FileSystem }, label: string): Promise<void> {
+  const config = loadGlobalConfig(deps, CONFIG_DEFAULTS);
   
   const found = findProviderIndex(config, label);
   if (!found) {
@@ -263,14 +264,14 @@ async function providerRemove(label: string): Promise<void> {
   
   // Remove from fallbacks
   config.llm.fallbacks!.splice(found.index, 1);
-  saveGlobalConfig(config);
+  saveGlobalConfig(deps, config);
   console.log(`✓ Removed "${label}" from fallbacks`);
-  await promptRestartDaemon();
+  await promptRestartDaemon(deps);
 }
 
 // provider set-primary command
-async function providerSetPrimary(label: string): Promise<void> {
-  const config = loadGlobalConfig(CONFIG_DEFAULTS);
+async function providerSetPrimary(deps: { fsFactory: (baseDir: string) => FileSystem }, label: string): Promise<void> {
+  const config = loadGlobalConfig(deps, CONFIG_DEFAULTS);
   
   const found = findProviderIndex(config, label);
   if (!found) {
@@ -304,14 +305,14 @@ async function providerSetPrimary(label: string): Promise<void> {
   // Set target as primary
   config.llm.primary = target;
 
-  saveGlobalConfig(config);
+  saveGlobalConfig(deps, config);
   console.log(`✓ "${label}" is now primary`);
-  await promptRestartDaemon();
+  await promptRestartDaemon(deps);
 }
 
 // provider move command
-async function providerMove(label: string, position: string): Promise<void> {
-  const config = loadGlobalConfig(CONFIG_DEFAULTS);
+async function providerMove(deps: { fsFactory: (baseDir: string) => FileSystem }, label: string, position: string): Promise<void> {
+  const config = loadGlobalConfig(deps, CONFIG_DEFAULTS);
   
   const found = findProviderIndex(config, label);
   if (!found) {
@@ -333,42 +334,45 @@ async function providerMove(label: string, position: string): Promise<void> {
   const [removed] = fallbacks.splice(found.index, 1);
   fallbacks.splice(newPos, 0, removed);
   
-  saveGlobalConfig(config);
+  saveGlobalConfig(deps, config);
   console.log(`✓ "${label}" moved to fallback #${newPos + 1}`);
-  await promptRestartDaemon();
+  await promptRestartDaemon(deps);
 }
 
 // Build the config command
-export const configCommand = new Command('config')
-  .description('Manage clawforum configuration');
+export function createConfigCommand(deps: { fsFactory: (baseDir: string) => FileSystem }): Command {
+  const configCommand = new Command('config')
+    .description('Manage clawforum configuration');
 
-// provider subcommand
-const providerCmd = new Command('provider')
-  .description('Manage LLM providers');
+  // provider subcommand
+  const providerCmd = new Command('provider')
+    .description('Manage LLM providers');
 
-providerCmd
-  .command('add')
-  .description('Add a new provider interactively')
-  .action(providerAdd);
+  providerCmd
+    .command('add')
+    .description('Add a new provider interactively')
+    .action(() => providerAdd(deps));
 
-providerCmd
-  .command('list')
-  .description('List all providers')
-  .action(providerList);
+  providerCmd
+    .command('list')
+    .description('List all providers')
+    .action(() => providerList(deps));
 
-providerCmd
-  .command('remove <label>')
-  .description('Remove a fallback provider')
-  .action(providerRemove);
+  providerCmd
+    .command('remove <label>')
+    .description('Remove a fallback provider')
+    .action((label: string) => providerRemove(deps, label));
 
-providerCmd
-  .command('set-primary <label>')
-  .description('Set a provider as primary (current primary becomes fallback)')
-  .action(providerSetPrimary);
+  providerCmd
+    .command('set-primary <label>')
+    .description('Set a provider as primary (current primary becomes fallback)')
+    .action((label: string) => providerSetPrimary(deps, label));
 
-providerCmd
-  .command('move <label> <position>')
-  .description('Move a fallback provider to a new position (1-based)')
-  .action(providerMove);
+  providerCmd
+    .command('move <label> <position>')
+    .description('Move a fallback provider to a new position (1-based)')
+    .action((label: string, position: string) => providerMove(deps, label, position));
 
-configCommand.addCommand(providerCmd);
+  configCommand.addCommand(providerCmd);
+  return configCommand;
+}

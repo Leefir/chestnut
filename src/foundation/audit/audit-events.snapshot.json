@@ -237,6 +237,8 @@
       "llm_error",
       "llm_unknown_stop_reason",
       "llm_unparseable_tool_use",
+      "max_tokens_assistant_empty_skipped",
+      "max_tokens_prebuilt_only_final",
       "outbox_write_failed",
       "regime_switch",
       "regime_switch_committed",
@@ -252,8 +254,6 @@
       "session_repaired",
       "snapshot_commit_failed",
       "snapshot_commit_uncategorized",
-      "max_tokens_assistant_empty_skipped",
-      "max_tokens_prebuilt_only_final",
       "step_executor_callback_failed",
       "task_system_init_failed",
       "task_system_start_dispatch_failed",
@@ -465,6 +465,5 @@
       "watchdog_stop",
       "watchdog_stream_read_failed"
     ]
-  },
-  "updated": "2026-05-24T21:39:00.000Z"
+  }
 }

@@ -1,5 +1,6 @@
 import path from 'path';
-import * as fsNative from 'fs';
+
+import type { FileSystem } from '../foundation/fs/types.js';
 
 import { createAuditWriter, createSystemAudit, type AuditLog } from '../foundation/audit/index.js';
 import { reconcileFallbackDumps } from '../foundation/audit/index.js';
@@ -95,19 +96,15 @@ import { DIALOG_DIR } from '../foundation/dialog-store/dirs.js';
 const DREAM_TRIGGER_CRON_TIMEOUT_MS = 30 * 60_000;  // 30 min
 
 // 内部 helper（从 daemon.ts L42-75 搬入）
-export function detectUncleanExit(auditDir: string, auditWriter: AuditLog): void {
-  const auditPath = path.join(auditDir, 'audit.tsv');
-  if (!fsNative.existsSync(auditPath)) return;
+export function detectUncleanExit(_auditDir: string, auditWriter: AuditLog, fs: FileSystem): void {
+  if (!fs.existsSync('audit.tsv')) return;
   try {
-    const stat = fsNative.statSync(auditPath);
+    const stat = fs.statSync('audit.tsv');
     if (stat.size === 0) return;
     const chunkSize = 4096;
     const offset = Math.max(0, stat.size - chunkSize);
-    const fd = fsNative.openSync(auditPath, 'r');
-    try {
-      const buf = Buffer.alloc(Math.min(chunkSize, stat.size));
-      fsNative.readSync(fd, buf, 0, buf.length, offset);
-      const chunk = buf.toString('utf-8');
+    const buf = fs.readBytesSync('audit.tsv', offset, stat.size);
+    const chunk = buf.toString('utf-8');
       const lastLine = chunk.split('\n').filter(Boolean).at(-1) ?? '';
       const type = lastLine.split('\t')[1];
       if (
@@ -117,9 +114,6 @@ export function detectUncleanExit(auditDir: string, auditWriter: AuditLog): void
       ) return;
       const lastTs = lastLine.split('\t')[0] ?? new Date().toISOString();
       auditWriter.write(ASSEMBLY_AUDIT_EVENTS.DAEMON_UNCLEAN_EXIT, `last_ts=${lastTs}`);
-    } finally {
-      fsNative.closeSync(fd);
-    }
   } catch (err: unknown) {
     // phase 1154 r+ derive: 双码 narrow via foundation helper (FileSystem 抽象层抛 FS_NOT_FOUND)
     if (!isFileNotFound(err)) {
@@ -145,12 +139,13 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
 
   // phase155A + B + C 联合约定：system 组件无权限校验；工具层强制权限校验
   // systemFs: used by AuditWriter / Snapshot / DialogStore / Skill/Contract/Outbox/Inbox/Task/Context/Stream
-  const systemFs = new NodeFileSystem({ baseDir: clawDir });
+  const fsFactory = (baseDir: string): FileSystem => new NodeFileSystem({ baseDir });
+  const systemFs = fsFactory(clawDir);
   // clawFs: used by tools via ExecContextImpl.fs
   // phase430: PermissionChecker removed from NodeFileSystem ctor;
   // claw-space boundary is enforced by L4 caller (tools) autonomy.
-  const clawFs = new NodeFileSystem({ baseDir: clawDir });
-  const parentFs = new NodeFileSystem({ baseDir: path.join(clawDir, '..') });
+  const clawFs = fsFactory(clawDir);
+  const parentFs = fsFactory(path.join(clawDir, '..'));
 
   // syncDir = clawDir/tasks/sync (装配-level 共享 dir / 应然 §A.7)
   const syncDir = path.join(clawDir, TASKS_SYNC_DIR);
@@ -177,7 +172,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   // --- 2. ProcessManager + acquireLock (daemon.ts L107-108) ---
   let processManager: ProcessManager;
   try {
-    processManager = createAgentProcessManager(auditWriter);
+    processManager = createAgentProcessManager({ fsFactory }, auditWriter);
   } catch (e) {
     auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=process_manager`, `phase=construct`, `reason=${errMsg(e)}`);
     throw new Error(`Assembly: ProcessManager construct failed: ${errMsg(e)}`, { cause: e });
@@ -267,7 +262,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
         clawDir, clawId, systemFs, auditWriter, llm,
         toolRegistry,   // phase 704: toolRegistry 注入 ContractSystem
         toolTimeoutMs,  // phase 1029 / F-2
-        (dir: string) => new NodeFileSystem({ baseDir: dir }),
+        fsFactory,
       );
     } catch (e) {
       auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=contract_manager`, `phase=construct`, `reason=${errMsg(e)}`);
@@ -301,7 +296,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
         toolTimeoutMs,              // phase 1029 / F-2
         permissionChecker,          // NEW: permission checker for subagent file tools
         motionInbox,
-        fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir }),
+        fsFactory,
       });
     } catch (e) {
       auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=task_system`, `phase=construct`, `reason=${errMsg(e)}`);
@@ -337,8 +332,8 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
         motionBaseDir: clawDir,
         motionAudit: auditWriter,
         clawsBaseDir: path.resolve(clawDir, '..', CLAWS_DIR),
-        clawFsFactory: (clawDir: string) => new NodeFileSystem({ baseDir: clawDir }),
-        clawContractManagerFactory: (d: string, id: string, fs: import('../foundation/fs/types.js').FileSystem) => createContractSystem(d, id, fs, createSystemAudit(fs, d), undefined, toolRegistry, toolTimeoutMs, (dir: string) => new NodeFileSystem({ baseDir: dir })),
+        clawFsFactory: fsFactory,
+        clawContractManagerFactory: (d: string, id: string, fs: FileSystem) => createContractSystem(d, id, fs, createSystemAudit(fs, d), undefined, toolRegistry, toolTimeoutMs, fsFactory),
       };
       contractManager.onContractCompleted(async (contractId) => {
         if (!evolutionSystem) return; // P1.NPE guard (phase 620 / mirror phase 607 dream-trigger)
@@ -448,6 +443,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     };
 
     const dependencies: RuntimeDependencies = {
+      fsFactory,
       systemFs,
       auditWriter,
       snapshot,
@@ -529,7 +525,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     }
 
     // --- 5. detectUncleanExit (daemon.ts L152) ---
-    detectUncleanExit(clawDir, auditWriter);
+    detectUncleanExit(clawDir, auditWriter, systemFs);
 
     // --- 6. Heartbeat (motion + interval > 0, daemon.ts L158-169) ---
     let heartbeat: Heartbeat | undefined;
@@ -560,9 +556,9 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
 
       // phase155D：预制 clawforumFs，被 disk-monitor / dream-trigger 闭包共用（冻结 §6）
       // 失败语义：与既有模块（Snapshot / StreamWriter）一致 —— audit 写 assemble_failed 后上抛
-      let clawforumFs: NodeFileSystem;
+      let clawforumFs: FileSystem;
       try {
-        clawforumFs = new NodeFileSystem({ baseDir: clawforumDir });
+        clawforumFs = fsFactory(clawforumDir);
       } catch (e) {
         auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=cron_runner`, `phase=fs_construct`, `reason=${errMsg(e)}`);
         throw new Error(`Assembly: clawforumFs construct failed: ${errMsg(e)}`, { cause: e });
@@ -583,9 +579,9 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
           let cs = contractSystemCache.get(clawId);
           if (!cs) {
             const cDir = path.join(clawforumDir, CLAWS_DIR, clawId);
-            const cFs = new NodeFileSystem({ baseDir: cDir });
+            const cFs = fsFactory(cDir);
             const cAudit = createSystemAudit(cFs, cDir);
-            cs = createContractSystem(cDir, clawId, cFs, cAudit, llm, toolRegistry, toolTimeoutMs, (dir: string) => new NodeFileSystem({ baseDir: dir }));
+            cs = createContractSystem(cDir, clawId, cFs, cAudit, llm, toolRegistry, toolTimeoutMs, fsFactory);
             contractSystemCache.set(clawId, cs);
           }
           return cs.getProgress(contractId);
@@ -602,7 +598,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
             llmService: llm,
             llmConfig,
             maxCompressionTokens: globalConfig.cron?.jobs?.dream_trigger?.max_compression_tokens,
-            clawFsFactory: (clawDir: string) => new NodeFileSystem({ baseDir: clawDir }),
+            clawFsFactory: fsFactory,
             getContractProgress,
           });
         } catch (e) {
