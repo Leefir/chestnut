@@ -169,6 +169,28 @@ export async function executeSingleTool(
   ctx: ExecContext,
   callbacks?: StepCallbacks,
 ): Promise<ToolResult> {
+  // 前置守卫：流中断时 toolCall.input 可能不完整（required 字段缺失）
+  // 同步校验，不进入 async execute，避免与 abort 竞态导致 tool_result 丢失
+  const schema = executor.getToolSchema?.(toolCall.name);
+  if (schema?.required && Array.isArray(schema.required)) {
+    const missing = schema.required.filter(f => !(f in (toolCall.input || {})));
+    if (missing.length > 0) {
+      safeCallback(
+        'onToolInputParseError',
+        () => callbacks?.onToolInputParseError?.(
+          toolCall.name,
+          toolCall.id,
+          `incomplete tool_use: missing required [${missing.join(', ')}] (stream aborted mid-tool_use)`,
+        ),
+        callbacks,
+      );
+      return {
+        success: false,
+        content: `[IncompleteToolUse] 工具调用参数不完整：缺少 ${missing.join(', ')}。可能由流中断导致。`,
+      };
+    }
+  }
+
   try {
     // async is NOT a universal meta-parameter — some tools (spawn) use it as
     // an internal parameter. Only readonly tools with supportsAsync use
