@@ -7,7 +7,7 @@
  * - Error paths: command not found, non-zero exit, timeout, AbortSignal
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import * as path from 'path';
 import { tmpdir } from 'os';
 import * as fs from 'fs';

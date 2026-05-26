@@ -6,7 +6,7 @@
  * - ContextInjector: system prompt building
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as path from 'path';
 import { DIALOG_ARCHIVE_DIR } from '../../src/foundation/dialog-store/dirs.js';
 import { promises as fs } from 'fs';

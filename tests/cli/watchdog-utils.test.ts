@@ -1,7 +1,7 @@
 /**
  * watchdog-utils 测试 — clawHasContract + getClawActivityInfo (Phase 19) + Phase 18
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { tmpdir } from 'os';

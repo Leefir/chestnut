@@ -5,7 +5,7 @@
  * - result.allCompleted=true → "All subtasks complete!" (不再查 loadActive)
  * - result.allCompleted=false → 显示剩余列表
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { makeContractYaml } from '../helpers/contract-yaml.js';
