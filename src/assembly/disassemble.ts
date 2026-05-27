@@ -46,6 +46,20 @@ export async function disassemble(instances: Instances, signal: string): Promise
     }
   }
 
+  // Step 2.5: final outbox drain (phase 1373 sub-1)
+  // 防 post-cron-stop subagent 完成写 outbox → drained before exit
+  if (instances.messaging) {
+    try {
+      await instances.messaging.drainOutboxes({ final: true });
+    } catch (e) {
+      auditWriter.write(
+        ASSEMBLY_AUDIT_EVENTS.DISASSEMBLE_STEP_FAILED,
+        `step=final_drain`,
+        `reason=${_reason(e)}`,
+      );
+    }
+  }
+
   // Step 3: runtime.stop()（async）
   try {
     await runtime.stop();

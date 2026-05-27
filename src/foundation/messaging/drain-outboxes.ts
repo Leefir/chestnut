@@ -25,6 +25,8 @@ export interface DrainOutboxesOptions {
   audit: AuditLog;
   limitPerClaw?: number;
   signal?: AbortSignal;
+  /** phase 1373 sub-1: final drain skips per-claw limit for shutdown-time flush */
+  final?: boolean;
 }
 
 export interface DrainResult {
@@ -34,7 +36,7 @@ export interface DrainResult {
 
 export async function drainOutboxes(opts: DrainOutboxesOptions): Promise<DrainResult> {
   const { clawforumDir, fs, audit } = opts;
-  const limitPerClaw = opts.limitPerClaw ?? DEFAULT_LIMIT_PER_CLAW;
+  const limitPerClaw = opts.final ? Infinity : (opts.limitPerClaw ?? DEFAULT_LIMIT_PER_CLAW);
 
   // 1. scan claws/*
   const clawsDir = path.join(clawforumDir, CLAWS_DIR);
