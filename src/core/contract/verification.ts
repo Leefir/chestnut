@@ -197,6 +197,8 @@ async function applyVerificationOutcome(
 
     if (subtask.retry_count >= maxRetries) {
       subtask.escalated_at = new Date().toISOString();
+      // phase 1371 sub-5: 'escalated' is a legitimate SubtaskStatus value per code reality
+      // (spec divergence ratified: spec aligns code, not the reverse)
       subtask.status = 'escalated';
       await ctx.saveProgress(contractId, progress);
       emitContractEscalated(
