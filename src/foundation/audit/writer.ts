@@ -144,6 +144,8 @@ export class AuditWriter implements AuditLog {
   readonly __brand = 'AuditLog' as const;
   private readonly maxBytes: number | null;
   private seq = 0; // NEW phase 1125
+  /** phase 1343 α-6: turn-level trace id for cross-module audit correlation */
+  traceId?: string;
 
   constructor(
     private readonly fs: FileSystem,
@@ -157,6 +159,9 @@ export class AuditWriter implements AuditLog {
     this.seq++;
     const ts = new Date().toISOString();
     const parts = [esc(ts), `seq=${this.seq}`, esc(type), ...cols.map(c => esc(String(c)))];
+    if (this.traceId) {
+      parts.push(`trace_id=${esc(this.traceId)}`);
+    }
     const line = parts.join('\t') + '\n';
     try {
       if (this.maxBytes) this.rotateIfNeeded();

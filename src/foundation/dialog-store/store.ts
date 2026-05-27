@@ -294,6 +294,7 @@ export class DialogStore {
     systemPrompt: string;
     messages: Message[];
     toolsForLLM: ToolDefinition[];
+    trace_id?: string;
   }): Promise<void> {
     const doSave = async (): Promise<void> => {
       const now = new Date().toISOString();
@@ -311,6 +312,7 @@ export class DialogStore {
         systemPrompt: snapshot.systemPrompt,
         messages: snapshot.messages,
         toolsForLLM: snapshot.toolsForLLM,
+        ...(snapshot.trace_id && { trace_id: snapshot.trace_id }),
       };
 
       try {

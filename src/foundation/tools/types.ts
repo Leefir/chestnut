@@ -101,6 +101,8 @@ export interface ExecContext {
   permissionChecker?: PermissionChecker;
   /** phase 1332: injected task scheduler for subagent scheduling (N2 cross-L4 leak fix) */
   taskSystem?: TaskScheduler;
+  /** phase 1343 α-6: turn-level trace id for cross-module audit correlation */
+  trace_id?: string;
 }
 
 /**

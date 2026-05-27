@@ -84,6 +84,8 @@ export interface ExecContextImplOptions {
   toolTimeoutMs?: number;
   /** phase 1332: injected task scheduler for subagent scheduling (N2 cross-L4 leak fix) */
   taskSystem?: import('./types.js').TaskScheduler;
+  /** phase 1343 α-6: turn-level trace id for cross-module audit correlation */
+  trace_id?: string;
 }
 
 /**
@@ -151,6 +153,7 @@ export class ExecContextImpl implements ExecContext {
   permissionChecker?: PermissionChecker;
   toolTimeoutMs?: number;
   taskSystem?: import('./types.js').TaskScheduler;
+  trace_id?: string;
   stopRequested: boolean = false;
   
   private startTime: number;
@@ -178,6 +181,7 @@ export class ExecContextImpl implements ExecContext {
     this.permissionChecker = options.permissionChecker;
     this.toolTimeoutMs = options.toolTimeoutMs;
     this.taskSystem = options.taskSystem;
+    this.trace_id = options.trace_id;
     this.stepNumber = 0;
     this.startTime = Date.now();
   }

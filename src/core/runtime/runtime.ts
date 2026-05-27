@@ -6,6 +6,7 @@
  */
 
 import * as path from 'path';
+import * as crypto from 'node:crypto';
 import { MOTION_CLAW_ID } from '../../constants.js';
 import { CALLER_TYPE_TO_GROUPS } from '../caller-types.js';
 
@@ -74,6 +75,8 @@ export class Runtime {
   private currentAbortController: AbortController | null = null;
   private turnCount = 0;
   protected auditWriter!: AuditLog;
+  /** phase 1343 α-6: current turn-level trace id for cross-module audit correlation */
+  private currentTraceId?: string;
 
   // Turn state — stored on Runtime (not ExecContext) so L4 modules can
   // access current turn snapshot via getter callback without L2 knowing L4 semantics.
@@ -81,6 +84,8 @@ export class Runtime {
   private _currentTools?: import('../../foundation/llm-provider/types.js').ToolDefinition[];
   private _currentMessages?: import('../../foundation/llm-provider/types.js').Message[];
 
+  /** phase 1343 α-6: expose current trace id for daemon-loop stream callbacks */
+  getCurrentTraceId(): string | undefined { return this.currentTraceId; }
   /** Current turn system prompt (set by _runReact, cleared after turn) */
   getCurrentSystemPrompt(): string | undefined { return this._currentSystemPrompt; }
   /** Current turn tool definitions (set by _runReact) */
@@ -132,6 +137,13 @@ export class Runtime {
     if (deps.contractNotifyCallback) {
       deps.contractManager.setOnNotify(deps.contractNotifyCallback);
     }
+  }
+
+  /** phase 1343 α-6: set/clear turn-level trace id on audit writer */
+  private setTraceId(traceId: string | undefined): void {
+    this.currentTraceId = traceId;
+    const aw = this.auditWriter as unknown as { traceId?: string };
+    if (aw) aw.traceId = traceId;
   }
 
   /**
@@ -545,7 +557,7 @@ export class Runtime {
             }
           },
           onStepComplete: async () => {
-            await this.sessionManager.save({ systemPrompt, messages, toolsForLLM: tools });
+            await this.sessionManager.save({ systemPrompt, messages, toolsForLLM: tools, trace_id: this.currentTraceId });
             // 步间检查：高优先级消息到达时提前结束本轮
             if (await this._hasHighPriorityInbox()) {
               this.currentAbortController?.abort({ type: 'step_yield' });
@@ -606,7 +618,7 @@ export class Runtime {
             );
           },
         });
-      await this.sessionManager.save({ systemPrompt, messages, toolsForLLM: tools });
+      await this.sessionManager.save({ systemPrompt, messages, toolsForLLM: tools, trace_id: this.currentTraceId });
 
       // turn auto-commit
       this.turnCount++;
@@ -640,6 +652,10 @@ export class Runtime {
       await this.initialize();
     }
 
+    const traceId = crypto.randomBytes(8).toString('hex');
+    this.setTraceId(traceId);
+    this.execContext.trace_id = traceId;
+    try {
     const { injected, sources, count, infos, addressedHandles } = await this._drainOwnInbox();
     if (count === 0) return 0;
 
@@ -675,6 +691,7 @@ export class Runtime {
         systemPrompt: session.systemPrompt,
         messages,
         toolsForLLM: injectTools,
+        trace_id: traceId,
       });
 
       await this._runReact(messages, callbacks);
@@ -734,6 +751,10 @@ export class Runtime {
       this.currentAbortController = null;
       this.execContext.signal = undefined;
     }
+    } finally {
+      this.setTraceId(undefined);
+      this.execContext.trace_id = undefined;
+    }
   }
 
   /**
@@ -744,6 +765,10 @@ export class Runtime {
     if (!this.initialized) {
       await this.initialize();
     }
+    const traceId = crypto.randomBytes(8).toString('hex');
+    this.setTraceId(traceId);
+    this.execContext.trace_id = traceId;
+    try {
     const { session } = await this.sessionManager.load();
     const messages = [...session.messages, msg];
     const procTools = this.toolRegistry.formatForLLM(
@@ -753,6 +778,7 @@ export class Runtime {
       systemPrompt: session.systemPrompt,
       messages,
       toolsForLLM: procTools,
+      trace_id: traceId,
     });
     callbacks?.onTurnStart?.([]);
     this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_START);
@@ -771,6 +797,10 @@ export class Runtime {
       this.currentAbortController = null;
       this.execContext.signal = undefined;
     }
+    } finally {
+      this.setTraceId(undefined);
+      this.execContext.trace_id = undefined;
+    }
   }
 
   /**
@@ -781,6 +811,10 @@ export class Runtime {
     if (!this.initialized) {
       await this.initialize();
     }
+    const traceId = crypto.randomBytes(8).toString('hex');
+    this.setTraceId(traceId);
+    this.execContext.trace_id = traceId;
+    try {
     const { session } = await this.sessionManager.load();
     if (session.messages.length === 0) return;
 
@@ -826,6 +860,10 @@ export class Runtime {
       this.currentAbortController = null;
       this.execContext.signal = undefined;
     }
+    } finally {
+      this.setTraceId(undefined);
+      this.execContext.trace_id = undefined;
+    }
   }
 
   /**
@@ -846,6 +884,10 @@ export class Runtime {
       await this.initialize();
     }
 
+    const traceId = crypto.randomBytes(8).toString('hex');
+    this.setTraceId(traceId);
+    this.execContext.trace_id = traceId;
+    try {
     // 1. Load the current session
     const { session } = await this.sessionManager.load();
     const messages = [...session.messages];
@@ -906,7 +948,7 @@ export class Runtime {
         onThinkingDelta: (d) => { emitChatProviderInfoOnce(); options?.onThinkingDelta?.(d); },
         onStepComplete: async () => {
           // Incremental session save
-          await this.sessionManager.save({ systemPrompt, messages, toolsForLLM: tools });
+          await this.sessionManager.save({ systemPrompt, messages, toolsForLLM: tools, trace_id: this.currentTraceId });
         },
         onUnparseableToolUse: (stopReason) => {
           this.auditWriter.write(RUNTIME_AUDIT_EVENTS.LLM_UNPARSEABLE_TOOL_USE, `stop_reason=${stopReason}`);
@@ -930,7 +972,7 @@ export class Runtime {
       });
 
       // Save the final session
-      await this.sessionManager.save({ systemPrompt, messages, toolsForLLM: tools });
+      await this.sessionManager.save({ systemPrompt, messages, toolsForLLM: tools, trace_id: this.currentTraceId });
 
       // phase 521: turn 末 regime change 检测（chat() 也走 _runReact 等效路径）
       await this._checkRegimeSwitch(systemPrompt, identityContent);
@@ -945,6 +987,10 @@ export class Runtime {
     } finally {
       this.currentAbortController = null;
       this.execContext.signal = undefined;
+    }
+    } finally {
+      this.setTraceId(undefined);
+      this.execContext.trace_id = undefined;
     }
   }
 
