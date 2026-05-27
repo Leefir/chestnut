@@ -7,7 +7,7 @@
 
 import * as path from 'path';
 import stringWidth from 'string-width';
-import { createDirContext } from '../utils/factories.js';
+import { createDirContext } from '../../foundation/process-manager/factories.js';
 import { createStreamReader, STREAM_FILE } from '../../foundation/stream/index.js';
 import { TASKS_QUEUES_RESULTS_DIR } from '../../core/async-task-system/index.js';
 import { VIEWPORT_AUDIT_EVENTS } from './viewport-audit-events.js';

@@ -6,7 +6,7 @@
 import * as path from 'path';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { notifyClaw } from '../../foundation/messaging/index.js';
-import { createDirContext } from '../utils/factories.js';
+import { createDirContext } from '../../foundation/process-manager/factories.js';
 /** 写用户输入到 inbox（chat 命令期间用户输入流入 daemon）/ 1:1 保 chat-viewport.ts:78-89 body */
 export function writeUserChat(agentDir: string, message: string, fsFactory: (baseDir: string) => FileSystem): void {
   const { fs, audit } = createDirContext({ fsFactory }, agentDir);

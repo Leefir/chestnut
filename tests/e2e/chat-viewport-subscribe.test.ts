@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { promises as nativeFs } from 'node:fs';
 import * as path from 'node:path';
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';
-import { createDirContext } from '../../src/cli/utils/factories.js';
+import { createDirContext } from '../../src/foundation/process-manager/factories.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { createStreamReader, STREAM_FILE, type StreamEvent, type StreamReader } from '../../src/foundation/stream/index.js';
 import { makeAudit } from '../helpers/audit.js';

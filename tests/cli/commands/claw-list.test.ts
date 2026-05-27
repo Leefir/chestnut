@@ -30,7 +30,7 @@ vi.mock('../../../src/foundation/config/index.js', () => ({
   getGlobalConfigPath: vi.fn(),
 }));
 
-vi.mock('../../../src/cli/utils/factories.js', () => ({
+vi.mock('../../../src/foundation/process-manager/factories.js', () => ({
   createDirContext: vi.fn((deps: any) => ({ audit: { write: vi.fn() } })),
   createProcessManagerForCLI: vi.fn((deps: any) => ({ isAlive: vi.fn(), readPid: vi.fn() })),
 }));
@@ -54,7 +54,7 @@ describe('claw-list', () => {
     vi.mocked(loadGlobalConfig).mockReturnValue({} as any);
     vi.mocked(getGlobalConfigPath).mockReturnValue('/tmp/clawforum/config.yaml');
 
-    const { createProcessManagerForCLI } = await import('../../../src/cli/utils/factories.js');
+    const { createProcessManagerForCLI } = await import('../../../src/foundation/process-manager/factories.js');
     vi.mocked(createProcessManagerForCLI).mockReturnValue({
       isAlive: vi.fn().mockReturnValue(false),
       readPid: vi.fn().mockResolvedValue(null),
@@ -70,7 +70,7 @@ describe('claw-list', () => {
   });
 
   it('lists all claws with status', async () => {
-    const { createProcessManagerForCLI } = await import('../../../src/cli/utils/factories.js');
+    const { createProcessManagerForCLI } = await import('../../../src/foundation/process-manager/factories.js');
     vi.mocked(createProcessManagerForCLI).mockReturnValue({
       isAlive: vi.fn((name: string) => name === 'claw-a'),
       readPid: vi.fn().mockResolvedValue({ pid: FAKE_LIVE_PID }),
@@ -122,7 +122,7 @@ describe('claw-list', () => {
   });
 
   it('reports contract status and outbox count', async () => {
-    const { createProcessManagerForCLI } = await import('../../../src/cli/utils/factories.js');
+    const { createProcessManagerForCLI } = await import('../../../src/foundation/process-manager/factories.js');
     vi.mocked(createProcessManagerForCLI).mockReturnValue({
       isAlive: vi.fn().mockReturnValue(true),
       readPid: vi.fn().mockResolvedValue({ pid: 9999 }),
@@ -168,7 +168,7 @@ describe('claw-list', () => {
   });
 
   it('outputs JSON when --json flag is passed', async () => {
-    const { createProcessManagerForCLI } = await import('../../../src/cli/utils/factories.js');
+    const { createProcessManagerForCLI } = await import('../../../src/foundation/process-manager/factories.js');
     vi.mocked(createProcessManagerForCLI).mockReturnValue({
       isAlive: vi.fn((name: string) => name === 'claw-a'),
       readPid: vi.fn().mockResolvedValue({ pid: FAKE_LIVE_PID }),

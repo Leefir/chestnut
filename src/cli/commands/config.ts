@@ -12,7 +12,7 @@ import {
 } from '../../foundation/config/index.js';
 import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
 import { PRESETS } from '../../foundation/config/index.js';
-import { createProcessManagerForCLI } from '../utils/factories.js';
+import { createProcessManagerForCLI } from '../../foundation/process-manager/factories.js';
 import { CliError } from '../errors.js';
 import { REACT_DEFAULT_MAX_TOKENS } from '../../core/step-executor/constants.js';
 import { DEFAULT_LLM_TIMEOUT_MS } from '../../foundation/llm-orchestrator/defaults.js';

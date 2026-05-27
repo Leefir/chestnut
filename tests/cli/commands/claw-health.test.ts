@@ -32,7 +32,7 @@ vi.mock('../../../src/foundation/config/index.js', () => ({
   getGlobalConfigPath: vi.fn(),
 }));
 
-vi.mock('../../../src/cli/utils/factories.js', () => ({
+vi.mock('../../../src/foundation/process-manager/factories.js', () => ({
   createDirContext: vi.fn((deps: any) => ({ audit: { write: vi.fn() } })),
   createProcessManagerForCLI: vi.fn((deps: any) => ({ isAlive: vi.fn() })),
 }));
@@ -62,7 +62,7 @@ describe('claw-health', () => {
   });
 
   it('displays running status with inbox/outbox counts', async () => {
-    const { createProcessManagerForCLI } = await import('../../../src/cli/utils/factories.js');
+    const { createProcessManagerForCLI } = await import('../../../src/foundation/process-manager/factories.js');
     vi.mocked(createProcessManagerForCLI).mockReturnValue({
       isAlive: vi.fn().mockReturnValue(true),
     } as any);
@@ -90,7 +90,7 @@ describe('claw-health', () => {
   });
 
   it('reports stopped status and 0 pending when dirs are missing', async () => {
-    const { createProcessManagerForCLI } = await import('../../../src/cli/utils/factories.js');
+    const { createProcessManagerForCLI } = await import('../../../src/foundation/process-manager/factories.js');
     vi.mocked(createProcessManagerForCLI).mockReturnValue({
       isAlive: vi.fn().mockReturnValue(false),
     } as any);
@@ -110,7 +110,7 @@ describe('claw-health', () => {
   });
 
   it('reports active contract status when contract subdir has directories', async () => {
-    const { createProcessManagerForCLI } = await import('../../../src/cli/utils/factories.js');
+    const { createProcessManagerForCLI } = await import('../../../src/foundation/process-manager/factories.js');
     vi.mocked(createProcessManagerForCLI).mockReturnValue({
       isAlive: vi.fn().mockReturnValue(true),
     } as any);
@@ -136,7 +136,7 @@ describe('claw-health', () => {
   });
 
   it('outputs JSON when --json flag is passed', async () => {
-    const { createProcessManagerForCLI } = await import('../../../src/cli/utils/factories.js');
+    const { createProcessManagerForCLI } = await import('../../../src/foundation/process-manager/factories.js');
     vi.mocked(createProcessManagerForCLI).mockReturnValue({
       isAlive: vi.fn().mockReturnValue(true),
     } as any);
@@ -165,7 +165,7 @@ describe('claw-health', () => {
 
   describe('phase 906 Step B3: 3 catch narrow ENOENT', () => {
     it('inbox ENOENT silent — 0 throw', async () => {
-      const { createProcessManagerForCLI } = await import('../../../src/cli/utils/factories.js');
+      const { createProcessManagerForCLI } = await import('../../../src/foundation/process-manager/factories.js');
       vi.mocked(createProcessManagerForCLI).mockReturnValue({
         isAlive: vi.fn().mockReturnValue(false),
       } as any);
@@ -181,7 +181,7 @@ describe('claw-health', () => {
     });
 
     it('inbox EACCES → throw (bubble to handleCliError)', async () => {
-      const { createProcessManagerForCLI } = await import('../../../src/cli/utils/factories.js');
+      const { createProcessManagerForCLI } = await import('../../../src/foundation/process-manager/factories.js');
       vi.mocked(createProcessManagerForCLI).mockReturnValue({
         isAlive: vi.fn().mockReturnValue(false),
       } as any);
@@ -199,7 +199,7 @@ describe('claw-health', () => {
     });
 
     it('outbox EACCES → throw', async () => {
-      const { createProcessManagerForCLI } = await import('../../../src/cli/utils/factories.js');
+      const { createProcessManagerForCLI } = await import('../../../src/foundation/process-manager/factories.js');
       vi.mocked(createProcessManagerForCLI).mockReturnValue({
         isAlive: vi.fn().mockReturnValue(false),
       } as any);
@@ -219,7 +219,7 @@ describe('claw-health', () => {
     });
 
     it('contract sub-dir EACCES → throw', async () => {
-      const { createProcessManagerForCLI } = await import('../../../src/cli/utils/factories.js');
+      const { createProcessManagerForCLI } = await import('../../../src/foundation/process-manager/factories.js');
       vi.mocked(createProcessManagerForCLI).mockReturnValue({
         isAlive: vi.fn().mockReturnValue(false),
       } as any);
@@ -241,7 +241,7 @@ describe('claw-health', () => {
     });
 
     it('contract scan ENOENT silent — 0 throw', async () => {
-      const { createProcessManagerForCLI } = await import('../../../src/cli/utils/factories.js');
+      const { createProcessManagerForCLI } = await import('../../../src/foundation/process-manager/factories.js');
       vi.mocked(createProcessManagerForCLI).mockReturnValue({
         isAlive: vi.fn().mockReturnValue(false),
       } as any);
