@@ -5,6 +5,10 @@
  */
 
 import type { Message, ToolDefinition } from '../llm-provider/types.js';
+import type { ClawId } from '../identity/index.js';
+import type { ToolUseId } from '../tool-protocol/index.js';
+
+
 
 export interface SessionData {
   version: number;          // bump to 2 (phase 713)
@@ -25,8 +29,8 @@ export interface LoadResult {
 
 /** phase 466: marker 模式 for subagent context restoration */
 export interface DialogMarker {
-  clawId: string;
-  toolUseId: string;
+  clawId: ClawId;
+  toolUseId: ToolUseId;
 }
 
 /** phase 466: restorePrefix 返完整前缀 */

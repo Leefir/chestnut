@@ -16,6 +16,10 @@ import { CliError } from '../errors.js';
 import { CONTRACT_DIR } from '../../core/contract/index.js';
 import { DIALOG_DIR } from '../../foundation/dialog-store/dirs.js';
 import { migrateAndValidateSession, validateSessionData } from '../../foundation/dialog-store/store.js';
+import type { ClawId } from '../../foundation/identity/index.js';
+import type { ContractId } from '../../core/contract/types.js';
+
+
 
 interface StreamEvent {
   ts: number;
@@ -51,8 +55,8 @@ interface ToolResultBlock {
  */
 export async function clawTraceCommand(
   deps: { fsFactory: (baseDir: string) => FileSystem },
-  clawId: string,
-  contractId: string,
+  clawId: ClawId,
+  contractId: ContractId,
   step?: number,
 ): Promise<void> {
   loadGlobalConfig(deps, CONFIG_DEFAULTS);
@@ -92,7 +96,7 @@ export async function clawTraceCommand(
 /**
  * 读取契约开始时间
  */
-async function readContractStartedAt(fileSystem: FileSystem, contractId: string): Promise<string | null> {
+async function readContractStartedAt(fileSystem: FileSystem, contractId: ContractId): Promise<string | null> {
   // 先尝试 archive
   const archivePath = path.join(CONTRACT_DIR, 'archive', contractId, 'progress.json');
   const activePath = path.join(CONTRACT_DIR, 'active', contractId, 'progress.json');
@@ -110,7 +114,7 @@ async function readContractStartedAt(fileSystem: FileSystem, contractId: string)
 /**
  * 读取契约标题
  */
-async function readContractTitle(fileSystem: FileSystem, contractId: string): Promise<string | undefined> {
+async function readContractTitle(fileSystem: FileSystem, contractId: ContractId): Promise<string | undefined> {
   // 从 progress.json 读取
   const archivePath = path.join(CONTRACT_DIR, 'archive', contractId, 'progress.json');
   const activePath = path.join(CONTRACT_DIR, 'active', contractId, 'progress.json');
@@ -193,8 +197,8 @@ async function readStreamEvents(fileSystem: FileSystem, startedAt: string): Prom
  * 概览输出
  */
 function showTraceOverview(
-  clawId: string,
-  contractId: string,
+  clawId: ClawId,
+  contractId: ContractId,
   title: string | undefined,
   startedAt: string,
   events: StreamEvent[],

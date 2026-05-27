@@ -8,6 +8,9 @@ import type { FileSystem } from '../../foundation/fs/types.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { ToolRegistry } from '../../foundation/tools/index.js';
 import type { Priority } from '../../foundation/messaging/types.js';
+import type { ClawId } from '../../foundation/identity/index.js';
+
+
 
 // ============================================================================
 // Contract domain types (canonical owner per interfaces/l4.md)
@@ -34,7 +37,7 @@ export interface LastFailedFeedback {
 }
 
 export interface AcceptanceFailedNotification {
-  contract_id: string;
+  contract_id: ContractId;
   subtask_id: string;
   cause: 'llm_rejected' | 'programming_bug' | 'subagent_timeout' | 'script_failed';
   feedback: string;
@@ -92,7 +95,7 @@ export interface ContractYaml {
 // Progress data structure
 export interface ProgressData {
   schema_version?: number;  // NEW phase 1134 / v1 = current
-  contract_id: string;
+  contract_id: ContractId;
   status: ContractStatus;
   subtasks: Record<string, {
     status: SubtaskStatus;
@@ -122,7 +125,7 @@ export interface VerifierConfig {
   agentId: string;
   prompt: string;
   clawDir: string;
-  clawId: string;               // phase 514 / caller's clawId for subagent context
+  clawId: ClawId;               // phase 514 / caller's clawId for subagent context
   llm: LLMOrchestrator;
   fs: FileSystem;
   maxSteps: number;
@@ -134,7 +137,7 @@ export interface VerifierConfig {
   signal?: AbortSignal;
 
   /** phase 1080: contractId for crash-recovery status check / phase 1151: made required for audit emit contractId col */
-  contractId: string;
+  contractId: ContractId;
   /** ContractSystem 装配期注入 / verifier subagent 内部用 getForProfile('readonly') 派生 read+ls+search 工具子集 / + reportTool 注册 / 与 system prompt 指令 align（M#7 / phase 704） */
   toolRegistry: ToolRegistry;
   /** Tool-level wall-clock timeout inherited from globalConfig.tool_timeout_ms (phase 1029 / F-2) */
@@ -151,8 +154,16 @@ export interface VerifierResult {
 
 /** Phase 1335 (r138 F fork): cross-module query API — archive contract reference */
 export interface ArchiveContractRef {
-  clawId: string;
-  contractId: string;
+  clawId: ClawId;
+  contractId: ContractId;
   contractDir: string;
   archivedAt?: string;
 }
+
+// ============================================================================
+// phase 1358: ContractId branded type (compile-time ID discrimination)
+// ============================================================================
+
+declare const ContractIdBrand: unique symbol;
+export type ContractId = string & { readonly [ContractIdBrand]: true };
+export function makeContractId(s: string): ContractId { return s as ContractId; }

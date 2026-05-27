@@ -19,6 +19,8 @@ import {
 } from './audit-emit.js';
 import { CONTRACT_AUDIT_EVENTS } from './audit-events.js';
 import { isAlive } from '../../foundation/process-exec/index.js';
+import type { ContractId } from './types.js';
+
 
 export interface LockContext {
   fs: FileSystem;
@@ -175,7 +177,7 @@ export async function releaseLock(ctx: LockContext, lockPath: string): Promise<v
 export async function withProgressLock<T>(
   ctx: LockContext,
   contractDir: string,
-  contractId: string,
+  contractId: ContractId,
   fn: () => Promise<T>,
 ): Promise<T> {
   const lockPath = `${contractDir}/${contractId}/progress.lock`;

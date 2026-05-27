@@ -8,6 +8,9 @@ import type { AsyncTaskSystem } from '../async-task-system/index.js';
 import { notifyClaw } from '../../foundation/messaging/index.js';
 import { createSystemAudit } from '../../foundation/audit/index.js';
 import type { ProgressData } from '../contract/index.js';
+import type { ClawId } from '../../foundation/identity/index.js';
+import type { ContractId } from '../contract/types.js';
+import { type TaskId, makeTaskId } from '../async-task-system/types.js';
 import { listArchiveContracts } from '../contract/index.js';
 import {
   RANDOM_DREAM_SYSTEM_PROMPT,
@@ -36,12 +39,12 @@ export interface RandomDreamOptions {
   subagentMaxSteps?: number;
   signal?: AbortSignal;
   /** 读取指定 claw+contract 的 progress（M#3：不走直接文件访问） */
-  getContractProgress?: (clawId: string, contractId: string) => Promise<ProgressData>;
+  getContractProgress?: (clawId: ClawId, contractId: ContractId) => Promise<ProgressData>;
 }
 
 interface WeightedContract {
-  clawId: string;
-  contractId: string;
+  clawId: ClawId;
+  contractId: ContractId;
   contractDir: string;
   weight: number;
   hint: string;
@@ -103,13 +106,13 @@ function saveRandomDreamState(fs: FileSystem, state: RandomDreamState, audit: Au
 /** 计算契约权重（越高越优先） */
 async function computeWeight(
   fs: FileSystem,
-  contractId: string,
+  contractId: ContractId,
   contractDir: string,
-  clawId: string,
+  clawId: ClawId,
   processedIds: Set<string>,
   clawsSeen: Set<string>,     // 本次已选中的 clawId 集合
   audit: AuditLog,
-  getContractProgress?: (clawId: string, contractId: string) => Promise<ProgressData>,
+  getContractProgress?: (clawId: ClawId, contractId: ContractId) => Promise<ProgressData>,
 ): Promise<{ weight: number; hint: string }> {
   let weight = 10;
   const hints: string[] = [];
@@ -199,7 +202,7 @@ async function discoverWeightedContracts(
   fs: FileSystem,
   state: RandomDreamState,
   audit: AuditLog,
-  getContractProgress?: (clawId: string, contractId: string) => Promise<ProgressData>,
+  getContractProgress?: (clawId: ClawId, contractId: ContractId) => Promise<ProgressData>,
 ): Promise<WeightedContract[]> {
   const processedIds = new Set(state.processedContractIds);
   const clawsSeen = new Set<string>();
@@ -237,7 +240,7 @@ async function discoverWeightedContracts(
 
 export async function waitForTaskResult(
   motionFs: FileSystem,
-  taskId: string,
+  taskId: TaskId,
   timeoutMs: number,
   pollIntervalMs = 30_000,
   audit?: AuditLog,
@@ -330,7 +333,7 @@ export async function runRandomDream(opts: RandomDreamOptions): Promise<void> {
   const subagentTimeoutMs = opts.subagentTimeoutMs ?? DEFAULT_RANDOM_DREAM_TIMEOUT_MS;
   const subagentMaxSteps = opts.subagentMaxSteps ?? DEFAULT_RANDOM_DREAM_MAX_STEPS;
 
-  const taskId = await opts.taskSystem.schedule('subagent', {
+  const taskId = makeTaskId(await opts.taskSystem.schedule('subagent', {
     kind: 'subagent',
     mode: 'standard',
     intent: buildRandomDreamPrompt(weightedContracts),
@@ -339,7 +342,7 @@ export async function runRandomDream(opts: RandomDreamOptions): Promise<void> {
     parentClawId: MOTION_CLAW_ID,
     originClawId: MOTION_CLAW_ID,
     systemPrompt: RANDOM_DREAM_SYSTEM_PROMPT,    // phase 546: dead import 活化（同 deep-dream 直 LLMService.call 模板 align）
-  });
+  }));
 
   opts.audit.write(MEMORY_AUDIT_EVENTS.RANDOM_DREAM_JOB, `step=subagent_started`, `taskId=${taskId}`);
 

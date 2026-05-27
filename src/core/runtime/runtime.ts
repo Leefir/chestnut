@@ -48,6 +48,10 @@ import {
 import { TASKS_SYNC_DIR } from '../async-task-system/index.js';
 
 import { formatTimeAgo } from './utils.js';
+import type { ClawId } from '../../foundation/identity/index.js';
+import type { ToolUseId } from '../../foundation/tool-protocol/index.js';
+
+
 
 function auditError(
   audit: AuditLog,
@@ -191,7 +195,7 @@ export class Runtime {
       clawDir: this.options.clawDir,
       syncDir: path.join(this.options.clawDir, TASKS_SYNC_DIR),
       profile: this.options.toolProfile ?? 'full',
-      allowedGroups: CALLER_TYPE_TO_GROUPS[this.options.systemPromptBuilder ? MOTION_CLAW_ID : 'claw'],
+      allowedGroups: CALLER_TYPE_TO_GROUPS[this.options.systemPromptBuilder ? 'motion' : 'claw'], // caller='motion' index
       callerLabel: this.options.systemPromptBuilder ? MOTION_CLAW_ID : 'claw',
       permissionChecker: deps.permissionChecker,  // NEW phase 1273
       fs: this.systemFs,
@@ -525,7 +529,7 @@ export class Runtime {
     // Wrap onToolResult to write audit event
     const origOnToolResult = callbacks?.onToolResult;
     const auditOnToolResult = (
-      name: string, toolUseId: string,
+      name: string, toolUseId: ToolUseId,
       result: ToolResult, step: number, maxSteps: number
     ) => {
       this.auditWriter.write(
@@ -872,9 +876,9 @@ export class Runtime {
   async chat(
     userMessage: string,
     options?: {
-      onToolCall?: (toolName: string, toolUseId: string) => void;
+      onToolCall?: (toolName: string, toolUseId: ToolUseId) => void;
       onBeforeLLMCall?: () => void;
-      onToolResult?: (toolName: string, toolUseId: string, result: { success: boolean; content: string }, step: number, maxSteps: number) => void;
+      onToolResult?: (toolName: string, toolUseId: ToolUseId, result: { success: boolean; content: string }, step: number, maxSteps: number) => void;
       onTextDelta?: (delta: string) => void;  // streaming text delta
       onThinkingDelta?: (delta: string) => void;  // streaming thinking delta
       onProviderInfo?: (info: { name: string; model: string; isFallback: boolean }) => void;
@@ -1067,7 +1071,7 @@ export class Runtime {
    */
   getStatus(): {
     initialized: boolean;
-    clawId: string;
+    clawId: ClawId;
   } {
     return {
       initialized: this.initialized,

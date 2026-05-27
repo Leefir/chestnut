@@ -16,6 +16,10 @@ import type { AuditLog } from '../audit/index.js';
 import { DIALOG_AUDIT_EVENTS } from './audit-events.js';
 import { randomUUID } from 'crypto';
 import { UUID_SHORT_LEN } from '../../constants.js';
+import type { ClawId } from '../identity/index.js';
+import type { ToolUseId } from '../tool-protocol/index.js';
+
+
 
 const SESSION_CURRENT_VERSION = 2;
 
@@ -795,7 +799,7 @@ export class DialogStore {
  * 找含 toolUseId 的 assistant message / 返切片（含该 message）
  * 0 命中返 null
  */
-function sliceMessagesAtMarker(messages: Message[], toolUseId: string, inclusive = true): Message[] | null {
+function sliceMessagesAtMarker(messages: Message[], toolUseId: ToolUseId, inclusive = true): Message[] | null {
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
     if (msg.role === 'assistant' && Array.isArray(msg.content)) {
@@ -874,8 +878,8 @@ export function validateSessionData(
 
 export class MarkerNotFoundError extends Error {
   constructor(
-    readonly clawId: string,
-    readonly toolUseId: string,
+    readonly clawId: ClawId,
+    readonly toolUseId: ToolUseId,
   ) {
     super(`marker not found: clawId=${clawId} toolUseId=${toolUseId}`);
     this.name = 'MarkerNotFoundError';

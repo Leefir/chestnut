@@ -8,13 +8,16 @@
  * 调整时确认是 const 文本变化（一次性影响后续所有 shadow，archive 不影响）。
  */
 
+
+import type { ToolUseId } from '../foundation/tool-protocol/index.js';
+
 export const SHADOW_INSTRUCTION_PREFIX = `[SHADOW INSTRUCTION — YOU ARE NO LONGER THE MAIN AGENT]`;
 
 export interface BuildShadowInstructionArgs {
   shadowId: string;
   spawnedAt: string;
   spawnedByClawId: string;
-  toolUseId: string;
+  toolUseId: ToolUseId;
   task: string;
   /**
    * Shadow tool name (caller injected / phase 1306 DIP / 防 prompts/ 反向 import core/ 违 ML#5).

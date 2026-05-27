@@ -49,3 +49,11 @@ export interface ToolResult {
 
 // ExecContext 和 Tool 已迁至 L2c tools/types.ts。
 // 上方重导出桥保持向后兼容，阶段二完成后移除。
+
+// ============================================================================
+// phase 1358: ToolUseId branded type (compile-time ID discrimination)
+// ============================================================================
+
+declare const ToolUseIdBrand: unique symbol;
+export type ToolUseId = string & { readonly [ToolUseIdBrand]: true };
+export function makeToolUseId(s: string): ToolUseId { return s as ToolUseId; }
