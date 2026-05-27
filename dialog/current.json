@@ -1,20 +1,20 @@
 {
   "version": 2,
   "clawId": "test-claw",
-  "createdAt": "2026-05-27T11:30:18.209Z",
-  "updatedAt": "2026-05-27T11:30:18.269Z",
+  "createdAt": "2026-05-27T11:30:18.937Z",
+  "updatedAt": "2026-05-27T11:30:18.990Z",
   "systemPrompt": "## Available Skills\nNo skills loaded.\n",
   "messages": [
     {
       "role": "user",
-      "content": "[system message (0s ago)] Test message"
+      "content": "[system message (0s ago)] good"
     },
     {
       "role": "assistant",
       "content": [
         {
           "type": "text",
-          "text": "Processed"
+          "text": "ok"
         }
       ]
     }
@@ -61,5 +61,5 @@
       }
     }
   ],
-  "trace_id": "362466b1d237dc20"
+  "trace_id": "8655ff0c526ffc6d"
 }
