@@ -24,7 +24,6 @@
     "test:run": "vitest run --config .config/vitest.config.ts",
     "test:fast": "vitest run --config .config/vitest.config.ts --exclude 'tests/e2e/**' --exclude 'tests/foundation/process-*' --exclude 'tests/foundation/process-exec/**' --exclude 'tests/cli/daemon-entry.test.ts' --exclude 'tests/cli/already-running-sentinel.test.ts'",
     "typecheck": "tsc --noEmit",
-    "typecheck:tests": "tsc --noEmit --project tsconfig.test.json",
     "lint": "pnpm run typecheck && pnpm run lint:arch",
     "migrate:claw-agents-versions": "bash scripts/migrate-claw-agents-versions.sh",
     "lint:arch": "depcruise --config .config/dependency-cruiser.cjs src"
