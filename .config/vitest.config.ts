@@ -44,8 +44,9 @@ const VI_MOCK_FILES = [
   'tests/core/async-task-system/silent-catch.test.ts',
   'tests/core/async-task-system/task-recovery-corrupt.test.ts',
   'tests/core/async-task-system/task-recovery-phase989.test.ts',
-  'tests/core/builtins-slow.test.ts',  // phase 1252: slow outlier split
-  'tests/core/builtins.test.ts',
+  // phase 1352: builtins.test.ts moved to fast (spawn tool extracted to builtins-spawn.test.ts)
+  // phase 1353: builtins-slow.test.ts moved to fast (dead vi.mock removed)
+  'tests/core/builtins-spawn.test.ts',
   'tests/core/contract-review-request.test.ts',
   'tests/core/contract/archive-race.test.ts',
   'tests/core/contract/audit-completed-single-emit.test.ts',
@@ -61,7 +62,8 @@ const VI_MOCK_FILES = [
   'tests/core/contract/verifier-job-signal-audit.test.ts',
   'tests/core/contract/verifier-job.test.ts',
   'tests/core/contract/verifier-robustness.test.ts',
-  'tests/core/contract_manager.test.ts',
+  // phase 1351: contract_manager.test.ts moved out (LOCK tests extracted to contract_manager-locks.test.ts)
+  'tests/core/contract_manager-locks.test.ts',
   'tests/core/contract_manager_llm.test.ts',
   'tests/core/evolution-system.test.ts',
   'tests/core/evolution-system/retro-scheduler.test.ts',
@@ -137,17 +139,11 @@ const VI_DOMOCK_FILES = [
 ];
 
 /**
- * phase 1231: 使用了 vi.* API (如 vi.fn, vi.waitFor) 但未显式 import { vi } 的文件
- * isolate:false 模式下 globals:true 不保证注入 vi 全局变量 / 需隔离跑
- * 发现方式: fast project 跑时 vi is not defined 失败 / 反向 audit
+ * phase 1346: VI_GLOBALS_FILES list 全清空 — all files import vi explicitly from 'vitest'
+ * phase 1231 立此 list 的原因 (vi.* without import) 已不存在 / 该 list 现 obsolete
+ * 5 file 全移 fast project: watchdog-utils + dialog + submit_subtask_tool + tool-executor-ctx-prototype + (phase 1344) process-exec
  */
-const VI_GLOBALS_FILES = [
-  'tests/cli/watchdog-utils.test.ts',
-  'tests/core/dialog.test.ts',
-  'tests/core/submit_subtask_tool.test.ts',
-  'tests/core/tool-executor-ctx-prototype.test.ts',
-  'tests/foundation/process-exec.test.ts',
-];
+const VI_GLOBALS_FILES: string[] = [];
 
 const ISOLATED_FILES = [...VI_MOCK_FILES, ...VI_DOMOCK_FILES, ...VI_GLOBALS_FILES];
 

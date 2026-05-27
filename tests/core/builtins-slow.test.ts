@@ -17,13 +17,8 @@ import { OutboxWriter } from '../../src/foundation/messaging/index.js';
 import { makeAudit } from '../helpers/audit.js';
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 
-const { mockWriteFile } = vi.hoisted(() => ({
-  mockWriteFile: vi.fn(),
-}));
-
-vi.mock('../../src/core/async-task-system/tools/_pending-task-writer.js', () => ({
-  writePendingSubagentTaskFile: mockWriteFile,
-}));
+// phase 1353: removed dead vi.mock(writePendingSubagentTaskFile) — mockWriteFile never used in tests
+// file mock-free → moves to fast project
 
 describe('Builtin Tools (slow outliers)', () => {
   let tempDir: string;
