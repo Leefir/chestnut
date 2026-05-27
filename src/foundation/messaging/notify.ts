@@ -33,7 +33,6 @@ export function notifyClaw(
     if (!fs.existsSync(targetClawRoot)) {
       const dlqDir = path.join(clawforumRoot, MOTION_CLAW_ID, 'inbox', 'dead-letter');
       const fileName = `${Date.now()}_${randomUUID().slice(0, 8)}_${targetClawId}.md`;
-      const dlqPath = path.join(dlqDir, fileName);
       try {
         fs.ensureDirSync(dlqDir);
         InboxWriter.__internal_create(fs, makeInboxPath(dlqDir), audit).writeSync({

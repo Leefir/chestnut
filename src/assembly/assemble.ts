@@ -768,7 +768,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
             enabled: globalConfig.cron?.jobs?.outbox_drain?.enabled ?? true,
             schedule: parseSchedule(globalConfig.cron?.jobs?.outbox_drain?.schedule ?? 'interval:30s', auditWriter),
             handler: (signal) => runOutboxDrain({
-              messaging,
+              messaging: messaging!,
               limitPerClaw: OUTBOX_DRAIN_DEFAULT_LIMIT,
               signal,
               audit: auditWriter,

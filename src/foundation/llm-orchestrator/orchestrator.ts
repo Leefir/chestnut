@@ -21,6 +21,7 @@ import type {
   LLMCallOptions,
   StreamChunk,
   LLMEventSink,
+  ProviderConfig,
 } from './types.js';
 import type { LLMOrchestrator } from './types.js';
 import { CircuitBreaker } from './circuit-breaker.js';
