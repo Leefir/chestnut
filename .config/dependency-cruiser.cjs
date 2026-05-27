@@ -8,6 +8,18 @@
 module.exports = {
   forbidden: [
     {
+      name: 'no-foundation-to-core',
+      comment: [
+        'ML#5 单向依赖 + 底层不预设上层语义。',
+        'src/foundation/ (L2c) 不得 import src/core/ (L3 业务)、含 type-only import。',
+        'phase 1337 r138 D fork derive / user 2026-05-26 ratify「type-only import 仍预设上层语义」。',
+        '替代 tests/design/foundation-no-l3-business-import.test.ts grep-based lint (单源)。',
+      ].join(' '),
+      severity: 'error',
+      from: { path: '^src/foundation/' },
+      to: { path: '^src/core/' },
+    },
+    {
       name: 'fs-only-via-foundation-filesystem',
       comment: [
         'ML#3 资源唯一归属：file I/O 必经 L1 FileSystem 接口。',
