@@ -29,7 +29,7 @@ import { CLAW_SUBDIRS } from '../../foundation/paths.js';
 import { DIALOG_DIR } from '../../foundation/dialog-store/dirs.js';
 import { oneLine, formatErr } from '../../foundation/utils/format.js';
 import { escapeForLog } from '../../foundation/tools/index.js';
-import { MaxStepsExceededError } from '../agent-executor/errors.js';
+import { MaxStepsExceededError } from '../agent-executor/index.js';
 import { DEFAULT_MAX_STEPS } from '../agent-executor/index.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { Snapshot } from '../../foundation/snapshot/index.js';

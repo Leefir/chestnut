@@ -17,7 +17,7 @@ import type { ToolResult } from '../../foundation/tool-protocol/index.js';
 import type { IToolExecutor, ToolRegistry } from '../../foundation/tools/index.js';
 import { DEFAULT_MAX_STEPS } from './defaults.js';
 import { runAgent } from './agent-executor.js';
-import type { StepCallbacks, LLMCallInfo } from '../step-executor/step-executor.js';
+import type { StepCallbacks, LLMCallInfo } from '../step-executor/index.js';
 import type { ToolUseId } from '../../foundation/tool-protocol/index.js';
 
 

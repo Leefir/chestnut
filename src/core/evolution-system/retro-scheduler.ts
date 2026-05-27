@@ -10,7 +10,7 @@
 
 import { buildRetroPrompt } from '../../prompts/index.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
-import type { AsyncTaskSystem } from '../async-task-system/system.js';
+import type { AsyncTaskSystem } from '../async-task-system/index.js';
 import { createSkillSystem } from '../../foundation/skill-system/index.js';
 import { DISPATCH_SKILLS_PATH as DISPATCH_SKILLS_DIR } from '../../foundation/paths.js';
 import { DEFAULT_MAX_STEPS } from '../agent-executor/index.js';

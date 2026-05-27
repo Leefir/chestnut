@@ -15,3 +15,9 @@ export { runReact } from './loop.js';
 export type { ReactOptions, ReactResult } from './loop.js';
 export { DEFAULT_MAX_STEPS } from './defaults.js';
 export { AGENT_STREAM_EVENTS } from './stream-events.js';
+export {
+  MaxStepsExceededError,
+  ConsecutiveParseErrorsExceededError,
+  ConsecutiveMaxTokensToolUseError,
+  WallTimeExceededError,
+} from './errors.js';

@@ -12,8 +12,7 @@ import type { Message, ToolDefinition } from '../../foundation/llm-provider/type
 import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
 import type { ExecContext } from '../../foundation/tools/index.js';
 import type { IToolExecutor, ToolRegistry } from '../../foundation/tools/index.js';
-import { executeStep, type StepCallbacks, type StepMeta } from '../step-executor/step-executor.js';
-import { throwAbortError } from '../step-executor/abort-helpers.js';
+import { executeStep, throwAbortError, type StepCallbacks, type StepMeta } from '../step-executor/index.js';
 import { MaxStepsExceededError, ConsecutiveParseErrorsExceededError, ConsecutiveMaxTokensToolUseError, WallTimeExceededError } from './errors.js';
 import { DEFAULT_MAX_STEPS } from './defaults.js';
 import { MAX_CONSECUTIVE_PARSE_ERRORS, MAX_CONSECUTIVE_MAX_TOKENS_TOOL_USE } from './constants.js';
