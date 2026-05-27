@@ -1,13 +1,16 @@
-2026-05-27T11:30:15.931Z	seq=1	dialog_archive_empty
-2026-05-27T11:30:15.936Z	seq=2	dialog_cold_start
-2026-05-27T11:30:15.947Z	seq=3	session_loaded	source=empty
-2026-05-27T11:30:15.953Z	seq=4	session_archive_failed	path=dialog/current.json	reason=File not found: "dialog/current.json"
-2026-05-27T11:30:15.967Z	seq=5	task_recovery_complete	system	pending=0	recovered_running=0	failed=0
-2026-05-27T11:30:15.989Z	seq=6	inbox_inject	file=hb.md	type=heartbeat	from=system	to=test-claw	pri=normal	trace_id=d82d2b0d219e6664
-2026-05-27T11:30:15.997Z	seq=7	dialog_archive_empty	trace_id=d82d2b0d219e6664
-2026-05-27T11:30:16.002Z	seq=8	dialog_cold_start	trace_id=d82d2b0d219e6664
-2026-05-27T11:30:16.007Z	seq=9	turn_start	trace_id=d82d2b0d219e6664
-2026-05-27T11:30:16.011Z	seq=10	dialog_archive_empty	trace_id=d82d2b0d219e6664
-2026-05-27T11:30:16.017Z	seq=11	dialog_cold_start	trace_id=d82d2b0d219e6664
-2026-05-27T11:30:16.021Z	seq=12	dialog_turn_begin	trace_id=d82d2b0d219e6664
-2026-05-27T11:30:16.035Z	seq=13	llm_call	test	in=0	out=0	latency_ms=0	trace_id=d82d2b0d219e6664
+2026-05-27T11:30:16.506Z	seq=1	dialog_archive_empty
+2026-05-27T11:30:16.511Z	seq=2	dialog_cold_start
+2026-05-27T11:30:16.518Z	seq=3	session_loaded	source=empty
+2026-05-27T11:30:16.532Z	seq=4	session_archive_failed	path=dialog/current.json	reason=File not found: "dialog/current.json"
+2026-05-27T11:30:16.685Z	seq=5	task_recovery_complete	system	pending=0	recovered_running=0	failed=0
+2026-05-27T11:30:16.725Z	seq=6	inbox_inject	file=for-me.md	type=message	from=motion	to=test-claw	pri=normal	trace_id=c4df25fa17c2ca27
+2026-05-27T11:30:16.731Z	seq=7	inbox_unaddressed	file=for-subagent.md	type=message	from=task_system	to=some-subagent-uuid	trace_id=c4df25fa17c2ca27
+2026-05-27T11:30:16.740Z	seq=8	inbox_done	file=for-subagent.md	trace_id=c4df25fa17c2ca27
+2026-05-27T11:30:16.746Z	seq=9	outbox_delivered	file=for-subagent.md	trace_id=c4df25fa17c2ca27
+2026-05-27T11:30:16.764Z	seq=10	dialog_archive_empty	trace_id=c4df25fa17c2ca27
+2026-05-27T11:30:16.772Z	seq=11	dialog_cold_start	trace_id=c4df25fa17c2ca27
+2026-05-27T11:30:16.779Z	seq=12	turn_start	trace_id=c4df25fa17c2ca27
+2026-05-27T11:30:16.789Z	seq=13	dialog_archive_empty	trace_id=c4df25fa17c2ca27
+2026-05-27T11:30:16.795Z	seq=14	dialog_cold_start	trace_id=c4df25fa17c2ca27
+2026-05-27T11:30:16.800Z	seq=15	dialog_turn_begin	trace_id=c4df25fa17c2ca27
+2026-05-27T11:30:16.845Z	seq=16	llm_call	test	in=0	out=0	latency_ms=0	trace_id=c4df25fa17c2ca27

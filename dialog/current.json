@@ -1,20 +1,20 @@
 {
   "version": 2,
   "clawId": "test-claw",
-  "createdAt": "2026-05-27T11:30:16.017Z",
-  "updatedAt": "2026-05-27T11:30:16.114Z",
+  "createdAt": "2026-05-27T11:30:16.795Z",
+  "updatedAt": "2026-05-27T11:30:16.853Z",
   "systemPrompt": "## Available Skills\nNo skills loaded.\n",
   "messages": [
     {
       "role": "user",
-      "content": "[system message (0s ago)] Heartbeat triggered. Please perform a routine check.\n\n- Check disk space\n- Verify connections"
+      "content": "[system message (0s ago)] Message for me"
     },
     {
       "role": "assistant",
       "content": [
         {
           "type": "text",
-          "text": "done"
+          "text": "ok"
         }
       ]
     }
@@ -61,5 +61,5 @@
       }
     }
   ],
-  "trace_id": "d82d2b0d219e6664"
+  "trace_id": "c4df25fa17c2ca27"
 }
