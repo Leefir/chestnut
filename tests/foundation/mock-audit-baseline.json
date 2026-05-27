@@ -27,17 +27,17 @@
     },
     {
       "file": "assembly/assemble-evolution-guard.test.ts",
-      "line": 167,
+      "line": 169,
       "excerpt": "    write: vi.fn().mockResolvedValue(undefined),"
     },
     {
       "file": "assembly/assemble-evolution-guard.test.ts",
-      "line": 173,
+      "line": 175,
       "excerpt": "    OutboxWriter: vi.fn(() => ({ write: vi.fn().mockResolvedValue(undefined) })),"
     },
     {
       "file": "assembly/assemble-evolution-guard.test.ts",
-      "line": 176,
+      "line": 178,
       "excerpt": "    createOutboxWriter: vi.fn(() => ({ write: vi.fn().mockResolvedValue(undefined) })),"
     },
     {
@@ -47,17 +47,17 @@
     },
     {
       "file": "assembly/assemble-evolution-toolregistry.test.ts",
-      "line": 173,
+      "line": 176,
       "excerpt": "    write: vi.fn().mockResolvedValue(undefined),"
     },
     {
       "file": "assembly/assemble-evolution-toolregistry.test.ts",
-      "line": 179,
+      "line": 182,
       "excerpt": "    OutboxWriter: vi.fn(() => ({ write: vi.fn().mockResolvedValue(undefined) })),"
     },
     {
       "file": "assembly/assemble-evolution-toolregistry.test.ts",
-      "line": 182,
+      "line": 185,
       "excerpt": "    createOutboxWriter: vi.fn(() => ({ write: vi.fn().mockResolvedValue(undefined) })),"
     },
     {

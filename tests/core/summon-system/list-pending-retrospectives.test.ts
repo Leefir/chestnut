@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { makeMockAudit } from '../../helpers/audit.js';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
@@ -86,7 +87,7 @@ describe('listPendingRetrospectives', () => {
     await fs.writeFile(path.join(dir, 'good.json'), JSON.stringify({ targetClaw: 'ok' }));
 
     const nodeFs = new NodeFileSystem({ baseDir: motionDir });
-    const mockAudit = { write: vi.fn() };
+    const mockAudit = makeMockAudit();
     const result = await listPendingRetrospectives({ fs: nodeFs, audit: mockAudit as any });
 
     expect(result).toHaveLength(1);
