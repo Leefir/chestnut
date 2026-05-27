@@ -210,8 +210,8 @@ const LOCK_CONTRACT_RETRY_DELAY_MS = 50;
  */
 export async function lockContract(
   ctx: LockContext,
-  contractId: string,
-  contractDirFn: (id: string) => Promise<string>,
+  contractId: ContractId,
+  contractDirFn: (id: ContractId) => Promise<string>,
 ): Promise<LockContractResult> {
   let attempt = 0;
   while (attempt < LOCK_CONTRACT_MAX_RETRY) {

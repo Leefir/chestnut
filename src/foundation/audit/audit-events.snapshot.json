@@ -103,12 +103,12 @@
     "core_contract_audit-events": [
       "contract_archive_started",
       "contract_boot_reconcile",
-      "contract_dir_race_retry",
       "contract_cancelled",
       "contract_complete_on_cancelled",
       "contract_completed",
       "contract_completed_handler_failed",
       "contract_created",
+      "contract_dir_race_retry",
       "contract_dir_scan_failed",
       "contract_escalation",
       "contract_event_collector_scan_failed",
