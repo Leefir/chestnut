@@ -1,13 +1,12 @@
-2026-05-27T11:30:12.580Z	seq=1	dialog_archive_empty
-2026-05-27T11:30:12.585Z	seq=2	dialog_cold_start
-2026-05-27T11:30:12.597Z	seq=3	session_loaded	source=empty
-2026-05-27T11:30:12.620Z	seq=4	session_archive_failed	path=dialog/current.json	reason=File not found: "dialog/current.json"
-2026-05-27T11:30:12.636Z	seq=5	task_recovery_complete	system	pending=0	recovered_running=0	failed=0
-2026-05-27T11:30:12.659Z	seq=6	inbox_inject	file=valid.md	type=message	from=motion	to=test-claw	pri=normal	trace_id=ae98ed9aec8eb93f
-2026-05-27T11:30:12.773Z	seq=7	dialog_archive_empty	trace_id=ae98ed9aec8eb93f
-2026-05-27T11:30:12.798Z	seq=8	dialog_cold_start	trace_id=ae98ed9aec8eb93f
-2026-05-27T11:30:12.814Z	seq=9	turn_start	trace_id=ae98ed9aec8eb93f
-2026-05-27T11:30:12.863Z	seq=10	dialog_archive_empty	trace_id=ae98ed9aec8eb93f
-2026-05-27T11:30:12.873Z	seq=11	dialog_cold_start	trace_id=ae98ed9aec8eb93f
-2026-05-27T11:30:12.879Z	seq=12	dialog_turn_begin	trace_id=ae98ed9aec8eb93f
-2026-05-27T11:30:12.912Z	seq=13	llm_call	test	in=0	out=0	latency_ms=0	trace_id=ae98ed9aec8eb93f
+2026-05-27T11:30:13.478Z	seq=1	dialog_archive_empty
+2026-05-27T11:30:13.483Z	seq=2	dialog_cold_start
+2026-05-27T11:30:13.493Z	seq=3	session_loaded	source=empty
+2026-05-27T11:30:13.529Z	seq=4	session_archive_failed	path=dialog/current.json	reason=File not found: "dialog/current.json"
+2026-05-27T11:30:13.592Z	seq=5	task_recovery_complete	system	pending=0	recovered_running=0	failed=0
+2026-05-27T11:30:13.604Z	seq=6	dialog_archive_empty	trace_id=d3b722ec43b1e13e
+2026-05-27T11:30:13.610Z	seq=7	dialog_cold_start	trace_id=d3b722ec43b1e13e
+2026-05-27T11:30:13.624Z	seq=8	turn_start	trace_id=d3b722ec43b1e13e
+2026-05-27T11:30:13.637Z	seq=9	llm_call	test	in=0	out=0	latency_ms=1	trace_id=d3b722ec43b1e13e
+2026-05-27T11:30:13.672Z	seq=10	turn_end	trace_id=d3b722ec43b1e13e
+2026-05-27T11:30:13.778Z	seq=11	turn_start	trace_id=1196bd6dfe743c39
+2026-05-27T11:30:13.798Z	seq=12	llm_call	test	in=0	out=0	latency_ms=0	trace_id=1196bd6dfe743c39
