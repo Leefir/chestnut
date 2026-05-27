@@ -106,6 +106,14 @@ export function createLLMAuditSink(audit: AuditLog): LLMEventSink {
             audit.write(LLM_AUDIT_EVENTS.RACE_LOSER_CLEANED,
               `provider=${event.provider}`, `reason=${event.reason}`);
             break;
+          case 'sdk_client_cache_hit':
+            audit.write(LLM_AUDIT_EVENTS.SDK_CLIENT_CACHE_HIT,
+              `preset=${event.preset}`, `model=${event.model}`);
+            break;
+          case 'sdk_client_cache_miss':
+            audit.write(LLM_AUDIT_EVENTS.SDK_CLIENT_CACHE_MISS,
+              `preset=${event.preset}`, `model=${event.model}`);
+            break;
         }
       } catch (err) {
         // Error isolation: audit failure must not interrupt LLM path

@@ -97,11 +97,25 @@ export class LLMOrchestratorImpl implements LLMOrchestrator {
 
   private events: LLMEventSink;
 
+  // phase 1374 sub-3: SDK client cache (instance-lifetime)
+  private sdkClientCache = new Map<string, LLMProvider>();
+
+  private getSdkClient(config: ProviderConfig): LLMProvider {
+    const key = `${config.apiFormat}:${config.model}:${config.apiKey.slice(-8)}`;
+    if (!this.sdkClientCache.has(key)) {
+      this.sdkClientCache.set(key, createLLMProvider(config));
+      this.events.emit({ type: 'sdk_client_cache_miss', preset: config.apiFormat, model: config.model });
+    } else {
+      this.events.emit({ type: 'sdk_client_cache_hit', preset: config.apiFormat, model: config.model });
+    }
+    return this.sdkClientCache.get(key)!;
+  }
+
   constructor(config: LLMOrchestratorConfig) {
     this.config = config;
     this.events = config.events;
-    this.primary = createLLMProvider(config.primary);
-    this.fallbacks = (config.fallbacks ?? []).map(createLLMProvider);
+    this.primary = this.getSdkClient(config.primary);
+    this.fallbacks = (config.fallbacks ?? []).map((c) => this.getSdkClient(c));
     
     // Initialize circuit breakers if configured
     const cb = config.circuitBreaker;

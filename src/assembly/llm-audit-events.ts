@@ -30,4 +30,6 @@ export const LLM_AUDIT_EVENTS = {
   PERMANENT_SKIP_RETRY: 'llm_permanent_skip_retry',
   ALL_PROVIDERS_CONTEXT_EXCEEDED: 'llm_all_providers_context_exceeded',
   RACE_LOSER_CLEANED: 'llm_race_loser_cleaned',
+  SDK_CLIENT_CACHE_HIT: 'llm_sdk_client_cache_hit',
+  SDK_CLIENT_CACHE_MISS: 'llm_sdk_client_cache_miss',
 } as const;
