@@ -1,20 +1,20 @@
 {
   "version": 2,
   "clawId": "test-claw",
-  "createdAt": "2026-05-27T11:30:36.312Z",
-  "updatedAt": "2026-05-27T11:30:36.360Z",
+  "createdAt": "2026-05-27T11:30:37.071Z",
+  "updatedAt": "2026-05-27T11:30:37.112Z",
   "systemPrompt": "test-prompt",
   "messages": [
     {
       "role": "user",
-      "content": "test"
+      "content": "turn 1"
     },
     {
       "role": "assistant",
       "content": [
         {
           "type": "text",
-          "text": "ok"
+          "text": "turn 1 ok"
         }
       ]
     }
