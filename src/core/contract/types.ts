@@ -156,3 +156,11 @@ export interface ArchiveContractRef {
   contractDir: string;
   archivedAt?: string;
 }
+
+// ============================================================================
+// phase 1358: ContractId branded type (compile-time ID discrimination)
+// ============================================================================
+
+declare const ContractIdBrand: unique symbol;
+export type ContractId = string & { readonly [ContractIdBrand]: true };
+export function makeContractId(s: string): ContractId { return s as ContractId; }

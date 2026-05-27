@@ -82,3 +82,11 @@ export interface ToolTask {
   /** phase 858：sourced from ExecContext.isShadow at schedule time */
   isShadow?: boolean;
 }
+
+// ============================================================================
+// phase 1358: TaskId branded type (compile-time ID discrimination)
+// ============================================================================
+
+declare const TaskIdBrand: unique symbol;
+export type TaskId = string & { readonly [TaskIdBrand]: true };
+export function makeTaskId(s: string): TaskId { return s as TaskId; }
