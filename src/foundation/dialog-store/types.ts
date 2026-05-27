@@ -14,6 +14,8 @@ export interface SessionData {
   systemPrompt: string;     // phase 713: per-turn latest snapshot
   messages: Message[];
   toolsForLLM: ToolDefinition[];  // phase 713 NEW
+  /** phase 1343 α-6: turn-level trace id for cross-module audit correlation */
+  trace_id?: string;
 }
 
 export interface LoadResult {

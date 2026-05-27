@@ -148,6 +148,7 @@ describe('daemon-loop dedicated unit (phase 1157 / r127 H fork)', () => {
         processBatch,
         retryLastTurn: vi.fn().mockResolvedValue(undefined),
         abort: vi.fn(),
+        getCurrentTraceId: vi.fn().mockReturnValue(undefined),
       } as unknown as Runtime;
 
       const onInboxMessages = vi.fn().mockResolvedValue(undefined);
@@ -197,6 +198,7 @@ describe('daemon-loop dedicated unit (phase 1157 / r127 H fork)', () => {
         processBatch,
         retryLastTurn: vi.fn().mockResolvedValue(undefined),
         abort: vi.fn(),
+        getCurrentTraceId: vi.fn().mockReturnValue(undefined),
       } as unknown as Runtime;
 
       const { promise, stop } = startDaemonLoop({

@@ -52,8 +52,12 @@ import { INBOX_PENDING_DIR } from '../foundation/messaging/dirs.js';
  * 创建 StreamCallbacks 实现，将业务事件转为 StreamEvent 写入 StreamLog。
  * 这是装配层逻辑：将 ReAct 循环的业务事件名映射为 stream.jsonl 的事件记录。
  */
-function createStreamCallbacks(sink: StreamLog, _audit: AuditLog): StreamCallbacks {
+function createStreamCallbacks(sink: StreamLog, _audit: AuditLog, runtime: import('../core/runtime/index.js').Runtime): StreamCallbacks {
   const checkWrite = (event: import('../foundation/stream/types.js').StreamEvent) => {
+    const traceId = runtime.getCurrentTraceId();
+    if (traceId) {
+      (event as Record<string, unknown>).trace_id = traceId;
+    }
     sink.write(event);
   };
   return {
@@ -355,7 +359,7 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
       let interruptPoller: ReturnType<typeof setInterval> | null = null;
 
       // Build wrappedCallbacks outside try so catch block can access it for retryLastTurn
-      const callbacks = streamWriter ? createStreamCallbacks(streamWriter, options.audit) : undefined;
+      const callbacks = streamWriter ? createStreamCallbacks(streamWriter, options.audit, runtime) : undefined;
       const wrappedCallbacks = callbacks
         ? { ...callbacks, onInboxMessages }
         : (onInboxMessages ? { onInboxMessages } : undefined);
