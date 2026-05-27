@@ -5,7 +5,7 @@
 
 import type { Contract } from '../contract/types.js';
 import type { ProgressData } from './types.js';
-import { acquireLock, releaseLock, type LockContext } from './lock.js';
+import { lockContract, releaseLock, type LockContext } from './lock.js';
 import { ToolError } from '../../foundation/errors.js';
 
 import {
@@ -32,8 +32,9 @@ export async function pauseContract(
   contractId: string,
   checkpointNote: string,
 ): Promise<void> {
-  const dir = await ctx.contractDir(contractId);
+  const { dir, release: releaseSource } = await lockContract(ctx, contractId, ctx.contractDir);
   if (dir !== ctx.activeDir) {
+    await releaseSource();
     throw new ToolError(`Cannot pause contract "${contractId}": not in active/`);
   }
   await ctx.fs.ensureDir(ctx.pausedDir);
@@ -41,10 +42,9 @@ export async function pauseContract(
   // phase 791 (P0.16): acquire lock at SOURCE, do status update, move, release at TARGET.
   // phase 871 (new.P1.5 r113 G fork): catch fs.move throw + 显式释放 source 防 orphan
   // phase 1162 (r128 D fork DD3): abort verifier before fs.move 防 mid-flight write race
+  // phase 1362 (r140): lockContract atomic wrapper covers contractDir→acquireLock TOCTOU race.
   // 防 fs.move 跨边界 lock 失效 race（lock + 数据同 dir / dir move 时 lock 跟着移动）。
-  const sourceLockPath = `${ctx.activeDir}/${contractId}/progress.lock`;
   const targetLockPath = `${ctx.pausedDir}/${contractId}/progress.lock`;
-  await acquireLock(ctx, sourceLockPath);
   try {
     // status update in SOURCE dir before move (canonical decision crash-safe)
     const progress = await ctx.getProgress(contractId);
@@ -65,7 +65,7 @@ export async function pauseContract(
   } catch (err) {
     // fs.move 抛 → source dir 仍含 lock + target dir 未创 → 显式释放 source 防 orphan
     // per feedback_latent_defensive_fix (N=5 累) + feedback_audit_cluster_multi_phase_coordination
-    try { await releaseLock(ctx, sourceLockPath); } catch { /* releaseLock 自身 audit emit + 不阻断 throw chain */ }
+    try { await releaseSource(); } catch { /* releaseLock 自身 audit emit + 不阻断 throw chain */ }
     throw err;
   } finally {
     // release at TARGET (lock file moved with dir)
@@ -81,16 +81,16 @@ export async function resumeContract(
   ctx: LifecycleContext,
   contractId: string,
 ): Promise<Contract> {
-  const dir = await ctx.contractDir(contractId);
+  const { dir, release: releaseSource } = await lockContract(ctx, contractId, ctx.contractDir);
   if (dir !== ctx.pausedDir) {
+    await releaseSource();
     throw new ToolError(`Cannot resume contract "${contractId}": not in paused/`);
   }
 
   // phase 791 (P0.16): acquire lock at SOURCE, do status update, move, release at TARGET.
   // phase 871 (new.P1.5 r113 G fork): catch fs.move throw + 显式释放 source 防 orphan
-  const sourceLockPath = `${ctx.pausedDir}/${contractId}/progress.lock`;
+  // phase 1362 (r140): lockContract atomic wrapper covers contractDir→acquireLock TOCTOU race.
   const targetLockPath = `${ctx.activeDir}/${contractId}/progress.lock`;
-  await acquireLock(ctx, sourceLockPath);
   try {
     const progress = await ctx.getProgress(contractId);
     progress.status = 'running';
@@ -99,7 +99,7 @@ export async function resumeContract(
 
     await ctx.fs.move(`${ctx.pausedDir}/${contractId}`, `${ctx.activeDir}/${contractId}`);
   } catch (err) {
-    try { await releaseLock(ctx, sourceLockPath); } catch { /* audit emit + 不阻断 throw chain */ }
+    try { await releaseSource(); } catch { /* audit emit + 不阻断 throw chain */ }
     throw err;
   } finally {
     await releaseLock(ctx, targetLockPath);
@@ -114,8 +114,9 @@ export async function cancelContract(
   contractId: string,
   reason: string,
 ): Promise<void> {
-  const dir = await ctx.contractDir(contractId);
+  const { dir, release: releaseSource } = await lockContract(ctx, contractId, ctx.contractDir);
   if (dir === ctx.archiveDir) {
+    await releaseSource();
     throw new ToolError(`Cannot cancel contract "${contractId}": already archived`);
   }
   await ctx.fs.ensureDir(ctx.archiveDir);
@@ -125,14 +126,12 @@ export async function cancelContract(
   // saveProgress 提前：crash window 内 progress.json 已 cancelled、boot reconcile 自然识别
   //
   // op 顺序：
-  //   1. acquireLock at SOURCE (lock first)
+  //   1. lockContract atomic acquire at SOURCE (covers TOCTOU race, phase 1362 r140)
   //   2. saveProgress(cancelled) 写 source dir progress.json (canonical decision)
   //   3. abortContractVerifiers (best-effort, outer try/catch)
   //   4. fs.move source → archive
   //   5. releaseLock at TARGET
-  const sourceLockPath = `${dir}/${contractId}/progress.lock`;
   const targetLockPath = `${ctx.archiveDir}/${contractId}/progress.lock`;
-  await acquireLock(ctx, sourceLockPath);
   try {
     // (2) canonical decision: saveProgress first (durable cancel mark)
     const progress = await ctx.getProgress(contractId);
@@ -152,7 +151,7 @@ export async function cancelContract(
     // (4) move whole dir
     await ctx.fs.move(`${dir}/${contractId}`, `${ctx.archiveDir}/${contractId}`);
   } catch (err) {
-    try { await releaseLock(ctx, sourceLockPath); } catch { /* audit emit + 不阻断 throw chain */ }
+    try { await releaseSource(); } catch { /* audit emit + 不阻断 throw chain */ }
     throw err;
   } finally {
     await releaseLock(ctx, targetLockPath);
@@ -173,21 +172,23 @@ export async function moveContractToArchive(
   ctx: LifecycleContext,
   contractId: string,
 ): Promise<void> {
-  const dir = await ctx.contractDir(contractId);
-  if (dir === ctx.archiveDir) return;
+  const { dir, release: releaseSource } = await lockContract(ctx, contractId, ctx.contractDir);
+  if (dir === ctx.archiveDir) {
+    await releaseSource();
+    return;
+  }
   const dst = `${ctx.archiveDir}/${contractId}`;
   await ctx.fs.ensureDir(ctx.archiveDir);
 
   // phase 860 (P0-B): acquire lock at SOURCE / move dir / release@TARGET
   // phase 871 (new.P1.5 r113 G fork): catch fs.move throw + 显式释放 source 防 orphan
+  // phase 1362 (r140): lockContract atomic wrapper covers contractDir→acquireLock TOCTOU race.
   // mirror phase 791 P0.16 template (pause/resume/cancel sister)
-  const sourceLockPath = `${dir}/${contractId}/progress.lock`;
   const targetLockPath = `${dst}/progress.lock`;
-  await acquireLock(ctx, sourceLockPath);
   try {
     await ctx.fs.move(`${dir}/${contractId}`, dst);
   } catch (err) {
-    try { await releaseLock(ctx, sourceLockPath); } catch { /* audit emit + 不阻断 throw chain */ }
+    try { await releaseSource(); } catch { /* audit emit + 不阻断 throw chain */ }
     throw err;
   } finally {
     // release at TARGET (lock file moved with dir)
