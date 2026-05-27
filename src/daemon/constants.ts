@@ -1,3 +1,6 @@
+/** Daemon stdout log file path / phase 1364 r-phase1364 物理迁自 src/cli/constants.ts（ML#3 daemon stdout 输出资源归 daemon 单 owner / cli + watchdog launcher 都是 setter）*/
+export const DAEMON_LOG = 'logs/daemon.log';
+
 /** Default fallback timeout for daemon operations (ms) */
 export const DAEMON_FALLBACK_TIMEOUT_MS = 30000;
 

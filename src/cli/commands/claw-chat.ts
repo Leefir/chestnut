@@ -10,9 +10,9 @@ import {
 import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
 import { CliError } from '../errors.js';
 import { runChatViewport } from './chat-viewport.js';
-import { createDirContext, createProcessManagerForCLI } from '../utils/factories.js';
+import { createDirContext, createProcessManagerForCLI } from '../../foundation/process-manager/factories.js';
 import { getWorkspaceRoot } from '../../foundation/paths.js';
-import { DAEMON_LOG } from '../constants.js';
+import { DAEMON_LOG } from '../../daemon/constants.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 
 export async function chatCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, name: string): Promise<void> {

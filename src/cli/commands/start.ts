@@ -20,11 +20,11 @@ import {
   initCommand as motionInitCommand,
   chatCommand as motionChatCommand,
 } from './motion.js';
-import { createProcessManagerForCLI } from '../utils/factories.js';
+import { createProcessManagerForCLI } from '../../foundation/process-manager/factories.js';
 import { passwordQuestion } from '../utils/password-prompt.js';
 import { ContractSystem } from '../../core/contract/index.js';
 import { createToolRegistry } from '../../foundation/tools/index.js';
-import { createDirContext } from '../utils/factories.js';
+import { createDirContext } from '../../foundation/process-manager/factories.js';
 import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 import { notifyClaw } from '../../foundation/messaging/index.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
@@ -33,7 +33,7 @@ import { CliError } from '../errors.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { getWorkspaceRoot } from '../../foundation/paths.js';
 import { readOnboardingStatus, type OnboardingStatus } from '../../core/contract/index.js';
-import { DAEMON_LOG } from '../constants.js';
+import { DAEMON_LOG } from '../../daemon/constants.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 
 export function buildOnboardingSubtasks(language: string): Array<{ id: string; description: string }> {
