@@ -7,7 +7,8 @@ import type { LLMOrchestratorConfig } from '../../foundation/llm-orchestrator/in
 import type { Message, ContentBlock, TextBlock, LLMResponse } from '../../foundation/llm-provider/types.js';
 import { notifyInbox } from '../../foundation/messaging/index.js';
 import { createSystemAudit } from '../../foundation/audit/index.js';
-import { type ClawId, makeClawId } from '../../foundation/identity/index.js';
+import { type ClawId, makeClawId } from '../../foundation/identity/index.js'
+import { type ClawforumRoot } from '../../foundation/identity/index.js';
 import { DialogStore } from '../../foundation/dialog-store/index.js';
 import type { SessionData } from '../../foundation/dialog-store/types.js';
 import { CLAWS_DIR } from '../../foundation/paths.js';
@@ -29,7 +30,7 @@ interface DreamStateData {
 }
 
 export interface DeepDreamOptions {
-  clawforumDir: string;                  // .clawforum/ 根目录
+  clawforumRoot: ClawforumRoot;                  // .clawforum/ 根目录
   motionDir?: string;                    // motion 域 / dream-outputs 归属
   motionFs?: FileSystem;                 // baseDir = motionDir
   llmConfig: LLMOrchestratorConfig;
@@ -353,7 +354,7 @@ export async function runDeepDream(opts: DeepDreamOptions): Promise<void> {
 
   // 串行处理每个 claw
   for (const clawId of clawIds) {
-    const clawDir = path.join(opts.clawforumDir, CLAWS_DIR, clawId);
+    const clawDir = path.join(opts.clawforumRoot, CLAWS_DIR, clawId);
     try {
       const clawFs = opts.clawFsFactory(clawDir);
       await runDeepDreamForClaw(makeClawId(clawId), clawDir, clawFs, opts.motionFs, llm, maxCompressionTokens, opts.audit, opts.signal);

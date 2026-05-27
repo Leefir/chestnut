@@ -16,6 +16,7 @@ import { clawHasContract, getClawActivityInfo, gatherClawSnapshot, getEffectiveI
 import { getContractCreatedMs } from '../core/contract/index.js';
 import { getNamedSubrootDir } from '../foundation/config/index.js';
 import { notifyClaw } from '../foundation/messaging/index.js';
+import { makeClawforumRoot } from '../foundation/identity/index.js';
 import { WATCHDOG_AUDIT_EVENTS } from './audit-events.js';
 import { MOTION_CLAW_ID } from '../constants.js';
 import { makeClawId } from '../foundation/identity/index.js';
@@ -163,7 +164,7 @@ export function maybeCronClawCrash(pm: ProcessManager, audit: AuditLog, fsFactor
       const body = `contract: ${snapshot.contract}, outbox_pending: ${snapshot.outboxPending}${lastEventsStr}`;
 
       const { fs: motionFs, audit: motionAudit } = getMotionContext(fsFactory);
-      const clawforumRoot = path.dirname(getNamedSubrootDir('motion'));
+      const clawforumRoot = makeClawforumRoot(path.dirname(getNamedSubrootDir('motion')));
       notifyClaw(motionFs, clawforumRoot, MOTION_CLAW_ID, {
         type: 'crash_notification',
         source: rawClawId,

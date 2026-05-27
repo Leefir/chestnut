@@ -1,4 +1,4 @@
-/**
+import { type ClawforumRoot } from '../../foundation/identity/index.js';/**
  * @module L2.Messaging
  * Messaging module (L2)
  *
@@ -70,14 +70,14 @@ export interface Messaging {
 }
 
 export function createMessaging(deps: {
-  clawforumDir: string;
+  clawforumRoot: ClawforumRoot;
   fs: FileSystem;
   audit: AuditLog;
 }): Messaging {
   return {
     drainOutboxes: async (opts) =>
       drainOutboxes({
-        clawforumDir: deps.clawforumDir,
+        clawforumRoot: deps.clawforumRoot,
         fs: deps.fs,
         audit: deps.audit,
         limitPerClaw: opts.limitPerClaw,

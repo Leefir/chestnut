@@ -8,9 +8,10 @@ import type { AsyncTaskSystem } from '../async-task-system/index.js';
 import { notifyClaw } from '../../foundation/messaging/index.js';
 import { createSystemAudit } from '../../foundation/audit/index.js';
 import type { ProgressData } from '../contract/index.js';
-import type { ClawId } from '../../foundation/identity/index.js';
+import type { ClawId } from '../../foundation/identity/index.js'
 import type { ContractId } from '../contract/types.js';
-import { type TaskId, makeTaskId } from '../../foundation/identity/index.js';
+import { type TaskId, makeTaskId } from '../../foundation/identity/index.js'
+import { type ClawforumRoot, makeClawforumRoot } from '../../foundation/identity/index.js';
 import { listArchiveContracts } from '../contract/index.js';
 import {
   RANDOM_DREAM_SYSTEM_PROMPT,
@@ -23,10 +24,10 @@ const DEFAULT_RANDOM_DREAM_MAX_STEPS = 200;
 // ─── 类型定义 ────────────────────────────────────────────────
 
 export interface RandomDreamOptions {
-  clawforumDir: string;
+  clawforumRoot: ClawforumRoot;
   motionDir: string;
   taskSystem: AsyncTaskSystem;
-  fs: FileSystem;             // baseDir = clawforumDir
+  fs: FileSystem;             // baseDir = clawforumRoot
   motionFs: FileSystem;       // baseDir = motionDir / NEW
   audit: AuditLog;
   /** Poll interval (ms) for waitForTaskResult / default 30_000 / phase 633 ⚓11 α */
@@ -396,7 +397,7 @@ export async function runRandomDream(opts: RandomDreamOptions): Promise<void> {
   );
 
   // 投递到 motion inbox（motionAudit 已在调度前实例化，直接复用）
-  const clawforumRoot = path.dirname(opts.motionDir);
+  const clawforumRoot = makeClawforumRoot(path.dirname(opts.motionDir));
   notifyClaw(opts.fs, clawforumRoot, MOTION_CLAW_ID, {
     type: 'random_dream',
     source: 'cron:dream',

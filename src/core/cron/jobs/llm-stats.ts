@@ -4,7 +4,8 @@ import type { AuditLog } from '../../../foundation/audit/index.js';
 import { CRON_AUDIT_EVENTS } from '../audit-events.js';
 import { CLAWS_DIR } from '../../../foundation/paths.js';
 import { MOTION_CLAW_ID } from '../../../constants.js';
-import { type ClawId, makeClawId } from '../../../foundation/identity/index.js';
+import { type ClawId, makeClawId } from '../../../foundation/identity/index.js'
+import { type ClawforumRoot } from '../../../foundation/identity/index.js';
 
 
 /**
@@ -52,9 +53,9 @@ export interface LlmStatsSummary {
 }
 
 export interface LlmStatsOptions {
-  clawforumDir: string;
+  clawforumRoot: ClawforumRoot;
   motionDir: string;
-  clawforumFs: FileSystem;   // baseDir = clawforumDir
+  clawforumFs: FileSystem;   // baseDir = clawforumRoot
   motionFs: FileSystem;       // baseDir = motionDir
   audit: AuditLog;
   signal?: AbortSignal;

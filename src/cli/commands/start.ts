@@ -27,6 +27,7 @@ import { createToolRegistry } from '../../foundation/tools/index.js';
 import { createDirContext } from '../../foundation/process-manager/factories.js';
 import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 import { notifyClaw } from '../../foundation/messaging/index.js';
+import { makeClawforumRoot } from '../../foundation/identity/index.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
 
 import { CliError } from '../errors.js';
@@ -380,7 +381,7 @@ async function _start(deps: { fsFactory: (baseDir: string) => FileSystem }, audi
     });
 
     
-    notifyClaw(notifyFs, path.dirname(motionDir), MOTION_CLAW_ID, {
+    notifyClaw(notifyFs, makeClawforumRoot(path.dirname(motionDir)), MOTION_CLAW_ID, {
       type: 'message',
       source: 'system',
       priority: 'high',
@@ -406,14 +407,14 @@ async function _start(deps: { fsFactory: (baseDir: string) => FileSystem }, audi
         subtasks: buildOnboardingSubtasks('auto'),
         verification: [],
       });
-      notifyClaw(notifyFs, path.dirname(motionDir), MOTION_CLAW_ID, {
+      notifyClaw(notifyFs, makeClawforumRoot(path.dirname(motionDir)), MOTION_CLAW_ID, {
         type: 'message', source: 'system', priority: 'high',
         body: `New contract created (${contractId}): Onboarding. Please begin execution.`,
         idPrefix: 'start',
       }, notifyAudit);
     } else {
       const pendingList = onboarding.pending?.join(', ') ?? '';
-      notifyClaw(notifyFs, path.dirname(motionDir), MOTION_CLAW_ID, {
+      notifyClaw(notifyFs, makeClawforumRoot(path.dirname(motionDir)), MOTION_CLAW_ID, {
         type: 'message', source: 'system', priority: 'high',
         body: `Resuming Onboarding contract (${onboarding.contractId}). Pending subtasks: ${pendingList}. Please continue.`,
         idPrefix: 'start',

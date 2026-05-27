@@ -6,13 +6,14 @@ import type { LLMOrchestratorConfig } from '../../foundation/llm-orchestrator/in
 import type { ProgressData } from '../contract/index.js';
 import { runDeepDream } from './deep-dream.js';
 import { runRandomDream } from './random-dream.js';
-import type { ClawId } from '../../foundation/identity/index.js';
+import type { ClawId } from '../../foundation/identity/index.js'
+import { type ClawforumRoot } from '../../foundation/identity/index.js';
 import type { ContractId } from '../contract/types.js';
 
 
 
 export interface MemorySystemOptions {
-  clawforumDir: string;
+  clawforumRoot: ClawforumRoot;
   motionDir: string;
   fs: FileSystem;
   motionFs: FileSystem;               // baseDir = motionDir / NEW
@@ -32,7 +33,7 @@ export class MemorySystem {
 
   async runDeepDream(maxCompressionTokens?: number, opts?: { signal?: AbortSignal }): Promise<void> {
     return runDeepDream({
-      clawforumDir: this.opts.clawforumDir,
+      clawforumRoot: this.opts.clawforumRoot,
       motionDir: this.opts.motionDir,
       motionFs: this.opts.motionFs,
       llmConfig: this.opts.llmConfig,
@@ -47,7 +48,7 @@ export class MemorySystem {
 
   async runRandomDream(opts?: { signal?: AbortSignal }): Promise<void> {
     return runRandomDream({
-      clawforumDir: this.opts.clawforumDir,
+      clawforumRoot: this.opts.clawforumRoot,
       motionDir: this.opts.motionDir,
       taskSystem: this.opts.taskSystem,
       fs: this.opts.fs,
