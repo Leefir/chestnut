@@ -221,20 +221,21 @@ export async function runVerificationPipeline(
 ): Promise<VerificationResult> {
   const { contractId, subtaskId, evidence, artifacts } = params;
 
-  if (!acquireVerificationMutex(contractId)) {
-    emitContractVerificationPipelineRaceRejected(
-      ctx.audit,
-      { contractId, subtaskId, context: 'runVerificationPipeline', reason: 'verification_pipeline_already_active' },
-    );
-    throw new ToolError(`Verification pipeline for contract "${contractId}" is already active — concurrent attempt rejected.`);
+  const contractYaml = await ctx.loadContractYaml(contractId);
+  const verificationConfig = contractYaml.verification?.find(a => a.subtask_id === subtaskId);
+
+  if (verificationConfig) {
+    if (!acquireVerificationMutex(contractId, subtaskId)) {
+      emitContractVerificationPipelineRaceRejected(
+        ctx.audit,
+        { contractId, subtaskId, context: 'runVerificationPipeline', reason: 'verification_pipeline_already_active' },
+      );
+      throw new ToolError(`Verification pipeline for contract "${contractId}" subtask "${subtaskId}" is already active — concurrent attempt rejected.`);
+    }
   }
 
   try {
-    const contractYaml = await ctx.loadContractYaml(contractId);
-    const verificationConfig = contractYaml.verification?.find(a => a.subtask_id === subtaskId);
-
     if (!verificationConfig) {
-      releaseVerificationMutex(contractId);
       return completeSubtaskSync(ctx, contractId, subtaskId, evidence, artifacts);
     }
 
@@ -289,14 +290,13 @@ export async function runVerificationPipeline(
           },
         );
       });
-    })
-    .finally(() => {
-      releaseVerificationMutex(contractId);
     });
 
   return { passed: false, feedback: '', async: true };
   } catch (e) {
-    releaseVerificationMutex(contractId);
+    if (verificationConfig) {
+      releaseVerificationMutex(contractId, subtaskId);
+    }
     throw e;
   }
 }
@@ -367,6 +367,7 @@ export async function runVerificationInBackground(
       ctx.audit,
       { contractId, subtaskId, result: outcomeKind, cancelReason, missingSubtaskId },
     );
+    releaseVerificationMutex(contractId, subtaskId);
   }
 }
 

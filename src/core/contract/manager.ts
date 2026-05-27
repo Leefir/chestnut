@@ -340,7 +340,7 @@ export class ContractSystem {
             );
           }
         } catch {
-          // best-effort: corrupted progress.json skipped silently
+          // silent: corrupted progress.json boot reconcile best-effort skip
         }
       }
     }

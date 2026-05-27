@@ -6,7 +6,6 @@
 import type { VerificationContext } from './verification-types.js';
 import type { VerificationResult, SubtaskId } from './types.js';
 import { safeNotify } from './verification-notify.js';
-import { acquireVerificationMutex, releaseVerificationMutex } from './verification-mutex.js';
 import { formatValidIds } from './verification-format.js';
 import { formatErr } from '../../foundation/utils/format.js';
 import type { ContractId } from './types.js';
@@ -95,17 +94,8 @@ export async function completeSubtaskSync(
   evidence: string,
   artifacts?: string[],
 ): Promise<VerificationResult> {
-  if (!acquireVerificationMutex(contractId)) {
-    emitContractVerificationPipelineRaceRejected(
-      ctx.audit,
-      { contractId, subtaskId, context: 'completeSubtaskSync', reason: 'verification_pipeline_already_active' },
-    );
-    throw new ToolError(`Contract "${contractId}" verification is already in progress — concurrent completeSubtaskSync rejected.`);
-  }
-
   let allCompleted = false;
   let result: VerificationResult = { passed: true, feedback: 'No verification criteria configured' };
-  try {
   const contractYaml = await ctx.loadContractYaml(contractId);
 
   await ctx.withProgressLock(contractId, async () => {
@@ -196,7 +186,4 @@ export async function completeSubtaskSync(
   }
 
   return { ...result, allCompleted };
-  } finally {
-    releaseVerificationMutex(contractId);
-  }
 }
