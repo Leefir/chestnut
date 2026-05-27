@@ -17,6 +17,7 @@ import {
   emitContractLockUnlinkFailed,
   emitContractLockRetry,
 } from './audit-emit.js';
+import { CONTRACT_AUDIT_EVENTS } from './audit-events.js';
 import { isAlive } from '../../foundation/process-exec/index.js';
 
 export interface LockContext {
@@ -184,4 +185,64 @@ export async function withProgressLock<T>(
   } finally {
     await releaseLock(ctx, lockPath);
   }
+}
+
+export interface LockContractResult {
+  dir: string;
+  lockPath: string;
+  release: () => Promise<void>;
+}
+
+const LOCK_CONTRACT_MAX_RETRY = 5;
+const LOCK_CONTRACT_RETRY_DELAY_MS = 50;
+
+/**
+ * Atomic lock acquisition with TOCTOU race protection.
+ *
+ * Protocol:
+ *   1. Call contractDirFn to locate dir
+ *   2. acquireLock at dir
+ *   3. Post-lock re-verify: call contractDirFn again / same dir → return / different → release + retry
+ *
+ * Retry trigger: concurrent process moved contract after contractDir but before acquireLock.
+ */
+export async function lockContract(
+  ctx: LockContext,
+  contractId: string,
+  contractDirFn: (id: string) => Promise<string>,
+): Promise<LockContractResult> {
+  let attempt = 0;
+  while (attempt < LOCK_CONTRACT_MAX_RETRY) {
+    const dirBefore = await contractDirFn(contractId);
+    const lockPath = `${dirBefore}/${contractId}/progress.lock`;
+    await acquireLock(ctx, lockPath);
+
+    const dirAfter = await contractDirFn(contractId);
+    if (dirAfter === dirBefore) {
+      return {
+        dir: dirBefore,
+        lockPath,
+        release: () => releaseLock(ctx, lockPath),
+      };
+    }
+
+    ctx.audit.write(
+      CONTRACT_AUDIT_EVENTS.CONTRACT_DIR_RACE_RETRY,
+      `contractId=${contractId}`,
+      `attempt=${attempt}`,
+      `dirBefore=${dirBefore}`,
+      `dirAfter=${dirAfter}`,
+    );
+    await releaseLock(ctx, lockPath);
+    attempt++;
+    await new Promise(r => setTimeout(r, LOCK_CONTRACT_RETRY_DELAY_MS / 2 + Math.random() * LOCK_CONTRACT_RETRY_DELAY_MS));
+  }
+
+  ctx.audit.write(
+    CONTRACT_AUDIT_EVENTS.CONTRACT_DIR_RACE_RETRY,
+    `contractId=${contractId}`,
+    `attempt=${attempt}`,
+    `result=exhausted`,
+  );
+  throw new Error(`lockContract: TOCTOU race retry exhausted for ${contractId} after ${LOCK_CONTRACT_MAX_RETRY} attempts`);
 }
