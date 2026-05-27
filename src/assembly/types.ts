@@ -8,6 +8,7 @@ import type { ClawGlobalConfig, ClawConfig } from '../foundation/config/index.js
 import type { Gateway } from '../core/gateway/index.js';
 import type { EvolutionSystem } from '../core/evolution-system/index.js';
 import type { ClawId } from '../foundation/identity/index.js';
+import type { Messaging } from '../foundation/messaging/index.js';
 
 
 export type Identity = 'motion' | 'claw';
@@ -33,4 +34,6 @@ export interface Instances {
   readonly evolutionSystem?: EvolutionSystem;  // motion only（phase411）
   /** Phase 1200: motion lifecycle end-of-life dispose hook for contractSystemCache */
   readonly disposeContractSystems?: () => Promise<void>;
+  /** Phase 1373 sub-1: Messaging instance for shutdown-time final outbox drain */
+  readonly messaging?: Messaging;
 }

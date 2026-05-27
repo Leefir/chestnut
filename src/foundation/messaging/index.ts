@@ -65,7 +65,7 @@ import {
 export { drainOutboxes, type DrainOutboxesOptions, type DrainResult };
 
 export interface Messaging {
-  drainOutboxes(opts: { limitPerClaw?: number; signal?: AbortSignal }): Promise<DrainResult>;
+  drainOutboxes(opts: { limitPerClaw?: number; signal?: AbortSignal; final?: boolean }): Promise<DrainResult>;
 }
 
 export function createMessaging(deps: {
@@ -81,6 +81,7 @@ export function createMessaging(deps: {
         audit: deps.audit,
         limitPerClaw: opts.limitPerClaw,
         signal: opts.signal,
+        final: opts.final,
       }),
   };
 }

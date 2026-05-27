@@ -583,6 +583,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
 
     // --- 7. CronRunner (motion + cron.enabled, daemon.ts L187-248) ---
     let cronRunner: CronRunner | undefined;
+    let messaging: Messaging | undefined;
     if (isMotion && (globalConfig.cron?.enabled ?? true)) {
       const clawforumDir = path.join(clawDir, '..');
       const tickMs = globalConfig.cron?.tick_interval_ms ?? CRON_TICK_INTERVAL_MS;
@@ -600,7 +601,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       }
 
       // phase 1333: Messaging instance for cron outbox-drain tick trigger
-      const messaging: Messaging = createMessaging({ clawforumDir, fs: clawforumFs, audit: auditWriter });
+      messaging = createMessaging({ clawforumDir, fs: clawforumFs, audit: auditWriter });
 
       // --- MemorySystem (L5, motion only) ---
       let memorySystem: MemorySystem | undefined;
@@ -824,6 +825,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       gateway,
       evolutionSystem,
       disposeContractSystems,
+      messaging,
     };
   } catch (e) {
     // Best-effort cleanup of already-constructed resources
