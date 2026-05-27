@@ -1,12 +1,13 @@
-2026-05-27T11:30:19.098Z	seq=1	dialog_archive_empty
-2026-05-27T11:30:19.105Z	seq=2	dialog_cold_start
-2026-05-27T11:30:19.110Z	seq=3	session_loaded	source=empty
-2026-05-27T11:30:19.115Z	seq=4	session_archive_failed	path=dialog/current.json	reason=File not found: "dialog/current.json"
-2026-05-27T11:30:19.126Z	seq=5	task_recovery_complete	system	pending=0	recovered_running=0	failed=0
-2026-05-27T11:30:19.141Z	seq=6	dialog_archive_empty	trace_id=29780b702f75d9a4
-2026-05-27T11:30:19.145Z	seq=7	dialog_cold_start	trace_id=29780b702f75d9a4
-2026-05-27T11:30:19.158Z	seq=8	turn_start	trace_id=29780b702f75d9a4
-2026-05-27T11:30:19.162Z	seq=9	llm_call	test	in=0	out=0	latency_ms=0	trace_id=29780b702f75d9a4
-2026-05-27T11:30:19.324Z	seq=10	turn_end	trace_id=29780b702f75d9a4
-2026-05-27T11:30:19.440Z	seq=11	turn_start	trace_id=190a69cb5d678652
-2026-05-27T11:30:19.449Z	seq=12	llm_call	test	in=0	out=0	latency_ms=1	trace_id=190a69cb5d678652
+2026-05-27T11:30:19.655Z	seq=1	dialog_archive_empty
+2026-05-27T11:30:19.661Z	seq=2	dialog_cold_start
+2026-05-27T11:30:19.666Z	seq=3	session_loaded	source=empty
+2026-05-27T11:30:19.736Z	seq=4	session_archive_failed	path=dialog/current.json	reason=File not found: "dialog/current.json"
+2026-05-27T11:30:19.803Z	seq=5	task_recovery_complete	system	pending=0	recovered_running=0	failed=0
+2026-05-27T11:30:19.815Z	seq=6	inbox_inject	file=test.md	type=message	from=motion	to=test-claw	pri=normal	trace_id=6cbe428559095aea
+2026-05-27T11:30:19.823Z	seq=7	dialog_archive_empty	trace_id=6cbe428559095aea
+2026-05-27T11:30:19.828Z	seq=8	dialog_cold_start	trace_id=6cbe428559095aea
+2026-05-27T11:30:19.833Z	seq=9	turn_start	trace_id=6cbe428559095aea
+2026-05-27T11:30:19.840Z	seq=10	dialog_archive_empty	trace_id=6cbe428559095aea
+2026-05-27T11:30:19.846Z	seq=11	dialog_cold_start	trace_id=6cbe428559095aea
+2026-05-27T11:30:19.850Z	seq=12	dialog_turn_begin	trace_id=6cbe428559095aea
+2026-05-27T11:30:19.888Z	seq=13	llm_call	test-model	in=0	out=0	latency_ms=0	trace_id=6cbe428559095aea
