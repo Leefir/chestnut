@@ -35,7 +35,7 @@ vi.mock('../../src/foundation/config/index.js', async (importOriginal) => {
   };
 });
 
-vi.mock('../../src/cli/utils/factories.js', () => ({
+vi.mock('../../src/foundation/process-manager/factories.js', () => ({
   createProcessManagerForCLI: vi.fn(() => mockPmState),
 }));
 
