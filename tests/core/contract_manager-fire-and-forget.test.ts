@@ -16,9 +16,14 @@ import { waitFor } from '../helpers/wait-for.js';
 import { makeContractYaml } from '../helpers/contract-yaml.js';
 import { createToolRegistry } from '../../src/foundation/tools/index.js';
 import { makeMockAudit } from '../helpers/audit.js';
+import { _resetVerificationMutexForTest } from '../../src/core/contract/verification-mutex.js';
 
 let testDir: string;
 let clawDir: string;
+
+beforeEach(() => {
+  _resetVerificationMutexForTest();
+});
 
 afterEach(() => {
   vi.restoreAllMocks();

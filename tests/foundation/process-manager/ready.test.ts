@@ -132,7 +132,13 @@ describe('isReady / markReady / markNotReady', () => {
       ]),
     );
 
-    // r127 C.1: stale marker self-cleanup — file should be gone after isReady stale check
+    // r127 C.1: stale marker self-cleanup — async delete (fire-and-forget in isReady),
+    // retry until file disappears or timeout
+    for (let i = 0; i < 20; i++) {
+      const exists = await fs.access(readyFile).then(() => true).catch(() => false);
+      if (!exists) break;
+      await new Promise(r => setTimeout(r, 50));
+    }
     const markerStillExists = await fs.access(readyFile).then(() => true).catch(() => false);
     expect(markerStillExists).toBe(false);
   });
