@@ -6,7 +6,15 @@
  * AUDIT_MESSAGE_MAX_CHARS = audit log 单字段最大字符数
  * caller 写 audit 前主动 slice（β-pragmatic、α audit.write API 内化推 r+1+ phase）
  */
-export const AUDIT_MESSAGE_MAX_CHARS = 200;
+/**
+ * AUDIT_MESSAGE_MAX_CHARS — SUNSET backward-compat re-export (phase 1386 α path)
+ *
+ * Moved to foundation/constants.ts (L0) to eliminate L1→L2a reverse import.
+ * This re-export is retained for 30-day backward compat.
+ * After sunset: delete this re-export; all callers must import from
+ * `foundation/constants.js` directly.
+ */
+export { AUDIT_MESSAGE_MAX_CHARS } from '../constants.js';
 
 /**
  * AUDIT_PREVIEW_LEN — SUNSET backward-compat re-export (phase 1278 α path)
