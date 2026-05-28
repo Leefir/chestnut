@@ -138,7 +138,7 @@ export class CustomAnthropicAdapter extends BaseAnthropicAdapter {
       // 进入 stream 阶段：切换 timer 为总时长保护
       abortHandle.enterStreamPhase(STREAM_MAX_DURATION_MS);
       const idleTimeoutMs = Math.min(timeout, STREAM_IDLE_MAX_MS);
-      yield* parseAnthropicSSEStream(response, abortHandle, idleTimeoutMs, this.name, this.onStreamParseError);
+      yield* parseAnthropicSSEStream(response, abortHandle, idleTimeoutMs, this.name, this.onStreamParseError, 200);
     } catch (error) {
       const classified = classifyFetchAbortError(error, signal, timeout, this.name);
       if (classified) throw classified;
