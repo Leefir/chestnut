@@ -1,6 +1,27 @@
+/**
+ * foundation/ 域 grep-based invariant lint cluster
+ *
+ * phase 1395: merged from
+ *   - no-business-role-in-foundation.test.ts (ML#5: 不持 business caller role literal)
+ *   - no-reverse-audit-import.test.ts (phase 1278 α: AUDIT_PREVIEW_LEN 从 L0 import)
+ *
+ * 两者皆为 walk(src) + readFileSync regex 模式的 invariant lint，
+ * 完全相同 import 结构，自然 cluster。
+ */
+
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
 import path from 'node:path';
+
+function walk(dir: string): string[] {
+  const files: string[] = [];
+  for (const e of readdirSync(dir)) {
+    const p = path.join(dir, e);
+    if (statSync(p).isDirectory()) files.push(...walk(p));
+    else if (p.endsWith('.ts')) files.push(p);
+  }
+  return files;
+}
 
 const BUSINESS_ROLES = ['motion', 'claw', 'subagent', 'verifier', 'shadow', 'miner'];
 
@@ -26,16 +47,6 @@ const ALLOW_LIST_FILES = new Set([
   'src/foundation/tools/executor.ts',
   'src/foundation/tools/types.ts',
 ]);
-
-function walk(dir: string): string[] {
-  const files: string[] = [];
-  for (const e of readdirSync(dir)) {
-    const p = path.join(dir, e);
-    if (statSync(p).isDirectory()) files.push(...walk(p));
-    else if (p.endsWith('.ts')) files.push(p);
-  }
-  return files;
-}
 
 describe('foundation/ 域 ML#5 invariant: no business caller role literal', () => {
   it('foundation/paths.ts + tool-protocol/ 不持 quoted business role literal', () => {
@@ -90,5 +101,36 @@ describe('foundation/ 域 ML#5 invariant: no business caller role literal', () =
         }
       }
     }
+  });
+});
+
+describe('phase 1278 α: AUDIT_PREVIEW_LEN must not import from audit module', () => {
+  it('no src/ file imports AUDIT_PREVIEW_LEN from audit barrel or audit/defaults', () => {
+    const files = walk('src');
+    const violations: string[] = [];
+    for (const file of files) {
+      const src = readFileSync(file, 'utf-8');
+      // Ban import of AUDIT_PREVIEW_LEN from any audit module path
+      const bad = src.match(/import\s+.*AUDIT_PREVIEW_LEN.*from\s+['"][^'"]*audit[^'"]*['"]/g);
+      if (bad) {
+        violations.push(`${file}: ${bad.join(', ')}`);
+      }
+    }
+    if (violations.length > 0) {
+      expect.fail(
+        `AUDIT_PREVIEW_LEN must import from foundation/constants.js only. Violations:\n${violations.join('\n')}`,
+      );
+    }
+  });
+
+  it('AUDIT_PREVIEW_LEN is exported from foundation/constants.ts', () => {
+    const src = readFileSync('src/foundation/constants.ts', 'utf-8');
+    expect(src).toMatch(/export\s+const\s+AUDIT_PREVIEW_LEN\s*=\s*100/);
+  });
+
+  it('audit/defaults.ts re-exports from constants.js (backward-compat sunset)', () => {
+    const src = readFileSync('src/foundation/audit/defaults.ts', 'utf-8');
+    expect(src).toMatch(/export\s+\{\s*AUDIT_PREVIEW_LEN\s*\}\s+from\s+['"]\.\.\/constants\.js['"]/);
+    expect(src).toMatch(/SUNSET/);
   });
 });
