@@ -58,21 +58,16 @@ describe('verification pipeline mutex (phase 1371 sub-3)', () => {
     // Mock runScriptVerification to delay so pipeline stays active
     vi.spyOn(manager as any, 'runScriptVerification').mockImplementation(() => new Promise(() => {}));
 
-    // First call starts the pipeline (async)
-    const first = manager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'e1' });
+    // First call completes the synchronous phase (acquire mutex → withProgressLock
+    // sets in_progress → release mutex → fire background verification).
+    // await ensures we're past the mutex-protected critical section.
+    await manager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'e1' });
 
-    // Small delay to let first call acquire mutex
-    await new Promise(r => setTimeout(r, 50));
-
-    // Second call should be rejected
+    // Second call should be rejected by in_progress status guard
+    // (mutex was released after withProgressLock, per phase 1391 fix)
     await expect(
       manager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'e2' })
-    ).rejects.toThrow('already active');
-
-    await waitForAuditEvent(emitter, events, CONTRACT_AUDIT_EVENTS.VERIFICATION_PIPELINE_RACE_REJECTED);
-    const raceEvents = events.filter(e => e[0] === CONTRACT_AUDIT_EVENTS.VERIFICATION_PIPELINE_RACE_REJECTED);
-    expect(raceEvents.length).toBeGreaterThanOrEqual(1);
-    expect(raceEvents[0].some((c: any) => String(c).includes('contractId=' + contractId))).toBe(true);
+    ).rejects.toThrow('already in progress');
   });
 
   it('concompleteSubtaskSync during active pipeline → rejected with race audit', async () => {

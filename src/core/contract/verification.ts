@@ -262,6 +262,13 @@ export async function runVerificationPipeline(
     emitContractVerificationStarted(ctx.audit, { contractId, subtaskId });
   });
 
+  // Mutex served its purpose: prevent concurrent sync+async path entry
+  // before the status is set to in_progress (line 257). Now that
+  // withProgressLock has committed in_progress, the status check
+  // (line 249-251) blocks re-entry. Release early so the next
+  // completeSubtask call doesn't hit a stale held mutex.
+  releaseVerificationMutex(contractId, subtaskId);
+
   runVerificationInBackground(ctx, params, contractYaml, verificationConfig)
     .catch(err => {
       if (isProgrammingBug(err)) {
@@ -368,7 +375,6 @@ export async function runVerificationInBackground(
       ctx.audit,
       { contractId, subtaskId, result: outcomeKind, cancelReason, missingSubtaskId },
     );
-    releaseVerificationMutex(contractId, subtaskId);
   }
 }
 
