@@ -11,7 +11,7 @@ import type { Tool, ExecContext } from '../tools/index.js';
 import type { ToolResult } from '../tool-protocol/index.js';
 
 import { backupToSync } from './sync-backup.js';
-import { resolveWorkspacePath } from './_resolve-path.js';
+import { resolveWorkspacePath } from './resolve-path.js';
 
 export const WRITE_TOOL_NAME = 'write' as const;
 

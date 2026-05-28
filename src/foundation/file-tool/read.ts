@@ -10,7 +10,7 @@ import type { Tool, ExecContext } from '../tools/index.js';
 import type { ToolResult } from '../tool-protocol/index.js';
 import { READ_MAX_LINES, READ_MAX_CHARS } from './constants.js';
 
-import { resolveWorkspacePath } from './_resolve-path.js';
+import { resolveWorkspacePath } from './resolve-path.js';
 import { safeNumber } from '../utils/format.js';
 
 import { CLAWS_DIR, CLAWSPACE_DIR } from '../paths.js';

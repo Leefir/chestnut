@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveWorkspacePath } from '../../../src/foundation/file-tool/_resolve-path.js';
+import { resolveWorkspacePath } from '../../../src/foundation/file-tool/resolve-path.js';
 
 function mockCtx(opts: { clawDir: string; workspaceDir: string }) {
   return {

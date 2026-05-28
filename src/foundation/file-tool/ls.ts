@@ -10,7 +10,7 @@ import type { Tool, ExecContext } from '../tools/index.js';
 import type { ToolResult } from '../tool-protocol/index.js';
 import { LS_MAX_ENTRIES } from './constants.js';
 
-import { resolveWorkspacePath } from './_resolve-path.js';
+import { resolveWorkspacePath } from './resolve-path.js';
 
 import { CLAWS_DIR } from '../paths.js';
 export const LS_TOOL_NAME = 'ls' as const;

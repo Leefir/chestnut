@@ -28,6 +28,7 @@ import {
   sendCommand,
   outboxCommand,
   cpCommand,
+  readCommand,
 } from './commands/claw.js';
 
 import { 
@@ -185,6 +186,16 @@ clawCmd
   .option('-t, --target <subdir>', 'Target subdirectory under clawspace')
   .action(withCliErrorHandling(async (source: string, name: string, opts: { target?: string }) => {
     await cpCommand({ fsFactory }, source, name, opts.target);
+  }));
+
+// claw read
+clawCmd
+  .command('read <name> <path>')
+  .description('Read a file from a Claw\'s clawspace')
+  .option('--offset <n>', 'Starting line (1-indexed, negative counts from end)', parseInt)
+  .option('--limit <n>', 'Max lines to read', parseInt)
+  .action(withCliErrorHandling(async (name: string, filePath: string, opts: { offset?: number; limit?: number }) => {
+    await readCommand({ fsFactory }, name, filePath, opts);
   }));
 
 // claw trace
