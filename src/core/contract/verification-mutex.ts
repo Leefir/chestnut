@@ -20,3 +20,7 @@ export function acquireVerificationMutex(contractId: string, subtaskId: string):
 export function releaseVerificationMutex(contractId: string, subtaskId: string): void {
   activePipelines.delete(key(contractId, subtaskId));
 }
+
+export function _resetVerificationMutexForTest(): void {
+  activePipelines.clear();
+}
