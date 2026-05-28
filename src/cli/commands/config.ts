@@ -14,8 +14,8 @@ import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
 import { PRESETS } from '../../foundation/config/index.js';
 import { createProcessManagerForCLI } from '../../foundation/process-manager/factories.js';
 import { CliError } from '../errors.js';
-import { fitLine } from '../utils/string.js';
 import { REACT_DEFAULT_MAX_TOKENS } from '../../core/step-executor/constants.js';
+import { fitLine } from '../utils/string.js';
 import { DEFAULT_LLM_TIMEOUT_MS } from '../../foundation/llm-orchestrator/defaults.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
@@ -150,10 +150,6 @@ async function providerAdd(deps: { fsFactory: (baseDir: string) => FileSystem })
     const defaultModel = preset.defaultModel || 'unknown';
     const model = await question(rl, 'Model', defaultModel);
     
-    // Max tokens
-    const maxTokensStr = await question(rl, 'Max tokens', '100000000');
-    const max_tokens = parseInt(maxTokensStr, 10) || REACT_DEFAULT_MAX_TOKENS;
-    
     // Role selection
     console.log('\nRole:');
     console.log('  1. primary');
@@ -167,7 +163,7 @@ async function providerAdd(deps: { fsFactory: (baseDir: string) => FileSystem })
       label,
       api_key: apiKey,
       model,
-      max_tokens,
+      max_tokens: REACT_DEFAULT_MAX_TOKENS,
       temperature: 0.7,
       timeout_ms: DEFAULT_LLM_TIMEOUT_MS,
     };
@@ -221,26 +217,35 @@ async function providerAdd(deps: { fsFactory: (baseDir: string) => FileSystem })
   }
 }
 
+function formatApiKey(apiKey: string): string {
+  if (!apiKey) return '-';
+  if (/^\$\{[A-Z_]+\}$/.test(apiKey)) return apiKey;
+  if (apiKey.length <= 8) return apiKey.slice(0, 2) + '..' + apiKey.slice(-2);
+  return apiKey.slice(0, 4) + '...' + apiKey.slice(-4);
+}
+
 // provider list command
 async function providerList(deps: { fsFactory: (baseDir: string) => FileSystem }): Promise<void> {
   const config = loadGlobalConfig(deps, CONFIG_DEFAULTS);
-  
+
   const primary = config.llm.primary;
   const fallbacks = config.llm.fallbacks ?? [];
-  
+
+  const terminalWidth = process.stdout.columns ?? 80;
+  const fixedColWidth = 82; // "  PRIMARY   " + padEnd(10,15,18,24) + 4 spaces
+  const urlWidth = Math.max(10, terminalWidth - fixedColWidth);
+
   // Header
   console.log();
-  
+  console.log(`  ${'ROLE'.padEnd(10)} ${'PRESET'.padEnd(10)} ${'LABEL'.padEnd(15)} ${'MODEL'.padEnd(18)} ${'API_KEY'.padEnd(24)} ${'BASE_URL'}`);
+
   // Primary
   const pPreset = primary.preset ?? '';
   const pLabel = primary.label || pPreset || '(unknown)';
   const pModel = primary.model || PRESETS[pPreset]?.defaultModel || 'unknown';
-  const terminalWidth = process.stdout.columns ?? 80;
-  const fixedColWidth = 57; // "  PRIMARY   " + padEnd(10,15,18) + 3 spaces
-  const urlWidth = Math.max(10, terminalWidth - fixedColWidth);
-
   const pBaseUrl = primary.base_url || PRESETS[pPreset]?.defaultBaseUrl || '-';
-  console.log(`  PRIMARY   ${pPreset.padEnd(10)} ${pLabel.padEnd(15)} ${pModel.padEnd(18)} ${fitLine(pBaseUrl, urlWidth)}`);
+  const pApiKey = formatApiKey(primary.api_key ?? '');
+  console.log(`  ${'PRIMARY'.padEnd(10)} ${pPreset.padEnd(10)} ${pLabel.padEnd(15)} ${pModel.padEnd(18)} ${pApiKey.padEnd(24)} ${fitLine(pBaseUrl, urlWidth)}`);
 
   // Fallbacks
   fallbacks.forEach((f, i) => {
@@ -248,9 +253,11 @@ async function providerList(deps: { fsFactory: (baseDir: string) => FileSystem }
     const fLabel = f.label || fPreset || '(unknown)';
     const fModel = f.model || PRESETS[fPreset]?.defaultModel || 'unknown';
     const fBaseUrl = f.base_url || PRESETS[fPreset]?.defaultBaseUrl || '-';
-    console.log(`  #${i + 1}       ${fPreset.padEnd(10)} ${fLabel.padEnd(15)} ${fModel.padEnd(18)} ${fitLine(fBaseUrl, urlWidth)}`);
+    const fApiKey = formatApiKey(f.api_key ?? '');
+    const rowLabel = `#${i + 1}`;
+    console.log(`  ${rowLabel.padEnd(10)} ${fPreset.padEnd(10)} ${fLabel.padEnd(15)} ${fModel.padEnd(18)} ${fApiKey.padEnd(24)} ${fitLine(fBaseUrl, urlWidth)}`);
   });
-  
+
   console.log();
 }
 
