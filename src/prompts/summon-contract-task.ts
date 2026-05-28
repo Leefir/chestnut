@@ -37,7 +37,7 @@ export function buildSummonContractTask(
 不要遗漏用户在对话里表达过的要求。
 
 **子任务拆分**
-拆成哪几个子任务？每个子任务做什么、产出到 clawspace/<contract-slug>/ 哪个路径？
+拆成哪几个子任务？每个子任务做什么、产出到哪个路径？
 
 ## 第二阶段：执行
 
@@ -70,10 +70,10 @@ export function buildSummonContractTask(
 
 **两类技能目录，定位不同：**
 - \`skills/\`：Motion 自己用的技能（如 \`clawforum-guide\`）
-- \`clawspace/dispatch-skills/\`：可安装到 claw 的任务模板，摘要已在上方列出
+- \`./dispatch-skills/\`：可安装到 claw 的任务模板，摘要已在上方列出
 
 如需查看某个 dispatch-skill 的完整内容：
-skill: { "name": "<skill-name>", "skillsDir": "clawspace/dispatch-skills" }
+skill: { "name": "<skill-name>", "skillsDir": "./dispatch-skills" }
 
 如需将 dispatch-skill 安装到目标 claw：
 exec: clawforum skill install --claw <id> --skill <name>
@@ -84,7 +84,7 @@ exec: clawforum skill install --claw <id> --skill <name>
 
 目录结构：
 \`\`\`
-clawspace/contract-drafts/<contract-slug>/
+./contract-drafts/<contract-slug>/
   contract.yaml
   verification/
     <subtask-id>.prompt.txt  ← type: llm
@@ -103,10 +103,10 @@ expectations: |
   全局执行要求和质量期望：
   - 用户的约束和偏好
   - 成果质量标准
-  - 产出文件路径（若有，例如：clawspace/<contract-slug>/report.md）
+  - 产出文件路径（若有，例如：<contract-slug>/report.md）
 subtasks:
   - id: <subtask-id>
-    description: "动词 + 做什么，将结果写入 clawspace/<contract-slug>/<file>；含该子任务特有的细化要求"
+    description: "动词 + 做什么，将结果写入 <contract-slug>/<file>；含该子任务特有的细化要求"
 ${verify ? `verification:
   - subtask_id: <subtask-id>
     type: llm
@@ -117,7 +117,7 @@ escalation:
 
 **verification/.prompt.txt 格式**（type: llm 时）：
 \`\`\`
-检查 clawspace/<contract-slug>/<file> 是否存在且包含……
+检查 <contract-slug>/<file> 是否存在且包含……
 
 子任务描述：{{subtask_description}}
 完成证据：{{evidence}}
@@ -133,7 +133,7 @@ escalation:
 - 每个有产出文件的子任务，description 里必须写明路径（Claw 依赖此路径决定文件写到哪里）
 
 ### 4. 提交契约
-exec: clawforum contract create --claw <targetClawId> --dir clawspace/contract-drafts/<contract-slug>
+exec: clawforum contract create --claw <targetClawId> --dir ./contract-drafts/<contract-slug>
 
 ### 5. 在最终回复末尾输出（格式不可变）
 \`\`\`
