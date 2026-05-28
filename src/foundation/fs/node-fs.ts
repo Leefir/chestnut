@@ -116,6 +116,16 @@ export class NodeFileSystem implements FileSystem {
     
     const absolute = path.resolve(this.options.baseDir, normalized);
 
+    // phase 1395: 当 relPath 操作 baseDir 自身（'.' 或空），符号链接 escape 检查
+    // 退化为 "caller 选了 baseDir、自负" 语义 — 此场景下 realTarget 与 realBase
+    // 的 ENOENT-fallback 不一致并不构成真实威胁（无 relPath 路径段可被 symlink 解析）。
+    // 不跳过会假阳性: baseDir 不存在 + parent 存在 → realTarget 落 parent real path
+    // / realBase 落 literal baseDir → within-base 比较失败 → throw（实测 task acfddf0f
+    // skill install / 9 site cluster 同型）。
+    if (normalized === '.' || normalized === '') {
+      return absolute;
+    }
+
     let realTarget: string | null = null;
     try {
       realTarget = realpathSync(absolute);
