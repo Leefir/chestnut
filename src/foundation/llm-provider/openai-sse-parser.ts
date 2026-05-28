@@ -27,8 +27,8 @@ export async function* parseSSEStream(
   handle: CombinedAbortHandle,
   idleTimeoutMs: number,
   providerName: string,
-  onStreamParseError?: StreamParseErrorCallback,
-  maxAuditChars?: number,
+  onStreamParseError: StreamParseErrorCallback | undefined,
+  maxAuditChars: number,
 ): AsyncIterableIterator<StreamChunk> {
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
@@ -185,7 +185,7 @@ export async function* parseSSEStream(
       if (!buf.started && (buf.id !== '' || buf.name !== '')) {
         onStreamParseError?.({
           provider: providerName,
-          raw: JSON.stringify({ id: buf.id, name: buf.name }).slice(0, maxAuditChars ?? Number.MAX_SAFE_INTEGER),
+          raw: JSON.stringify({ id: buf.id, name: buf.name }).slice(0, maxAuditChars),
           error: 'tool_use buffer incomplete (missing id or name at stream end)',
         });
       }

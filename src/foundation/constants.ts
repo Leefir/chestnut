@@ -9,3 +9,11 @@
  * contract/spawn/shadow L4 all depend on this value).
  */
 export const AUDIT_PREVIEW_LEN = 100;
+
+/**
+ * AUDIT_MESSAGE_MAX_CHARS = audit log 单字段最大字符数。
+ * phase 1386 从 audit/defaults.ts 提升到 L0，遵循与 AUDIT_PREVIEW_LEN
+ * 相同的跨层共享常量 ratification 路径（ML#5 > M#3）。
+ * L1 llm-provider SSE parser 等模块通过 L0 引用，避免 L1→L2 反向依赖。
+ */
+export const AUDIT_MESSAGE_MAX_CHARS = 200;

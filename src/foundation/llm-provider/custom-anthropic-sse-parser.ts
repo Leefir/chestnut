@@ -27,8 +27,8 @@ export async function* parseAnthropicSSEStream(
   handle: CombinedAbortHandle,
   idleTimeoutMs: number,
   providerName: string,
-  onStreamParseError?: StreamParseErrorCallback,
-  maxAuditChars?: number,
+  onStreamParseError: StreamParseErrorCallback | undefined,
+  maxAuditChars: number,
 ): AsyncIterableIterator<StreamChunk> {
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
@@ -74,7 +74,7 @@ export async function* parseAnthropicSSEStream(
               // tool_use 缺 id 或 name = upstream malformed / 不发 malformed yield / 走观测通道
               onStreamParseError?.({
                 provider: providerName,
-                raw: JSON.stringify(block).slice(0, maxAuditChars ?? Number.MAX_SAFE_INTEGER),
+                raw: JSON.stringify(block).slice(0, maxAuditChars),
                 error: 'tool_use missing id or name',
               });
               continue;
