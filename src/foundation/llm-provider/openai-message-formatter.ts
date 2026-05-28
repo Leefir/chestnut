@@ -4,9 +4,8 @@
  * 0 this.X dep / 真 pure function
  */
 
-import type { AuditLog } from '../audit/index.js';
 import { LLM_PROVIDER_AUDIT_EVENTS } from './audit-events.js';
-
+import type { AuditSink } from './types.js';
 
 interface OpenAIMessage {
   role: string;
@@ -26,11 +25,13 @@ interface OpenAITool {
 
 /**
  * Convert internal Message[] + system prompt → OpenAI messages array
+ *
+ * @param auditSink - Optional audit sink for formatter guard events (injected by L2b orchestrator)
  */
 export function formatMessages(
   messages: Array<{ role: string; content: unknown }>,
   system?: string,
-  auditLog?: AuditLog,
+  auditSink?: AuditSink,
 ): OpenAIMessage[] {
   const result: OpenAIMessage[] = [];
 
@@ -85,7 +86,7 @@ export function formatMessages(
         const toolUseId = tr.tool_use_id;
         // Guard 1: tool_use_id 必须非空字符串
         if (typeof toolUseId !== 'string' || !toolUseId) {
-          auditLog?.write(
+          auditSink?.write(
             LLM_PROVIDER_AUDIT_EVENTS.TOOL_RESULT_MISSING_ID,
             `provider=openai`,
             `reason=tool_use_id_empty_or_undefined`,
@@ -95,7 +96,7 @@ export function formatMessages(
         }
         // Guard 2: cross-validate prior assistant.tool_calls
         if (!priorToolCallIds.has(toolUseId)) {
-          auditLog?.write(
+          auditSink?.write(
             LLM_PROVIDER_AUDIT_EVENTS.TOOL_RESULT_ORPHAN_ID,
             `provider=openai`,
             `tool_use_id=${toolUseId}`,

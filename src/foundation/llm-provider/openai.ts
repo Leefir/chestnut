@@ -10,7 +10,7 @@
 
 import type {
   LLMResponse,
-} from '../llm-provider/types.js';
+} from './types.js';
 import {
   LLMError,
   LLMNetworkError,
@@ -21,6 +21,7 @@ import type {
   LLMCallOptions,
   ProviderAdapter,
   StreamChunk,
+  ProviderObserver,
 } from './types.js';
 import { STREAM_MAX_DURATION_MS, STREAM_IDLE_MAX_MS } from './constants.js';
 import { withCombinedAbortSignal, classifyFetchAbortError } from './abort-helper.js';
@@ -51,38 +52,6 @@ interface OpenAIRequest {
 }
 
 /**
- * OpenAI API response
- */
-interface OpenAIResponse {
-  id: string;
-  object: string;
-  created: number;
-  model: string;
-  choices: Array<{
-    index: number;
-    message: {
-      role: string;
-      content: string | null;
-      reasoning_content?: string;
-      tool_calls?: Array<{
-        id: string;
-        type: 'function';
-        function: {
-          name: string;
-          arguments: string;
-        };
-      }>;
-    };
-    finish_reason: string | null;
-  }>;
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
-}
-
-/**
  * OpenAI adapter implementation
  */
 export class OpenAIAdapter implements ProviderAdapter {
@@ -91,9 +60,6 @@ export class OpenAIAdapter implements ProviderAdapter {
 
   private readonly config: ProviderConfig;
   private readonly baseUrl: string;
-
-  onStreamParseError?: (event: { provider: string; raw: string; error: string }) => void;
-  onToolArgParseError?: (event: { provider: string; toolName: string; rawArgs: string; error: string }) => void;
 
   constructor(config: ProviderConfig) {
     this.config = config;
@@ -106,7 +72,7 @@ export class OpenAIAdapter implements ProviderAdapter {
    * Make a single LLM call
    */
   async call(options: LLMCallOptions): Promise<LLMResponse> {
-    const { messages, system, tools, maxTokens, temperature, timeoutMs, signal } = options;
+    const { messages, system, tools, maxTokens, temperature, timeoutMs, signal, observer } = options;
 
     // Build request body
     const body: OpenAIRequest = {
@@ -148,8 +114,8 @@ export class OpenAIAdapter implements ProviderAdapter {
         await throwHttpErrorResponse(this.name, response);
       }
 
-      const data = await response.json() as OpenAIResponse;
-      return parseResponse(data, this.name, this.onToolArgParseError);
+      const data = await response.json();
+      return parseResponse(data, this.name, observer?.onToolArgParseError);
 
     } catch (error) {
       const classified = classifyFetchAbortError(error, signal, timeout, this.name);
@@ -175,7 +141,7 @@ export class OpenAIAdapter implements ProviderAdapter {
    * Stream LLM response with true SSE parsing
    */
   async* stream(options: LLMCallOptions): AsyncIterableIterator<StreamChunk> {
-    const { messages, system, tools, maxTokens, temperature, timeoutMs, signal } = options;
+    const { messages, system, tools, maxTokens, temperature, timeoutMs, signal, observer } = options;
 
     const body: OpenAIRequest & { stream: boolean } = {
       model: options.model ?? this.config.model,
@@ -213,7 +179,7 @@ export class OpenAIAdapter implements ProviderAdapter {
       // 进入 stream 阶段：切换 timer 为总时长保护
       abortHandle.enterStreamPhase(STREAM_MAX_DURATION_MS);
       const idleTimeoutMs = Math.min(timeout, STREAM_IDLE_MAX_MS);
-      yield* parseSSEStream(response, abortHandle, idleTimeoutMs, this.name, this.onStreamParseError);
+      yield* parseSSEStream(response, abortHandle, idleTimeoutMs, this.name, observer?.onStreamParseError);
     } catch (error) {
       const classified = classifyFetchAbortError(error, signal, timeout, this.name);
       if (classified) throw classified;

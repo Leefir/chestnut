@@ -6,7 +6,6 @@
  */
 
 import type { ApiFormat } from './presets.js';
-import type { AuditLog } from '../audit/index.js';
 
 // ============================================================================
 // LLM Protocol Message Types (L1 canonical)
@@ -82,6 +81,28 @@ export interface JSONSchema7 {
   [key: string]: unknown;
 }
 
+// ============================================================================
+// Provider Observer (L1 minimal interface for error reporting)
+// Decouples L1 providers from L2b orchestrator audit concerns
+// ============================================================================
+
+/** Minimal audit sink — L2b implements, L1 only depends on this duck-typed interface */
+export interface AuditSink {
+  write(event: string, ...details: string[]): void;
+}
+
+/** Minimal error reporter interface — L2b implements and injects via options */
+export interface ProviderObserver extends AuditSink {
+  /** Report SSE parse error */
+  onStreamParseError?(event: { provider: string; raw: string; error: string }): void;
+  /** Report tool argument JSON parse error */
+  onToolArgParseError?(event: { provider: string; toolName: string; rawArgs: string; error: string }): void;
+}
+
+// ============================================================================
+// Provider Configuration
+// ============================================================================
+
 /**
  * Single provider configuration
  */
@@ -131,9 +152,13 @@ export interface ProviderConfig {
   /** Reasoning effort for OpenAI o-series models */
   reasoningEffort?: 'low' | 'medium' | 'high';
 
-  /** Optional audit log for formatter guard events */
-  auditLog?: AuditLog;
+  /** Optional observer for formatter/parser error events (injected by L2b orchestrator) */
+  observer?: ProviderObserver;
 }
+
+// ============================================================================
+// Streaming Types
+// ============================================================================
 
 /**
  * Streaming response chunk
@@ -189,6 +214,10 @@ export interface StreamChunk {
   model?: string;
 }
 
+// ============================================================================
+// Call Options
+// ============================================================================
+
 /**
  * Options for a single LLM call
  */
@@ -216,7 +245,14 @@ export interface LLMCallOptions {
 
   /** Signal for cancellation (user abort + step_yield only; idle timeout is service-internal) */
   signal?: AbortSignal;
+
+  /** Optional observer for error reporting (injected by L2b orchestrator) */
+  observer?: ProviderObserver;
 }
+
+// ============================================================================
+// Provider Adapter Interface
+// ============================================================================
 
 /**
  * LLM Provider adapter interface
@@ -238,10 +274,4 @@ export interface ProviderAdapter {
    * Stream LLM response
    */
   stream?(options: LLMCallOptions): AsyncIterableIterator<StreamChunk>;
-
-  /** Set by LLMOrchestratorImpl; providers call this for SSE parse errors (A.4) */
-  onStreamParseError?: (event: { provider: string; raw: string; error: string }) => void;
-
-  /** Set by LLMOrchestratorImpl; providers call this when tool_call.function.arguments fails JSON.parse */
-  onToolArgParseError?: (event: { provider: string; toolName: string; rawArgs: string; error: string }) => void;
 }
