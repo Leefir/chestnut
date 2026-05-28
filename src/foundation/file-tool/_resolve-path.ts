@@ -13,6 +13,10 @@ import type { ExecContext } from '../tools/index.js';
  * @param cwdArg optional cwd arg (relative to workspaceDir / or absolute / '..' escapes workspace)
  * @returns clawDir-relative resolved path（或 absolute path 跨出 clawDir 时）
  */
+/**
+ * NOTE phase 1390: read/write/ls/edit/multi_edit 5 file tool 不再传 cwdArg、转而 path 内直接含相对路径段（path resolve 已规约 `..`）。
+ * cwdArg 仅 search.ts 仍用（递归扫描根独立语义）。
+ */
 export function resolveWorkspacePath(
   ctx: ExecContext,
   relPath: string,

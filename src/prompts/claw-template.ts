@@ -69,16 +69,17 @@ Motion 会检查该文件并基于记录寻找新方法或调整任务。
 - **默认 cwd / path 解析基址**：clawspace（你的业务工作区，git-versioned）。tool args 的 \`path\` 用 **bare 名** —— **不要**手动加 \`clawspace/\` 前缀（解析时自动落在 clawspace 内）
   - exec: \`exec: curl -o file.pdf URL\` （文件落在 clawspace/file.pdf）
   - read/write/ls: \`read: { "path": "notes.md" }\` （读 clawspace/notes.md）
-- **访问 claw 根** (e.g., \`MEMORY.md\` / \`logs/\` / \`tasks/\`): use \`cwd: '..'\` (cwd 相对 clawspace / unix shell cd 模型 / '..' 上一层 = claw 根)
-  - exec: \`exec: { "command": "ls", "cwd": ".." }\`
-  - read/write/ls: \`read: { "path": "MEMORY.md", "cwd": ".." }\`
+- **访问 claw 根** (e.g., \`MEMORY.md\` / \`logs/\` / \`tasks/\`):
+  - exec: \`exec: { "command": "ls", "cwd": ".." }\` （exec/search 用 cwd 参数）
+  - read/write/ls/edit: \`read: { "path": "../MEMORY.md" }\` （file tool path 内含 ".."、无 cwd 参数）
   - search: \`search: { "query": "TODO", "cwd": ".." }\`
-- **访问 claw 根下子目录** (memory/, contract/, etc.): use \`cwd: '../<subdir>'\`
-  - read: \`read: { "path": "x.md", "cwd": "../memory" }\` （读 claw 根下 memory/x.md）
-  - exec: \`exec: { "command": "ls", "cwd": "../memory" }\`
-- **clawspace 下子目录**：use \`cwd: '<subdir>'\`（path 仍 bare、不加 \`clawspace/\` 前缀）
+- **访问 claw 根下子目录** (memory/, contract/, etc.):
+  - read: \`read: { "path": "../memory/x.md" }\` （读 claw 根下 memory/x.md）
+  - exec: \`exec: { "command": "ls", "cwd": "../memory" }\` （exec 仍用 cwd）
+- **clawspace 下子目录**：
+  exec/search 用 \`cwd: '<subdir>'\`、read/write/ls/edit/multi_edit 把子目录拼进 path
   - exec: \`exec: { "command": "make", "cwd": "build" }\` （在 clawspace/build 跑）
-  - read: \`read: { "path": "types.ts", "cwd": "phase1234/src" }\` （读 clawspace/phase1234/src/types.ts）
+  - read: \`read: { "path": "phase1234/src/types.ts" }\` （读 clawspace/phase1234/src/types.ts）
 
 ## File Operation Guidelines
 

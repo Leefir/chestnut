@@ -32,17 +32,13 @@ export const multiEditTool: Tool = {
   name: MULTI_EDIT_TOOL_NAME,
   profiles: ['full', 'subagent', 'miner'],
   group: 'fs-write',
-  description: 'Apply multiple edits to a file atomically. Edits are applied in order; on any failure, all edits are rolled back. Single backup before all edits. File must exist.',
+  description: 'Apply multiple sequential edits to a file. Path is relative to clawspace (do NOT prefix with "clawspace/"). Use "../" in path to access claw root files. Edits are applied in order; on any failure, all edits are rolled back. Single backup before all edits. File must exist.',
   schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'File path (default base: workspace root)',
-      },
-      cwd: {
-        type: 'string',
-        description: 'Override base for path resolution (relative to workspace root, or absolute, with ".." to escape workspace to claw root). Default: workspace root.',
+        description: 'File path (relative to clawspace, with "../" allowed for claw root access)',
       },
       edits: {
         type: 'array',
@@ -74,14 +70,13 @@ export const multiEditTool: Tool = {
 
   async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
     const filePath = args.path as string;
-    const cwdArg = args.cwd as string | undefined;
     const edits = args.edits as Array<{ old_string: string; new_string: string; replace_all?: boolean }>;
 
-    const resolved = resolveWorkspacePath(ctx, filePath, cwdArg);
+    const resolved = resolveWorkspacePath(ctx, filePath);
     if (resolved.startsWith('..') || resolved.startsWith('/')) {
       return {
         success: false,
-        content: `Error: Path escapes claw directory: "${filePath}"${cwdArg ? ` (cwd: ${cwdArg})` : ''}`,
+        content: `Error: Path escapes claw directory: "${filePath}"`,
       };
     }
 

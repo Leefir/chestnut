@@ -19,17 +19,13 @@ export const lsTool: Tool = {
   name: LS_TOOL_NAME,
   profiles: ['full', 'readonly', 'subagent', 'miner'],
   group: 'fs-read',
-  description: 'List files and directories in the specified path. Use `claw: "<id>"` to list another claw\'s directory. `claw` parameter with specific target is available to all agents; broadcast across all claws is Motion-only.',
+  description: 'List files in your agent workspace. Path is relative to clawspace (do NOT prefix with "clawspace/"). Use "../" in path to access claw root subdirs (e.g., "../memory"). Use claw: "<id>" to list another claw\'s files.',
   schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'Directory path to list (default base: workspace root)',
-      },
-      cwd: {
-        type: 'string',
-        description: 'Override base for path resolution (relative to workspace root, or absolute, with ".." to escape workspace to claw root). Default: workspace root.',
+        description: 'Directory path to list (relative to clawspace, with "../" allowed for claw root access)',
       },
       claw: {
         type: 'string',
@@ -44,7 +40,6 @@ export const lsTool: Tool = {
 
   async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
     const pathArg = (args.path as string) ?? '.';
-    const cwdArg = args.cwd as string | undefined;
     const clawParam = args.claw as string | undefined;
     // From constants.ts: pagination limit
 
@@ -52,11 +47,11 @@ export const lsTool: Tool = {
     let targetPath: string;
     let entries: { path: string; isDirectory: boolean; isFile: boolean; size?: number }[];
 
-    const resolved = resolveWorkspacePath(ctx, pathArg, cwdArg);
+    const resolved = resolveWorkspacePath(ctx, pathArg);
     if (resolved.startsWith('..') || resolved.startsWith('/')) {
       return {
         success: false,
-        content: `Error: Path escapes claw directory: "${pathArg}"${cwdArg ? ` (cwd: ${cwdArg})` : ''}`,
+        content: `Error: Path escapes claw directory: "${pathArg}"`,
       };
     }
 

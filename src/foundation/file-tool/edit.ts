@@ -32,17 +32,13 @@ export const editTool: Tool = {
   name: EDIT_TOOL_NAME,
   profiles: ['full', 'subagent', 'miner'],
   group: 'fs-write',
-  description: 'Replace exact string in a file (for subagent partial modify). old_string must uniquely match by default; use replace_all=true for batch. File must exist.',
+  description: 'Edit a file by exact string replace. Path is relative to clawspace (do NOT prefix with "clawspace/"). Use "../" in path to access claw root files. old_string must uniquely match by default; use replace_all=true for batch. File must exist.',
   schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'File path (default base: workspace root)',
-      },
-      cwd: {
-        type: 'string',
-        description: 'Override base for path resolution (relative to workspace root, or absolute, with ".." to escape workspace to claw root). Default: workspace root.',
+        description: 'File path (relative to clawspace, with "../" allowed for claw root access)',
       },
       old_string: {
         type: 'string',
@@ -64,16 +60,15 @@ export const editTool: Tool = {
 
   async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
     const filePath = args.path as string;
-    const cwdArg = args.cwd as string | undefined;
     const oldString = args.old_string as string;
     const newString = args.new_string as string;
     const replaceAll = args.replace_all === true;
 
-    const resolved = resolveWorkspacePath(ctx, filePath, cwdArg);
+    const resolved = resolveWorkspacePath(ctx, filePath);
     if (resolved.startsWith('..') || resolved.startsWith('/')) {
       return {
         success: false,
-        content: `Error: Path escapes claw directory: "${filePath}"${cwdArg ? ` (cwd: ${cwdArg})` : ''}`,
+        content: `Error: Path escapes claw directory: "${filePath}"`,
       };
     }
 

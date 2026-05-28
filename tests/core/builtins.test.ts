@@ -956,7 +956,7 @@ describe('Builtin Tools', () => {
       });
 
       const result = await writeTool.execute(
-        { path: 'temp.txt', cwd: '../tasks/subagents/phase518-test', content: 'data' },
+        { path: '../tasks/subagents/phase518-test/temp.txt', content: 'data' },
         subagentCtx,
       );
 

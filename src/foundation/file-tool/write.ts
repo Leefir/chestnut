@@ -19,17 +19,13 @@ export const writeTool: Tool = {
   name: WRITE_TOOL_NAME,
   profiles: ['full', 'subagent', 'miner'],
   group: 'fs-write',
-  description: 'Write content to a file. Use append=true to append instead of overwrite. Auto-backups to clawDir/tasks/sync/ (turn-scoped / cleaned by Snapshot commit). For overwrite mode (append=false), file must be fully read in this session first (read without truncation). WARNING: single LLM output is limited to ~4096 tokens (~3000 chars). For long files, split into multiple write calls: first call without append, subsequent calls with append=true.',
+  description: 'Write a file in your agent workspace. Path is relative to clawspace (do NOT prefix with "clawspace/"). Use "../" in path to access claw root subdirs (e.g., "../tasks/subagents/x/temp.md"). Use append: true to append.',
   schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'File path (default base: workspace root)',
-      },
-      cwd: {
-        type: 'string',
-        description: 'Override base for path resolution (relative to workspace root, or absolute, with ".." to escape workspace to claw root). Default: workspace root.',
+        description: 'File path (relative to clawspace, with "../" allowed for claw root access)',
       },
       content: {
         type: 'string',
@@ -47,15 +43,14 @@ export const writeTool: Tool = {
 
   async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
     const filePath = args.path as string;
-    const cwdArg = args.cwd as string | undefined;
     const content = args.content as string;
     const append = args.append === true;
 
-    const resolved = resolveWorkspacePath(ctx, filePath, cwdArg);
+    const resolved = resolveWorkspacePath(ctx, filePath);
     if (resolved.startsWith('..') || resolved.startsWith('/')) {
       return {
         success: false,
-        content: `Error: Path escapes claw directory: "${filePath}"${cwdArg ? ` (cwd: ${cwdArg})` : ''}`,
+        content: `Error: Path escapes claw directory: "${filePath}"`,
       };
     }
 

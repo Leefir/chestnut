@@ -20,17 +20,13 @@ export const readTool: Tool = {
   name: READ_TOOL_NAME,
   profiles: ['full', 'readonly', 'subagent', 'miner'],
   group: 'fs-read',
-  description: 'Read a file in your agent workspace. Path is relative to your workspace root — do NOT prefix with "clawspace/". Use cwd: ".." to access files in your claw root (e.g., MEMORY.md). Use cwd: "memory" for subdirs. Use claw: "<id>" to read another claw\'s files (available to all agents); claw: "*" is Motion-only.',
+  description: 'Read a file in your agent workspace. Path is relative to clawspace (do NOT prefix with "clawspace/"). Use "../" in path to access claw root (e.g., "../MEMORY.md"). Use claw: "<id>" to read another claw\'s files (available to all agents); claw: "*" is Motion-only.',
   schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'File path (default base: workspace root)',
-      },
-      cwd: {
-        type: 'string',
-        description: 'Override base for path resolution (relative to workspace root, or absolute, with ".." to escape workspace to claw root files like MEMORY.md). Default: workspace root.',
+        description: 'File path (relative to clawspace, with "../" allowed for claw root access)',
       },
       offset: {
         type: 'number',
@@ -53,16 +49,15 @@ export const readTool: Tool = {
 
   async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
     const filePath = args.path as string;
-    const cwdArg = args.cwd as string | undefined;
     const offset = safeNumber(args.offset);
     const limit = safeNumber(args.limit);
     const clawParam = args.claw as string | undefined;
 
-    const resolved = resolveWorkspacePath(ctx, filePath, cwdArg);
+    const resolved = resolveWorkspacePath(ctx, filePath);
     if (resolved.startsWith('..') || resolved.startsWith('/')) {
       return {
         success: false,
-        content: `Error: Path escapes claw directory: "${filePath}"${cwdArg ? ` (cwd: ${cwdArg})` : ''}`,
+        content: `Error: Path escapes claw directory: "${filePath}"`,
       };
     }
 
