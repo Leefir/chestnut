@@ -36,7 +36,7 @@ export const createViewportCommands = (deps: CommandsDeps): ViewportCommand[] =>
 
   cmds.push({
     name: 'think',
-    description: '切换思考内容显示模式',
+    description: 'toggle thinking display mode',
     usage: '/think [off|compact|full]',
     execute: (args) => {
       const arg = args[0] as ThinkingMode | undefined;
@@ -46,7 +46,7 @@ export const createViewportCommands = (deps: CommandsDeps): ViewportCommand[] =>
       } else if (arg === 'off' || arg === 'compact' || arg === 'full') {
         mode = arg;
       } else {
-        deps.appendOutput('\x1b[31m', `[think] 无效模式 "${arg}"，可选：off / compact / full`);
+        deps.appendOutput('\x1b[31m', `[think] invalid mode "${arg}", options: off / compact / full`);
         return;
       }
       deps.setThinkingMode(mode);
@@ -56,61 +56,61 @@ export const createViewportCommands = (deps: CommandsDeps): ViewportCommand[] =>
 
   cmds.push({
     name: 'attach',
-    description: '将 claw 加入监视面板（仅 motion）',
+    description: 'attach a claw to the watch panel (motion only)',
     usage: '/attach <clawId>',
     execute: (args) => {
       if (!deps.isMotion) {
-        deps.appendOutput('\x1b[31m', '[attach] 仅 motion chat 支持 /attach');
+        deps.appendOutput('\x1b[31m', '[attach] /attach is only supported in motion chat');
         return;
       }
       const clawId = args[0];
       if (!clawId) {
-        deps.appendOutput('\x1b[31m', '[attach] 用法：/attach <clawId>');
+        deps.appendOutput('\x1b[31m', '[attach] usage: /attach <clawId>');
         return;
       }
       const clawDir = path.join(deps.clawsDir, clawId);
       if (!deps.fs.existsSync(clawDir)) {
-        deps.appendOutput('\x1b[31m', `[attach] claw "${clawId}" 不存在`);
+        deps.appendOutput('\x1b[31m', `[attach] claw "${clawId}" not found`);
       } else if (deps.clawTrackMap.has(clawId)) {
-        deps.appendOutput('\x1b[2m', `[attach] ${clawId} 已在面板中`);
+        deps.appendOutput('\x1b[2m', `[attach] ${clawId} already attached`);
       } else {
         const t = makeClawTrack();
         t.referenceMs = Date.now();
         deps.clawTrackMap.set(clawId, t);
         deps.clawManager.attachClawWatcher(makeClawId(clawId), path.join(clawDir, STREAM_FILE));
         deps.updateClawPanel(deps.clawTrackMap);
-        deps.appendOutput('\x1b[2m', `[attach] ${clawId} 已加入面板`);
+        deps.appendOutput('\x1b[2m', `[attach] ${clawId} attached`);
       }
     },
   });
 
   cmds.push({
     name: 'detach',
-    description: '从监视面板移除 claw（仅 motion）',
-    usage: '/detach <clawId>  或  /detach --all',
+    description: 'detach a claw from the watch panel (motion only)',
+    usage: '/detach <clawId>  or  /detach --all',
     execute: async (args) => {
       const arg = args[0];
       if (!arg) {
-        deps.appendOutput('', '用法：/detach <claw-id>  或  /detach --all');
+        deps.appendOutput('', 'usage: /detach <claw-id>  or  /detach --all');
         return;
       }
       if (arg === '--all') {
         await deps.clawManager.detachAllWatchers();
         deps.clawTrackMap.clear();
         deps.updateClawPanel(deps.clawTrackMap);
-        deps.appendOutput('\x1b[2m', '[detach] 已清空所有 claw');
+        deps.appendOutput('\x1b[2m', '[detach] all claws detached');
       } else {
         await deps.clawManager.detachWatcher(makeClawId(arg));
         deps.clawTrackMap.delete(arg);
         deps.updateClawPanel(deps.clawTrackMap);
-        deps.appendOutput('\x1b[2m', `[detach] ${arg} 已从面板移除`);
+        deps.appendOutput('\x1b[2m', `[detach] ${arg} detached`);
       }
     },
   });
 
   cmds.push({
     name: 'clear',
-    description: '清空输出区域',
+    description: 'clear the output area',
     execute: () => {
       deps.clearOutputLines();
       deps.invalidateBodyCache();
@@ -120,13 +120,13 @@ export const createViewportCommands = (deps: CommandsDeps): ViewportCommand[] =>
 
   cmds.push({
     name: 'help',
-    description: '显示可用命令列表',
+    description: 'show available commands',
     execute: () => {
-      const lines = ['可用命令：'];
+      const lines = ['Available commands:'];
       for (const cmd of deps.getRegistry().values()) {
         lines.push(`  ${cmd.usage ?? '/' + cmd.name}  — ${cmd.description}`);
       }
-      lines.push('快捷键：ESC 中断当前 turn  /  Ctrl+C 或 Ctrl+D 退出  /  Ctrl+L 清屏');
+      lines.push('Shortcuts: ESC interrupt current turn  /  Ctrl+C or Ctrl+D quit  /  Ctrl+L clear');
       deps.appendOutput('\x1b[2m', lines.join('\n'), true);
     },
   });

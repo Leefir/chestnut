@@ -259,7 +259,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
         // 进程不存在
         daemonDead = true;
         turnTracker.abort();
-        displayWithHolder.appendOutput('\x1b[31m', '✗ Daemon 已停止');
+        displayWithHolder.appendOutput('\x1b[31m', '✗ Daemon stopped');
         observability.recordShutdown('daemon_dead');
       }
     } catch (e) {
@@ -337,10 +337,10 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
           try {
             options.audit.write(VIEWPORT_AUDIT_EVENTS.COMMAND_ERROR, `name=${name}`, `reason=${msg}`);
           } catch { /* audit self-failure tolerated */ }
-          displayWithHolder.appendOutput('\x1b[31m', `[error] /${name} 执行失败：${msg}`, true);
+          displayWithHolder.appendOutput('\x1b[31m', `[error] /${name} failed: ${msg}`, true);
         }
       } else {
-        displayWithHolder.appendOutput('\x1b[31m', `[unknown command: /${name}]  输入 /help 查看可用命令`);
+        displayWithHolder.appendOutput('\x1b[31m', `[unknown command: /${name}]  type /help for available commands`);
       }
       editor.setText('');
       tui.requestRender();
@@ -357,7 +357,7 @@ export async function runChatViewport(options: ChatViewportOptions): Promise<voi
       writeUserChat(options.agentDir, trimmed, options.fsFactory);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      displayWithHolder.appendOutput('\x1b[31m', `[error] 消息发送失败：${msg}（请重试或检查磁盘 / 权限）`, true);
+      displayWithHolder.appendOutput('\x1b[31m', `[error] failed to send message: ${msg} (retry or check disk / permissions)`, true);
     }
     tui.requestRender();
   };
