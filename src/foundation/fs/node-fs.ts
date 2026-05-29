@@ -95,7 +95,7 @@ export class NodeFileSystem implements FileSystem {
         resolved.startsWith(basePrefix);
       if (!withinBase) {
         throw new PermissionError(
-          `Path "${relativePath}" is absolute, must be relative to baseDir`,
+          `Path "${relativePath}" is absolute; paths must be relative to clawspace`,
           { path: relativePath }
         );
       }
@@ -109,7 +109,7 @@ export class NodeFileSystem implements FileSystem {
     
     if (normalized.startsWith('..')) {
       throw new PermissionError(
-        `Path "${relativePath}" attempts to escape base directory`,
+        `Path "${relativePath}" attempts to escape claw directory`,
         { path: relativePath }
       );
     }
@@ -151,7 +151,7 @@ export class NodeFileSystem implements FileSystem {
         realTarget.startsWith(basePrefix);
       if (!withinBase) {
         throw new PermissionError(
-          `Symlink traversal detected: "${relativePath}" resolves outside base directory`,
+          `Symlink traversal detected: "${relativePath}" resolves outside claw directory`,
           { path: relativePath }
         );
       }

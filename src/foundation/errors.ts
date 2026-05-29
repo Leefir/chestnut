@@ -83,7 +83,7 @@ export class PathNotInClawSpaceError extends PermissionError {
 
   constructor(path: string, clawDir: ClawDir) {
     super(
-      `Path "${path}" is not within the claw's workspace`,
+      `Path "${path}" is not within claw directory`,
       { path, clawDir }
     );
   }
