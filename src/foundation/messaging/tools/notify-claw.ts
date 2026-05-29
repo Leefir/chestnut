@@ -28,7 +28,7 @@ export function createNotifyClawTool(deps: NotifyClawDeps): Tool {
   return {
     name: NOTIFY_CLAW_TOOL_NAME,
     profiles: ['full'],
-    description: 'Notify a target claw by writing a message directly to its inbox. interrupt=true 让 claw 当前 step 完成后立即处理（中断 react 循环）；interrupt=false（默认）等 claw 正常 turn pull。motion-only tool（D11 单向访问特权）。',
+    description: 'Notify a target claw by writing a message directly to its inbox. interrupt=true（默认）= 目标 claw 完成当前 step 后立即中断 react 循环、下一轮 drain 立刻处理本消息 / interrupt=false = 不打扰、等 claw 自然轮询 pull（消息排进 normal priority 队列）。motion-only tool（D11 单向访问特权）。',
     schema: {
       type: 'object',
       properties: {
@@ -46,8 +46,8 @@ export function createNotifyClawTool(deps: NotifyClawDeps): Tool {
         },
         interrupt: {
           type: 'boolean',
-          description: 'true = 让 target claw 当前 step 完成后立即处理（PriorityInboxInterrupt）/ false（默认）= 等 claw 正常 turn pull',
-          default: false,
+          description: 'true (默认) = step boundary 中断 react 循环 / false = 不打扰、等自然 turn pull',
+          default: true,
         },
       },
       required: ['to', 'body'],
@@ -64,7 +64,7 @@ export function createNotifyClawTool(deps: NotifyClawDeps): Tool {
       const to = args.to as string;
       const body = args.body as string;
       const type = (args.type as string) ?? 'message';
-      const interrupt = (args.interrupt as boolean) ?? false;
+      const interrupt = (args.interrupt as boolean) ?? true;
       const priority = interrupt ? 'high' : 'normal';
 
       // phase 895 / audit-2026-05-16 NEW.P0.2: validation guard (mirror read.ts:75 cross-claw guard)
