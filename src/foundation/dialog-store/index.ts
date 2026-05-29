@@ -26,6 +26,7 @@ export function createDialogStore(
 
 import * as path from 'path';
 import { DIALOG_AUDIT_EVENTS } from './audit-events.js';
+import { DIALOG_ARCHIVE_DIR } from './dirs.js';
 import { type ClawDir } from '../identity/index.js';
 
 export async function cleanupArchives(opts: {
@@ -39,7 +40,7 @@ export async function cleanupArchives(opts: {
   const now = Date.now();
   let totalDeleted = 0;
 
-  const dir = path.join(motionDir, 'dialog/archive');
+  const dir = path.join(motionDir, DIALOG_ARCHIVE_DIR);
   if (!fs.existsSync(dir)) return 0;
 
   const cutoff = now - maxDays * 24 * 60 * 60 * 1000;

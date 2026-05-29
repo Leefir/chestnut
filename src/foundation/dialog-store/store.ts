@@ -43,7 +43,7 @@ export class DialogStore {
   private _turnSnapshot: {
     messages: Message[];
     systemPrompt: string;
-    toolsForLLM: import('../../foundation/llm-provider/types.js').ToolDefinition[];
+    toolsForLLM: ToolDefinition[];
   } | null = null;
 
   constructor(
@@ -122,6 +122,11 @@ export class DialogStore {
   /**
    * NEW pub method: await all pending save() flush
    * phase 1024 G.2: expose flushPromise for barrier (runtime.stop / SIGTERM 不丢半写)
+   *
+   * 隐式契约（phase 1400 ratify）：返回的 promise 仅在链式 flush 全部 settled 时 resolve、
+   * 不传播 reject — save 失败由 phase 1024 G.2 chain wrapper swallow 防 chain 破裂。
+   * caller 需通过 `await store.save(...)` 直接感知单次 save 的 reject、`getFlushPromise()` 仅作
+   * barrier 等「全部 settled」信号、不可用于错误传播。
    */
   getFlushPromise(): Promise<void> {
     return this.flushPromise;
@@ -359,7 +364,7 @@ export class DialogStore {
     this._turnSnapshot = {
       messages: JSON.parse(JSON.stringify(session.messages)) as Message[],
       systemPrompt: session.systemPrompt,
-      toolsForLLM: JSON.parse(JSON.stringify(session.toolsForLLM)) as import('../../foundation/llm-provider/types.js').ToolDefinition[],
+      toolsForLLM: JSON.parse(JSON.stringify(session.toolsForLLM)) as ToolDefinition[],
     };
     this.audit.write(DIALOG_AUDIT_EVENTS.TURN_BEGIN);
   }
@@ -748,53 +753,10 @@ export class DialogStore {
 
   /**
    * Validate and normalize session data
+   * phase 1400: 委托 validateSessionData / 消 DRY 违反 / clawId fallback 来源传 this.clawId
    */
   private validateSession(data: SessionData): SessionData {
-    // phase 1024 G.4: version 上界 invariant — supported version = 1 | 2 / version > 2 fail-loud audit
-    // (version > 2 已由 detectAndMigrateVersion 拦截，此处处理 version < 1 或 undefined)
-    let version: number = data.version ?? 2;
-    if (typeof version !== 'number' || version > 2 || version < 1) {
-      this.audit.write(
-        DIALOG_AUDIT_EVENTS.INVARIANT_FAILED,
-        `field=version`,
-        `got=${String(data.version)}`,
-        `fallback=2`,
-      );
-      version = 2;
-    }
-    if (!Number.isInteger(version)) {
-      this.audit.write(
-        DIALOG_AUDIT_EVENTS.INVARIANT_FAILED,
-        `field=version`,
-        `got=${String(data.version)}`,
-        `reason=non_integer`,
-      );
-      version = 2;
-    }
-    // messages corrupt entry filter: shape check role + content
-    const messages = Array.isArray(data.messages)
-      ? data.messages.filter((m): m is Message => {
-          const valid = m != null && typeof m === 'object' && 'role' in m && 'content' in m;
-          if (!valid) {
-            this.audit.write(
-              DIALOG_AUDIT_EVENTS.INVARIANT_FAILED,
-              `field=messages.entry`,
-              `got=${typeof m}`,
-              `filter=skipped`,
-            );
-          }
-          return valid;
-        })
-      : [];
-    return {
-      version: version as SessionData['version'],
-      clawId: data.clawId ?? this.clawId,
-      createdAt: data.createdAt ?? new Date().toISOString(),
-      updatedAt: data.updatedAt ?? new Date().toISOString(),
-      systemPrompt: data.systemPrompt ?? '',
-      messages,
-      toolsForLLM: Array.isArray(data.toolsForLLM) ? data.toolsForLLM : [],
-    };
+    return validateSessionData(data, this.audit, this.clawId);
   }
 }
 
