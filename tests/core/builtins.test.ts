@@ -76,13 +76,63 @@ describe('Builtin Tools', () => {
       expect(result.content).toBe('Hello, World!');
     });
 
-    it('should add path to fullyReadPaths after non-truncated read', async () => {
+    it('should record FileState with isFullRead=true after non-truncated read', async () => {
       await mockFs.ensureDir('clawspace');
       await mockFs.writeAtomic('clawspace/small.txt', 'small content');
 
       await readTool.execute({ path: 'small.txt' }, ctx);
 
-      expect(ctx.fullyReadPaths.has('clawspace/small.txt')).toBe(true);
+      const state = ctx.readFileState.get('clawspace/small.txt');
+      expect(state).toBeDefined();
+      expect(state?.isFullRead).toBe(true);
+    });
+
+    // phase 1430: offset alone still triggers 200-line cap from offset (not "to EOF")
+    it('offset-only on big file still caps at READ_DEFAULT_LINES from offset', async () => {
+      await mockFs.ensureDir('clawspace');
+      const lines = Array.from({ length: 500 }, (_, i) => `Line ${i + 1}`);
+      await mockFs.writeAtomic('clawspace/big.txt', lines.join('\n'));
+
+      // offset alone — must NOT return lines 100→500 (300 lines); must cap at 200 from offset
+      const result = await readTool.execute({ path: 'big.txt', offset: 100 }, ctx);
+
+      expect(result.success).toBe(true);
+      const returnedLines = result.content.split('\n').filter(l => l.startsWith('Line '));
+      expect(returnedLines.length).toBe(200);
+      expect(returnedLines[0]).toBe('Line 100');
+      expect(returnedLines[199]).toBe('Line 299');
+      expect(result.content).toContain('Showing lines 100-299 of 500');
+      // offset alone is rangeRequested → never full-read
+      const state = ctx.readFileState.get('clawspace/big.txt');
+      expect(state?.isFullRead).toBe(false);
+    });
+
+    // phase 1430: explicit limit overrides the 200-line default
+    it('limit overrides READ_DEFAULT_LINES — claw decides scope', async () => {
+      await mockFs.ensureDir('clawspace');
+      const lines = Array.from({ length: 500 }, (_, i) => `Line ${i + 1}`);
+      await mockFs.writeAtomic('clawspace/big.txt', lines.join('\n'));
+
+      const result = await readTool.execute({ path: 'big.txt', limit: 400 }, ctx);
+
+      expect(result.success).toBe(true);
+      const returnedLines = result.content.split('\n').filter(l => l.startsWith('Line '));
+      expect(returnedLines.length).toBe(400);
+      // user-supplied limit is rangeRequested → never full-read
+      const state = ctx.readFileState.get('clawspace/big.txt');
+      expect(state?.isFullRead).toBe(false);
+    });
+
+    // phase 1430: limit ≥ file lines + no offset = whole file by user choice; but rangeRequested = true → isFullRead false
+    // (intentional simplification: any explicit range param disqualifies full-read; use no-args to trigger gate qualification)
+    it('explicit limit covering whole file still flags isFullRead=false (gate honors literal absence of range)', async () => {
+      await mockFs.ensureDir('clawspace');
+      await mockFs.writeAtomic('clawspace/tiny.txt', 'a\nb\nc');
+
+      await readTool.execute({ path: 'tiny.txt', limit: 999 }, ctx);
+
+      const state = ctx.readFileState.get('clawspace/tiny.txt');
+      expect(state?.isFullRead).toBe(false);
     });
 
     it('should return error for non-existent file', async () => {
@@ -110,10 +160,9 @@ describe('Builtin Tools', () => {
       expect(result.content).not.toContain('not allowed');
     });
 
-    // Phase 2 质量审查补充：截断元信息测试
-    it('should include metadata when truncating large files', async () => {
+    // phase 1430: 300 行文件 + 不传 limit → 截到 200 行、isFullRead=false
+    it('should cap at READ_DEFAULT_LINES (200) when no limit is set and file exceeds default', async () => {
       await mockFs.ensureDir('clawspace');
-      // Create 300 lines file (exceeds 200 line limit)
       const lines = Array.from({ length: 300 }, (_, i) => `Line ${i + 1}`);
       await mockFs.writeAtomic('clawspace/large.txt', lines.join('\n'));
 
@@ -121,21 +170,27 @@ describe('Builtin Tools', () => {
 
       expect(result.success).toBe(true);
       expect(result.content).toContain('Showing lines 1-200 of 300');
-      expect(result.content).toContain('offset=201');
-      expect(ctx.fullyReadPaths.has('clawspace/large.txt')).toBe(false);
+      const state = ctx.readFileState.get('clawspace/large.txt');
+      expect(state).toBeDefined();
+      expect(state?.isFullRead).toBe(false);
     });
 
-    it('should include byte count when truncating by char limit', async () => {
+    // phase 1430: byte cap (100KB) → overflow saved to disk + head/tail returned
+    it('should persist to overflow file when output exceeds READ_OUTPUT_HARD_CAP_BYTES (100 KB)', async () => {
       await mockFs.ensureDir('clawspace');
-      // Create ~10KB content (exceeds 8000 char limit)
-      const content = 'x'.repeat(10000);
+      // Build content > 100 KB so byte cap triggers (lines must be ≤ 200 to avoid line cap first)
+      const longLine = 'x'.repeat(2000);
+      const content = Array.from({ length: 60 }, () => longLine).join('\n');  // ~120 KB / 60 lines
       await mockFs.writeAtomic('clawspace/huge.txt', content);
 
       const result = await readTool.execute({ path: 'huge.txt' }, ctx);
 
       expect(result.success).toBe(true);
-      expect(result.content).toContain('Showing first');
-      expect(ctx.fullyReadPaths.has('clawspace/huge.txt')).toBe(false);
+      expect(result.content).toMatch(/Full output \(\d+ bytes\) saved/);
+      expect(result.content).toContain('tasks/sync/read/');
+      // gate must reject overwrite since byte cap triggered
+      const state = ctx.readFileState.get('clawspace/huge.txt');
+      expect(state?.isFullRead).toBe(false);
     });
 
     // Negative offset tests
@@ -247,7 +302,7 @@ describe('Builtin Tools', () => {
       }, ctx);
 
       expect(result.success).toBe(false);
-      expect(result.content).toContain('fully-read');
+      expect(result.content).toContain('not been fully read');
     });
 
     it('should allow overwrite after fully read', async () => {
@@ -279,6 +334,46 @@ describe('Builtin Tools', () => {
       // 第二次 overwrite（写成功后已加入 fullyReadPaths）
       const w2 = await writeTool.execute({ path: 'gated3.txt', content: 'v3' }, ctx);
       expect(w2.success).toBe(true);
+    });
+
+    // phase 1430: externally modified file rejects overwrite with stale message
+    it('should reject overwrite when file was externally modified since last read', async () => {
+      await mockFs.ensureDir('clawspace');
+      await mockFs.writeAtomic('clawspace/stale.txt', 'v1 content');
+
+      // claw read it (qualifies as full read)
+      await readTool.execute({ path: 'stale.txt' }, ctx);
+
+      // external process modifies the file (advance mtime + change content)
+      await new Promise(r => setTimeout(r, 15));
+      const fsNative = await import('fs');
+      fsNative.writeFileSync(path.join(tempDir, 'clawspace/stale.txt'), 'v2 external content');
+
+      const writeResult = await writeTool.execute({
+        path: 'stale.txt',
+        content: 'v3 claw content',
+      }, ctx);
+
+      expect(writeResult.success).toBe(false);
+      expect(writeResult.content).toMatch(/modified since/);
+    });
+
+    // phase 1430: partial-range read never qualifies as full-read (silent X 治理)
+    it('partial-range read does NOT enable overwrite gate', async () => {
+      await mockFs.ensureDir('clawspace');
+      const big = Array.from({ length: 100 }, (_, i) => `Line ${i + 1}`).join('\n');
+      await mockFs.writeAtomic('clawspace/partial.txt', big);
+
+      // claw reads only first 10 lines (explicit limit → partial)
+      await readTool.execute({ path: 'partial.txt', offset: 1, limit: 10 }, ctx);
+
+      const writeResult = await writeTool.execute({
+        path: 'partial.txt',
+        content: 'truncated rewrite',
+      }, ctx);
+
+      expect(writeResult.success).toBe(false);
+      expect(writeResult.content).toMatch(/not been fully read/);
     });
 
     it('should allow append without fully-read gate', async () => {
@@ -1229,7 +1324,7 @@ describe('Builtin Tools', () => {
       expect(result.content).not.toMatch(/Path escapes target claw root/);
     });
 
-    it('cross-claw read does NOT pollute caller fullyReadPaths (write gate intact)', async () => {
+    it('cross-claw read does NOT pollute caller readFileState (write gate intact)', async () => {
       const motionDir = path.join(tempDir, 'motion');
       await fs.mkdir(motionDir, { recursive: true });
       const motionFs = new NodeFileSystem({ baseDir: motionDir });
@@ -1265,7 +1360,7 @@ describe('Builtin Tools', () => {
       }, motionCtx);
 
       expect(writeResult.success).toBe(false);
-      expect(writeResult.content).toMatch(/Use append=true, or read the file first/i);
+      expect(writeResult.content).toMatch(/not been fully read/i);
     });
   });
 

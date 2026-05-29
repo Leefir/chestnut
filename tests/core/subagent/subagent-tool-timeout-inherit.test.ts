@@ -24,7 +24,7 @@ vi.mock('../../../src/foundation/tools/executor.js', () => ({
       incrementStep: vi.fn(),
       stopRequested: false,
       requestStop: vi.fn(),
-      fullyReadPaths: new Set(),
+      readFileState: new Map(),
     }),
   })),
 }));

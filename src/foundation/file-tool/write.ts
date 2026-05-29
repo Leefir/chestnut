@@ -1,10 +1,12 @@
 /**
  * @module L2.FileTool
- * write tool - Write or append to file
+ * write tool - Write or append to file.
  *
  * Features (MVP aligned):
  * - Auto-backups to clawDir/tasks/sync/ (turn-scoped / cleaned by Snapshot commit)
- * - Overwrite gate: file must be fully read in this session first (phase 487 G6)
+ * - Overwrite gate (phase 1430): uses `readFileState` Map (hash + mtime + isFullRead).
+ *   - L1 not-read / partial: reject "File not fully read; read it first before overwriting."
+ *   - L2 stale: reject "File modified since read; read it again before overwriting."
  */
 
 import type { Tool, ExecContext } from '../tools/index.js';
@@ -12,6 +14,7 @@ import type { ToolResult } from '../tool-protocol/index.js';
 
 import { backupToSync } from './sync-backup.js';
 import { resolveWorkspacePath } from './resolve-path.js';
+import { computeContentHash } from './file-state.js';
 
 export const WRITE_TOOL_NAME = 'write' as const;
 
@@ -19,7 +22,7 @@ export const writeTool: Tool = {
   name: WRITE_TOOL_NAME,
   profiles: ['full', 'subagent', 'miner'],
   group: 'fs-write',
-  description: 'Write a file in your clawspace. Path is relative to clawspace (do NOT prefix with "clawspace/"). Use "../" in path to access claw root files (e.g., "../MEMORY.md", "../memory/notes.md"). Use append: true to append.',
+  description: 'Write a file in your clawspace. Path is relative to clawspace (do NOT prefix with "clawspace/"). Use "../" in path to access claw root files (e.g., "../MEMORY.md", "../memory/notes.md"). Use append: true to append. Overwrite (no append) requires the file to have been fully read via `read` in this daemon process and unchanged since.',
   schema: {
     type: 'object',
     properties: {
@@ -33,7 +36,7 @@ export const writeTool: Tool = {
       },
       append: {
         type: 'boolean',
-        description: 'If true, append to file instead of overwriting',
+        description: 'If true, append to file instead of overwriting (bypasses the overwrite gate).',
       },
     },
     required: ['path', 'content'],
@@ -61,14 +64,40 @@ export const writeTool: Tool = {
     }
     checker.resolveAndCheck(resolved, 'write');
 
-    // overwrite gate (phase 487 G6 (a) / append 不 gate)
+    // overwrite gate — phase 1430 hash + mtime + isFullRead
     if (!append) {
       const exists = await ctx.fs.exists(resolved);
-      if (exists && !ctx.fullyReadPaths.has(resolved)) {
-        return {
-          success: false,
-          content: `Error: 'overwrite' mode requires fully-read first. Path '${filePath}' was not fully read in this session. Use append=true, or read the file first (without truncation).`,
-        };
+      if (exists) {
+        const state = ctx.readFileState.get(resolved);
+        // L1: never read or partial read
+        if (!state || !state.isFullRead) {
+          return {
+            success: false,
+            content: `Error: File '${filePath}' has not been fully read in this daemon process. Read it first before overwriting (no offset/limit, no truncation triggered). For files exceeding read caps, use edit/multi_edit, or write with append:true.`,
+          };
+        }
+        // L2: external modification check (mtime advanced AND content hash differs)
+        try {
+          const stat = await ctx.fs.stat(resolved);
+          const currentMtime = stat.mtime.getTime();
+          if (currentMtime > state.timestamp) {
+            const currentContent = await ctx.fs.read(resolved);
+            if (computeContentHash(currentContent) !== state.hash) {
+              return {
+                success: false,
+                content: `Error: File '${filePath}' has been modified since your last read (either by the user or by another tool). Read it again before overwriting.`,
+              };
+            }
+            // mtime advanced but content unchanged (cloud sync touch / antivirus / etc.) — refresh timestamp + allow
+            state.timestamp = currentMtime;
+          }
+        } catch {
+          // stat/read failed mid-gate — fail safe: reject with re-read hint
+          return {
+            success: false,
+            content: `Error: Could not verify '${filePath}' is unchanged since last read. Read it again before overwriting.`,
+          };
+        }
       }
     }
 
@@ -82,8 +111,13 @@ export const writeTool: Tool = {
         await ctx.fs.append(resolved, content);
       } else {
         await ctx.fs.writeAtomic(resolved, content);
-        // overwrite 写成功时 add fullyReadPaths (append 不 add)
-        ctx.fullyReadPaths.add(resolved);
+        // overwrite 写成功 → 更新 readFileState（写入的就是新全文）
+        const newStat = await ctx.fs.stat(resolved);
+        ctx.readFileState.set(resolved, {
+          hash: computeContentHash(content),
+          timestamp: newStat.mtime.getTime(),
+          isFullRead: true,
+        });
       }
 
       const backupHint = backupPath ? ` (backup: ${backupPath})` : '';

@@ -15,6 +15,7 @@ import type { ToolResult } from '../tool-protocol/index.js';
 
 import { backupToSync } from './sync-backup.js';
 import { resolveWorkspacePath } from './resolve-path.js';
+import { computeContentHash } from './file-state.js';
 export const MULTI_EDIT_TOOL_NAME = 'multi_edit' as const;
 
 function countMatches(s: string, pattern: string): number {
@@ -138,7 +139,12 @@ export const multiEditTool: Tool = {
 
     // All edits succeeded — single atomic write
     await ctx.fs.writeAtomic(resolved, current);
-    ctx.fullyReadPaths.add(resolved);
+    const newStat = await ctx.fs.stat(resolved);
+    ctx.readFileState.set(resolved, {
+      hash: computeContentHash(current),
+      timestamp: newStat.mtime.getTime(),
+      isFullRead: true,
+    });
 
     const backupHint = backupPath ? ` (backup: ${backupPath})` : '';
     return {
