@@ -22,6 +22,7 @@ import type { AuditWriter } from '../../src/foundation/audit/writer.js';
 import type { FileSystem } from '../../src/foundation/fs/index.js';
 import { createEventCollector } from '../helpers/event-collector.js';
 import { NodeFileSystem } from '../../src/foundation/fs/index.js';
+import { SUBAGENT_LONG_TIMEOUT_MS } from '../helpers/test-timeouts.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -188,7 +189,7 @@ async function waitForAudit(
   fx: RegressionFixture,
   type: string,
   count = 1,
-  timeoutMs = 10000,
+  timeoutMs = SUBAGENT_LONG_TIMEOUT_MS,
 ): Promise<AuditRow[]> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {

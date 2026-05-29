@@ -79,6 +79,7 @@ import { InboxWriter } from '../../src/foundation/messaging/index.js';
 import { DEFAULT_MAX_STEPS } from '../../src/core/agent-executor/index.js';
 import { makeContractYaml } from '../helpers/contract-yaml.js';
 import { createToolRegistry } from '../../src/foundation/tools/index.js';
+import { WAIT_FOR_DEFAULT_BUDGET_MS } from '../helpers/test-timeouts.js';
 
 /**
  * Setup contract files for testing
@@ -162,7 +163,7 @@ async function waitForAcceptanceDone(
   auditEmitter: EventEmitter,
   contractId: string,
   subtaskId: string,
-  timeoutMs = 5000,
+  timeoutMs = WAIT_FOR_DEFAULT_BUDGET_MS,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {

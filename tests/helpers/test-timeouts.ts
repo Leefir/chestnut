@@ -22,3 +22,17 @@ export const SUBAGENT_WAIT_TIMEOUT_MS = 5000;
 
 /** Subagent long-running test timeout (10s = longer-poll task verification). */
 export const SUBAGENT_LONG_TIMEOUT_MS = 10000;
+
+/**
+ * Default budget for `waitFor` polling helper.
+ * Value derive: typical local test predicate satisfied in <100ms; ×50 CI safety = 5000ms.
+ * 同 SUBAGENT_WAIT_TIMEOUT_MS 数值，语义不同（前者是 subagent task lifecycle 超时、本常量是
+ * test helper 默认轮询 budget），故不复用。
+ */
+export const WAIT_FOR_DEFAULT_BUDGET_MS = 5000;
+
+/**
+ * Default poll interval for `waitFor` helper.
+ * Value derive: event-loop tick ~1-5ms 物理下界 / ×2 = 10ms granularity / 既不 busy-spin 也不漏窗.
+ */
+export const WAIT_FOR_DEFAULT_POLL_MS = 10;

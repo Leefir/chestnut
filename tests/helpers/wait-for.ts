@@ -1,11 +1,13 @@
+import { WAIT_FOR_DEFAULT_BUDGET_MS, WAIT_FOR_DEFAULT_POLL_MS } from './test-timeouts.js';
+
 /**
  * Poll until condition returns true or timeout.
  * Supports both sync and async predicates.
  */
 export async function waitFor(
   condition: () => boolean | Promise<boolean>,
-  timeoutMs = 5000,
-  intervalMs = 10,
+  timeoutMs = WAIT_FOR_DEFAULT_BUDGET_MS,
+  intervalMs = WAIT_FOR_DEFAULT_POLL_MS,
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   let lastError: unknown;
