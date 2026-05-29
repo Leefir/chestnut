@@ -116,9 +116,18 @@ export const createClawManager = (deps: ClawManagerDeps): ClawManager => {
                 appendCappedBuffer(track, (ev.delta as string) ?? '');
                 track.bufferType = 'thinking';
               } else if (ev.type === 'tool_call') {
+                // 首轮 tool_call（toolSuccess 仍 null）保留旧 thinking/text 显示执行上下文；
+                // 续轮（上一 tool 已 result、toolSuccess 已非 null）旧 buffer 已显示一轮，立即清防 stale 跨多 round 滞留。
+                // user 2026-05-29 ratify by phase 1429.
+                if (track.toolSuccess !== null) {
+                  track.textBuffer = '';
+                  track.bufferType = null;
+                  track.clearOnNextDelta = false;
+                } else {
+                  track.clearOnNextDelta = true;
+                }
                 track.currentTool = (ev.name as string) ?? null;
                 track.toolSuccess = null;
-                track.clearOnNextDelta = true;
               } else if (ev.type === 'text_delta') {
                 if (track.bufferType !== 'text' || track.clearOnNextDelta) {
                   track.textBuffer = '';

@@ -17,13 +17,13 @@
         },
         {
             "file": "src/cli/commands/chat-viewport-claw-manager.ts",
-            "line": 153,
+            "line": 162,
             "body_excerpt": "} catch { /* skip */ }",
             "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
         },
         {
             "file": "src/cli/commands/chat-viewport-claw-manager.ts",
-            "line": 158,
+            "line": 167,
             "body_excerpt": "} catch { /* ENOENT 等，跳过 */ }",
             "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
         },
