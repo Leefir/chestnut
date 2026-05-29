@@ -42,7 +42,11 @@ describe('FileWatcher', () => {
     await fsp.rm(tmpDir, { recursive: true, force: true });
   });
 
-  async function waitForCount(arr: unknown[], n: number, timeoutMs = 5000): Promise<void> {
+  // chokidar is vi.mocked with `queueMicrotask(emit(...))` (line 21+) so emit happens at
+  // end of current microtask tick (<1ms in practice). Budget = microtask_max (~5ms) × CI safety (×100).
+  const MOCK_EVENT_PROPAGATION_BUDGET_MS = 500;
+
+  async function waitForCount(arr: unknown[], n: number, timeoutMs = MOCK_EVENT_PROPAGATION_BUDGET_MS): Promise<void> {
     const start = Date.now();
     while (arr.length < n) {
       if (Date.now() - start > timeoutMs) {
@@ -161,7 +165,7 @@ describe('FileWatcher', () => {
     );
 
     // chokidar emits 'error' for invalid path with null byte / waitFor strict（不 silent skip）
-    await waitFor(() => errors.length > 0, 2000);
+    await waitFor(() => errors.length > 0, MOCK_EVENT_PROPAGATION_BUDGET_MS);
     await watcher.close();
 
     expect(errors.some(e => e.context === 'watch')).toBe(true);

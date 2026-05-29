@@ -13,6 +13,11 @@ import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { createToolRegistry } from '../../src/foundation/tools/index.js';
 import { makeContractYaml } from '../helpers/contract-yaml.js';
 import { CONTRACT_AUDIT_EVENTS } from '../../src/core/contract/audit-events.js';
+import {
+  WAIT_FOR_DEFAULT_BUDGET_MS,
+  WAIT_FOR_DEFAULT_POLL_MS,
+  SUBAGENT_LONG_TIMEOUT_MS,
+} from '../helpers/test-timeouts.js';
 
 const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });
 
@@ -66,7 +71,7 @@ describe('contract-motion-full-chain (phase 1168 α-5)', () => {
     await fs.writeFile(path.join(promptDir, 'task-1.prompt.txt'), 'Check: {{evidence}}');
   }
 
-  async function waitForAudit(type: string, timeoutMs = 5000): Promise<void> {
+  async function waitForAudit(type: string, timeoutMs = WAIT_FOR_DEFAULT_BUDGET_MS): Promise<void> {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
       if (auditEvents.some(e => e[0] === type)) return;
@@ -75,7 +80,7 @@ describe('contract-motion-full-chain (phase 1168 α-5)', () => {
     throw new Error(`timeout waiting for audit event ${type}`);
   }
 
-  async function waitForArchive(contractId: string, timeoutMs = 5000): Promise<boolean> {
+  async function waitForArchive(contractId: string, timeoutMs = WAIT_FOR_DEFAULT_BUDGET_MS): Promise<boolean> {
     const archiveDir = path.join(clawDir, 'contract/archive', contractId);
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
@@ -184,13 +189,13 @@ describe('contract-motion-full-chain (phase 1168 α-5)', () => {
     // Wait for verifier to start (active verifier count > 0)
     await vi.waitFor(
       () => expect(manager.getActiveVerifierCount()).toBeGreaterThanOrEqual(1),
-      { timeout: 5000, interval: 10 },
+      { timeout: WAIT_FOR_DEFAULT_BUDGET_MS, interval: WAIT_FOR_DEFAULT_POLL_MS },
     );
 
     await manager.cancel(contractId, 'test cancel');
 
-    // Wait for background to finish
-    await waitForAudit('contract_verification_background_done', 8000);
+    // Wait for background to finish (long-poll budget for verifier teardown).
+    await waitForAudit('contract_verification_background_done', SUBAGENT_LONG_TIMEOUT_MS);
 
     // verification_failed should NOT be emitted for cancelled contract
     const failedEvents = auditEvents.filter(e => e[0] === CONTRACT_AUDIT_EVENTS.VERIFICATION_FAILED);

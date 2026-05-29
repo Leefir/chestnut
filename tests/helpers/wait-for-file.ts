@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { WAIT_FOR_DEFAULT_BUDGET_MS } from './test-timeouts.js';
 
 /**
  * Poll a file until its content matches a regex or timeout.
@@ -7,7 +8,7 @@ import { readFile } from 'node:fs/promises';
 export async function waitForCompleteFile(
   path: string,
   regex: RegExp,
-  timeoutMs = 5000,
+  timeoutMs = WAIT_FOR_DEFAULT_BUDGET_MS,
 ): Promise<string> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {

@@ -204,8 +204,11 @@ describe('Task System + SubAgent', () => {
       // Wait for TASK_COMPLETED audit event (phase 1143 — was waitFor fs poll, flaky)
       await waitForAuditEvent(emitter, events, TASK_AUDIT_EVENTS.TASK_COMPLETED);
 
-      // Allow brief fs flush after audit event (R1: emit may slightly precede writeAtomic)
-      await waitFor(() => ctx.mockFs.exists(`tasks/queues/done/${taskId}.json`), 1000);
+      // Allow brief fs flush after audit event (R1: emit may slightly precede writeAtomic).
+      // Budget derive: typical fs.move on local tmpfs ~5ms × CI safety (×200) = 1000ms.
+      // 比 default 5s budget 紧 5×、保 regression 可见（若 move 真退化到 >1s 立 fail-loud）。
+      const POST_AUDIT_FS_FLUSH_BUDGET_MS = 1000;
+      await waitFor(() => ctx.mockFs.exists(`tasks/queues/done/${taskId}.json`), POST_AUDIT_FS_FLUSH_BUDGET_MS);
 
       // Task should be moved to done
       const doneExists = await ctx.mockFs.exists(`tasks/queues/done/${taskId}.json`);

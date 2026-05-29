@@ -1,9 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createWatcher } from '../../../src/foundation/file-watcher/index.js';
+import { createWatcher, FALLBACK_CONSECUTIVE_FAIL_LIMIT } from '../../../src/foundation/file-watcher/index.js';
 import path from 'node:path';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import { waitFor } from '../../helpers/wait-for.js';
+
+const FAST_POLL_MS = 10;
+// Expected time to reach escalation = FAST_POLL_MS × FALLBACK_CONSECUTIVE_FAIL_LIMIT (50ms).
+// Wall-clock safety factor for CI load (×100) — same shape as other src→test derivation
+// patterns (mirror Tier 1 magic-treatment-kit src cluster #4 derive-from-export pattern).
+const WALL_CLOCK_SAFETY_FACTOR = 100;
+const ESCALATION_WAIT_BUDGET_MS = FAST_POLL_MS * FALLBACK_CONSECUTIVE_FAIL_LIMIT * WALL_CLOCK_SAFETY_FACTOR;
+const RESET_OBSERVATION_POLL_COUNT = 10;
+const POST_RESET_WAIT_BUDGET_MS = FAST_POLL_MS * RESET_OBSERVATION_POLL_COUNT * WALL_CLOCK_SAFETY_FACTOR;
 
 describe('fallback poller escalation (macOS only)', () => {
   let tmpDir: string;
@@ -33,7 +42,7 @@ describe('fallback poller escalation (macOS only)', () => {
 
       const watcher = createWatcher(testFile, callback, {
         stability: 'immediate',
-        fallbackPollMs: 10, // fast poll for test
+        fallbackPollMs: FAST_POLL_MS,
         onError: (err, context) => {
           errors.push({ err, context });
         },
@@ -42,8 +51,8 @@ describe('fallback poller escalation (macOS only)', () => {
       // Wait for fallback_limit_reset context (replaces fixed setTimeout(100)).
       await waitFor(
         () => errors.some(e => e.context === 'fallback_limit_reset'),
-        5000,
-        10,
+        ESCALATION_WAIT_BUDGET_MS,
+        FAST_POLL_MS,
       );
 
       // Assert escalation
@@ -54,7 +63,7 @@ describe('fallback poller escalation (macOS only)', () => {
       // phase 1082: poller is NOT permanently disabled — it resets counter and continues.
       // Verify callbacks keep accumulating after the limit is reached.
       const countAtLimit = callback.mock.calls.length;
-      await waitFor(() => callback.mock.calls.length > countAtLimit, 5000);
+      await waitFor(() => callback.mock.calls.length > countAtLimit, ESCALATION_WAIT_BUDGET_MS);
       expect(callback.mock.calls.length).toBeGreaterThan(countAtLimit);
 
       // Stop watcher (clearInterval again is no-op-safe)
@@ -76,17 +85,17 @@ describe('fallback poller escalation (macOS only)', () => {
 
       const watcher = createWatcher(testFile, callback, {
         stability: 'immediate',
-        fallbackPollMs: 10,
+        fallbackPollMs: FAST_POLL_MS,
         onError: (err, context) => {
           errors.push({ err, context });
         },
       });
 
-      // Wait until ≥10 polls have run (3 fails + ≥7 successes — counter must reset).
+      // Wait until ≥RESET_OBSERVATION_POLL_COUNT polls have run (3 fails + ≥7 successes — counter must reset).
       await waitFor(
-        () => callback.mock.calls.length >= 10,
-        5000,
-        10,
+        () => callback.mock.calls.length >= RESET_OBSERVATION_POLL_COUNT,
+        POST_RESET_WAIT_BUDGET_MS,
+        FAST_POLL_MS,
       );
       await watcher.close();
 

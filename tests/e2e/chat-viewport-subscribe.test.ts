@@ -7,6 +7,7 @@ import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { createStreamReader, STREAM_FILE, type StreamEvent, type StreamReader } from '../../src/foundation/stream/index.js';
 import { makeAudit } from '../helpers/audit.js';
 import { waitFor } from '../helpers/wait-for.js';
+import { SUBAGENT_LONG_TIMEOUT_MS } from '../helpers/test-timeouts.js';
 import { VIEWPORT_AUDIT_EVENTS } from '../../src/cli/commands/viewport-audit-events.js';
 import { STREAM_AUDIT_EVENTS } from '../../src/foundation/stream/audit-events.js';
 import { createMainTurnUI, createTaskEventHandler, type MainTurnUIController } from '../../src/cli/commands/chat-viewport.js';
@@ -305,14 +306,14 @@ describe('chat-viewport 主 UI 并发隔离（phase162 streamReader）', () => {
     await appendJsonl(mainStreamPath, { type: 'turn_start' });
     await appendJsonl(mainStreamPath, { type: 'llm_start' });
     await appendJsonl(mainStreamPath, { type: 'text_delta', delta: 'hello' });
-    await waitFor(() => mainUI.getPreview().includes('hello'), 10000);
+    await waitFor(() => mainUI.getPreview().includes('hello'), SUBAGENT_LONG_TIMEOUT_MS);
     expect(mainUI.getPreview()).toContain('hello');
 
     // task stream：tool_call → tool_result → turn_end（subagent 活动）
     await appendJsonl(taskStreamPath, { type: 'tool_call', name: 'read_file' });
     await appendJsonl(taskStreamPath, { type: 'tool_result', success: true, step: 1, maxSteps: 3, summary: 'ok' });
     await appendJsonl(taskStreamPath, { type: 'turn_end' });
-    await waitFor(() => taskStatusBarCalls.length >= 2, 10000);
+    await waitFor(() => taskStatusBarCalls.length >= 2, SUBAGENT_LONG_TIMEOUT_MS);
 
     // 关键断言：task 事件过后主 preview 不被清空
     expect(mainUI.getPreview()).toContain('hello');

@@ -99,8 +99,11 @@ describe('LLMOrchestratorImpl timeout distinction (Phase 538)', () => {
       yield { type: 'text_delta', delta: 'first' };
       // 之后长期不 yield chunk → idle timeout 触发
       // 但 generator 需要响应 signal abort，否则不会停止
+      // Sleep duration derive: streamIdleTimeoutMs (50ms, line 127) × 100 safety = 5000ms;
+      // mock must outlive idle timeout 才能让 idle 路径触发 abort.
+      const MOCK_OUTLIVE_IDLE_MS = 50 * 100;
       await new Promise<void>((resolve, reject) => {
-        const timer = setTimeout(resolve, 5000); // sleep: mock stream idle timeout
+        const timer = setTimeout(resolve, MOCK_OUTLIVE_IDLE_MS);
         opts.signal?.addEventListener('abort', () => {
           clearTimeout(timer);
           reject(new Error('AbortError'));
