@@ -10,7 +10,7 @@ import { CliError } from '../errors.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { CLI_AUDIT_EVENTS } from '../audit-events.js';
-import { MESSAGING_AUDIT_EVENTS } from '../../foundation/messaging/audit-events.js';
+import { MESSAGING_AUDIT_EVENTS } from '../../foundation/messaging/index.js';
 
 export async function outboxCommand(
   deps: { fsFactory: (baseDir: string) => FileSystem },

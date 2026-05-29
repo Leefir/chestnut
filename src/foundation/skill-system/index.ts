@@ -8,7 +8,8 @@ import type { AuditLog } from '../../foundation/audit/index.js';
 import { SkillSystem } from './registry.js';
 
 export { SkillSystem, type SkillMeta } from './registry.js';
-export { SKILLS_DIR_DEFAULT } from './skill-paths.js';
+// phase 1435 F9: + BUNDLED_SKILLS_DIR_NAME barrel re-export
+export { SKILLS_DIR_DEFAULT, BUNDLED_SKILLS_DIR_NAME } from './skill-paths.js';
 
 /**
  * 构造 SkillSystem。

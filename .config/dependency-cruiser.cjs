@@ -242,6 +242,30 @@ module.exports = {
       to: { path: '^src/foundation/utils/result\\.ts$' },
     },
     {
+      name: 'no-deep-into-messaging-audit-events',
+      comment: [
+        'ML#7 + ML#9 — foundation/messaging/audit-events.ts const 跨模块通道仅 barrel。',
+        '跨模块 caller (cli/, daemon/) 只能 import messaging/index.ts、',
+        '不得深穿 audit-events.ts。',
+        'phase 1435 F8 立、treat finding F8 messaging/audit-events ⏳ → ✅。',
+      ].join(' '),
+      severity: 'error',
+      from: { path: '^src', pathNot: '^src/foundation/messaging/' },
+      to: { path: '^src/foundation/messaging/audit-events\\.ts$' },
+    },
+    {
+      name: 'no-deep-into-skill-paths',
+      comment: [
+        'ML#7 + ML#9 — foundation/skill-system/skill-paths.ts const 跨模块通道仅 barrel。',
+        '跨模块 caller (cli/) 只能 import skill-system/index.ts、',
+        '不得深穿 skill-paths.ts。',
+        'phase 1435 F9 立、treat finding F9 skill-paths ⏳ → ✅。',
+      ].join(' '),
+      severity: 'error',
+      from: { path: '^src', pathNot: '^src/foundation/skill-system/' },
+      to: { path: '^src/foundation/skill-system/skill-paths\\.ts$' },
+    },
+    {
       name: 'no-circular',
       comment: [
         'ML#5 模块依赖单向、禁止双向/循环',

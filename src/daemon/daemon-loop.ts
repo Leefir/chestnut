@@ -21,7 +21,7 @@ import type { StreamWriter, StreamLog } from '../foundation/stream/index.js';
 import { createWatcher } from '../foundation/file-watcher/index.js';
 import type { Watcher } from '../foundation/file-watcher/index.js';
 import type { AuditLog } from '../foundation/audit/index.js';
-import { MESSAGING_AUDIT_EVENTS } from '../foundation/messaging/audit-events.js';
+import { MESSAGING_AUDIT_EVENTS } from '../foundation/messaging/index.js';
 import { DAEMON_AUDIT_EVENTS, LOOP_ITERATION_TYPES, LOOP_INTERRUPT_CAUSES } from './audit-events.js';
 
 import { AGENT_STREAM_EVENTS } from '../core/agent-executor/index.js';

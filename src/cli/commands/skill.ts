@@ -7,7 +7,7 @@
 
 import * as path from 'path';
 import { CLAWSPACE_DIR, getWorkspaceRoot } from '../../foundation/paths.js';
-import { SKILLS_DIR_DEFAULT } from '../../foundation/skill-system/skill-paths.js';
+import { SKILLS_DIR_DEFAULT } from '../../foundation/skill-system/index.js';
 import { DISPATCH_SKILLS_SUBDIR } from '../../foundation/paths.js';
 import { getClawDir } from '../../foundation/config/index.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
