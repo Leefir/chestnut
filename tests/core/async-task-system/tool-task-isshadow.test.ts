@@ -216,7 +216,7 @@ describe('async ToolTask isShadow propagation (phase 858)', () => {
       incrementStep: vi.fn(),
       stopRequested: false,
       requestStop: vi.fn(),
-      fullyReadPaths: new Set(),
+      readFileState: new Map(),
     };
 
     const result = await executor.execute({

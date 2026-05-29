@@ -15,6 +15,7 @@ import type { ToolResult } from '../tool-protocol/index.js';
 
 import { backupToSync } from './sync-backup.js';
 import { resolveWorkspacePath } from './resolve-path.js';
+import { computeContentHash } from './file-state.js';
 export const EDIT_TOOL_NAME = 'edit' as const;
 
 function countMatches(s: string, pattern: string): number {
@@ -114,7 +115,13 @@ export const editTool: Tool = {
       : content.replace(oldString, newString);
 
     await ctx.fs.writeAtomic(resolved, replaced);
-    ctx.fullyReadPaths.add(resolved);
+    // edit operates on whole content (read full, replace, write back) → counts as full read post-edit
+    const newStat = await ctx.fs.stat(resolved);
+    ctx.readFileState.set(resolved, {
+      hash: computeContentHash(replaced),
+      timestamp: newStat.mtime.getTime(),
+      isFullRead: true,
+    });
 
     const replacedCount = replaceAll ? matches : 1;
     const backupHint = backupPath ? ` (backup: ${backupPath})` : '';

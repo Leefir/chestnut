@@ -78,8 +78,11 @@ export interface ExecContextImplOptions {
   auditWriter?: AuditLog;
   /** Current tool_use block id (set by ToolExecutor before tool.execute) */
   currentToolUseId?: string;
-  /** Session-scoped fully-read paths（read 未截断时 add / overwrite gate / phase 487 G6） */
-  fullyReadPaths?: Set<string>;
+  /**
+   * Per-claw read state for overwrite gate (phase 1430).
+   * See ExecContext.readFileState for semantics.
+   */
+  readFileState?: Map<string, import('../file-tool/file-state.js').FileState>;
   /** Tool registry reference for sync spawn path (phase 766) */
   registry?: ToolRegistry;
   /** Whether this context belongs to a shadow agent (phase 766 prep for 767) */
@@ -160,7 +163,7 @@ export class ExecContextImpl implements ExecContext {
   originClawId?: string;
   auditWriter?: AuditLog;
   currentToolUseId?: string;
-  fullyReadPaths: Set<string>;
+  readFileState: Map<string, import('../file-tool/file-state.js').FileState>;
   registry?: ToolRegistry;
   isShadow?: boolean;
   permissionChecker?: PermissionChecker;
@@ -190,7 +193,7 @@ export class ExecContextImpl implements ExecContext {
     this.originClawId = options.originClawId;
     this.auditWriter = options.auditWriter;
     this.currentToolUseId = options.currentToolUseId;
-    this.fullyReadPaths = options.fullyReadPaths ?? new Set();
+    this.readFileState = options.readFileState ?? new Map();
     this.registry = options.registry;
     this.isShadow = options.isShadow;
     this.permissionChecker = options.permissionChecker;

@@ -28,7 +28,7 @@ export function makeExecContext(overrides: Partial<ExecContext> = {}): ExecConte
     incrementStep: vi.fn(function (this: { stepNumber: number }) { this.stepNumber++; }),
     stopRequested: false,
     requestStop: vi.fn(),
-    fullyReadPaths: new Set(),
+    readFileState: new Map(),
   } as ExecContext;
 
   return { ...defaults, ...overrides } as ExecContext;

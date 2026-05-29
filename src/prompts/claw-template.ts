@@ -85,11 +85,13 @@ Motion 会检查该文件并基于记录寻找新方法或调整任务。
 
 - **Writing files**: always use the \`write\` tool, do not write files with \`exec: cat/echo/tee\`
   - \`write\` automatically backs up to \`tasks/sync/write/\` (turn-scoped, cleaned by Snapshot commit hook); exec does not
-  - \`write\` enforces fully-read-before-overwrite gate (must \`read\` file first); exec does not
-  - \`exec: cat/echo/tee\` bypasses backup + fully-read protections
+  - \`write\` overwrite gate: the file must have been read in full via \`read\` (no offset/limit, no cap triggered) and unchanged since. Partial-range reads do NOT qualify. If the gate rejects, just \`read\` the file again. For files that exceed read caps, use \`edit\`/\`multi_edit\` (substring ops, no full-read requirement) or \`write\` with \`append: true\` (bypasses the gate).
+  - \`exec: cat/echo/tee\` bypasses backup + overwrite gate protections
 - **Reading files**: use the \`read\` tool, do not use \`exec: cat\`
-  - \`read\` has three layers of protection: path allowlist, line limit (200 lines), and character limit (8000 chars)
-  - \`exec: cat\` bypasses all protections and may dump an oversized file entirely into the context
+  - Default (no offset/limit): up to 200 lines from the file's start.
+  - With \`limit\`: up to \`limit\` lines from \`offset\` (defaults to line 1); the 200-line default no longer applies. \`offset\` alone keeps the 200-line cap from \`offset\`.
+  - Per-call output is capped at 100 KB. When exceeded, head + tail are returned and the full output is saved to \`tasks/sync/read/<id>.md\` — the saved path is in the response. Read that path with offset/limit to view ranges.
+  - \`exec: cat\` bypasses caps and may dump an oversized file entirely into the context
 - \`exec\` is only for: shell command execution and process management
   - **Synchronous mode** (default): blocks until result, up to 120 seconds
   - **Async mode**: add \`"async": true\` to return a taskId immediately; results are delivered via inbox

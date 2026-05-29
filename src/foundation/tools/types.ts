@@ -97,8 +97,12 @@ export interface ExecContext {
   auditWriter?: AuditLog;
   /** Current tool_use block id (set by ToolExecutor before tool.execute) */
   currentToolUseId?: string;
-  /** Session-scoped fully-read paths（read 未截断时 add / overwrite gate / phase 487 G6） */
-  fullyReadPaths: Set<string>;
+  /**
+   * Per-claw read state for overwrite gate (phase 1430、formerly `fullyReadPaths: Set<string>`).
+   * Map<resolvedPath, FileState{hash, timestamp, isFullRead}> — daemon-process scoped.
+   * Cross-claw reads MUST NOT write to caller's map (per §7.A.invariant 2).
+   */
+  readFileState: Map<string, import('../file-tool/file-state.js').FileState>;
   /** Tool registry reference for sync spawn path (phase 766) */
   registry?: ToolRegistry;
   /** Whether this context belongs to a shadow agent (phase 766 prep for 767) */
