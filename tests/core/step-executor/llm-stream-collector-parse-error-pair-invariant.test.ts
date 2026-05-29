@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createStreamState, flushToolUse, finalizeContent } from '../../../src/core/step-executor/stream.js';
+import { createStreamState, flushToolUse, finalizeContent } from '../../../src/core/step-executor/llm-stream-collector.js';
 import type { StepCallbacks } from '../../../src/core/step-executor/types.js';
 
 describe('step-executor — stream parseError pair invariant (phase 1282)', () => {

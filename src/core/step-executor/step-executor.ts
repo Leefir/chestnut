@@ -26,7 +26,7 @@ import type { StepCallbacks } from './types.js';
 import { REACT_DEFAULT_MAX_TOKENS } from '../step-executor/constants.js';
 import { throwAbortError } from './abort-helpers.js';
 import { safeCallback, extractText, appendAssistantMessage } from './utils.js';
-import { collectStreamResponse } from './stream.js';
+import { collectStreamResponse } from './llm-stream-collector.js';
 import { handleToolUseStop, handleMaxTokensStop } from './stop-handlers.js';
 
 export async function executeStep(input: StepInput): Promise<StepResult> {

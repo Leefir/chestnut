@@ -35,12 +35,12 @@ export class StreamWriter implements StreamLog {
     if (this.fs.existsSync(STREAM_FILE)) {
       try {
         // Phase 1105: truncation recovery before archive — ensure last line is complete
-        const nodeFs = this.fs as unknown as { readSync(path: string): string; writeAtomicSync(path: string, content: string): void };
+        // phase 1407: 删历史遗留 type assertion / readSync + writeAtomicSync 已在 FileSystem 接口 (types.ts:163,180)
         try {
-          const content = nodeFs.readSync(STREAM_FILE);
+          const content = this.fs.readSync(STREAM_FILE);
           const lastNewline = content.lastIndexOf('\n');
           if (lastNewline !== -1 && lastNewline < content.length - 1) {
-            nodeFs.writeAtomicSync(STREAM_FILE, content.substring(0, lastNewline + 1));
+            this.fs.writeAtomicSync(STREAM_FILE, content.substring(0, lastNewline + 1));
           }
         } catch (err) {
           this.audit.write(

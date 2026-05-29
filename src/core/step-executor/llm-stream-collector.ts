@@ -1,6 +1,7 @@
 /**
- * @module L3.StepExecutor.Stream
- * LLM stream collection — StreamState + stream functions
+ * @module L3.StepExecutor.LLMStreamCollector
+ * LLM provider stream collection — StreamState + collect/flush helpers.
+ * phase 1407: renamed from `stream.ts` to disambiguate from L2 `foundation/stream/` event-log module.
  */
 
 import type { ContentBlock } from '../../foundation/llm-provider/types.js';
