@@ -166,18 +166,18 @@ export function createEventHandler(deps: EventHandlerDeps) {
         const userActionHint = event.userActionHint as string | undefined;
         const errorMsg = event.error as string;
         if (errorClass === 'permanent') {
-          const hintZh = userActionHint === 'rotate_api_key' ? '检查或更新 API key'
-            : userActionHint === 'switch_primary' ? '检查 model 名或切换首选供应商'
-            : userActionHint === 'wait_retry_after' ? '等限流冷却或换 primary'
-            : userActionHint === 'check_quota' ? '检查配额或充值'
-            : '请查看 audit log 详情';
-          const classZh = errorClass === 'permanent' ? 'auth/quota/model 错'
-            : errorClass === 'transient' ? '网络/服务暂时不可用'
-            : errorClass === 'rate_limit' ? '触发限流'
-            : errorClass === 'abort' ? '中断'
-            : '未知错误';
+          const hint = userActionHint === 'rotate_api_key' ? 'rotate or update API key'
+            : userActionHint === 'switch_primary' ? 'check model name or switch primary provider'
+            : userActionHint === 'wait_retry_after' ? 'wait for rate-limit cooldown or switch primary'
+            : userActionHint === 'check_quota' ? 'check quota or top up'
+            : 'see audit log for details';
+          const classLabel = errorClass === 'permanent' ? 'auth/quota/model error'
+            : errorClass === 'transient' ? 'network/service unavailable'
+            : errorClass === 'rate_limit' ? 'rate limited'
+            : errorClass === 'abort' ? 'aborted'
+            : 'unknown error';
           const shortErr = typeof errorMsg === 'string' && errorMsg.length > 60 ? errorMsg.slice(0, 57) + '...' : errorMsg;
-          deps.appendOutput('\x1b[31m', `⚠ ${providerName} ${classZh}（${shortErr}）/ 已 failover / 建议${hintZh}`);
+          deps.appendOutput('\x1b[2m', `\x1b[38;5;203m✗\x1b[0m \x1b[2m${providerName} ${classLabel} (${shortErr}) / failed over / suggestion: ${hint}\x1b[0m`);
         }
         break;
       }

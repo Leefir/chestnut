@@ -32,7 +32,7 @@ describe('chat-viewport error handling (phase 523 + 524)', () => {
     });
 
     it('catch 块含红色 appendOutput error', () => {
-      const match = sourceCode.match(/catch\s*\(err\)\s*\{[\s\S]*?\\x1b\[31m[\s\S]*?消息发送失败[\s\S]*?\}/);
+      const match = sourceCode.match(/catch\s*\(err\)\s*\{[\s\S]*?\\x1b\[31m[\s\S]*?failed to send message[\s\S]*?\}/);
       expect(match).toBeTruthy();
     });
   });
@@ -55,7 +55,7 @@ describe('chat-viewport error handling (phase 523 + 524)', () => {
     });
 
     it('catch 块含 audit COMMAND_ERROR + 红色 appendOutput', () => {
-      const match = sourceCode.match(/catch\s*\(err\)\s*\{[\s\S]*?VIEWPORT_AUDIT_EVENTS\.COMMAND_ERROR[\s\S]*?\\x1b\[31m[\s\S]*?执行失败[\s\S]*?\}/);
+      const match = sourceCode.match(/catch\s*\(err\)\s*\{[\s\S]*?VIEWPORT_AUDIT_EVENTS\.COMMAND_ERROR[\s\S]*?\\x1b\[31m[\s\S]*?failed:[\s\S]*?\}/);
       expect(match).toBeTruthy();
     });
 

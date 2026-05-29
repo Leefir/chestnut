@@ -214,7 +214,7 @@ describe('chat-viewport Phase 72', () => {
 
     it('/help appendOutput 调用应使用 wrap=true', () => {
       // 找到 help 命令区域（以可用命令列表为特征）
-      const helpStart = sourceCode.indexOf("'可用命令：'");
+      const helpStart = sourceCode.indexOf("'Available commands:'");
       expect(helpStart).toBeGreaterThan(-1);
       const helpSection = sourceCode.slice(helpStart, helpStart + 500);
       // 该区域的 appendOutput 调用应有 true 参数
