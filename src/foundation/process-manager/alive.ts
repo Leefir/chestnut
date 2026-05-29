@@ -4,6 +4,19 @@ import type { ProcessManagerContext } from './types.js';
 import type { ClawId } from '../identity/index.js';
 
 
+/**
+ * Read the PID file for a claw and return its liveness verdict.
+ *
+ * Side-effect free probe (M#1): never deletes / repairs a stale pidfile —
+ * cleanup is the responsibility of explicit stop/recovery paths.
+ *
+ * @param ctx       Process manager context (fs + audit + resolveDir)
+ * @param clawId    Target claw
+ * @returns         `alive`: liveness verdict; `reason`: human-readable cause;
+ *                  `pid`: parsed PID when readable (regardless of liveness).
+ *                  Unknown exceptions during the OS probe degrade to `alive=true`
+ *                  to avoid killing a healthy process (PM-5).
+ */
 export function getAliveStatus(
   ctx: ProcessManagerContext,
   clawId: ClawId,

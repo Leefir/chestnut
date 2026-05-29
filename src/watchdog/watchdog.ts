@@ -27,6 +27,7 @@ import { makeClawId, makeClawforumRoot, makeClawDir } from '../foundation/identi
 import type { FileSystem } from '../foundation/fs/types.js';
 import { type AuditLog, createAuditWriter } from '../foundation/audit/index.js';
 import { createProcessManagerForCLI } from '../foundation/process-manager/factories.js';
+import { LockConflictError } from '../foundation/process-manager/index.js';
 import { WATCHDOG_AUDIT_EVENTS } from './audit-events.js';
 import { CLAWS_DIR } from '../foundation/paths.js';
 import { DAEMON_LOG } from '../daemon/constants.js';
@@ -169,7 +170,7 @@ export async function runWatchdogLoop(fsFactory: (baseDir: string) => FileSystem
         // best-effort cleanup before respawn / per phase 636 ratify:
         //   - cleanup failure 可能源:
         //     (a) 真 stale PID 文件 → safe to ignore (audit captures)
-        //     (b) motion 仍活（race / 另 watchdog instance spawn 中）→ spawn 端 line 168 'already running' explicit handle
+        //     (b) motion 仍活（race / 另 watchdog instance spawn 中）→ spawn 抛 LockConflictError、捕获后 reset 计数
         //   - cleanup 失败不阻塞 respawn / spawn 自身判 race / failure 仅 audit observability
         await pm.stop(MOTION_CLAW_ID).catch((e) => {
           const msg = `[watchdog] Failed to clean up motion before restart: ${e instanceof Error ? e.message : String(e)}`;
@@ -192,7 +193,7 @@ export async function runWatchdogLoop(fsFactory: (baseDir: string) => FileSystem
         auditWriter.write('process_spawn', MOTION_CLAW_ID, `pid=${pid}`);
         motionRestartFailures = 0;  // Success, reset counter
       } catch (err) {
-        if (err instanceof Error && err.message.includes('already running')) {
+        if (err instanceof LockConflictError) {
           // 另一个 watchdog 实例已经启动了 motion，不算失败
           log(fsFactory, `[watchdog] motion already started by another instance`);
           motionRestartFailures = 0;

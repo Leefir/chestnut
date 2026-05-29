@@ -50,6 +50,19 @@ export async function markNotReady(ctx: ProcessManagerContext, clawId: ClawId): 
   }
 }
 
+/**
+ * Check whether the claw's daemon has marked itself ready and is still the same
+ * process the PID file points to. Returns false on any kind of mismatch
+ * (stale ready marker, missing files, parse failure).
+ *
+ * Cross-checks `ready` file pid+startTime against `pid` file to defend against
+ * stale ready markers from a prior process recycled into the same PID.
+ *
+ * @param ctx     Process manager context
+ * @param clawId  Target claw
+ * @returns       true only when ready marker and PID file agree on identity
+ *                and the OS confirms the process is still alive.
+ */
 export function isReady(ctx: ProcessManagerContext, clawId: ClawId): boolean {
   const readyFile = getReadyFile(ctx, clawId);
   const pidFile = getPidFile(ctx, clawId);

@@ -1,4 +1,6 @@
-import { type ClawforumRoot } from '../../foundation/identity/index.js';/**
+import { type ClawforumRoot } from '../../foundation/identity/index.js';
+
+/**
  * @module L2.ProcessManager.SignalCleanStop
  * Explicit clean-stop flag API (phase 1373 sub-3).
  *

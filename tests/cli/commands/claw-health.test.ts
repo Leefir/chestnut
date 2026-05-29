@@ -32,8 +32,12 @@ vi.mock('../../../src/foundation/config/index.js', () => ({
   getGlobalConfigPath: vi.fn(),
 }));
 
-vi.mock('../../../src/foundation/process-manager/factories.js', () => ({
+vi.mock('../../../src/foundation/audit/index.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../src/foundation/audit/index.js')>()),
   createDirContext: vi.fn((deps: any) => ({ audit: { write: vi.fn() } })),
+}));
+
+vi.mock('../../../src/foundation/process-manager/factories.js', () => ({
   createProcessManagerForCLI: vi.fn((deps: any) => ({ isAlive: vi.fn() })),
 }));
 

@@ -24,7 +24,7 @@ import { createProcessManagerForCLI } from '../../foundation/process-manager/fac
 import { passwordQuestion } from '../utils/password-prompt.js';
 import { ContractSystem } from '../../core/contract/index.js';
 import { createToolRegistry } from '../../foundation/tools/index.js';
-import { createDirContext } from '../../foundation/process-manager/factories.js';
+import { createDirContext } from '../../foundation/audit/index.js';
 import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 import { notifyClaw } from '../../foundation/messaging/index.js';
 import { makeClawforumRoot } from '../../foundation/identity/index.js';

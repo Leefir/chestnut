@@ -29,6 +29,7 @@ export { AUDIT_MESSAGE_MAX_CHARS } from './defaults.js';
 export { AUDIT_PREVIEW_LEN } from '../constants.js';
 export { BatchedAuditWriter } from './batched-writer.js';
 export type { BatchedAuditWriterOptions } from './batched-writer.js';
+export { createDirContext } from './dir-context.js';
 
 export function createSystemAudit(fs: FileSystem, baseDir: string): AuditLog {
   return new AuditWriter(fs, path.join(baseDir, AUDIT_FILE));

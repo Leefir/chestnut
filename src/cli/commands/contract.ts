@@ -7,7 +7,7 @@ import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { ContractSystem, type ContractYaml, type ProgressData } from '../../core/contract/index.js';
 import { collectContractEvents } from '../../core/contract/index.js';
-import { createDirContext } from '../../foundation/process-manager/factories.js';
+import { createDirContext } from '../../foundation/audit/index.js';
 import { getClawDir } from '../../foundation/config/index.js';
 import { notifySystem } from '../../foundation/messaging/index.js';
 // STREAM_AUDIT_EVENTS.APPEND_FAILED → inline string to decouple CLI from stream audit constants (phase1101)

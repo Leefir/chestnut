@@ -4,7 +4,8 @@ import * as os from 'os';
 import * as path from 'path';
 import { type ContractYaml } from '../../src/core/contract/index.js';
 
-vi.mock('../../src/foundation/process-manager/factories.js', () => ({
+vi.mock('../../src/foundation/audit/index.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/foundation/audit/index.js')>()),
   createDirContext: vi.fn((_deps: any) => ({
     fs: {
       appendSync: vi.fn(() => { throw new Error('disk full'); }),
@@ -18,7 +19,7 @@ vi.mock('../../src/foundation/messaging/index.js', () => ({
 }));
 
 import { notifyContractCreated } from '../../src/cli/commands/contract.js';
-import { createDirContext } from '../../src/foundation/process-manager/factories.js';
+import { createDirContext } from '../../src/foundation/audit/index.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 
 const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });

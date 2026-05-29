@@ -10,7 +10,8 @@ import {
 import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
 import { CliError } from '../errors.js';
 import { runChatViewport } from './chat-viewport.js';
-import { createDirContext, createProcessManagerForCLI } from '../../foundation/process-manager/factories.js';
+import { createDirContext } from '../../foundation/audit/index.js';
+import { createProcessManagerForCLI } from '../../foundation/process-manager/factories.js';
 import { getWorkspaceRoot } from '../../foundation/paths.js';
 import { DAEMON_LOG } from '../../daemon/constants.js';
 import { makeClawId } from '../../foundation/identity/index.js';

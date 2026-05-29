@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { findRecentTurnStartOffset } from '../../src/foundation/stream/turn-start-offset.js';
-import { createDirContext } from '../../src/foundation/process-manager/factories.js';
+import { createDirContext } from '../../src/foundation/audit/index.js';
 import * as fsNative from 'fs';
 import * as path from 'path';
 import * as os from 'os';

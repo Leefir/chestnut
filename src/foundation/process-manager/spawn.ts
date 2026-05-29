@@ -13,10 +13,35 @@ import type { PidFileContent } from './pid.js';
 import { findProcesses } from './find.js';
 import { AUDIT_MESSAGE_MAX_CHARS } from '../audit/index.js';
 import { isAlive as l1IsAlive, getProcessStartTime } from '../process-exec/index.js';
-import type { ProcessManagerContext, SpawnOptions } from './types.js';
+import { LockConflictError, type ProcessManagerContext } from './types.js';
+import type { SpawnOptions } from './types.js';
 import { makeClawId, type ClawId } from '../identity/index.js';
 
 
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Spawn the daemon process for `clawId` and resolve with its PID once the
+ * child has marked itself ready.
+ *
+ * Pipeline:
+ *   1. alive precheck — bail if a live process already holds the pidfile
+ *   2. orphan cleanup — SIGTERM matching processes from previous run
+ *   3. lock cleanup   — drop stale lockfile (kill live holder first)
+ *   4. pidfile claim  — `writeExclusiveSync`; on EEXIST verify + recover or reject
+ *   5. child spawn    — `spawnDetached` + atomic pidfile overwrite with real PID
+ *   6. readiness wait — poll until ready file appears or child dies (event-driven,
+ *                       no wall-clock deadline — phase 1317)
+ *
+ * @param ctx       Process manager context (fs + audit + resolveDir + optional this-seam)
+ * @param clawId    Target claw
+ * @param options   Spawn options (command/args/env/cwd/logFile)
+ * @returns         The spawned child's PID
+ * @throws LockConflictError if a live process already owns the pidfile
+ * @throws Error              if the child dies during boot before becoming ready
+ *                            (also written to audit as PROCESS_SPAWN_FAILED)
+ */
 export async function spawnProcess(
   ctx: ProcessManagerContext,
   clawId: ClawId,
@@ -25,9 +50,31 @@ export async function spawnProcess(
   const startMs = Date.now();
   const isAliveByPidFile = ctx.isAlive ?? ((id: string) => checkAlive(ctx, makeClawId(id)));
   if (isAliveByPidFile(clawId)) {
-    throw new Error(`Claw "${clawId}" is already running (PID file exists)`);
+    throw new LockConflictError(
+      clawId,
+      `Claw "${clawId}" is already running (PID file exists)`,
+    );
   }
 
+  await cleanupOrphans(ctx, clawId, options);
+  await cleanupLock(ctx, clawId);
+  await writePidExclusive(ctx, clawId);
+
+  ctx.fs.ensureDirSync(path.dirname(options.logFile));
+
+  return await spawnAndAwaitReady(ctx, clawId, options, startMs, isAliveByPidFile);
+}
+
+/**
+ * SIGTERM stale processes whose argv matches the new spawn target so they
+ * don't race the new daemon. Failures are audited but never throw — orphan
+ * cleanup is best-effort.
+ */
+async function cleanupOrphans(
+  ctx: ProcessManagerContext,
+  clawId: ClawId,
+  options: SpawnOptions,
+): Promise<void> {
   const pattern = options.args.join(' ');
   let pids: number[] = [];
   try {
@@ -35,10 +82,11 @@ export async function spawnProcess(
   } catch (err) {
     if (err instanceof ProcessListUnavailable) {
       // 降级：孤儿清理跳过；spawn 继续
-    } else {
-      throw err;
+      return;
     }
+    throw err;
   }
+
   let sentAny = false;
   let orphanFailCount = 0;
   for (const pid of pids) {
@@ -64,9 +112,20 @@ export async function spawnProcess(
     );
   }
   if (sentAny) {
-    await new Promise(resolve => setTimeout(resolve, DAEMON_SHUTDOWN_GRACE_MS));
+    await sleep(DAEMON_SHUTDOWN_GRACE_MS);
   }
+}
 
+/**
+ * Clear any stale lockfile from a previous run. If the holder is still alive
+ * SIGTERM it first, then delete the lockfile. Errors are audited; non-ENOENT
+ * delete failures keep the pipeline going (a later `writeExclusiveSync` will
+ * eventually surface conflicts).
+ */
+async function cleanupLock(
+  ctx: ProcessManagerContext,
+  clawId: ClawId,
+): Promise<void> {
   const lockFile = getLockFile(ctx, clawId);
   try {
     const lockHolder = readLockPid(ctx, clawId);
@@ -75,7 +134,7 @@ export async function spawnProcess(
       if (l1IsAlive(lockHolder.pid, lockStartTime)) {
         try {
           kill(lockHolder.pid, 'TERM');
-          await new Promise(resolve => setTimeout(resolve, DAEMON_SHUTDOWN_GRACE_MS));
+          await sleep(DAEMON_SHUTDOWN_GRACE_MS);
         } catch (err: any) {
           ctx.audit.write(
             PROCESS_MANAGER_AUDIT_EVENTS.LOCKFILE_CLEANUP_FAILED,
@@ -109,70 +168,115 @@ export async function spawnProcess(
       );
     }
   }
+}
 
+/**
+ * Claim the pidfile exclusively. On EEXIST, hand off to {@link handlePidFileConflict}
+ * to verify the holder, recover stale state, and retry the write — or reject
+ * with `LockConflictError` if a live process still owns it.
+ */
+async function writePidExclusive(
+  ctx: ProcessManagerContext,
+  clawId: ClawId,
+): Promise<void> {
   const pidFile = getPidFile(ctx, clawId);
   await ensureStatusDir(ctx, clawId);
 
   try {
     ctx.fs.writeExclusiveSync(pidFile, String(process.pid));
   } catch (err: any) {
-    if (err.code === 'EEXIST') {
-      // PID-recycling defense: verify startTime before declaring conflict
-      const stored = await readPid(ctx, clawId);
-      if (stored !== null) {
-        const startTimeForVerify = stored.startTime ?? getProcessStartTime(stored.pid);
-        if (l1IsAlive(stored.pid, startTimeForVerify)) {
-          throw new Error(`Claw "${clawId}" is already running (PID file exists)`);
-        }
-        // startTime mismatch or unavailable → fall through to stale cleanup
-      }
-      // pidfile disappeared during check → fall through to stale cleanup
+    if (err?.code !== 'EEXIST') throw err;
+    await handlePidFileConflict(ctx, clawId, pidFile);
+  }
+}
 
-      let existingContent = '';
-      let readSucceeded = false;
-      try {
-        existingContent = ctx.fs.readSync(pidFile).trim();
-        readSucceeded = true;
-      } catch (readErr: any) {
-        if (readErr?.code === 'ENOENT' || readErr instanceof FileNotFoundError) {
-          // race: concurrent removePid deleted pidFile / benign
-          ctx.audit.write(
-            PROCESS_MANAGER_AUDIT_EVENTS.PID_READ_FAILED,
-            `claw=${clawId}`,
-            `context=race_check`,
-          );
-        } else {
-          ctx.audit.write(
-            PROCESS_MANAGER_AUDIT_EVENTS.PID_READ_FAILED,
-            `claw=${clawId}`,
-            `context=eexist_check`,
-            `reason=${readErr?.message ?? String(readErr)}`,
-          );
-        }
-      }
-      if (readSucceeded && existingContent === '') {
-        // true empty PID file (concurrent spawn symptom / not race)
-        ctx.audit.write(
-          PROCESS_MANAGER_AUDIT_EVENTS.PID_EMPTY,
-          `claw=${clawId}`,
-        );
-      }
-      await removePid(ctx, clawId).catch((err) => {
-        ctx.audit.write(
-          PROCESS_MANAGER_AUDIT_EVENTS.PID_REMOVE_FAILED,
-          `claw=${clawId}`,
-          `context=spawn_retry_overwrite`,
-          `reason=${err instanceof Error ? err.message : String(err)}`,
-        );
-      });
-      ctx.fs.writeExclusiveSync(pidFile, String(process.pid));
+/**
+ * EEXIST recovery path for {@link writePidExclusive}.
+ *
+ * PID-recycling defense: read the stored PID + startTime and only declare
+ * a real conflict if the holder is provably alive. Otherwise audit whatever
+ * race symptoms we observed (empty content, ENOENT during readback, …),
+ * remove the stale pidfile, and re-attempt the exclusive write.
+ *
+ * Throws `LockConflictError` when the holder is live; falls through silently
+ * (write retried in caller-visible state) when stale and reclaimable.
+ */
+async function handlePidFileConflict(
+  ctx: ProcessManagerContext,
+  clawId: ClawId,
+  pidFile: string,
+): Promise<void> {
+  const stored = await readPid(ctx, clawId);
+  if (stored !== null) {
+    const startTimeForVerify = stored.startTime ?? getProcessStartTime(stored.pid);
+    if (l1IsAlive(stored.pid, startTimeForVerify)) {
+      throw new LockConflictError(
+        clawId,
+        `Claw "${clawId}" is already running (PID file exists)`,
+      );
+    }
+    // startTime mismatch or unavailable → fall through to stale cleanup
+  }
+  // pidfile disappeared during check → fall through to stale cleanup
+
+  let existingContent = '';
+  let readSucceeded = false;
+  try {
+    existingContent = ctx.fs.readSync(pidFile).trim();
+    readSucceeded = true;
+  } catch (readErr: any) {
+    if (readErr?.code === 'ENOENT' || readErr instanceof FileNotFoundError) {
+      // race: concurrent removePid deleted pidFile / benign
+      ctx.audit.write(
+        PROCESS_MANAGER_AUDIT_EVENTS.PID_READ_FAILED,
+        `claw=${clawId}`,
+        `context=race_check`,
+      );
     } else {
-      throw err;
+      ctx.audit.write(
+        PROCESS_MANAGER_AUDIT_EVENTS.PID_READ_FAILED,
+        `claw=${clawId}`,
+        `context=eexist_check`,
+        `reason=${readErr?.message ?? String(readErr)}`,
+      );
     }
   }
+  if (readSucceeded && existingContent === '') {
+    // true empty PID file (concurrent spawn symptom / not race)
+    ctx.audit.write(
+      PROCESS_MANAGER_AUDIT_EVENTS.PID_EMPTY,
+      `claw=${clawId}`,
+    );
+  }
+  await removePid(ctx, clawId).catch((err) => {
+    ctx.audit.write(
+      PROCESS_MANAGER_AUDIT_EVENTS.PID_REMOVE_FAILED,
+      `claw=${clawId}`,
+      `context=spawn_retry_overwrite`,
+      `reason=${err instanceof Error ? err.message : String(err)}`,
+    );
+  });
+  ctx.fs.writeExclusiveSync(pidFile, String(process.pid));
+}
 
-  ctx.fs.ensureDirSync(path.dirname(options.logFile));
-
+/**
+ * Spawn the child, overwrite the pidfile with the real child PID, and poll
+ * until the ready marker appears or the child dies during boot.
+ *
+ * Polling is event-driven (no wall-clock deadline — phase 1317). Hang case
+ * relies on user Ctrl-C / OS `timeout(1)` wrapper to escalate.
+ *
+ * On failure: audits PROCESS_SPAWN_FAILED and best-effort removes the pidfile
+ * so the next spawn attempt doesn't false-conflict.
+ */
+async function spawnAndAwaitReady(
+  ctx: ProcessManagerContext,
+  clawId: ClawId,
+  options: SpawnOptions,
+  startMs: number,
+  isAliveByPidFile: (id: ClawId) => boolean,
+): Promise<number> {
+  const pidFile = getPidFile(ctx, clawId);
   try {
     const { pid } = spawnDetached(options.command, options.args, {
       cwd: options.cwd,
@@ -181,20 +285,21 @@ export async function spawnProcess(
     });
 
     const childStartTime = getProcessStartTime(pid);
-    const pidPayload: PidFileContent = { pid, ...(childStartTime !== undefined ? { startTime: childStartTime } : {}) };
+    const pidPayload: PidFileContent = {
+      pid,
+      ...(childStartTime !== undefined ? { startTime: childStartTime } : {}),
+    };
     await ctx.fs.writeAtomic(pidFile, JSON.stringify(pidPayload));
 
     const isReady = ctx.isReady ?? ((id: string) => checkReady(ctx, makeClawId(id)));
-    // Event-driven readiness: poll until ready file appears OR child dies.
-    // No wall-clock deadline — readiness is causal, not temporal (phase 1317).
-    // Child died → fast-fail via isAliveByPidFile (existing path).
-    // Hang case → user Ctrl-C / OS timeout(1) wrapper (escalation anchor a).
     let ready = isReady(clawId);
     while (!ready) {
       if (!isAliveByPidFile(clawId)) {
-        throw new Error(`Process "${clawId}" died during boot. Check logs at: ${options.logFile}`);
+        throw new Error(
+          `Process "${clawId}" died during boot. Check logs at: ${options.logFile}`,
+        );
       }
-      await new Promise(resolve => setTimeout(resolve, SPAWN_POLL_INTERVAL_MS));
+      await sleep(SPAWN_POLL_INTERVAL_MS);
       ready = isReady(clawId);
     }
 

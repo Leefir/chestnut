@@ -8,7 +8,8 @@
 
 import * as path from 'path';
 
-import { createDirContext, createProcessManagerForCLI } from '../../foundation/process-manager/factories.js';
+import { createDirContext } from '../../foundation/audit/index.js';
+import { createProcessManagerForCLI } from '../../foundation/process-manager/factories.js';
 import { isAlive } from '../../foundation/process-exec/index.js';
 import { CLAW_SCAN_INTERVAL_MS } from './constants.js';
 import type { AuditLog } from '../../foundation/audit/index.js';

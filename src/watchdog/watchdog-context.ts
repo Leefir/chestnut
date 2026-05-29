@@ -14,7 +14,7 @@ import { getNamedSubrootDir, loadGlobalConfig } from '../foundation/config/index
 import { CONFIG_DEFAULTS } from '../assembly/config-defaults.js';
 import type { FileSystem } from '../foundation/fs/types.js';
 import type { AuditLog } from '../foundation/audit/index.js';
-import { createDirContext } from '../foundation/process-manager/factories.js';
+import { createDirContext } from '../foundation/audit/index.js';
 import { makeClawDir } from '../foundation/identity/index.js';
 
 // === 共享 Map（cron state）/ ESM const reference 跨 file 同实例 ===

@@ -2,17 +2,20 @@
  * Process-manager factories — shared by CLI and Watchdog (L2).
  *
  * §1 所有权：
- *   - 职责：为 CLI 命令（非 daemon）提供 ProcessManager / DirContext 的统一构造入口
+ *   - 职责：为 CLI 命令（非 daemon）提供 ProcessManager 的统一构造入口
  *   - 消费者：CLI 命令、Watchdog、其他 L2+ 非 daemon 装配场景
  *   - 非职责：不装配 Runtime / Snapshot / Stream 等 L2+ 对象（由 Assembly 负责）
  *
  * §5 隐式依赖：
  *   - getClawforumRoot()（config.ts）：createProcessManagerForCLI 的 PM / audit 根
- *   - AUDIT_FILE 常量（foundation/audit）：createDirContext 的 audit relPath
  *   - NodeFileSystem 构造签名（foundation/fs）、AuditWriter 构造签名、createAgentProcessManager 签名
+ *
+ * §6 历史：
+ *   - phase 1397: `createDirContext` 迁出至 `foundation/audit/dir-context.ts`
+ *     （L2 audit 模块职责归属修正、不属 process-manager）。
  */
 
-import { type AuditLog, createSystemAudit } from '../audit/index.js';
+import { createSystemAudit } from '../audit/index.js';
 import type { FileSystem } from '../fs/types.js';
 import type { ProcessManager } from './manager.js';
 import { createAgentProcessManager } from './agent-factory.js';
@@ -43,34 +46,4 @@ export function createProcessManagerForCLI(deps: { fsFactory: (baseDir: string) 
   const fs = deps.fsFactory(baseDir);
   const systemAudit = createSystemAudit(fs, baseDir);
   return createAgentProcessManager(deps, systemAudit);
-}
-
-/**
- * createDirContext(dir)
- *
- * 输入：
- *   - dir: 绝对路径；必须是 audit.tsv 所在目录
- *
- * 输出：
- *   - { fs, audit } 配对对象；每次调用返回新实例
- *   - fs: NodeFileSystem({ baseDir: dir })
- *   - audit: new AuditWriter(fs, path.join(dir, AUDIT_FILE))
- *
- * 边界：
- *   - relPath 固定为 AUDIT_FILE 常量
- *   - 不 mkdir；audit.tsv 不存在时首次 write 会创建（AuditWriter 原生行为）
- *   - 不做 retention（maxSizeMb 参数留空，用 AuditWriter 默认）
- *
- * 失败：
- *   - 构造失败（NodeFileSystem / AuditWriter ctor）→ 原样上抛；调用方可 catch 包装 assemble_failed
- *   - audit.write 运行期失败 → AuditWriter 内部 try/catch 吞错 + console.error（沿用既有语义）
- *   - 若调用方需 fail-fast 写入语义 → 外层再包 try/catch 或绕开 audit 用裸 fs
- */
-export function createDirContext(deps: { fsFactory: (baseDir: string) => FileSystem }, dir: string): {
-  fs: FileSystem;
-  audit: AuditLog;
-} {
-  const fs = deps.fsFactory(dir);
-  const audit = createSystemAudit(fs, dir);
-  return { fs, audit };
 }

@@ -8,7 +8,8 @@ import {
   loadGlobalConfig, getGlobalConfigPath,
 } from '../../foundation/config/index.js';
 import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
-import { createDirContext, createProcessManagerForCLI } from '../../foundation/process-manager/factories.js';
+import { createDirContext } from '../../foundation/audit/index.js';
+import { createProcessManagerForCLI } from '../../foundation/process-manager/factories.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { CONTRACT_DIR } from '../../core/contract/index.js';
 import { CLAWS_DIR } from '../../foundation/paths.js';

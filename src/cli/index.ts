@@ -47,7 +47,7 @@ import { clawStepsCommand, clawStepCommand } from './commands/claw-steps.js';
 import { motionStepsCommand, motionStepCommand } from './commands/motion-steps.js';
 import { getWorkspaceRoot } from '../foundation/paths.js';
 import { DAEMON_LOG } from '../daemon/constants.js';
-import { createDirContext } from '../foundation/process-manager/factories.js';
+import { createDirContext } from '../foundation/audit/index.js';
 import { getClawforumRoot, getClawDir, loadGlobalConfig } from '../foundation/config/index.js';
 import { CONFIG_DEFAULTS } from '../assembly/config-defaults.js';
 import { parseIntOption } from './parse-int-option.js';

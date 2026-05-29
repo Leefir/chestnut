@@ -5,7 +5,8 @@ import { tmpdir } from 'os';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { AuditWriter, createSystemAudit, AUDIT_FILE } from '../../src/foundation/audit/index.js';
 import { createAgentProcessManager } from '../../src/foundation/process-manager/agent-factory.js';
-import { createProcessManagerForCLI, createDirContext } from '../../src/foundation/process-manager/factories.js';
+import { createDirContext } from '../../src/foundation/audit/index.js';
+import { createProcessManagerForCLI } from '../../src/foundation/process-manager/factories.js';
 
 const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });
 

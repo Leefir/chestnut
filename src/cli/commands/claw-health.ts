@@ -9,7 +9,8 @@ import {
 } from '../../foundation/config/index.js';
 import { CONFIG_DEFAULTS } from '../../assembly/config-defaults.js';
 import { CliError } from '../errors.js';
-import { createDirContext, createProcessManagerForCLI } from '../../foundation/process-manager/factories.js';
+import { createDirContext } from '../../foundation/audit/index.js';
+import { createProcessManagerForCLI } from '../../foundation/process-manager/factories.js';
 import { makeClawId } from '../../foundation/identity/index.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { CONTRACT_DIR } from '../../core/contract/index.js';
