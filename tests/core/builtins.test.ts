@@ -1199,7 +1199,7 @@ describe('Builtin Tools', () => {
       const result = await readTool.execute({ path: '../c11/secret.md', claw: 'c1' }, motionCtx);
 
       expect(result.success).toBe(false);
-      expect(result.content).toMatch(/attempts to escape base directory/);
+      expect(result.content).toMatch(/attempts to escape claw root/);
     });
 
     it('allows cross-claw read when targetPath equals clawRoot (path="")', async () => {
@@ -1223,7 +1223,7 @@ describe('Builtin Tools', () => {
       // path="" resolves to clawRoot; trailing-sep prefix must allow this
       // actual read will fail because clawRoot is a directory, but guard must pass
       const result = await readTool.execute({ path: '', claw: 'c1' }, motionCtx);
-      expect(result.content).not.toMatch(/Path escapes target claw directory/);
+      expect(result.content).not.toMatch(/Path escapes target claw root/);
     });
 
     it('cross-claw read does NOT pollute caller fullyReadPaths (write gate intact)', async () => {

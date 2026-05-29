@@ -109,7 +109,7 @@ export class NodeFileSystem implements FileSystem {
     
     if (normalized.startsWith('..')) {
       throw new PermissionError(
-        `Path "${relativePath}" attempts to escape claw directory`,
+        `Path "${relativePath}" attempts to escape claw root`,
         { path: relativePath }
       );
     }
@@ -151,7 +151,7 @@ export class NodeFileSystem implements FileSystem {
         realTarget.startsWith(basePrefix);
       if (!withinBase) {
         throw new PermissionError(
-          `Symlink traversal detected: "${relativePath}" resolves outside claw directory`,
+          `Symlink traversal detected: "${relativePath}" resolves outside claw root`,
           { path: relativePath }
         );
       }

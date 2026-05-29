@@ -20,7 +20,7 @@ export const readTool: Tool = {
   name: READ_TOOL_NAME,
   profiles: ['full', 'readonly', 'subagent', 'miner'],
   group: 'fs-read',
-  description: 'Read a file in your agent workspace. Path is relative to clawspace (do NOT prefix with "clawspace/"). Use "../" in path to access claw root (e.g., "../MEMORY.md"). Use claw: "<id>" to read another claw\'s files (available to all agents); claw: "*" is Motion-only.',
+  description: 'Read a file in your clawspace. Path is relative to clawspace (do NOT prefix with "clawspace/"). Use "../" in path to access claw root (e.g., "../MEMORY.md"). Use claw: "<id>" to read another claw\'s files (available to all agents); claw: "*" is Motion-only.',
   schema: {
     type: 'object',
     properties: {
@@ -57,7 +57,7 @@ export const readTool: Tool = {
     if (resolved.startsWith('..') || resolved.startsWith('/')) {
       return {
         success: false,
-        content: `Error: Path escapes claw directory: "${filePath}"`,
+        content: `Error: Path escapes claw root: "${filePath}"`,
       };
     }
 
@@ -94,7 +94,7 @@ export const readTool: Tool = {
       if (targetPath !== targetClawDir && !targetPath.startsWith(targetClawDir + nodePath.sep)) {
         return {
           success: false,
-          content: `Error: Path escapes target claw directory: "${filePath}"`,
+          content: `Error: Path escapes target claw root: "${filePath}"`,
         };
       }
       // Cross-claw read: per-target NodeFileSystem scoped to target clawspace

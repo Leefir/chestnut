@@ -60,7 +60,7 @@ export const searchTool: Tool = {
   name: SEARCH_TOOL_NAME,
   profiles: ['full', 'readonly', 'subagent', 'miner'],
   group: 'fs-read',
-  description: 'Search for text in LOCAL files only (not web/network). Returns file:line: content matches, case-insensitive, default max 5 results. Default search path: workspace root. Use `claw: "<id>"` to search another claw\'s resources (read-only). `claw: "*"` (broadcast across all claws) is Motion-only.',
+  description: 'Search for text in LOCAL files only (not web/network). Returns file:line: content matches, case-insensitive, default max 5 results. Default search path: clawspace. Use `claw: "<id>"` to search another claw\'s resources (read-only). `claw: "*"` (broadcast across all claws) is Motion-only.',
   schema: {
     type: 'object',
     properties: {
@@ -70,11 +70,11 @@ export const searchTool: Tool = {
       },
       path: {
         type: 'string',
-        description: 'Directory to search in (default base: workspace root)',
+        description: 'Directory to search in (default base: clawspace)',
       },
       cwd: {
         type: 'string',
-        description: 'Override base for path resolution, relative to workspace root. Use ".." to escape workspace to claw root (e.g. cwd: "../memory"). Default: workspace root.',
+        description: 'Override base for path resolution, relative to clawspace. Use ".." to escape clawspace to claw root (e.g. cwd: "../memory"). Default: clawspace.',
       },
       max_results: {
         type: 'number',
@@ -103,7 +103,7 @@ export const searchTool: Tool = {
     if (searchPath.startsWith('..') || searchPath.startsWith('/')) {
       return {
         success: false,
-        content: `Error: Path escapes claw directory: "${pathArg}"${cwdArg ? ` (cwd: ${cwdArg})` : ''}`,
+        content: `Error: Path escapes claw root: "${pathArg}"${cwdArg ? ` (cwd: ${cwdArg})` : ''}`,
       };
     }
     const maxResults = safeNumber(args.max_results) ?? 5;
@@ -202,7 +202,7 @@ export const searchTool: Tool = {
       if (baseDir !== clawRoot && !baseDir.startsWith(clawRoot + nodePath.sep)) {
         return {
           success: false,
-          content: `Error: Path escapes target claw directory: "${rawSearchPath}"`,
+          content: `Error: Path escapes target claw root: "${rawSearchPath}"`,
         };
       }
       // Skip whitelist check for cross-claw search (Motion has full access)

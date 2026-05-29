@@ -76,7 +76,7 @@ export const multiEditTool: Tool = {
     if (resolved.startsWith('..') || resolved.startsWith('/')) {
       return {
         success: false,
-        content: `Error: Path escapes claw directory: "${filePath}"`,
+        content: `Error: Path escapes claw root: "${filePath}"`,
       };
     }
 

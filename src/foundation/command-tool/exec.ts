@@ -59,7 +59,7 @@ export function createExecTool(): Tool {
     name: EXEC_TOOL_NAME,
     profiles: ['full', 'subagent', 'miner'],
     group: 'llm',
-    description: 'Execute a shell command in your agent workspace. Runs via `sh -c`, so shell features (pipes, redirects, quotes) work normally. Relative paths resolve against your workspace root.',
+    description: 'Execute a shell command in your clawspace. Runs via `sh -c`, so shell features (pipes, redirects, quotes) work normally. Relative paths resolve against your clawspace.',
     schema: {
       type: 'object',
       properties: {
@@ -69,7 +69,7 @@ export function createExecTool(): Tool {
         },
         cwd: {
           type: 'string',
-          description: 'Working directory, relative to workspace root. Use ".." to escape workspace to claw root (e.g. cwd: "../memory"). Default: workspace root.',
+          description: 'Working directory, relative to clawspace. Use ".." to escape clawspace to claw root (e.g. cwd: "../memory"). Default: clawspace.',
         },
         timeoutMs: {
           type: 'number',

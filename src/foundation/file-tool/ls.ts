@@ -19,7 +19,7 @@ export const lsTool: Tool = {
   name: LS_TOOL_NAME,
   profiles: ['full', 'readonly', 'subagent', 'miner'],
   group: 'fs-read',
-  description: 'List files in your agent workspace. Path is relative to clawspace (do NOT prefix with "clawspace/"). Use "../" in path to access claw root subdirs (e.g., "../memory"). Use claw: "<id>" to list another claw\'s files.',
+  description: 'List files in your clawspace. Path is relative to clawspace (do NOT prefix with "clawspace/"). Use "../" in path to access claw root subdirs (e.g., "../memory"). Use claw: "<id>" to list another claw\'s files.',
   schema: {
     type: 'object',
     properties: {
@@ -51,7 +51,7 @@ export const lsTool: Tool = {
     if (resolved.startsWith('..') || resolved.startsWith('/')) {
       return {
         success: false,
-        content: `Error: Path escapes claw directory: "${pathArg}"`,
+        content: `Error: Path escapes claw root: "${pathArg}"`,
       };
     }
 
@@ -85,7 +85,7 @@ export const lsTool: Tool = {
       if (targetPath !== clawRoot && !targetPath.startsWith(clawRoot + nodePath.sep)) {
         return {
           success: false,
-          content: `Error: Path escapes target claw directory: "${pathArg}"`,
+          content: `Error: Path escapes target claw root: "${pathArg}"`,
         };
       }
       // Cross-claw read: per-target NodeFileSystem (无 PermissionChecker = 等价 skip permissions)
