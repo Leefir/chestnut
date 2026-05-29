@@ -19,21 +19,16 @@ export const SUMMON_TOOL_NAME = 'summon' as const;
 
 export class SummonTool implements Tool {
   readonly name = SUMMON_TOOL_NAME;
-  readonly description = `召唤子代理，创建契约。支持两种模式（**按场景选**）：
+  readonly description = `创建子代理来给 claw 创建契约。支持两种模式（**按场景选**）：
 
 **shadow（默认、推荐）**：子代理继承 Motion 完整上下文（对话历史 + 系统提示 + 完整工具集），无需问答即可继续推理 + 决策 + 执行。适用于 Motion 已与 user 充分对话、上下文足够的场景。
 
 **mining（实验中、未完整实现）**：子代理空白起步，通过 ask_motion 工具与 Motion 多轮问答构建上下文，再完成任务。当前不建议使用。
 
-两种模式均不能：
-- 调用 spawn 工具（会报错）
-- 递归调用 summon 工具
-
 优先用 summon 的场景：
 - 任务需要给 claw 创建契约
 - 任务可能匹配已有 dispatch-skills
-
-已知确切 prompt 的一次性任务、Motion 直接用 spawn 即可。`;
+`;
 
   readonly readonly = false;
   readonly idempotent = false;
@@ -68,7 +63,7 @@ export class SummonTool implements Tool {
       },
       verify: {
         type: 'boolean',
-        description: "是否要求契约带验证门控（默认 false）：true = subtask submit 后需走 verification（LLM 或 script）pass 才标 completed；false = subtask submit 即立即 completed（claw 调 submit_subtask 即完成对应子项）",
+        description: "是否要求契约带验证门控（默认 false）：true = 契约子项提交后需走验收流程（LLM 或 script）pass 才标 completed；false = 契约子项提交后即立即 completed（claw 调 submit_subtask 即完成对应子项）",
       },
       mode: {
         type: 'string',
