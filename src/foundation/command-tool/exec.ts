@@ -3,6 +3,11 @@
  *
  * Thin wrapper over ProcessExec.
  * Responsible for: argument extraction, context injection, output truncation, ToolResult formatting.
+ *
+ * phase 1473 exception: 见下方 §guard — motion-chain self-kill 拒绝路径
+ * （`looksLikeClawforumSelfKill` + `ctx.isMotionChain`）。范畴属「存活语义」
+ * 而非 application-level 权限管理，与 phase 1280 REFRAMED-OUT 不冲突。
+ * 详 ../index.ts 顶 docblock phase 1473 豁免说明段。
  */
 
 import type { ExecContext } from '../tools/index.js';
@@ -11,8 +16,7 @@ import type { Tool } from '../tools/index.js';
 import { randomUUID } from 'crypto';
 import * as path from 'path';
 import { UUID_SHORT_LEN } from '../../constants.js';
-import { EXEC_MAX_OUTPUT } from './constants.js';
-import { TASKS_SYNC_EXEC_DIR } from './constants.js';
+import { EXEC_MAX_OUTPUT, EXEC_OVERFLOW_DIR_NAME } from './constants.js';
 import { exec } from '../process-exec/index.js';
 import { ProcessExecError } from '../process-exec/index.js';
 import { PROCESS_EXEC_DEFAULT_TIMEOUT_MS } from '../process-exec/index.js';
@@ -59,8 +63,8 @@ async function persistOverflow(
 ): Promise<string | null> {
   try {
     const id = randomUUID().slice(0, UUID_SHORT_LEN);
-    // exec_overflow scratch 写到 tasks/sync/exec/ 子目录（phase 511 / phase772 const 归正）
-    const fullPath = path.join(ctx.syncDir, TASKS_SYNC_EXEC_DIR.split('/').pop()!, `${id}.md`);
+    // exec_overflow scratch 写到 tasks/sync/exec/ 子目录（phase 511 / phase772 const 归正 / phase 1475 常量化消 non-null assertion）
+    const fullPath = path.join(ctx.syncDir, EXEC_OVERFLOW_DIR_NAME, `${id}.md`);
     const frontmatter = `---\nsource: exec_overflow\ncontent_length: ${output.length}\ncreated_at: ${new Date().toISOString()}\n---\n`;
     await ctx.fs.writeAtomic(fullPath, frontmatter + output);
     return path.relative(ctx.workspaceDir, fullPath);
