@@ -9,9 +9,25 @@
  * - spawn subagent（可选）：subagent 显式 done(result=...) 替代末条 text fallback
  */
 
-import type { Tool, ExecContext } from '../../../foundation/tools/index.js';
+import type { Tool, ExecContext, ExecutionControl } from '../../../foundation/tools/index.js';
 import type { ToolResult } from '../../../foundation/tool-protocol/index.js';
 export const DONE_TOOL_NAME = 'done' as const;
+
+/**
+ * phase 1459 α-5 ISP narrow helper: done 真依赖仅 `ctx.requestStop` → `ExecutionControl` 子接口 sufficient。
+ * Tool.execute 签名保完整 ExecContext（implements Tool 兼容性约束）、内部 delegate 到 narrow ctx。
+ * 收益：编译期 audit 真依赖范围 / 测试 fixture 可只 mock `{ requestStop }` / 未来如 stopRequested 迁出可静态 trace。
+ */
+function captureDoneResult(
+  result: string,
+  ctx: ExecutionControl,
+): ToolResult {
+  ctx.requestStop();
+  return {
+    success: true,
+    content: `Result captured (${result.length} chars). Agent will exit.`,
+  };
+}
 
 /**
  * 通用 done 工具
@@ -45,12 +61,9 @@ export function createDoneTool(): Tool & { capturedResult?: { result: string } }
       }
       // 存 capturedResult 给 runSubagent 取
       tool.capturedResult = { result };
+      // phase 1459 α-5: delegate to narrow helper（仅 ExecutionControl 子接口 sufficient）。
       // phase 777: hard-stop agent loop (kimi-k2.6 audit shows ~30 wasted LLM calls without this)
-      ctx.requestStop();
-      return {
-        success: true,
-        content: `Result captured (${result.length} chars). Agent will exit.`,
-      };
+      return captureDoneResult(result, ctx);
     },
   };
   return tool;
