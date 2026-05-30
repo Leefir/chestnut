@@ -131,10 +131,18 @@ function makeVerbParser(verb: VerbName): Command {
 // ── Entry point ─────────────────────────────────────────────────────────────
 
 export async function dispatchClawSubcommand(
-  subject: string,
+  subject: string | undefined,
   args: string[],
   deps: RouterDeps,
 ): Promise<void> {
+  // Path 0z: bare `clawforum claw` (no subject) → top-level help. Friendlier
+  // than commander's `error: missing required argument 'subject'`. Same
+  // intent as `claw help` / `claw --help`.
+  if (subject === undefined) {
+    writeHelp(renderClawTopHelp());
+    return;
+  }
+
   // Path 0a: `claw --help` / `claw -h` — commander has helpOption(false) so
   // these tokens flow through as `subject` (passThroughOptions). Treat them
   // as alias of `claw help`.

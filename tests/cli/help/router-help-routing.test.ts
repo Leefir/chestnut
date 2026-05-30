@@ -42,6 +42,12 @@ describe('claw help routing', () => {
     writeSpy.mockRestore();
   });
 
+  it('bare `claw` (no subject) writes top-level help', async () => {
+    await dispatchClawSubcommand(undefined, [], fakeDeps);
+    expect(writes.join('')).toContain('Lifecycle:');
+    expect(writes.join('')).toContain('Usage:');
+  });
+
   it('`claw --help` writes top-level help', async () => {
     await dispatchClawSubcommand('--help', [], fakeDeps);
     expect(writes.join('')).toContain('Lifecycle:');
