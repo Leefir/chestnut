@@ -5,7 +5,7 @@
 
 import type { Message, ToolDefinition } from '../../foundation/llm-provider/types.js';
 import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
-import type { ExecContext } from '../../foundation/tools/index.js';
+import type { ExecContext, IToolExecutor, ToolRegistry } from '../../foundation/tools/index.js';
 import type { ToolResult } from '../../foundation/tool-protocol/index.js';
 import type { ToolUseId } from '../../foundation/tool-protocol/index.js';
 
@@ -60,8 +60,8 @@ export interface StepInput {
   systemPrompt: string;
   llm: LLMOrchestrator;
   tools: ToolDefinition[];
-  executor: import('../../foundation/tools/index.js').IToolExecutor;
-  registry?: import('../../foundation/tools/index.js').ToolRegistry;
+  executor: IToolExecutor;
+  registry?: ToolRegistry;
   ctx: ExecContext;
   maxTokens?: number;
   idleTimeoutMs?: number;
