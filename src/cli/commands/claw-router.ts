@@ -42,7 +42,7 @@ import { clawStepsCommand, clawStepCommand } from './claw-steps.js';
 import {
   CLAW_VERB_FACTS,
   type VerbFact,
-} from '../../foundation/cli-help/index.js';
+} from '../help/index.js';
 import {
   composeClawHelp,
   composeClawVerbHelp,

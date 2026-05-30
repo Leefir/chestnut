@@ -1,10 +1,12 @@
 /**
- * @module L1.CliHelp.ClawVerbFacts
+ * @module L6.Cli.Help.ClawVerbFacts
  *
- * Phase 1477：claw 命令族 verb-fact 单源。
+ * Phase 1477 立 / phase 1479 layering fix（从 foundation/cli-help 挪 cli/help）。
+ *
+ * claw 命令族 verb-fact 单源。
  *
  * 单源原则：本表与 `cli/commands/claw-router.ts` 的 VERB_NAMES 一一对应、
- * 由 invariant test 守（`tests/foundation/cli-help/claw-verb-facts.test.ts`）。
+ * 由 invariant test 守（`tests/cli/help/claw-verb-facts.test.ts`）。
  *
  * 添加新 verb / 改名时必须同步本表与 router VERB_NAMES，否则编译期类型 check
  * + 运行时 invariant 至少一道会报。
