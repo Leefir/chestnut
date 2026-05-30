@@ -9,6 +9,14 @@
  * CommandTool 不做 application-level 权限管理 / 未来走 OS-level sandbox.
  * 详 design §A.r136-cmd-tool-no-perm-mgmt-cleanup +
  *    project memory project_command_tool_no_perm.md。
+ *
+ * phase 1473 motion-self-kill guard 豁免说明：exec.ts §guard
+ * （`looksLikeClawforumSelfKill` + isMotionChain 拒绝路径）与上述
+ * REFRAMED-OUT 不冲突。范畴区分：
+ *   - REFRAMED-OUT 针对「用户该不该跑某命令」的授权语义（allow/deny list）
+ *   - self-kill guard 针对「命令会不会杀死自己的 runtime」的存活语义
+ * guard 严格限定 ctx.isMotionChain、scope 极窄（单条正则），不构成
+ * application-level 权限管理框架，亦不与未来 OS-level sandbox 冲突。
  */
 
 import type { Tool } from '../tools/index.js';
