@@ -315,8 +315,8 @@ export async function initCommand(deps: { fsFactory: (baseDir: string) => FileSy
     console.log('\n✓ Initialized successfully!');
     if (!silent) {
       console.log('\nNext steps:');
-      console.log('  1. Create a Claw: clawforum claw create <name>');
-      console.log('  2. Start chatting: clawforum claw chat <name>');
+      console.log('  1. Create a Claw: clawforum claw <name> create');
+      console.log('  2. Start chatting: clawforum claw <name> chat');
     }
 
   } catch (error) {
