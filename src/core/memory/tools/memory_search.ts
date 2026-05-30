@@ -2,7 +2,7 @@
  * memory_search tool - Search in memory directory with metadata filtering
  */
 
-import type { Tool, ExecContext } from '../../../foundation/tools/index.js';
+import type { Tool, ExecContext, ExecutionInfra } from '../../../foundation/tools/index.js';
 import type { ToolResult } from '../../../foundation/tool-protocol/index.js';
 import type { FileEntry } from '../../../foundation/fs/types.js';
 export const MEMORY_SEARCH_TOOL_NAME = 'memory_search' as const;
@@ -78,6 +78,10 @@ export const memorySearchTool: Tool = {
   supportsAsync: true,
 
   async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
+    // phase 1459 α-5: memory_search 真依赖仅 `ctx.fs` → `ExecutionInfra` 子接口 sufficient。
+    // 编译期标 narrow scope / 测试 fixture 可只 mock `{ fs }` / 不消费 identity/permissions/control/audit dim。
+    const infra: ExecutionInfra = ctx;
+
     const query = ((args.query as string) ?? '').toLowerCase().trim();
     const pattern = (args.pattern as string) ?? '';
     const metaFilter = (args.filter as Record<string, string>) ?? {};
@@ -106,7 +110,7 @@ export const memorySearchTool: Tool = {
 
     let entries: FileEntry[];
     try {
-      entries = await ctx.fs.list('memory/', { recursive: true, includeDirs: false });
+      entries = await infra.fs.list('memory/', { recursive: true, includeDirs: false });
     } catch {
       return {
         success: true,
@@ -122,7 +126,7 @@ export const memorySearchTool: Tool = {
       if (compiled && !compiled.test(filename)) continue;
 
       try {
-        const text = await ctx.fs.read(entry.path);
+        const text = await infra.fs.read(entry.path);
 
         // frontmatter 元数据过滤
         if (Object.keys(metaFilter).length > 0) {

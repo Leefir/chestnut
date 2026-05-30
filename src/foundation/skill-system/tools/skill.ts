@@ -6,7 +6,7 @@
  * Loaded on-demand when this tool is called.
  */
 
-import type { Tool, ExecContext } from '../../tools/index.js';
+import type { Tool, ExecContext, ExecutionInfra, ExecutionAudit } from '../../tools/index.js';
 import type { ToolResult } from '../../tool-protocol/index.js';
 import { createSkillSystem, type SkillSystem } from '../index.js';
 
@@ -54,6 +54,9 @@ export function createSkillTool(skillRegistry: SkillSystem, opts: SkillToolOptio
     idempotent: true,
 
     async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
+      // phase 1459 α-5: skill 真依赖仅 `ctx.fs + ctx.auditWriter` → `ExecutionInfra & ExecutionAudit` 子接口 sufficient。
+      // 编译期标 narrow scope / 测试 fixture 可只 mock `{ fs, auditWriter }` / 不消费 identity/permissions/control dim。
+      const deps: ExecutionInfra & ExecutionAudit = ctx;
       const name = String(args.name);
       const scope = (args.scope as SkillScope | undefined) ?? 'self';
 
@@ -68,7 +71,7 @@ export function createSkillTool(skillRegistry: SkillSystem, opts: SkillToolOptio
         // 临时二级 registry：本次调用 own 实例、加载指定目录后即用即弃、生命周期不溢出本 execute。
         // phase 382 ratify「二级 registry 机制 = 显式设计、非应急 fallback」。
         try {
-          const tempRegistry = createSkillSystem(ctx.fs, dispatchSkillsDir, ctx.auditWriter);
+          const tempRegistry = createSkillSystem(deps.fs, dispatchSkillsDir, deps.auditWriter);
           await tempRegistry.loadAll();
           const content = await tempRegistry.loadFull(name);
           return { success: true, content, metadata: { name: name } };

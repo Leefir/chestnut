@@ -9,7 +9,7 @@ import { type ClawforumRoot } from '../../../foundation/identity/index.js';
  */
 
 import path from 'node:path';
-import type { Tool, ExecContext } from '../../tools/index.js';
+import type { Tool, ExecContext, ToolPermissions } from '../../tools/index.js';
 import { MOTION_CLAW_ID } from '../../../constants.js';
 import type { ToolResult } from '../../tool-protocol/index.js';
 import type { FileSystem } from '../../fs/types.js';
@@ -57,8 +57,10 @@ export function createNotifyClawTool(deps: NotifyClawDeps): Tool {
     group: 'messaging',
 
     async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
+      // phase 1459 α-5: notify_claw 真依赖仅 `ctx.callerLabel` → `ToolPermissions` 子接口 sufficient（motion 单向访问 gate / D11）。
+      const perm: ToolPermissions = ctx;
       // Phase 1105: notify_claw is motion-only
-      if (ctx.callerLabel !== MOTION_CLAW_ID) {
+      if (perm.callerLabel !== MOTION_CLAW_ID) {
         return { success: false, content: 'notify_claw is motion-only' };
       }
       const to = args.to as string;

@@ -86,13 +86,14 @@ export function escapeForLog(s: string): string {
 // protocol skeleton (name, description, input_schema).
 
 /**
- * Execution context — passed to all tool executions.
- *
- * Fields are L1/L2 infrastructure handles + execution control state.
- * L4 business fields (isShadow) are scheduled
- * for eviction to per-module factory injection.
+ * phase 1459 P3 α-1: ExecContext 28 字段 + 4 方法 按维度拆 5 子接口。
+ * ExecContext 仍是 union（extends 5 子接口）、50 import site 0 改 / 0 caller cascade。
+ * 新工具可声明只依赖子接口（M#8 接口最小化 / ISP 软合规）。
+ * 详 `coding plan/phase1455/Step B — design ExecContext ISP.md` §2.1 字段→子接口完整 mapping。
  */
-export interface ExecContext {
+
+/** 身份维度（D1）：clawId / clawDir / clawforumRoot / workspaceDir / syncDir / originClawId / isMotionChain */
+export interface ClawIdentity {
   clawId: ClawId;
   clawDir: ClawDir;
   /** phase 1387: .clawforum/ 根（Assembly 装配期注入 / motion 布局 + 普通 claw 布局共用单一 truth source）。
@@ -103,14 +104,36 @@ export interface ExecContext {
   workspaceDir: string;
   /** 装配-level 共享 sync dir（兜底落盘 + FileTool write_backups 共用 / 应然 §A.7）/ Assembly 装配期注入 */
   syncDir: string;
+  /** 创建链路的源头 clawId，由 summon/spawn 传播。Motion 直接创建时为 'motion' */
+  originClawId?: string;
+  /** 是否为 Motion 创建链路上的 agent（Motion 本体或其 subagent） */
+  readonly isMotionChain: boolean;
+}
+
+/** 权限维度（D2）：profile / allowedGroups / callerLabel / permissionChecker */
+export interface ToolPermissions {
+  profile: ToolProfile;
   /** phase 1337: capability-tag based group filtering (replaces callerType) */
   allowedGroups: ReadonlySet<ToolGroup>;
   /** phase 1337: opaque audit label (replaces callerType semantic) */
   callerLabel: string;
+  /** Assembly-injected per-claw permission checker (replaces module-level factory pattern, phase 1006) */
+  permissionChecker?: PermissionChecker;
+}
+
+/** 基础设施维度（D3）：fs / fsFactory / llm / registry / taskSystem */
+export interface ExecutionInfra {
   fs: FileSystem;
   fsFactory?: (baseDir: string) => FileSystem;
   llm?: LLMOrchestrator;
-  profile: ToolProfile;
+  /** Tool registry reference for sync spawn path (phase 766) */
+  registry?: ToolRegistry;
+  /** phase 1332: injected task scheduler for subagent scheduling (N2 cross-L4 leak fix) */
+  taskSystem?: TaskScheduler;
+}
+
+/** 执行控制维度（D4）：stepNumber / maxSteps / signal / subagentMaxSteps / toolTimeoutMs / stopRequested + requestStop / getElapsedMs / incrementStep */
+export interface ExecutionControl {
   stepNumber: number;
   maxSteps: number;
   signal?: AbortSignal;
@@ -118,16 +141,22 @@ export interface ExecContext {
   subagentMaxSteps?: number;
   /** Tool-level wall-clock timeout, inherited from globalConfig.tool_timeout_ms / Assembly 装配期注入 (phase 1029 / F-2) */
   toolTimeoutMs?: number;
-  /** 创建链路的源头 clawId，由 summon/spawn 传播。Motion 直接创建时为 'motion' */
-  originClawId?: string;
-  /** 是否为 Motion 创建链路上的 agent（Motion 本体或其 subagent） */
-  readonly isMotionChain: boolean;
+  /** phase 777: result-capture tools (done) set this to break the agent loop early */
+  stopRequested: boolean;
+  /** phase 777: mutator called by result-capture tools after storing capturedResult */
+  requestStop(): void;
   getElapsedMs(): number;
   incrementStep(): void;
+}
+
+/** 审计 + 状态维度（D5）：auditWriter / currentToolUseId / trace_id / readFileState / persistReadFileState / getCallerSnapshot */
+export interface ExecutionAudit {
   /** AuditLog writer for tool events */
   auditWriter?: AuditLog;
   /** Current tool_use block id (set by ToolExecutor before tool.execute) */
   currentToolUseId?: string;
+  /** phase 1343 α-6: turn-level trace id for cross-module audit correlation */
+  trace_id?: string;
   /**
    * Per-claw read state for overwrite gate (phase 1430、formerly `fullyReadPaths: Set<string>`).
    * Map<resolvedPath, FileState{hash, timestamp, isFullRead}>.
@@ -144,20 +173,6 @@ export interface ExecContext {
    * Subagent contexts leave it undefined → skip persistence (state lives only in memory).
    */
   persistReadFileState?: boolean;
-  /** Tool registry reference for sync spawn path (phase 766) */
-  registry?: ToolRegistry;
-  /** Whether this context belongs to a shadow agent (phase 766 prep for 767) */
-  isShadow?: boolean;
-  /** phase 777: result-capture tools (done) set this to break the agent loop early */
-  stopRequested: boolean;
-  /** phase 777: mutator called by result-capture tools after storing capturedResult */
-  requestStop(): void;
-  /** Assembly-injected per-claw permission checker (replaces module-level factory pattern, phase 1006) */
-  permissionChecker?: PermissionChecker;
-  /** phase 1332: injected task scheduler for subagent scheduling (N2 cross-L4 leak fix) */
-  taskSystem?: TaskScheduler;
-  /** phase 1343 α-6: turn-level trace id for cross-module audit correlation */
-  trace_id?: string;
   /**
    * phase 1406: lazy caller deep context snapshot.
    * Returns caller's systemPrompt + tools + messages on demand.
@@ -173,6 +188,27 @@ export interface ExecContext {
    * receive a ctx without this field will see the executor guard reject.
    */
   getCallerSnapshot?(): Promise<CallerSnapshot>;
+}
+
+/**
+ * Execution context — passed to all tool executions.
+ *
+ * Fields are L1/L2 infrastructure handles + execution control state.
+ * L4 business fields (isShadow) are scheduled
+ * for eviction to per-module factory injection (Step C P4 b tags / 推 user ratify phase NNNN-B).
+ *
+ * phase 1459 α-1: ExecContext = ClawIdentity & ToolPermissions & ExecutionInfra & ExecutionControl & ExecutionAudit + isShadow（待迁）。
+ * 50 import site 0 改动 / 0 caller cascade。新工具可声明只依赖子接口（M#8 接口最小化）。
+ */
+export interface ExecContext extends
+  ClawIdentity,
+  ToolPermissions,
+  ExecutionInfra,
+  ExecutionControl,
+  ExecutionAudit
+{
+  /** Whether this context belongs to a shadow agent (phase 766 prep for 767) / D8 业务穿透 / 待 P4 b tags Step C phase NNNN-B 迁出 */
+  isShadow?: boolean;
 }
 
 /**
