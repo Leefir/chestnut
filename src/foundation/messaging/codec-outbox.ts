@@ -34,7 +34,8 @@ export function encodeOutbox(msg: OutboxMessage): string {
 
 /**
  * Decode raw string to OutboxMessage. Mirror of decodeInbox for outbox files.
- * phase 1428: P5 — semantic symmetry, replaces decodeInbox borrowed by drain-outboxes.
+ * phase 1428: P5 — semantic symmetry, replaces decodeInbox borrowed by drain-outboxes (砍 by phase 1476).
+ * Post phase 1476: only callers are CLI claw-outbox display + outbox-summary scanner (filename-only, no decode needed).
  * Reads base fields + in_reply_to + generic metadata pass-through.
  */
 export function decodeOutbox(raw: string): OutboxMessage {

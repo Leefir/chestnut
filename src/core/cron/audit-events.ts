@@ -28,10 +28,11 @@ export const CRON_AUDIT_EVENTS = {
   RETENTION_CLEANUP_DELETE_FAILED: 'cron_retention_cleanup_delete_failed', // NEW phase1059
   AUDIT_SIZE_THRESHOLD_EXCEEDED: 'cron_audit_size_threshold_exceeded',     // NEW phase 1154 α-3b
   AUDIT_SIZE_CHECK_FAILED: 'cron_audit_size_check_failed',                 // NEW phase 1154 α-3b
-  OUTBOX_DRAIN_START: 'cron_outbox_drain_start',                           // NEW phase 1160 P0-2
-  OUTBOX_DRAIN_DONE: 'cron_outbox_drain_done',                             // NEW phase 1160 P0-2
-  OUTBOX_DRAIN_FAILED: 'cron_outbox_drain_failed',                         // NEW phase 1210
-  OUTBOX_DRAIN_RACE_LOST: 'cron_outbox_drain_race_lost',                   // NEW phase 1222 α-2: atomic claim loser
+  // phase 1476: OUTBOX_DRAIN_* (4 const) 砍 — outbox-drain cron 退场（pull 模型替 push）
+  OUTBOX_SUMMARY_WRITTEN: 'cron_outbox_summary_written',                   // NEW phase 1476
+  OUTBOX_SUMMARY_SKIPPED: 'cron_outbox_summary_skipped',                   // NEW phase 1476 (dedup hit)
+  OUTBOX_SUMMARY_CLEARED: 'cron_outbox_summary_cleared',                   // NEW phase 1476 (0 unread → 删旧 summary)
+  OUTBOX_SUMMARY_FAILED: 'cron_outbox_summary_failed',                     // NEW phase 1476 (tick handler throw)
   STATE_SAVE_FAILED: 'cron_state_save_failed',                             // NEW phase 1210
   SUNSET_READY: 'sunset_ready',                                             // NEW phase 1258 F.22
   SUNSET_QUERY_FAIL: 'sunset_query_fail',                                   // NEW phase 1258 F.22

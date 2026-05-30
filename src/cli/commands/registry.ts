@@ -1,42 +1,62 @@
 /**
  * @module L6.CLI
- * phase 1469: CLI command string typed const registry.
+ * phase 1469 立 / phase 1476 reframe: CLI command string typed const + helper registry.
  *
  * 提供 motion guidance composer 编译期 check CLI 字面命令 typo / stale CLI 命令的 typed surface。
  * 配 invariant test (`tests/foundation/assembly/guidance-cli-typed-const.test.ts`) enforce composer
- * 输出文本内的 `clawforum X Y` 模式字面必经此 const 引用、禁裸字符串。
+ * 输出文本内的 `clawforum X Y` 模式字面必经此 const / helper 引用、禁裸字符串。
  *
- * 命名规则：
- *   - <NOUN>_<VERB> 或 <NOUN>_<NOUN> upper-snake
- *   - 字面 = `clawforum <subcommand> <verb>` 模板（不含 args 占位、占位由 composer 自家拼）
- *
- * 待立（per CLI-by-need doctrine in `design/modules/l2_messaging.md §10.6`）：
- *   - CONTRACT_CANCEL / CONTRACT_PAUSE / CONTRACT_RESUME — phase γ1 同步补 CLI wiring
+ * **phase 1472 silent X drift fix**：phase 1469 原 `CLI_COMMANDS` const 用 verb-first 字面
+ * （`clawforum claw outbox`）/ phase 1472 翻 subject-first（`clawforum claw <name> outbox`）
+ * 漏更 registry → phase 1476 修：claw 命令族改 `clawCmd(id, verb)` helper 拼装、verb 走 `CLAW_VERBS`
+ * typed const enum。contract 命令族（subject 已是 contract / verb-first 子命令）保字面 const。
  */
 
-export const CLI_COMMANDS = {
-  // Claw 观察类
-  CLAW_AUDIT: 'clawforum claw audit',          // + <claw> [path]
-  CLAW_DIALOG: 'clawforum claw dialog',        // + <claw>
-  CLAW_TRACE: 'clawforum claw trace',          // + <claw> <contract>
-  CLAW_READ: 'clawforum claw read',            // + <claw> <path>
-  CLAW_HEALTH: 'clawforum claw health',        // + <claw>
-  CLAW_STEPS: 'clawforum claw steps',          // + <claw>
-  CLAW_OUTBOX: 'clawforum claw outbox',        // + <claw> [--limit N]
-
-  // Claw 干预类
-  CLAW_SEND: 'clawforum claw send',            // + <claw> "<message>"
-  CLAW_STOP: 'clawforum claw stop',            // + <claw>
-  CLAW_DAEMON: 'clawforum claw daemon',        // + <claw>
-
-  // Contract 类（user 自家观察）
-  CONTRACT_LOG: 'clawforum contract log',      // (motion 自家、无 args)
-  CONTRACT_EVENTS: 'clawforum contract events',// + <claw>
-
-  // 待立（phase γ1+ 同步补 CLI wiring per CLI-by-need doctrine）
-  // CONTRACT_CANCEL: 'clawforum contract cancel',   // + <claw> [<id>]
-  // CONTRACT_PAUSE: 'clawforum contract pause',     // + <claw> [<id>] [reason]
-  // CONTRACT_RESUME: 'clawforum contract resume',   // + <claw> [<id>]
+/**
+ * Claw 命令族 verb fragment（subject-first `clawforum claw <name> <verb>` 形态、phase 1472）.
+ * 来源：`src/cli/commands/claw-router.ts` VERB_NAMES（14 verb / 必同步）.
+ */
+export const CLAW_VERBS = {
+  CREATE: 'create',
+  CHAT: 'chat',
+  STOP: 'stop',
+  HEALTH: 'health',
+  SEND: 'send',
+  OUTBOX: 'outbox',
+  IMPORT: 'import',
+  READ: 'read',
+  READ_STATE: 'read-state',
+  STEPS: 'steps',
+  STEP: 'step',
+  DAEMON: 'daemon',
+  TRACE: 'trace',
+  STATUS: 'status',
 } as const;
 
-export type CliCommand = typeof CLI_COMMANDS[keyof typeof CLI_COMMANDS];
+export type ClawVerb = typeof CLAW_VERBS[keyof typeof CLAW_VERBS];
+
+/**
+ * 拼 `clawforum claw <id> <verb>` 完整 invocation.
+ *
+ * `id` 形态：
+ *   - 真 claw id 字符串 (e.g. 'clawA')
+ *   - 占位符 `<claw-id>` 或 `<id>` 给 motion LLM 自家填（summary 多 claw 场景）
+ */
+export function clawCmd(id: string, verb: ClawVerb): string {
+  return `clawforum claw ${id} ${verb}`;
+}
+
+/**
+ * Contract 命令族（subject 已是 contract / verb-first 子命令、不走 subject-first 转换）.
+ * 字面命令需要 args 时由 composer 自家拼 `${CONTRACT_COMMANDS.CANCEL} -c <id>`.
+ */
+export const CONTRACT_COMMANDS = {
+  LOG: 'clawforum contract log',          // -c <claw>
+  EVENTS: 'clawforum contract events',    // <claw> --since <ts>
+  CANCEL: 'clawforum contract cancel',    // -c <claw> --reason <text> [--contract <id>]
+  // 待立（per CLI-by-need doctrine in `design/modules/l2_messaging.md §10.6`）：
+  // PAUSE: 'clawforum contract pause',     // -c <claw> [--contract <id>] [--reason <text>]
+  // RESUME: 'clawforum contract resume',   // -c <claw> [--contract <id>]
+} as const;
+
+export type ContractCommand = typeof CONTRACT_COMMANDS[keyof typeof CONTRACT_COMMANDS];

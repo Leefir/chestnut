@@ -46,19 +46,8 @@ export async function disassemble(instances: Instances, signal: string): Promise
     }
   }
 
-  // Step 2.5: final outbox drain (phase 1373 sub-1)
-  // 防 post-cron-stop subagent 完成写 outbox → drained before exit
-  if (instances.messaging) {
-    try {
-      await instances.messaging.drainOutboxes({ final: true });
-    } catch (e) {
-      auditWriter.write(
-        ASSEMBLY_AUDIT_EVENTS.DISASSEMBLE_STEP_FAILED,
-        `step=final_drain`,
-        `reason=${_reason(e)}`,
-      );
-    }
-  }
+  // phase 1476: Step 2.5 final outbox drain 砍（drain-outboxes 全砍 / pull 模型替 push）
+  // post-cron-stop subagent 写 outbox 留 outbox/pending、motion 下次启动 outbox-summary cron 扫到 → 通知 motion CLI 拉。
 
   // Step 3: runtime.stop()（async）
   try {
