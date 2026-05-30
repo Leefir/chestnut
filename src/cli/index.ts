@@ -102,13 +102,13 @@ program
 // 由 router 内自家拦 `--help` / `-h` + `claw help [<verb>]` 关键字。顶层 `claw --help`
 // 也由 router 拦截（args 含 `--help` 当 verbToken 处理）。
 const clawCommand = program
-  .command('claw <subject> [args...]')
+  .command('claw [subject] [args...]')
   .description('Manage Claws (run `clawforum claw help` for full reference)')
   .passThroughOptions()
   .allowUnknownOption()
   .helpOption(false)
   .action(
-    withCliErrorHandling(async (subject: string, args: string[]) => {
+    withCliErrorHandling(async (subject: string | undefined, args: string[]) => {
       await dispatchClawSubcommand(subject, args, { fsFactory });
     }),
   );
