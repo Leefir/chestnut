@@ -56,20 +56,20 @@ describe('notify_claw tool', () => {
   const motionCtx = { callerLabel: 'motion' } as any;
 
   describe('happy path cross-claw write', () => {
-    it('default interrupt=false → priority=normal metadata + NOTIFY_CLAW_SENT audit', async () => {
+    it('default (omitted interrupt) → priority=high metadata + NOTIFY_CLAW_SENT audit (phase 1427: default=true)', async () => {
       const tool = createNotifyClawTool({ fs, clawforumRoot: tempDir, audit: audit.audit });
       const result = await tool.execute(
         { to: targetClaw, body: 'hello worker' },
         motionCtx,
       );
       expect(result.success).toBe(true);
-      expect(result.content).toMatch(/Notified worker-1: message \(interrupt=false\)/);
+      expect(result.content).toMatch(/Notified worker-1: message \(interrupt=true\)/);
 
       // 实测 file written to target inbox/pending/
       const files = await fs.list(path.join('claws', targetClaw, 'inbox', 'pending'));
       expect(files.length).toBe(1);
       const content = await fs.read(path.join('claws', targetClaw, 'inbox', 'pending', files[0].name));
-      expect(content).toMatch(/priority: normal/);
+      expect(content).toMatch(/priority: high/);
       expect(content).toMatch(/from: "motion"/);
       expect(content).toMatch(/type: message/);
       expect(content).toMatch(/hello worker/);
@@ -79,10 +79,10 @@ describe('notify_claw tool', () => {
       expect(rows.length).toBe(1);
       expect(rows[0]).toContain(`claw=${targetClaw}`);
       expect(rows[0]).toContain('type=message');
-      expect(rows[0]).toContain('interrupt=false');
+      expect(rows[0]).toContain('interrupt=true');
     });
 
-    it('interrupt=true → priority=high metadata + interrupt=true audit field', async () => {
+    it('explicit interrupt=true → priority=high metadata + interrupt=true audit field', async () => {
       const tool = createNotifyClawTool({ fs, clawforumRoot: tempDir, audit: audit.audit });
       await tool.execute(
         { to: targetClaw, body: 'urgent', type: 'alert', interrupt: true },
@@ -95,6 +95,20 @@ describe('notify_claw tool', () => {
 
       const sentRow = audit.events.find(r => r[0] === MESSAGING_AUDIT_EVENTS.NOTIFY_CLAW_SENT);
       expect(sentRow).toContain('interrupt=true');
+    });
+
+    it('explicit interrupt=false → priority=normal metadata + interrupt=false audit (phase 1427: 不打扰路径)', async () => {
+      const tool = createNotifyClawTool({ fs, clawforumRoot: tempDir, audit: audit.audit });
+      await tool.execute(
+        { to: targetClaw, body: 'gentle nudge', interrupt: false },
+        motionCtx,
+      );
+      const files = await fs.list(path.join('claws', targetClaw, 'inbox', 'pending'));
+      const content = await fs.read(path.join('claws', targetClaw, 'inbox', 'pending', files[0].name));
+      expect(content).toMatch(/priority: normal/);
+
+      const sentRow = audit.events.find(r => r[0] === MESSAGING_AUDIT_EVENTS.NOTIFY_CLAW_SENT);
+      expect(sentRow).toContain('interrupt=false');
     });
 
     it('custom type default → "message"', async () => {
