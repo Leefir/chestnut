@@ -26,7 +26,7 @@ import {
 
 
 import { archiveAndEmit, completeSubtaskSync } from './verification-lifecycle.js';
-import { acquireVerificationMutex, releaseVerificationMutex } from './verification-mutex.js';
+// phase 1465: verification mutex 改 ContractSystem 实例、经 ctx.verificationMutex 访问 (ML#3 + Tier 1 真治)
 import { writeVerificationInbox, writeForceAcceptInbox, writeVerificationError, safeNotify } from './verification-notify.js';
 import { formatRejectionFeedback, formatValidIds } from './verification-format.js';
 import type { VerificationContext } from './verification-types.js';
@@ -237,7 +237,7 @@ export async function runVerificationPipeline(
   const verificationConfig = contractYaml.verification?.find(a => a.subtask_id === subtaskId);
 
   if (verificationConfig) {
-    if (!acquireVerificationMutex(contractId, subtaskId)) {
+    if (!ctx.verificationMutex.acquire(contractId, subtaskId)) {
       emitContractVerificationPipelineRaceRejected(
         ctx.audit,
         { contractId, subtaskId, context: 'runVerificationPipeline', reason: 'verification_pipeline_already_active' },
@@ -278,7 +278,7 @@ export async function runVerificationPipeline(
   // withProgressLock has committed in_progress, the status check
   // (line 249-251) blocks re-entry. Release early so the next
   // completeSubtask call doesn't hit a stale held mutex.
-  releaseVerificationMutex(contractId, subtaskId);
+  ctx.verificationMutex.release(contractId, subtaskId);
 
   runVerificationInBackground(ctx, params, contractYaml, verificationConfig)
     .catch(err => {
@@ -322,7 +322,7 @@ export async function runVerificationPipeline(
   return { passed: false, feedback: '', async: true };
   } catch (e) {
     if (verificationConfig) {
-      releaseVerificationMutex(contractId, subtaskId);
+      ctx.verificationMutex.release(contractId, subtaskId);
     }
     throw e;
   }
