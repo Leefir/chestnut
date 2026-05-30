@@ -8,17 +8,20 @@
  *   - writeInboxAsync(...) call body 内 type: 'X' 字面量
  *   - 三元 `type: cond ? 'X' : 'Y'` 表达式中两 branch 字面量（如 verification_result/rejection）
  *
- * Outbox-routed types（report/question/result/error/response）由 send tool / Runtime _writeErrorResponse 写自家 outbox、
- * 经 drain-outboxes cron 路由到 motion inbox / type 透传 — 不在 sender scan 直接命中、但必须 register。
- * 加 outbox-routed allowlist 显式声明这部分。
+ * phase 1476 reframe: 原 OUTBOX_ROUTED_TYPES allowlist (报 5 outbox-routed type:
+ * report/question/result/error/response) 砍 — outbox-drain cron 已退场（pull 模型替 push）
+ * → 这 5 type 不再进 motion inbox（claw outbox 自家累积、motion CLI 拉取消费）。
+ *
+ * NEW NON_SENDER_SCAN_TYPES allowlist：cron job 用 raw fs.writeAtomic + encodeInbox 写
+ * motion inbox 的 type（不经 notifyX/writeSync/writeInboxAsync 调用、不被 scan 抓）。
  *
  * 守 phase 1414/1419/1426 formatter registry sister cluster 同型 — type coverage 必显式、漏注 fail。
  * 反向：future 加新 sender type 必同步 register（NO_GUIDANCE 或 real composer）/ 漏注 invariant fail。
  */
 
-// Outbox-routed types：send tool + Runtime response（drain-outboxes 路由到 inbox / type 透传）
-const OUTBOX_ROUTED_TYPES = new Set([
-  'report', 'question', 'result', 'error', 'response',
+// phase 1476: cron-written types (raw fs.writeAtomic + encodeInbox / 不被 sender scan 抓)
+const NON_SENDER_SCAN_TYPES = new Set([
+  'claw_outbox_summary',  // src/core/outbox-summary/write.ts via fs.writeAtomic
 ]);
 
 import { describe, it, expect } from 'vitest';
@@ -107,24 +110,24 @@ function extractSenderTypes(): Map<string, string[]> {
   return byType;
 }
 
-/** Outbox-routed types 加入 sender set（drain-outboxes 路由到 inbox / 透传）*/
-function extendWithOutboxRouted(types: Set<string>): Set<string> {
+/** phase 1476: cron-written types 加入 sender set (raw fs.writeAtomic + encodeInbox 不被 scan 抓) */
+function extendWithNonSenderScan(types: Set<string>): Set<string> {
   const extended = new Set(types);
-  for (const t of OUTBOX_ROUTED_TYPES) extended.add(t);
+  for (const t of NON_SENDER_SCAN_TYPES) extended.add(t);
   return extended;
 }
 
 describe('phase 1469: motion guidance registry coverage invariant', () => {
-  it('every inbox sender type literal (incl. outbox-routed) must be registered in guidanceRegistry', () => {
+  it('every inbox sender type literal (incl. cron-written) must be registered in guidanceRegistry', () => {
     const sentMap = extractSenderTypes();
-    const sentTypes = extendWithOutboxRouted(new Set(sentMap.keys()));
+    const sentTypes = extendWithNonSenderScan(new Set(sentMap.keys()));
     const registered = extractRegisteredTypes();
     const unregistered: Array<{ type: string; sites: string[] }> = [];
     for (const t of sentTypes) {
       if (!registered.has(t)) {
         unregistered.push({
           type: t,
-          sites: sentMap.get(t) ?? [OUTBOX_ROUTED_TYPES.has(t) ? 'outbox-routed (drain-outboxes)' : '(unknown)'],
+          sites: sentMap.get(t) ?? [NON_SENDER_SCAN_TYPES.has(t) ? 'cron-written (raw fs.writeAtomic)' : '(unknown)'],
         });
       }
     }
@@ -142,4 +145,4 @@ describe('phase 1469: motion guidance registry coverage invariant', () => {
   });
 });
 
-export { extractSenderTypes, extractRegisteredTypes, extendWithOutboxRouted, OUTBOX_ROUTED_TYPES };
+export { extractSenderTypes, extractRegisteredTypes, extendWithNonSenderScan, NON_SENDER_SCAN_TYPES };

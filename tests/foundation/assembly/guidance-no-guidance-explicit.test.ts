@@ -15,12 +15,12 @@ import { describe, it, expect } from 'vitest';
 import {
   extractRegisteredTypes,
   extractSenderTypes,
-  extendWithOutboxRouted,
+  extendWithNonSenderScan,
 } from './guidance-registry-coverage.test.js';
 
 describe('phase 1469: explicit no-guidance invariant (every sender type must be registered)', () => {
-  it('registered set === extended sender set (incl. outbox-routed) — no orphan registrations, no stale', () => {
-    const sentExtended = [...extendWithOutboxRouted(new Set(extractSenderTypes().keys()))].sort();
+  it('registered set === extended sender set (incl. cron-written) — no orphan registrations, no stale', () => {
+    const sentExtended = [...extendWithNonSenderScan(new Set(extractSenderTypes().keys()))].sort();
     const registered = [...extractRegisteredTypes()].sort();
     expect(registered).toEqual(sentExtended);
   });

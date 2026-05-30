@@ -127,9 +127,10 @@ export function createClawGlobalConfigSchema(defaults: ConfigDefaults) {
           enabled: z.boolean().default(true),
           schedule: z.string().regex(SCHEDULE_REGEX).default('interval:1h'),
         }).optional(),
-        outbox_drain: z.object({
+        // phase 1476: outbox_drain 砍 + outbox_summary 立（pull 模型替 push）
+        outbox_summary: z.object({
           enabled: z.boolean().default(true),
-          schedule: z.string().regex(SCHEDULE_REGEX).default('interval:30s'),
+          schedule: z.string().regex(SCHEDULE_REGEX).default('interval:1s'),
         }).optional(),
         sunset_monitor: z.object({
           enabled: z.boolean().default(true),

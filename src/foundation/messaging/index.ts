@@ -1,4 +1,4 @@
-import { type ClawforumRoot } from '../../foundation/identity/index.js';/**
+/**
  * @module L2.Messaging
  * Messaging module (L2)
  *
@@ -81,33 +81,10 @@ export { notifyInbox, notifySystem, notifyClaw, writeInboxAsync } from './notify
 
 import type { ClawId } from '../identity/index.js';
 import { type ClawDir } from '../identity/index.js';
-import {
-  drainOutboxes,
-  type DrainOutboxesOptions,
-  type DrainResult,
-} from './drain-outboxes.js';
-export { drainOutboxes, type DrainOutboxesOptions, type DrainResult };
+
+// phase 1476: drainOutboxes / Messaging / createMessaging 全砍。
+// claw→motion 通信改 pull 模型（motion 见 claw_outbox_summary 索引 → CLI claw <id> outbox 拉取消费）。
+// claw→claw 通信通道暂闭（claw 不知其他 claw 名字 / send tool to: 写死 motion）。
+// 详 design/modules/l2_messaging.md §7.A A.phase1476-drain-outboxes-removal-restore-pull-model.
 
 export { cleanupRetention } from './retention-cleanup.js';
-
-export interface Messaging {
-  drainOutboxes(opts: { limitPerClaw?: number; signal?: AbortSignal; final?: boolean }): Promise<DrainResult>;
-}
-
-export function createMessaging(deps: {
-  clawforumRoot: ClawforumRoot;
-  fs: FileSystem;
-  audit: AuditLog;
-}): Messaging {
-  return {
-    drainOutboxes: async (opts) =>
-      drainOutboxes({
-        clawforumRoot: deps.clawforumRoot,
-        fs: deps.fs,
-        audit: deps.audit,
-        limitPerClaw: opts.limitPerClaw,
-        signal: opts.signal,
-        final: opts.final,
-      }),
-  };
-}

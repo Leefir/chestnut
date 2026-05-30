@@ -1,6 +1,9 @@
 /**
  * phase 1469 invariant: composer 文件内 `clawforum X Y` 模式字面必经
- * CLI_COMMANDS typed const 引用、不可裸字符串拼接.
+ * typed const / helper 引用、不可裸字符串拼接.
+ *
+ * phase 1476 reframe: `CLI_COMMANDS` (verb-first 字面) → `clawCmd(id, CLAW_VERBS.X)` helper
+ * (subject-first 形态) + `CONTRACT_COMMANDS.X` typed const（contract 子命令保 verb-first）.
  *
  * 守 ML#9「不可消除的耦合应显式表达、优先表达为让编译器检查」 — typed const enable
  * 编译期 typo 检测、配 invariant runtime 兜底 surface bypass detection.
@@ -37,7 +40,7 @@ describe('phase 1469: guidance composer must reference CLI via CLI_COMMANDS type
         .join('\n');
       throw new Error(
         `phase 1469 invariant failed — ${violations.length} bare 'clawforum X Y' literal(s) in composer files:\n${summary}\n` +
-          `Replace with CLI_COMMANDS.* typed const reference (from src/cli/commands/registry.ts).`,
+          `Replace with clawCmd(id, CLAW_VERBS.X) helper or CONTRACT_COMMANDS.X typed const (from src/cli/commands/registry.ts).`,
       );
     }
     expect(violations).toEqual([]);

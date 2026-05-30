@@ -47,7 +47,7 @@ import { spawnTool } from '../core/spawn-system/index.js';
 import { SummonTool } from '../core/summon-system/index.js';
 import { createShadowTool } from '../core/shadow-system/index.js';
 import { cleanupOrphanedTemp } from './cleanup.js';
-import { createInboxReader, createOutboxWriter, notifyInbox, notifyClaw, InboxWriter, createMessaging, makeInboxPath } from '../foundation/messaging/index.js';
+import { createInboxReader, createOutboxWriter, notifyInbox, notifyClaw, InboxWriter, makeInboxPath } from '../foundation/messaging/index.js';
 // phase 1414: formatter registry + Messaging 自家通用 formatter
 import { createMessageFormatterRegistry, registerMessagingFormatters } from '../foundation/messaging/index.js';
 // phase 1469: motion guidance registry (motion-only / claw 不装)
@@ -62,7 +62,6 @@ import { createHeartbeatInboxFormatter } from '../core/heartbeat/index.js';
 import { registerContractFormatters } from '../core/contract/inbox-formatters.js';
 import { registerDaemonFormatters } from '../daemon/inbox-formatter.js';
 import { registerMemoryFormatters } from '../core/memory/inbox-formatter.js';
-import type { Messaging } from '../foundation/messaging/index.js';
 import { createSubmitSubtaskTool } from '../core/contract/index.js';
 import { createDoneTool } from '../core/subagent/index.js';
 import { createStatusTool } from '../core/status-service/index.js';
@@ -87,7 +86,8 @@ import { runSunsetMonitor } from '../core/cron/jobs/sunset-monitor.js';
 import { createMemorySystem, memorySearchTool } from '../core/memory/index.js';
 import type { MemorySystem } from '../core/memory/index.js';
 import { runContractObserver } from '../core/contract/jobs/contract-observer.js';
-import { runOutboxDrain, DEFAULT_LIMIT_PER_CLAW as OUTBOX_DRAIN_DEFAULT_LIMIT } from '../core/cron/jobs/outbox-drain.js';
+// phase 1476: outbox-drain cron 砍 — pull 模型替 push（详 design/modules/l5_cron.md A.phase1476-outbox-summary-cron-job）
+import { runOutboxSummary, OUTBOX_SUMMARY_CRON_TIMEOUT_MS } from '../core/cron/jobs/outbox-summary.js';
 import { DISK_MONITOR_CRON_TIMEOUT_MS } from '../core/cron/jobs/disk-monitor.js';
 import { LLM_STATS_CRON_TIMEOUT_MS } from '../core/cron/jobs/llm-stats.js';
 import { METRICS_SNAPSHOT_CRON_TIMEOUT_MS } from '../core/cron/jobs/metrics-snapshot.js';
@@ -96,7 +96,6 @@ import { GIT_GC_WEEKLY_CRON_TIMEOUT_MS } from '../core/cron/jobs/git-gc-weekly.j
 import { RETENTION_CLEANUP_CRON_TIMEOUT_MS } from '../core/cron/jobs/retention-cleanup.js';
 import { AUDIT_SIZE_MONITOR_CRON_TIMEOUT_MS } from '../core/cron/jobs/audit-size-monitor.js';
 import { SUNSET_MONITOR_CRON_TIMEOUT_MS } from '../core/cron/jobs/sunset-monitor.js';
-import { OUTBOX_DRAIN_CRON_TIMEOUT_MS } from '../core/cron/jobs/outbox-drain.js';
 import { buildLLMConfig } from '../foundation/config/index.js';
 import { DEFAULT_MAX_CONCURRENT_TASKS } from '../core/async-task-system/constants.js';
 import { DEFAULT_MAX_STEPS } from '../core/agent-executor/index.js';
@@ -675,7 +674,6 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
 
     // --- 7. CronRunner (motion + cron.enabled, daemon.ts L187-248) ---
     let cronRunner: CronRunner | undefined;
-    let messaging: Messaging | undefined;
     if (isMotion && (globalConfig.cron?.enabled ?? true)) {
       const clawforumRoot = resolveClawforumRoot(clawDir, true);  // phase 1406: motion-only context (isMotion+cron guard)
       const tickMs = globalConfig.cron?.tick_interval_ms ?? CRON_TICK_INTERVAL_MS;
@@ -691,9 +689,6 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
         auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=cron_runner`, `phase=fs_construct`, `reason=${errMsg(e)}`);
         throw new Error(`Assembly: clawforumFs construct failed: ${errMsg(e)}`, { cause: e });
       }
-
-      // phase 1333: Messaging instance for cron outbox-drain tick trigger
-      messaging = createMessaging({ clawforumRoot, fs: clawforumFs, audit: auditWriter });
 
       // --- MemorySystem (L5, motion only) ---
       let memorySystem: MemorySystem | undefined;
@@ -855,17 +850,18 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
             }),
             timeoutMs: AUDIT_SIZE_MONITOR_CRON_TIMEOUT_MS,
           },
+          // phase 1476: outbox-summary cron 替 outbox-drain（pull 模型 / 详 l5_cron.md A.phase1476-outbox-summary-cron-job）
           {
-            name: 'outbox-drain',
-            enabled: globalConfig.cron?.jobs?.outbox_drain?.enabled ?? true,
-            schedule: parseSchedule(globalConfig.cron?.jobs?.outbox_drain?.schedule ?? 'interval:30s', auditWriter),
-            handler: (signal) => runOutboxDrain({
-              messaging: messaging!,
-              limitPerClaw: OUTBOX_DRAIN_DEFAULT_LIMIT,
-              signal,
+            name: 'outbox-summary',
+            enabled: globalConfig.cron?.jobs?.outbox_summary?.enabled ?? true,
+            schedule: parseSchedule(globalConfig.cron?.jobs?.outbox_summary?.schedule ?? 'interval:1s', auditWriter),
+            handler: (signal) => runOutboxSummary({
+              clawforumRoot,
+              fs: clawforumFs,
               audit: auditWriter,
+              signal,
             }),
-            timeoutMs: OUTBOX_DRAIN_CRON_TIMEOUT_MS,
+            timeoutMs: OUTBOX_SUMMARY_CRON_TIMEOUT_MS,
           },
           {
             name: 'sunset-monitor',
@@ -919,7 +915,6 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       gateway,
       evolutionSystem,
       disposeContractSystems,
-      messaging,
     };
   } catch (e) {
     // Best-effort cleanup of already-constructed resources
