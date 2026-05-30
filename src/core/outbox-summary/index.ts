@@ -19,4 +19,4 @@ export { toExtraMeta } from './types.js';
 export { computeHash, HASH_LEN } from './hash.js';
 export { scanOutboxes } from './scan.js';
 export { findExistingSummaryByHash, listPendingSummaries, SUMMARY_FILENAME_PATTERN, DEDUP_DONE_WINDOW_MS } from './dedup.js';
-export { clearPendingSummaries, writeNewSummary, SUMMARY_FILENAME_PREFIX, SUMMARY_INBOX_TYPE } from './write.js';
+export { archivePendingSummaries, writeNewSummary, SUMMARY_FILENAME_PREFIX, SUMMARY_INBOX_TYPE } from './write.js';
