@@ -1,18 +1,21 @@
 /**
- * @module L1.CliHelp.Types
+ * @module L6.Cli.Help.Types
  *
- * Phase 1477：CLI help 系统化（verb-fact 单源 + Assembly composer 拼装）。
+ * Phase 1477 立 / phase 1479 layering fix（从 L1 foundation 挪到 L6 cli）。
  *
  * 本文件定义命令族 fact schema：每个 verb 一份 fact，描述命令的契约
  * （名字 / 分组 / 形态 / 摘要 / 参数 / 选项 / 示例）。
  *
  * 应然边界：
- * - foundation/ 层 = 不知 commander、不知 binary 字面、不知输出格式
- * - 仅持「what each verb does」的业务事实
+ * - L6 cli 业主自家 schema、不知 commander 实例、不知 binary 字面、不知输出格式
+ * - 仅持「what each verb does」的 CLI 命令业务事实
  * - 装配选择（分组顺序 / 渲染格式 / binary 字面）归 Assembly composer
  *
- * 同型参考：foundation/.../motion-guidance.ts 的 StatusMotionGuidance facts
- * （phase 1469 β 基础设施立、phase 1472 γ1 motion 实施 / phase 1477 γ-help 镜像）。
+ * 同型参考：core/status-service/motion-guidance.ts StatusMotionGuidance facts
+ * （phase 1469 立、归业主 L5 core、phase 1472 γ1 motion 实施 / 本 fact 同型归 L6 cli 业主）。
+ *
+ * 注：phase 1477 初立时错放 `src/foundation/cli-help/`、违 ML#5 底层不预设上层；
+ * phase 1479 修：foundation L1 不知 CLI verb / args 这些 L6 概念，挪 `src/cli/help/`。
  */
 
 /** verb 形态：instance = 作用在指定 claw 上 (claw <name> <verb>) / flat = 平面操作 (claw list / claw help)。 */

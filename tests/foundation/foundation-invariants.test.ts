@@ -134,3 +134,27 @@ describe('phase 1278 α: AUDIT_PREVIEW_LEN must not import from audit module', (
     expect(src).toMatch(/SUNSET/);
   });
 });
+
+describe('phase 1479: CLI verb fact schema must not live in foundation/', () => {
+  // ML#5: foundation L1 不预设 L6 CLI verb / args / examples 这些上层概念。
+  // phase 1477 错放 src/foundation/cli-help/、phase 1479 挪 src/cli/help/ 后立此 invariant 防回归。
+  it('src/foundation/ has no file/dir named cli-help, verb-facts, or CLAW_VERB symbol', () => {
+    const files = walk('src/foundation');
+    const violations: string[] = [];
+    for (const file of files) {
+      if (file.includes('cli-help') || file.endsWith('verb-facts.ts')) {
+        violations.push(`path: ${file}`);
+        continue;
+      }
+      const src = readFileSync(file, 'utf-8');
+      if (/\bCLAW_VERB_FACTS\b|\bCLAW_VERB_NAMES\b|\bVerbFact\b/.test(src)) {
+        violations.push(`symbol in ${file}`);
+      }
+    }
+    if (violations.length > 0) {
+      expect.fail(
+        `foundation/ 不应持 CLI verb fact schema (ML#5 layering). Violations:\n${violations.join('\n')}`,
+      );
+    }
+  });
+});

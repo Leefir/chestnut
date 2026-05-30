@@ -17,8 +17,7 @@ import { describe, it, expect } from 'vitest';
 import {
   CLAW_VERB_FACTS,
   CLAW_VERB_NAMES,
-  CLAW_RETIRED_VERBS,
-} from '../../../src/foundation/cli-help/index.js';
+} from '../../../src/cli/help/index.js';
 
 // Router's authoritative verb list. Imported via the router module to assert
 // the two are kept in lockstep at type/runtime layer.
@@ -69,10 +68,4 @@ describe('CLAW_VERB_FACTS invariants', () => {
     expect(CLAW_VERB_NAMES).toEqual(CLAW_VERB_FACTS.map((f) => f.name));
   });
 
-  it('retired verbs do not collide with active verb names', () => {
-    const active = new Set(CLAW_VERB_NAMES);
-    for (const r of CLAW_RETIRED_VERBS) {
-      expect(active.has(r.retired)).toBe(false);
-    }
-  });
 });

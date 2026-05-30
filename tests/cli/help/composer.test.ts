@@ -22,11 +22,10 @@ import {
 } from '../../../src/assembly/cli-help/index.js';
 import {
   CLAW_VERB_FACTS,
-  CLAW_RETIRED_VERBS,
-} from '../../../src/foundation/cli-help/index.js';
+} from '../../../src/cli/help/index.js';
 
 describe('composeClawHelp (top-level)', () => {
-  const help = composeClawHelp(CLAW_VERB_FACTS, CLAW_RETIRED_VERBS);
+  const help = composeClawHelp(CLAW_VERB_FACTS);
 
   it('contains all four group headers', () => {
     expect(help).toContain('Lifecycle:');
@@ -48,14 +47,10 @@ describe('composeClawHelp (top-level)', () => {
     }
   });
 
-  it('contains an Examples section', () => {
-    expect(help).toContain('Examples:');
-  });
-
-  it('contains a Notes section with cp deprecation', () => {
-    expect(help).toContain('Notes:');
-    expect(help).toContain('`cp`');
-    expect(help).toContain('`import`');
+  it('does not include verbose Examples / Notes sections in top-level help', () => {
+    // phase 1479 ratify：Examples / Notes 段在顶层无用、user explicit 删
+    expect(help).not.toContain('Examples:');
+    expect(help).not.toContain('Notes:');
   });
 
   it('does not leak commander internal `<subject>` placeholder', () => {

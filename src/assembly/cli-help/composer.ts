@@ -15,7 +15,7 @@
  * 同型参考：assembly/motion-guidance-composer.ts（phase 1472 同模式 + 本 phase γ-help 镜像）。
  */
 
-import type { VerbFact, VerbGroup } from '../../foundation/cli-help/index.js';
+import type { VerbFact, VerbGroup } from '../../cli/help/index.js';
 
 /** CLI binary 字面 —— 与 motion-guidance-composer 同源约定、Assembly 内 source of truth。 */
 const CLI_BINARY = 'clawforum';
