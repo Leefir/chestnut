@@ -72,15 +72,15 @@ export const writeTool: Tool = {
     if (!append) {
       const exists = await ctx.fs.exists(resolved);
       if (exists) {
-        const gateError = await enforceFullReadGate(ctx, resolved, filePath);
-        if (gateError) {
+        const gate = await enforceFullReadGate(ctx, resolved, filePath);
+        if (gate) {
           ctx.auditWriter?.write(
             FILE_TOOL_AUDIT_EVENTS.OVERWRITE_GATE_REJECTED,
-            `path=${resolved} reason=gate-rejected`,
+            `path=${resolved} reason=${gate.reason}`,
           );
           return {
             success: false,
-            content: gateError.content + ` For files where the response would exceed 100 KB, use edit/multi_edit, or write with append:true.`,
+            content: gate.result.content + ` For files where the response would exceed 100 KB, use edit/multi_edit, or write with append:true.`,
           };
         }
       }
