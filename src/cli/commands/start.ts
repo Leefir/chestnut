@@ -64,7 +64,7 @@ export function buildOnboardingSubtasks(language: string): Array<{ id: string; d
     },
     {
       id: 'first-claw',
-      description: 'Help the user create their first Claw. Ask what task or project they want to work on. A Claw is a separate context window for a specific ongoing task — all Claws have identical capabilities, they just handle different work. Run both commands: exec: clawforum claw create <name>, then exec: clawforum claw daemon <name>',
+      description: 'Help the user create their first Claw. Ask what task or project they want to work on. A Claw is a separate context window for a specific ongoing task — all Claws have identical capabilities, they just handle different work. Run both commands: exec: clawforum claw <name> create, then exec: clawforum claw <name> daemon',
     },
     {
       id: 'first-contract',
