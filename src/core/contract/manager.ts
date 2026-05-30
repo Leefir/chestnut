@@ -81,6 +81,7 @@ import {
   type VerificationContext,
 } from './verification.js';
 import { archiveAndEmit } from './verification-lifecycle.js';
+import { VerificationMutex } from './verification-mutex.js';
 import { ContractAuditor } from './contract-auditor.js';
 
 // Contract default value constants
@@ -139,6 +140,16 @@ export class ContractSystem {
    * 反 phase 993 D.1 dead field
    */
   private _activeContractControllers = new Map<string, Set<{ controller: AbortController; promise: Promise<unknown> }>>();
+
+  /**
+   * phase 1465: per-ContractSystem instance verification mutex
+   * 应然：mutex 资源归 ContractSystem 实例 (ML#3 资源唯一归属)
+   * 实然 (改前)：模块级 const activePipelines = new Set<string>() 跨 vitest worker pool leak
+   *               + test 需 _resetVerificationMutexForTest global hook 防 leak
+   *               + dev log phase 1388-1393 多次 flaky 报告同根 + Tier 1 flaky_test_zero_tolerance 直接违反
+   * 改后：each ContractSystem instance own its own mutex / per-test 自然 fresh / 0 leak / 0 reset hook
+   */
+  private readonly verificationMutex = new VerificationMutex();
 
   private _registerVerifierController(contractId: ContractId, ctrl: AbortController, promise: Promise<unknown>): void {
     let s = this._activeContractControllers.get(contractId);
@@ -367,6 +378,7 @@ export class ContractSystem {
       withProgressLock: (contractId, fn) => this.withProgressLock(contractId, fn),
       toolRegistry: this.toolRegistry,
       toolTimeoutMs: this.toolTimeoutMs,
+      verificationMutex: this.verificationMutex,
       runVerifierWithCancel: async (contractId, config) => {
         const controller = new AbortController();
         const promise = runContractVerifier({ ...config, signal: controller.signal, contractId, fsFactory: this.fsFactory, clawforumRoot: this.clawforumRoot });

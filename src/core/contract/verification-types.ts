@@ -11,6 +11,7 @@ import { type LockContext } from './lock.js';
 import type { ClawId } from '../../foundation/identity/index.js';
 import type { ContractId, ClawforumRoot } from '../../foundation/identity/index.js';
 import { type ClawDir } from '../../foundation/identity/index.js';
+import type { VerificationMutex } from './verification-mutex.js';
 
 
 
@@ -42,4 +43,6 @@ export interface VerificationContext extends LockContext {
   toolTimeoutMs?: number;
   /** phase 1389: ctx-injected clawforumRoot (single truth source, no heuristic derivation) */
   clawforumRoot: ClawforumRoot;
+  /** phase 1465: per-ContractSystem instance race guard for verification pipeline (ML#3 + Tier 1 flaky_test_zero_tolerance) */
+  verificationMutex: VerificationMutex;
 }
