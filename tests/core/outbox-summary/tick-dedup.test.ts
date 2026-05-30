@@ -114,7 +114,7 @@ describe('phase 1476: runOutboxSummaryTick orchestration', () => {
     expect(events.some(e => e[0] === 'cron_outbox_summary_written')).toBe(true);
   });
 
-  it('state change → clear old pending + write new', async () => {
+  it('state change → archive old pending to done + write new (DP 不丢弃)', async () => {
     await fsAsync.mkdir(path.join(root, 'claws/clawA/outbox/pending'), { recursive: true });
     await fsAsync.writeFile(path.join(root, 'claws/clawA/outbox/pending/m1.md'), 'x');
     await runOutboxSummaryTick({ clawforumRoot: makeClawforumRoot(root), fs, audit });
@@ -127,18 +127,23 @@ describe('phase 1476: runOutboxSummaryTick orchestration', () => {
     const summaries = await listSummaries(root, 'pending');
     expect(summaries.length).toBe(1);
     expect(summaries[0]).not.toBe(firstSummary);
+    // 旧 summary 必须在 done 内（archive 语义、不 delete）
+    expect(await listSummaries(root, 'done')).toContain(firstSummary);
     expect(events.some(e => e[0] === 'cron_outbox_summary_written')).toBe(true);
   });
 
-  it('all unread消费 + new tick → CLEARED', async () => {
+  it('all unread消费 + new tick → CLEARED (archive 旧 pending summary to done / DP 不丢弃)', async () => {
     await fsAsync.mkdir(path.join(root, 'claws/clawA/outbox/pending'), { recursive: true });
     await fsAsync.writeFile(path.join(root, 'claws/clawA/outbox/pending/m1.md'), 'x');
     await runOutboxSummaryTick({ clawforumRoot: makeClawforumRoot(root), fs, audit });
+    const summary = (await listSummaries(root, 'pending'))[0];
     // simulate motion consumed all outbox via CLI
     await fsAsync.rm(path.join(root, 'claws/clawA/outbox/pending/m1.md'));
     events.length = 0;
     await runOutboxSummaryTick({ clawforumRoot: makeClawforumRoot(root), fs, audit });
     expect(await listSummaries(root, 'pending')).toEqual([]);
+    // 旧 summary 必须在 done 内（archive、不 delete）
+    expect(await listSummaries(root, 'done')).toContain(summary);
     expect(events.some(e => e[0] === 'cron_outbox_summary_cleared')).toBe(true);
   });
 });

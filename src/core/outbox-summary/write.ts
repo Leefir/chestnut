@@ -28,19 +28,31 @@ export interface WriteDeps {
   now?: () => number;
 }
 
-/** Delete all existing summary files in motion/inbox/pending. Returns count removed. */
-export function clearPendingSummaries(deps: WriteDeps): number {
+/**
+ * Archive all existing summary files from motion/inbox/pending to motion/inbox/done.
+ * Returns count archived.
+ *
+ * 守 DP「运行中产生的任何信息未经显式设计决策不得丢弃或静默忽略」 — 旧 summary 即便
+ * motion 未读、被新版本 supersede 也不应 delete，应 mv 到 done 保留 archaeological 历史.
+ * mtime 保留 = 写入时刻，dedup 24h 窗扫 done 仍正确判定.
+ */
+export async function archivePendingSummaries(deps: WriteDeps): Promise<number> {
   const files = listPendingSummaries({ motionInboxDir: deps.motionInboxDir, fs: deps.fs });
-  let removed = 0;
+  if (files.length === 0) return 0;
+  const doneDir = path.join(deps.motionInboxDir, 'done');
+  await deps.fs.ensureDir(doneDir);
+  let archived = 0;
   for (const f of files) {
+    const srcPath = path.join(deps.motionInboxDir, 'pending', f);
+    const dstPath = path.join(doneDir, f);
     try {
-      deps.fs.deleteSync(path.join(deps.motionInboxDir, 'pending', f));
-      removed++;
+      await deps.fs.move(srcPath, dstPath);
+      archived++;
     } catch {
-      // silent: race / concurrent CLI consumption
+      // silent: race / concurrent CLI consumption already moved or removed
     }
   }
-  return removed;
+  return archived;
 }
 
 /**

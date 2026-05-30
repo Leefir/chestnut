@@ -31,7 +31,7 @@ export const CRON_AUDIT_EVENTS = {
   // phase 1476: OUTBOX_DRAIN_* (4 const) 砍 — outbox-drain cron 退场（pull 模型替 push）
   OUTBOX_SUMMARY_WRITTEN: 'cron_outbox_summary_written',                   // NEW phase 1476
   OUTBOX_SUMMARY_SKIPPED: 'cron_outbox_summary_skipped',                   // NEW phase 1476 (dedup hit)
-  OUTBOX_SUMMARY_CLEARED: 'cron_outbox_summary_cleared',                   // NEW phase 1476 (0 unread → 删旧 summary)
+  OUTBOX_SUMMARY_CLEARED: 'cron_outbox_summary_cleared',                   // NEW phase 1476 (0 unread → archive 旧 pending summary mv→done / 不 delete / DP 不丢弃)
   OUTBOX_SUMMARY_FAILED: 'cron_outbox_summary_failed',                     // NEW phase 1476 (tick handler throw)
   STATE_SAVE_FAILED: 'cron_state_save_failed',                             // NEW phase 1210
   SUNSET_READY: 'sunset_ready',                                             // NEW phase 1258 F.22

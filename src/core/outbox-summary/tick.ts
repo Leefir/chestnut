@@ -19,7 +19,7 @@ import { MOTION_CLAW_ID } from '../../constants.js';
 import { CRON_AUDIT_EVENTS } from '../cron/audit-events.js';
 import { scanOutboxes } from './scan.js';
 import { findExistingSummaryByHash } from './dedup.js';
-import { clearPendingSummaries, writeNewSummary } from './write.js';
+import { archivePendingSummaries, writeNewSummary } from './write.js';
 
 export interface OutboxSummaryTickDeps {
   clawforumRoot: ClawforumRoot;
@@ -32,13 +32,13 @@ export async function runOutboxSummaryTick(deps: OutboxSummaryTickDeps): Promise
   const motionInboxDir = path.join(deps.clawforumRoot, MOTION_CLAW_ID, 'inbox');
   const state = scanOutboxes({ clawforumRoot: deps.clawforumRoot, fs: deps.fs });
 
-  // (2) 0 unread → 清干净 + return
+  // (2) 0 unread → archive 旧 summary（mv pending→done 保信息、DP 不丢弃）+ return
   if (state.total_msgs === 0) {
-    const removed = clearPendingSummaries({
+    const archived = await archivePendingSummaries({
       motionInboxDir, fs: deps.fs, audit: deps.audit, now: deps.now,
     });
-    if (removed > 0) {
-      deps.audit.write(CRON_AUDIT_EVENTS.OUTBOX_SUMMARY_CLEARED, `removed=${removed}`);
+    if (archived > 0) {
+      deps.audit.write(CRON_AUDIT_EVENTS.OUTBOX_SUMMARY_CLEARED, `archived=${archived}`);
     }
     return;
   }
@@ -54,8 +54,8 @@ export async function runOutboxSummaryTick(deps: OutboxSummaryTickDeps): Promise
     return;
   }
 
-  // (4) 不同 hash → 清旧 + 写新
-  clearPendingSummaries({
+  // (4) 不同 hash → archive 旧 pending summary（mv done 保信息）+ 写新
+  await archivePendingSummaries({
     motionInboxDir, fs: deps.fs, audit: deps.audit, now: deps.now,
   });
   await writeNewSummary(
