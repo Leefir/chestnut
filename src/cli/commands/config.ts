@@ -14,7 +14,7 @@ import { CONFIG_DEFAULTS } from '../../assembly/index.js';
 import { PRESETS } from '../../foundation/config/index.js';
 import { createProcessManagerForCLI } from '../../foundation/process-manager/index.js';
 import { CliError } from '../errors.js';
-import { REACT_DEFAULT_MAX_TOKENS } from '../../core/step-executor/constants.js';
+import { REACT_DEFAULT_MAX_TOKENS } from '../../core/step-executor/index.js';
 import { fitLine } from '../utils/string.js';
 import { DEFAULT_LLM_TIMEOUT_MS } from '../../foundation/llm-orchestrator/index.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
