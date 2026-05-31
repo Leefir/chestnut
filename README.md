@@ -1,13 +1,11 @@
-# chestnut
-
 > "I could be bounded in a nutshell, and count myself a king of infinite space."
 > — Hamlet
 
+# chestnut
+
+*A single AI agent — small enough to keep its full attention on what you want.*
+
 **Your intent is the most valuable thing. chestnut honors it above all.**
-
-A single AI agent — small enough to keep its full attention on what you want.
-
----
 
 ## How your intent reaches the work
 
@@ -19,8 +17,6 @@ You don't need to write careful prompts. Because the conversation has been holdi
 
 Whatever scale the work runs at underneath, your chat stays at the level of intent.
 
----
-
 ## How the work holds up
 
 | Mechanism | What it does |
@@ -31,9 +27,9 @@ Whatever scale the work runs at underneath, your chat stays at the level of inte
 | **Mid-execution drift correction** | A separate check periodically compares the claw's activity against the contract's overall expectations and steers it back if it drifts. |
 | **Retrospective learning** | Each completed contract distills lessons into a shared skill pool. Future tasks of similar shape benefit automatically. The longer you use chestnut, the more capable it becomes. |
 
----
-
 ## Features
+
+**Conversation stays open.** Hand off a task — the work runs in a claw while your assistant stays available. Switch topics, ask new questions, or check on progress whenever.
 
 **Transparent and inspectable.** Every message, every contract, every decision is a plain file on disk — no hidden database, no opaque service. Browse a claw's inbox directly, or use `chestnut claw <name> trace --contract <id>` for the full execution trail, `claw <name> steps` for turn-by-turn reasoning, `claw <name> chat` to talk to it directly.
 
