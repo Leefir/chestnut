@@ -19,9 +19,11 @@ When you ask for something real, your assistant summons a claw for the job. A co
 
 You don't need to write careful prompts. Because the conversation has been holding nothing but your intent, your assistant has the full picture — even a short, casual request becomes a complete contract.
 
-Whatever scale the work runs at underneath, your chat stays at the level of intent.
+The contract might unfold into hours of work, but your chat stays at the level of intent.
 
 ## How the work holds up
+
+From dispatch through completion, five mechanisms keep the work focused, accurate, and improving:
 
 | Mechanism | What it does |
 |---|---|
@@ -36,6 +38,8 @@ Whatever scale the work runs at underneath, your chat stays at the level of inte
 **Conversation stays open.** Hand off a task — the work runs in a claw while your assistant stays available. Switch topics, ask new questions, or check on progress whenever.
 
 **Transparent and inspectable.** Every message, every contract, every decision is a plain file on disk — no hidden database, no opaque service. Browse a claw's inbox directly, or use `chestnut claw <name> trace --contract <id>` for the full execution trail, `claw <name> steps` for turn-by-turn reasoning, `claw <name> chat` to talk to it directly.
+
+**Talk, don't look things up.** Tell your assistant what you want done — start a claw, check status, trace a claw — and it invokes the right chestnut CLI command for you. For multi-step setup or configuration, chestnut comes with pre-built contracts (coming): pick one and your assistant handles the work end-to-end.
 
 **Versioned workspaces.** Each claw's workspace is a git repo with automatic commits. Any point in the work is recoverable.
 
@@ -54,7 +58,7 @@ Contributing, Acknowledgements, License).
 ## Installation
 
 ```bash
-git clone https://github.com/leefir/chestnut
+git clone https://github.com/nutshell-dev/chestnut
 cd chestnut
 pnpm install && pnpm build
 npm link
