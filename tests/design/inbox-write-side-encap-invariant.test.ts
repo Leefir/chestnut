@@ -49,10 +49,14 @@ describe('inbox write-side encap invariant (phase 1334 r138 E fork)', () => {
     expect(outNotify).toContain('contract-observer.ts');
 
     // deep-dream uses deprecated notifyInbox for self-notify (chrooted fs special case)
+    // phase 1493: grep -rn 单文件在 BSD (macOS) vs GNU (Linux) 输出格式差
+    //   BSD: `file.ts:N:content`（含 filename prefix）
+    //   GNU: `N:content`（单文件不带 filename prefix）
+    // 故 assertion 绑 content (notifyInbox) 而非 filename string、跨平台稳定。
     const outInbox = execSync(
       `grep -rn 'notifyInbox' src/core/memory/deep-dream.ts`,
       { encoding: 'utf8', cwd: REPO_CWD },
     );
-    expect(outInbox).toContain('deep-dream.ts');
+    expect(outInbox).toMatch(/notifyInbox/);
   });
 });

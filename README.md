@@ -3,6 +3,10 @@
 
 # chestnut
 
+![node >=22](https://img.shields.io/badge/node-%3E%3D22-brightgreen)
+![license MIT](https://img.shields.io/badge/license-MIT-blue)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
+
 *A single AI agent — small enough to keep its full attention on what you want.*
 
 **Your intent is the most valuable thing. chestnut honors it above all.**
