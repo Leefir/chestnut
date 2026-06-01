@@ -3,7 +3,7 @@ import { type ChestnutRoot } from '../../../foundation/identity/index.js';
 import type { FileSystem } from '../../../foundation/fs/types.js';
 import type { AuditLog } from '../../../foundation/audit/index.js';
 import { CRON_AUDIT_EVENTS } from '../audit-events.js';
-import type { InboxWriter } from '../../../foundation/messaging/index.js';
+import type { StreamLog } from '../../../foundation/stream/index.js';
 import { CLAWSPACE_DIR, CLAWS_DIR } from '../../../foundation/paths.js';
 
 /**
@@ -11,6 +11,9 @@ import { CLAWSPACE_DIR, CLAWS_DIR } from '../../../foundation/paths.js';
  * 由本 module 业务自决 (per ML#2 模块为自己业务语义负责).
  */
 export const DISK_MONITOR_CRON_TIMEOUT_MS = 60_000;
+
+// phase 8: dedup transition / 在 daemon process 生命周期内、仅在 under→over 时 emit / over→under 清状态允许下次再 fire
+let diskOverThreshold = false;
 
 /** 递归计算目录大小（bytes） */
 function getDirSize(dir: string, fs: FileSystem, audit?: AuditLog, signal?: AbortSignal): number {
@@ -38,11 +41,11 @@ function getDirSize(dir: string, fs: FileSystem, audit?: AuditLog, signal?: Abor
 
 export interface DiskMonitorOptions {
   chestnutRoot: ChestnutRoot;   // .chestnut/ 根目录
-  limitMB: number;        // 告警阈值
+  limitMB: number;        // 阈值（informational only / 仅作开发者参考、无 action）
   fs: FileSystem;
   audit: AuditLog;
   motionAudit: AuditLog;   // motion-side audit (装配方预 build)
-  motionInbox: InboxWriter; // motion inbox writer (装配方预 build)
+  streamLog?: StreamLog;   // phase 8: motion streamWriter / 警告改 viewport user_notify 注入
   signal?: AbortSignal;
 }
 
@@ -64,12 +67,27 @@ export async function runDiskMonitor(opts: DiskMonitorOptions): Promise<void> {
 
   if (totalMB > opts.limitMB) {
     opts.audit.write(CRON_AUDIT_EVENTS.DISK_MONITOR_THRESHOLD_EXCEEDED, `totalMB=${totalMB}`, `limitMB=${opts.limitMB}`);
-    opts.motionInbox.writeSync({
-      type: 'cron_disk_warning',
-      source: 'cron',
-      priority: 'high',
-      body: `Disk usage ${totalMB}MB, limit ${opts.limitMB}MB`,
-      idPrefix: `${Date.now()}_disk_warning`,
-    });
+    // phase 8: only emit on under→over transition (dedup) / fire-and-forget viewport stream
+    if (!diskOverThreshold) {
+      opts.streamLog?.write({
+        ts: Date.now(),
+        type: 'user_notify',
+        subtype: 'dev_warning',
+        kind: 'disk',
+        totalMB,
+        limitMB: opts.limitMB,
+        // 语义：informational only / for developer reference / no action required
+        message: `claws disk usage ${totalMB}MB exceeds threshold ${opts.limitMB}MB`,
+      });
+      diskOverThreshold = true;
+    }
+  } else if (diskOverThreshold) {
+    // 恢复 → 清状态、允许下次再 fire
+    diskOverThreshold = false;
   }
+}
+
+/** Test-only: reset dedup state between cases. */
+export function __resetDiskMonitorState(): void {
+  diskOverThreshold = false;
 }

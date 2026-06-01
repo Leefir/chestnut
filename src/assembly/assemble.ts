@@ -745,9 +745,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
         toolRegistry.register(memorySearchTool);
       }
 
-      // phase 724 α single audit pipe：cron handler 复用主 auditWriter / 删冗余 instance
-      // （ML M#3 资源唯一归属 / motion/audit.tsv 单一 owner = L126 主 auditWriter）
-      const diskMonitorInbox = InboxWriter.__internal_create(chestnutFs, makeInboxPath(motionInboxDir), auditWriter);
+      // phase 8: diskMonitorInbox 移除 — disk + audit-size 警告改 viewport stream（移出 motion inbox / dev_warning subtype）
 
       try {
         cronRunner = createCronRunner([
@@ -761,7 +759,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
               fs: chestnutFs,
               audit: auditWriter,
               motionAudit: auditWriter,  // phase 724 α：主 auditWriter 单 instance 复用
-              motionInbox: diskMonitorInbox,
+              streamLog: streamWriter!,   // phase 8: viewport stream (取代 motionInbox)
               signal,
             }),
             timeoutMs: DISK_MONITOR_CRON_TIMEOUT_MS,
@@ -856,7 +854,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
               chestnutRoot,
               motionAuditPath: path.join(chestnutRoot, 'motion', 'audit.tsv'),
               rootAuditPath: path.join(chestnutRoot, 'audit.tsv'),
-              motionInbox: diskMonitorInbox,
+              streamLog: streamWriter!,   // phase 8: viewport stream (取代 motionInbox)
               signal,
             }),
             timeoutMs: AUDIT_SIZE_MONITOR_CRON_TIMEOUT_MS,

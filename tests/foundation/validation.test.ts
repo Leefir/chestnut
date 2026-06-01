@@ -27,10 +27,11 @@ describe('KNOWN_INBOX_TYPES', () => {
     expect(KNOWN_INBOX_TYPES).toContain('verification_result');
     expect(KNOWN_INBOX_TYPES).toContain('verification_rejection');
     expect(KNOWN_INBOX_TYPES).toContain('verification_error');
-    expect(KNOWN_INBOX_TYPES).toContain('cron_disk_warning');
     expect(KNOWN_INBOX_TYPES).toContain('random_dream');
     expect(KNOWN_INBOX_TYPES).toContain('deep_dream');
-    expect(KNOWN_INBOX_TYPES).toHaveLength(12);
+    expect(KNOWN_INBOX_TYPES).not.toContain('cron_disk_warning');
+    expect(KNOWN_INBOX_TYPES).not.toContain('audit_size_alert');
+    expect(KNOWN_INBOX_TYPES).toHaveLength(11);
   });
 });
 

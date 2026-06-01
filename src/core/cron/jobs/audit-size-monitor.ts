@@ -4,15 +4,18 @@ import { type ChestnutRoot } from '../../../foundation/identity/index.js';
  * @layer L5
  * @depends L1.FileSystem, L2.AuditLog
  *
- * Cron job: 周期 stat motion/audit.tsv + .chestnut/audit.tsv 大小、超阈值 emit audit + inbox notify。
+ * Cron job: 周期 stat motion/audit.tsv + .chestnut/audit.tsv 大小、超阈值 emit audit + viewport stream notify (phase 8).
  *
- * phase 1154 derive (user 2026-05-23 Terminal SIGABRT 诊断追溯)。
+ * 阈值语义（phase 8 reframe）：informational only / 供开发者参考 / 无 motion action / 直接 viewport 显示提醒.
+ *
+ * phase 1154 derive (user 2026-05-23 Terminal SIGABRT 诊断追溯).
+ * phase 8 reframe: motion inbox → viewport stream / dedup transition / 英文 self-contained.
  */
 
 import { isFileNotFound } from '../../../foundation/fs/types.js';
 import type { FileSystem } from '../../../foundation/fs/types.js';
 import type { AuditLog } from '../../../foundation/audit/index.js';
-import type { InboxWriter } from '../../../foundation/messaging/index.js';
+import type { StreamLog } from '../../../foundation/stream/index.js';
 import { CRON_AUDIT_EVENTS } from '../audit-events.js';
 
 /**
@@ -24,6 +27,9 @@ export const AUDIT_SIZE_MONITOR_CRON_TIMEOUT_MS = 30_000;
 const AUDIT_SIZE_WARN_BYTES = 500 * 1024 * 1024;       // 500 MB
 const AUDIT_SIZE_CRITICAL_BYTES = 1024 * 1024 * 1024;  // 1 GB
 
+// phase 8: dedup per audit path / daemon process 生命周期内、under→over 时 emit / over→under 清状态允许下次再 fire
+const auditOverThreshold = new Map<string, 'warn' | 'critical'>();
+
 export interface AuditSizeMonitorOptions {
   fs: FileSystem;
   audit: AuditLog;
@@ -32,7 +38,7 @@ export interface AuditSizeMonitorOptions {
   rootAuditPath: string;        // <chestnutRoot>/audit.tsv
   warnBytes?: number;
   criticalBytes?: number;
-  motionInbox?: InboxWriter;
+  streamLog?: StreamLog;   // phase 8: motion streamWriter / 警告改 viewport user_notify 注入
   signal?: AbortSignal;
 }
 
@@ -47,6 +53,8 @@ export async function runAuditSizeMonitor(opts: AuditSizeMonitorOptions): Promis
       let level: 'warn' | 'critical' | null = null;
       if (size >= critical) level = 'critical';
       else if (size >= warn) level = 'warn';
+
+      const prevLevel = auditOverThreshold.get(p) ?? null;
       if (level) {
         opts.audit.write(
           CRON_AUDIT_EVENTS.AUDIT_SIZE_THRESHOLD_EXCEEDED,
@@ -54,14 +62,25 @@ export async function runAuditSizeMonitor(opts: AuditSizeMonitorOptions): Promis
           `size_bytes=${size}`,
           `level=${level}`,
         );
-        const mb = Math.round(size / 1024 / 1024);
-        opts.motionInbox?.writeSync({
-          type: 'audit_size_alert',
-          source: 'system',
-          priority: level === 'critical' ? 'high' : 'normal',
-          body: `audit.tsv size ${mb} MB (${level} threshold) at ${p}. 建议跑 α-3a rotation。`,
-          idPrefix: `${Date.now()}_audit_size_alert`,
-        });
+        // phase 8: only emit on transition (level change / new entry) — dedup steady-state
+        if (prevLevel !== level) {
+          const mb = Math.round(size / 1024 / 1024);
+          opts.streamLog?.write({
+            ts: Date.now(),
+            type: 'user_notify',
+            subtype: 'dev_warning',
+            kind: 'audit_size',
+            path: p,
+            sizeMB: mb,
+            level,
+            // 语义：informational only / for developer reference / no action required
+            message: `${p} size ${mb}MB reached ${level} threshold`,
+          });
+          auditOverThreshold.set(p, level);
+        }
+      } else if (prevLevel !== null) {
+        // 恢复（如 rotation / 清理后）→ 清状态、允许下次再 fire
+        auditOverThreshold.delete(p);
       }
     } catch (err) {
       if (isFileNotFound(err)) continue; // 复用 α-1 helper
@@ -73,4 +92,9 @@ export async function runAuditSizeMonitor(opts: AuditSizeMonitorOptions): Promis
       );
     }
   }
+}
+
+/** Test-only: reset dedup state between cases. */
+export function __resetAuditSizeMonitorState(): void {
+  auditOverThreshold.clear();
 }

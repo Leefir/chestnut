@@ -253,6 +253,11 @@ export function createEventHandler(deps: EventHandlerDeps) {
           const errMsg = (event.error as string) ?? '';
           const forClaw = claw ? ` (${claw})` : '';
           deps.appendOutput('\x1b[31m', `  ✗ [llm] ${errMsg}${forClaw}`);
+        } else if (sub === 'dev_warning') {
+          // phase 8: dev-attention 阈值警告（informational only / 不可 motion action / 供 developer 参考）
+          // 来源：cron disk-monitor / audit-size-monitor / 等
+          const msg = (event.message as string) ?? '';
+          deps.appendOutput('\x1b[33m', `  ⚠ [dev] ${msg} (informational only, no action)`);
         }
         break;
       }

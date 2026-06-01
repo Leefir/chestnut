@@ -15,7 +15,8 @@ export const KNOWN_INBOX_TYPES = [
   'message', 'user_chat', 'user_inbox_message',
   'crash_notification', 'heartbeat', 'claw_outbox',
   'verification_result', 'verification_rejection', 'verification_error',
-  'cron_disk_warning', 'random_dream', 'deep_dream',
+  'random_dream', 'deep_dream',
+  // phase 8: cron_disk_warning + audit_size_alert 移除（dev_warning 改 viewport stream）
 ];
 
 export function validatePriority(value: unknown): Priority {
