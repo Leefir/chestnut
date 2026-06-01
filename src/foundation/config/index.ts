@@ -46,8 +46,17 @@ export {
   clawExists,
 } from './crud.js';
 
-// Adapters
+// Adapters (shim — migrated to llm-orchestrator/config-adapter.ts in Step B)
 export { toProviderConfig, buildLLMConfig } from './adapters.js';
+
+// Phase 10 Step B: new thin loader
+export {
+  loadYamlConfig,
+  writeYamlConfig,
+  patchYamlConfig,
+  configExists,
+} from './loader.js';
+export type { LoaderDeps } from './loader.js';
 
 // LLM Provider presets (re-export to avoid CLI bypassing L2 config, phase1101)
 export { PRESETS } from '../llm-provider/presets.js';
