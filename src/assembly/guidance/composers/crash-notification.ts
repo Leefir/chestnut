@@ -40,8 +40,12 @@ export const composer: GuidanceComposer<CrashNotificationState> = (state): Guida
   const id = state.claw_id || '<claw-id>';
   switch (cls) {
     case 'active_unexpected':
-      return { text: `重启 daemon： ${clawCmd(id, CLAW_VERBS.DAEMON)}` };
+      // phase 4: 2-line guidance — primary action (restart) + optional diagnostic (steps)
+      // 不冲突 phase 1476 anti-pattern #5: restart vs steps 是 orthogonal (action vs investigation)、不是「motion 在等价选项中选 1」
+      return {
+        text: `To restart: ${clawCmd(id, CLAW_VERBS.DAEMON)}\nTo inspect what the claw was doing before crash: ${clawCmd(id, CLAW_VERBS.STEPS)}`,
+      };
     case 'active_user_stopped':
-      return null;  // FYI — motion 知情即可（用户主动 stop 通常 motion 已知）
+      return null;  // FYI — motion 知情即可（用户主动 stop 通常 motion 已知 / 不附 restart 暗示）
   }
 };

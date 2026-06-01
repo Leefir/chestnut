@@ -93,10 +93,7 @@ export async function maybeCronClawInactivity(pm: ProcessManager, audit: AuditLo
         inactiveMin,
         notifyCount: displayCount,
         failureClass,
-        daemonStatus: snapshot.status,
         contract: snapshot.contract,
-        inboxPending: snapshot.inboxPending,
-        outboxPending: snapshot.outboxPending,
         lastError,
       });
 
@@ -189,8 +186,6 @@ export function maybeCronClawCrash(pm: ProcessManager, audit: AuditLog, fsFactor
         clawId: rawClawId,
         crashClass,
         contract: snapshot.contract,
-        outboxPending: snapshot.outboxPending,
-        lastAuditEvents: snapshot.lastAuditEvents,
       });
 
       const { fs: motionFs, audit: motionAudit } = getMotionContext(fsFactory);

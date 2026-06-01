@@ -98,16 +98,18 @@ describe('phase 1414 Runtime.formatInboxMessage via FormatterRegistry', () => {
     expect(audit.write).not.toHaveBeenCalled();
   });
 
-  it('crash_notification → "Claw X process exited abnormally..."（Watchdog formatter）', async () => {
+  it('crash_notification → "[system message<ts>] <body>"（Watchdog formatter / phase 4 drop preamble）', async () => {
     const audit = { write: vi.fn() };
     const registry = createMessageFormatterRegistry();
     registry.register('crash_notification', formatCrashNotification);
     const runtime = build({ audit, formatterRegistry: registry });
 
+    // phase 4: formatter 不再加 "Claw X process exited abnormally" 前缀
+    // 改由 body 自含完整语义 (formatCrashBody per CrashClass)、formatter 仅 wrap [system message<ts>]
     const result = await runtime.testFormatInboxMessage('crash_notification', 'claw-a', 'exit code 1');
 
-    expect(result).toContain('Claw "claw-a" process exited abnormally');
-    expect(result).toContain('exit code 1');
+    expect(result).toMatch(/^\[system message\d*\] exit code 1$/);
+    expect(result).not.toMatch(/process exited abnormally/);
     expect(audit.write).not.toHaveBeenCalled();
   });
 

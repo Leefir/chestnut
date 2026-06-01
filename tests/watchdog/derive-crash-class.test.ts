@@ -60,37 +60,22 @@ describe('phase 2: hasCleanStopMarker', () => {
   });
 });
 
-describe('phase 2: formatCrashBody', () => {
+describe('phase 4: formatCrashBody (clean draft / self-contained per class / no raw audit events)', () => {
   const base = {
     clawId: 'clawA',
     contract: 'active:c1',
-    outboxPending: 2,
   };
 
-  it('active_unexpected → "unexpectedly stopped" prefix', () => {
+  it('active_unexpected → "crashed unexpectedly while running contract" 句式', () => {
     const body = formatCrashBody({ ...base, crashClass: 'active_unexpected' });
-    expect(body).toMatch(/Claw clawA unexpectedly stopped \(active contract\)/);
+    expect(body).toBe('Claw "clawA" crashed unexpectedly while running contract active:c1.');
     expect(body).not.toMatch(/process exited abnormally/);
+    expect(body).not.toMatch(/last_events|outbox_pending/);
   });
 
-  it('active_user_stopped → "stopped via user CLI" prefix', () => {
+  it('active_user_stopped → "stopped via CLI while running contract" 句式', () => {
     const body = formatCrashBody({ ...base, crashClass: 'active_user_stopped' });
-    expect(body).toMatch(/Claw clawA stopped via user CLI \(active contract\)/);
+    expect(body).toBe('Claw "clawA" was stopped via CLI while running contract active:c1.');
     expect(body).not.toMatch(/unexpectedly/);
-  });
-
-  it('last_events 透传到 body', () => {
-    const body = formatCrashBody({
-      ...base,
-      crashClass: 'active_unexpected',
-      lastAuditEvents: ['e1\tx', 'e2\ty'],
-    });
-    expect(body).toContain('last_events: e1|x >> e2|y');
-  });
-
-  it('contract + outbox_pending always present', () => {
-    const body = formatCrashBody({ ...base, crashClass: 'active_unexpected' });
-    expect(body).toContain('contract: active:c1');
-    expect(body).toContain('outbox_pending: 2');
   });
 });

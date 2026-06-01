@@ -141,29 +141,25 @@ export function deriveFailureClass(input: DeriveFailureClassInput): FailureClass
   return 'daemon_silent';
 }
 
-/** Body 字面按 failure_class 改、取代统一 "no progress for Nm" 误导措辞 (user 实战触发). */
+/** Body 字面 (phase 4 重写): per-class 自含语义、不杂揉 inbox/outbox/status 等无关字段、lastError 单独一行. */
 export function formatInactivityBody(opts: {
   clawId: string;
   inactiveMin: number;
   notifyCount: number;     // displayCount (notifyCount + 1)
   failureClass: FailureClass;
-  daemonStatus: 'running' | 'stopped';
   contract: string;
-  inboxPending: number;
-  outboxPending: number;
   lastError?: string | null;
 }): string {
-  const prefix = (() => {
-    switch (opts.failureClass) {
-      case 'daemon_silent':
-        return `Claw ${opts.clawId} daemon running but no stream event for ${opts.inactiveMin}m`;
-      case 'daemon_errored':
-        return `Claw ${opts.clawId} daemon running with error ${opts.inactiveMin}m ago`;
+  switch (opts.failureClass) {
+    case 'daemon_silent':
+      return `Claw "${opts.clawId}" daemon is running but has produced no events for ${opts.inactiveMin}m while in contract ${opts.contract} (notification #${opts.notifyCount}).`;
+    case 'daemon_errored': {
+      const head = `Claw "${opts.clawId}" daemon is running but encountered an error ${opts.inactiveMin}m ago while in contract ${opts.contract} (notification #${opts.notifyCount}).`;
+      return opts.lastError
+        ? `${head}\n\nLast error: ${opts.lastError}`
+        : head;
     }
-  })();
-  let body = `${prefix} (notification #${opts.notifyCount}). Status: ${opts.daemonStatus}, contract: ${opts.contract}, inbox_pending: ${opts.inboxPending}, outbox_pending: ${opts.outboxPending}`;
-  if (opts.lastError) body += `, last error: ${opts.lastError}`;
-  return body;
+  }
 }
 
 // ---- phase 2 γ4: crash_notification CrashClass taxonomy ----
@@ -198,26 +194,18 @@ export function hasCleanStopMarker(clawDir: ClawDir, fsFactory: (baseDir: string
   }
 }
 
-/** Body 字面按 crash_class 改、取代统一 "process exited abnormally" 措辞. */
+/** Body 字面 (phase 4 重写): per-class 自含语义、不附 raw audit events (避免 motion 误以为线索仅此 / 改让 composer 教 diagnostic CLI). */
 export function formatCrashBody(opts: {
   clawId: string;
   crashClass: CrashClass;
   contract: string;
-  outboxPending: number;
-  lastAuditEvents?: string[];
 }): string {
-  const prefix = (() => {
-    switch (opts.crashClass) {
-      case 'active_unexpected':
-        return `Claw ${opts.clawId} unexpectedly stopped (active contract).`;
-      case 'active_user_stopped':
-        return `Claw ${opts.clawId} stopped via user CLI (active contract).`;
-    }
-  })();
-  const eventsStr = opts.lastAuditEvents?.length
-    ? `; last_events: ${opts.lastAuditEvents.map(e => e.replace(/\t/g, '|')).join(' >> ')}`
-    : '';
-  return `${prefix} contract: ${opts.contract}, outbox_pending: ${opts.outboxPending}${eventsStr}`;
+  switch (opts.crashClass) {
+    case 'active_unexpected':
+      return `Claw "${opts.clawId}" crashed unexpectedly while running contract ${opts.contract}.`;
+    case 'active_user_stopped':
+      return `Claw "${opts.clawId}" was stopped via CLI while running contract ${opts.contract}.`;
+  }
 }
 
 // ---- Phase 18: gatherClawSnapshot ----
