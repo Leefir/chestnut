@@ -20,8 +20,17 @@
  */
 
 // phase 1476: cron-written types (raw fs.writeAtomic + encodeInbox / 不被 sender scan 抓)
+// phase 9: 加 task_result + contract_audit_feedback —
+//   - task_result: result-delivery.ts 通过 const baseMsg + writeInboxAsync(fs, ..., baseMsg) 投递、type 字面量
+//     在 const decl 内而非 call arg 内、scan 跳；
+//   - contract_audit_feedback: contract-auditor.ts 通过 this.deps.inbox.write({...}) API、scan regex
+//     不含 inbox.write 调用形态。
+//   两者真有 sender、不是 cron-written；scanner 弱点的 honest 标记（未来可加强 scan: const InboxMessage
+//   decl + inbox.write API）。
 const NON_SENDER_SCAN_TYPES = new Set([
-  'claw_outbox_summary',  // src/core/outbox-summary/write.ts via fs.writeAtomic
+  'claw_outbox_summary',         // src/core/outbox-summary/write.ts via fs.writeAtomic
+  'task_result',                 // src/core/async-task-system/result-delivery.ts via const baseMsg
+  'contract_audit_feedback',     // src/core/contract/contract-auditor.ts via this.deps.inbox.write
 ]);
 
 import { describe, it, expect } from 'vitest';

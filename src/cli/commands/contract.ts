@@ -73,7 +73,7 @@ export function notifyContractCreated(deps: { fsFactory: (baseDir: string) => Fi
     path.join(clawDir, 'inbox', 'pending'),
     body,
     contractAudit,
-    { type: 'message', priority: 'high', idPrefix: 'contract-new' }
+    { type: 'contract_created', priority: 'high', idPrefix: 'contract-new' }
   );
 }
 

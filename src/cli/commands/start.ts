@@ -217,7 +217,7 @@ async function _start(deps: { fsFactory: (baseDir: string) => FileSystem }, audi
     
     // Motion-only callsite: motionDir = <chestnutRoot>/motion → dirname 一层即 chestnutRoot
     notifyClaw(notifyFs, makeChestnutRoot(path.dirname(motionDir)), MOTION_CLAW_ID, {
-      type: 'message',
+      type: 'contract_created',
       source: 'system',
       priority: 'high',
       body: `New contract created (${contractId}): Onboarding. Please begin execution.`,
@@ -244,7 +244,7 @@ async function _start(deps: { fsFactory: (baseDir: string) => FileSystem }, audi
       });
       // Motion-only callsite: motionDir = <chestnutRoot>/motion → dirname 一层即 chestnutRoot
       notifyClaw(notifyFs, makeChestnutRoot(path.dirname(motionDir)), MOTION_CLAW_ID, {
-        type: 'message', source: 'system', priority: 'high',
+        type: 'contract_created', source: 'system', priority: 'high',
         body: `New contract created (${contractId}): Onboarding. Please begin execution.`,
         idPrefix: 'start',
       }, notifyAudit);
@@ -252,7 +252,7 @@ async function _start(deps: { fsFactory: (baseDir: string) => FileSystem }, audi
       const pendingList = onboarding.pending?.join(', ') ?? '';
       // Motion-only callsite: motionDir = <chestnutRoot>/motion → dirname 一层即 chestnutRoot
       notifyClaw(notifyFs, makeChestnutRoot(path.dirname(motionDir)), MOTION_CLAW_ID, {
-        type: 'message', source: 'system', priority: 'high',
+        type: 'contract_resume', source: 'system', priority: 'high',
         body: `Resuming Onboarding contract (${onboarding.contractId}). Pending subtasks: ${pendingList}. Please continue.`,
         idPrefix: 'start',
       }, notifyAudit);

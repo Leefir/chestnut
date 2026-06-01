@@ -11,7 +11,7 @@ export const PRIORITY_VALUES: Record<Priority, number> = {
 
 export interface InboxMessage {
   id: string;
-  type: 'message' | 'user_chat' | 'user_inbox_message' | 'crash_notification' | 'heartbeat' | 'claw_outbox' | string;
+  type: 'user_chat' | 'user_inbox_message' | 'crash_notification' | 'heartbeat' | 'claw_outbox' | 'task_result' | 'contract_created' | 'contract_resume' | 'contract_audit_feedback' | string;
   from: string;
   to: string;
   content: string;

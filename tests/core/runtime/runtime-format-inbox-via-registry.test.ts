@@ -127,13 +127,14 @@ describe('phase 1414 Runtime.formatInboxMessage via FormatterRegistry', () => {
     expect(audit.write).not.toHaveBeenCalled();   // ENOENT silent
   });
 
-  it('message → [system message ...] body（Messaging generic formatter）', async () => {
+  it('task_result → [system message ...] body（phase 9: was generic "message" → typed task_result）', async () => {
     const audit = { write: vi.fn() };
     const registry = createMessageFormatterRegistry();
-    registerMessagingFormatters(registry);
+    const { registerAsyncTaskSystemFormatters } = await import('../../../src/core/async-task-system/inbox-formatter.js');
+    registerAsyncTaskSystemFormatters(registry);
     const runtime = build({ audit, formatterRegistry: registry });
 
-    const result = await runtime.testFormatInboxMessage('message', 'sys', 'generic body');
+    const result = await runtime.testFormatInboxMessage('task_result', 'sys', 'generic body');
 
     expect(result).toMatch(/^\[system message.*\] generic body$/);
     expect(audit.write).not.toHaveBeenCalled();

@@ -89,7 +89,7 @@ export async function sendToolResult(
   const priority: 'high' | 'normal' = isError ? 'high' : 'normal';
   const baseMsg: InboxMessage = {
     id: msgId,
-    type: 'message',
+    type: 'task_result',
     from: task.callerType ?? 'task_system',
     to: task.parentClawId,
     content: messageContent,
@@ -180,7 +180,7 @@ export async function sendResult(
   const priority: 'high' | 'normal' = isError ? 'high' : 'normal';
   const baseMsg: InboxMessage = {
     id: msgId,
-    type: 'message',
+    type: 'task_result',
     from: task.callerType ?? 'subagent',
     to: task.parentClawId,
     content: messageContent,
@@ -240,7 +240,7 @@ export async function sendFallbackError(
   const msgId = randomUUID();
   const msg: InboxMessage = {
     id: msgId,
-    type: 'message',
+    type: 'task_result',
     from: task.callerType ?? 'task_system',
     to: task.parentClawId,
     content: JSON.stringify({ taskId: task.id, is_error: true, result: `Task failed: ${errorMsg}` }),

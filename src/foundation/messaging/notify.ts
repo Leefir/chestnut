@@ -113,18 +113,18 @@ export function notifySystem(
   inboxDir: string,
   body: string,
   audit: AuditLog,
-  options?: {
-    type?: string;
+  options: {
+    type: string;                     // phase 9: required (catch-all 'message' default 移除)
     priority?: 'critical' | 'high' | 'normal' | 'low';
     idPrefix?: string;
   },
 ): void {
   notifyInbox(fs, {
     inboxDir,
-    type: options?.type ?? 'message',
+    type: options.type,
     source: 'system',
-    priority: options?.priority ?? 'high',
+    priority: options.priority ?? 'high',
     body,
-    idPrefix: options?.idPrefix,
+    idPrefix: options.idPrefix,
   }, audit);
 }

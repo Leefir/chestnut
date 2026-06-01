@@ -42,7 +42,7 @@ describe('phase 1414 MessageFormatterRegistry', () => {
     expect(out).toBe('second');
   });
 
-  it('registerMessagingFormatters 立 Messaging 自家两个通用 formatter', async () => {
+  it('registerMessagingFormatters 立 Messaging 自家 user_inbox_message formatter (phase 9: message catch-all 拆除)', async () => {
     const registry = createMessageFormatterRegistry();
     registerMessagingFormatters(registry);
 
@@ -53,11 +53,7 @@ describe('phase 1414 MessageFormatterRegistry', () => {
     });
     expect(userInbox).toBe('[user inbox message (1m ago)]\nhello');
 
-    const generic = await registry.resolve('message')!({
-      from: 'sys',
-      body: 'world',
-      timestampSec: '',
-    });
-    expect(generic).toBe('[system message] world');
+    // 'message' formatter 已 phase 9 移除
+    expect(registry.resolve('message')).toBeUndefined();
   });
 });

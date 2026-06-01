@@ -191,7 +191,7 @@ ${driftLines || '（auditor 标 drift 但未给具体条目）'}
 
     await this.deps.inbox.write({
       id: `auditor-${req.contractId}-${nowMs}`,
-      type: 'message',
+      type: 'contract_audit_feedback',
       from: sender,
       to: req.clawId,
       content: body,

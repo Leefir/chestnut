@@ -40,7 +40,6 @@ export type {
 } from './formatter-registry.js';
 export {
   formatUserInboxMessage,
-  formatGenericMessage,
   registerMessagingFormatters,
 } from './inbox-formatters.js';
 

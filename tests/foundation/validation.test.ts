@@ -18,7 +18,6 @@ describe('VALID_PRIORITIES', () => {
 
 describe('KNOWN_INBOX_TYPES', () => {
   it('包含已知消息类型（informational only / 不强制）', () => {
-    expect(KNOWN_INBOX_TYPES).toContain('message');
     expect(KNOWN_INBOX_TYPES).toContain('user_chat');
     expect(KNOWN_INBOX_TYPES).toContain('user_inbox_message');
     expect(KNOWN_INBOX_TYPES).toContain('crash_notification');
@@ -29,9 +28,15 @@ describe('KNOWN_INBOX_TYPES', () => {
     expect(KNOWN_INBOX_TYPES).toContain('verification_error');
     expect(KNOWN_INBOX_TYPES).toContain('random_dream');
     expect(KNOWN_INBOX_TYPES).toContain('deep_dream');
+    // phase 9: 'message' catch-all 拆 4 typed event
+    expect(KNOWN_INBOX_TYPES).toContain('task_result');
+    expect(KNOWN_INBOX_TYPES).toContain('contract_created');
+    expect(KNOWN_INBOX_TYPES).toContain('contract_resume');
+    expect(KNOWN_INBOX_TYPES).toContain('contract_audit_feedback');
+    expect(KNOWN_INBOX_TYPES).not.toContain('message');
     expect(KNOWN_INBOX_TYPES).not.toContain('cron_disk_warning');
     expect(KNOWN_INBOX_TYPES).not.toContain('audit_size_alert');
-    expect(KNOWN_INBOX_TYPES).toHaveLength(11);
+    expect(KNOWN_INBOX_TYPES).toHaveLength(14);
   });
 });
 
@@ -59,7 +64,6 @@ describe('validatePriority', () => {
 
 describe('validateType', () => {
   it('任意字符串类型原样返回（loose validation / M9 phase 575）', () => {
-    expect(validateType('message')).toBe('message');
     expect(validateType('user_chat')).toBe('user_chat');
     expect(validateType('user_inbox_message')).toBe('user_inbox_message');
     expect(validateType('crash_notification')).toBe('crash_notification');
@@ -71,10 +75,10 @@ describe('validateType', () => {
     expect(validateType('HEARTBEAT')).toBe('HEARTBEAT');
   });
 
-  it('非字符串输入降级为 message', () => {
-    expect(validateType(undefined)).toBe('message');
-    expect(validateType(null)).toBe('message');
-    expect(validateType(42)).toBe('message');
-    expect(validateType({})).toBe('message');
+  it('非字符串输入降级为 user_inbox_message (phase 9: message catch-all 移除)', () => {
+    expect(validateType(undefined)).toBe('user_inbox_message');
+    expect(validateType(null)).toBe('user_inbox_message');
+    expect(validateType(42)).toBe('user_inbox_message');
+    expect(validateType({})).toBe('user_inbox_message');
   });
 });

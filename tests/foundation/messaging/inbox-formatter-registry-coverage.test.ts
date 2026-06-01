@@ -22,6 +22,7 @@ const REGISTER_HELPER_FILES = [
   'core/contract/inbox-formatters.ts',
   'daemon/inbox-formatter.ts',
   'core/memory/inbox-formatter.ts',
+  'core/async-task-system/inbox-formatter.ts', // phase 9: task_result + task_queue_overflow
 ] as const;
 
 function extractRegisteredTypes(): Set<string> {
@@ -121,14 +122,16 @@ describe('phase 1419: inbox formatter registry coverage invariant', () => {
     expect(unregistered).toEqual([]);
   });
 
-  it('registered set must cover all 13 expected types after phase 1419', () => {
+  it('registered set must cover expected types after phase 9', () => {
     const registered = extractRegisteredTypes();
     const expected = [
-      'user_inbox_message', 'message', 'user_chat',
+      'user_inbox_message', 'user_chat',
       'crash_notification', 'claw_inactivity',
       'contract_events', 'verification_result', 'verification_rejection', 'verification_error',
       'startup_check',
       'random_dream', 'deep_dream',
+      // phase 9: 'message' catch-all 拆为 4 typed event
+      'task_result', 'contract_created', 'contract_resume', 'contract_audit_feedback',
       // 'heartbeat' is motion-only register, not in assemble unconditionally — accept missing
     ];
     const missing = expected.filter(t => !registered.has(t));
