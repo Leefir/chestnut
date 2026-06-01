@@ -1,17 +1,14 @@
 /**
- * Config → runtime type adapters / phase 500 sub-file extraction
+ * Phase 10 Step B: LLM config adapters (迁自 foundation/config/adapters.ts)
  *
- * Config → runtime type adapters / phase 500 sub-file extraction
+ * 业务归 LLM、本模块 own LLM yaml schema ↔ runtime ProviderConfig 转换。
+ * Content 与 foundation/config/adapters.ts 等同（迁不改）、import path 改自家。
  */
-
-import type { LLMOrchestratorConfig } from '../llm-orchestrator/index.js';
+import type { LLMOrchestratorConfig } from './index.js';
 import type { ProviderConfig } from '../llm-provider/types.js';
 import { resolvePreset } from '../llm-provider/presets.js';
-import {
-  type LLMProviderConfig,
-  type ClawGlobalConfig,
-  type ClawConfig,
-} from './schemas.js';
+import type { LLMProviderConfig } from './llm-provider-config-schema.js';
+import type { ClawGlobalConfig, ClawConfig } from '../../assembly/compose-config.js';
 
 // Convert snake_case to camelCase, resolve preset
 export function toProviderConfig(p: LLMProviderConfig): ProviderConfig {

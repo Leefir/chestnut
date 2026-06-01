@@ -9,20 +9,13 @@
  * Path getters (getWorkspaceRoot, getClawDir, ...) now live in foundation/paths.ts.
  */
 
-// Schemas + types
-export {
-  FORMAT_MAP,
-  createLLMProviderSchema,
-  createCircuitBreakerSchema,
-  createClawGlobalConfigSchema,
-  createClawConfigSchema,
-} from './schemas.js';
+// Types (schemas.ts deleted in phase 10 Step D)
 export type {
-  ConfigDefaults,
-  LLMProviderConfig,
   ClawGlobalConfig,
   ClawConfig,
-} from './schemas.js';
+} from '../../assembly/compose-config.js';
+// Note: LLMProviderConfig moved to llm-orchestrator/llm-provider-config-schema.ts (phase 10)
+// Note: FORMAT_MAP moved to llm-orchestrator/llm-provider-config-schema.ts (phase 10)
 
 // Path getters + shared constants (canonical owner: foundation/paths.ts)
 export { CLAW_SUBDIRS } from '../paths.js';
@@ -46,8 +39,14 @@ export {
   clawExists,
 } from './crud.js';
 
-// Adapters
-export { toProviderConfig, buildLLMConfig } from './adapters.js';
+// Phase 10 Step B: new thin loader
+export {
+  loadYamlConfig,
+  writeYamlConfig,
+  patchYamlConfig,
+  configExists,
+} from './loader.js';
+export type { LoaderDeps } from './loader.js';
 
 // LLM Provider presets (re-export to avoid CLI bypassing L2 config, phase1101)
 export { PRESETS } from '../llm-provider/presets.js';

@@ -7,8 +7,9 @@
 
 import * as readline from 'readline';
 
-import { loadGlobalConfig, buildLLMConfig, patchGlobalConfigPrimary, FORMAT_MAP, PRESETS } from '../foundation/config/index.js';
-import { CONFIG_DEFAULTS } from '../assembly/index.js';
+import { loadGlobalConfig, patchGlobalConfigPrimary, PRESETS } from '../foundation/config/index.js';
+import { FORMAT_MAP } from '../foundation/llm-orchestrator/llm-provider-config-schema.js';
+import { buildLLMConfig } from '../foundation/llm-orchestrator/config-adapter.js';
 import { createLLMOrchestrator } from '../foundation/llm-orchestrator/index.js';
 import { passwordQuestion } from './utils/password-prompt.js';
 import type { FileSystem } from '../foundation/fs/types.js';
@@ -39,7 +40,7 @@ export const LLM_ERROR_LABELS: Record<LLMErrorType, string> = {
 export async function checkLLMConnection(deps: { fsFactory: (baseDir: string) => FileSystem }): Promise<
   { ok: true; model: string } | { ok: false; errorType: LLMErrorType; message: string }
 > {
-  const globalConfig = loadGlobalConfig(deps, CONFIG_DEFAULTS);
+  const globalConfig = loadGlobalConfig(deps);
   const llmConfig = buildLLMConfig(globalConfig);
   const svc = createLLMOrchestrator({
     primary: llmConfig.primary,

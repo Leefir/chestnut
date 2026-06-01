@@ -3,7 +3,8 @@
  */
 
 import * as readline from 'readline';
-import { saveGlobalConfig, isInitialized, FORMAT_MAP, getWorkspaceRoot } from '../../foundation/config/index.js';
+import { saveGlobalConfig, isInitialized, getWorkspaceRoot } from '../../foundation/config/index.js';
+import { FORMAT_MAP } from '../../foundation/llm-orchestrator/llm-provider-config-schema.js';
 import { passwordQuestion } from '../utils/password-prompt.js';
 import { CliError } from '../errors.js';
 import { PRESETS } from '../../foundation/config/index.js';
@@ -14,7 +15,6 @@ import {
   DEFAULT_RETRY_DELAY_MS,
   INIT_LLM_IDLE_TIMEOUT_MS,
 } from '../../foundation/llm-orchestrator/index.js';
-import { CONFIG_DEFAULTS } from '../../assembly/index.js';
 import {
   WATCHDOG_INTERVAL_MS,
   DEFAULT_DISK_WARNING_MB,
@@ -289,7 +289,7 @@ export async function initCommand(deps: { fsFactory: (baseDir: string) => FileSy
         retry_attempts: DEFAULT_LLM_RETRY_ATTEMPTS,
         retry_delay_ms: DEFAULT_RETRY_DELAY_MS,
       },
-      tool_timeout_ms: CONFIG_DEFAULTS.toolTimeoutMs,
+      tool_timeout_ms: 60_000,
       watchdog: {
         interval_ms: WATCHDOG_INTERVAL_MS,
         disk_warning_mb: DEFAULT_DISK_WARNING_MB,
