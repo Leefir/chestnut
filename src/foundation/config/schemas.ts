@@ -133,10 +133,7 @@ export function createClawGlobalConfigSchema(defaults: ConfigDefaults) {
           enabled: z.boolean().default(true),
           schedule: z.string().regex(SCHEDULE_REGEX).default('interval:1s'),
         }).optional(),
-        sunset_monitor: z.object({
-          enabled: z.boolean().default(true),
-          schedule: z.string().regex(SCHEDULE_REGEX).default('interval:30d'),
-        }).optional(),
+        // phase 6: sunset_monitor 配置移除 — cron job 砍
       }).optional(),
     }).optional(),
     viewport: z.object({

@@ -24,7 +24,6 @@ import { composer as heartbeat } from './heartbeat.js';
 import { composer as startupCheck } from './startup-check.js';
 import { composer as message } from './message.js';
 import { composer as taskQueueOverflow } from './task-queue-overflow.js';
-import { composer as sunsetReady } from './sunset-ready.js';
 import { composer as cronDiskWarning } from './cron-disk-warning.js';
 import { composer as auditSizeAlert } from './audit-size-alert.js';
 import { composer as userChat } from './user-chat.js';
@@ -44,7 +43,6 @@ export function registerAllMotionGuidance(registry: MotionGuidanceRegistry): voi
   registry.register('startup_check', startupCheck);
   registry.register('message', message);
   registry.register('task_queue_overflow', taskQueueOverflow);
-  registry.register('sunset_ready', sunsetReady);
   registry.register('cron_disk_warning', cronDiskWarning);
   registry.register('audit_size_alert', auditSizeAlert);
   registry.register('user_chat', userChat);

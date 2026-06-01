@@ -82,7 +82,7 @@ import { runMetricsSnapshot } from '../core/cron/jobs/metrics-snapshot.js';
 import { runGitGcWeekly } from '../core/cron/jobs/git-gc-weekly.js';
 import { runRetentionCleanup } from '../core/cron/jobs/retention-cleanup.js';
 import { runAuditSizeMonitor } from '../core/cron/jobs/audit-size-monitor.js';
-import { runSunsetMonitor } from '../core/cron/jobs/sunset-monitor.js';
+// phase 6: sunset-monitor cron 砍 — sunset_ready 不归 motion 决策 / 改 dev-side 手动查 audit.tsv 直接 grep LEGACY_*
 import { createMemorySystem, memorySearchTool } from '../core/memory/index.js';
 import type { MemorySystem } from '../core/memory/index.js';
 import { runContractObserver } from '../core/contract/jobs/contract-observer.js';
@@ -95,7 +95,6 @@ import { CONTRACT_OBSERVER_CRON_TIMEOUT_MS } from '../core/contract/jobs/contrac
 import { GIT_GC_WEEKLY_CRON_TIMEOUT_MS } from '../core/cron/jobs/git-gc-weekly.js';
 import { RETENTION_CLEANUP_CRON_TIMEOUT_MS } from '../core/cron/jobs/retention-cleanup.js';
 import { AUDIT_SIZE_MONITOR_CRON_TIMEOUT_MS } from '../core/cron/jobs/audit-size-monitor.js';
-import { SUNSET_MONITOR_CRON_TIMEOUT_MS } from '../core/cron/jobs/sunset-monitor.js';
 import { buildLLMConfig } from '../foundation/config/index.js';
 import { DEFAULT_MAX_CONCURRENT_TASKS } from '../core/async-task-system/constants.js';
 
@@ -873,28 +872,8 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
             }),
             timeoutMs: OUTBOX_SUMMARY_CRON_TIMEOUT_MS,
           },
-          {
-            name: 'sunset-monitor',
-            enabled: globalConfig.cron?.jobs?.sunset_monitor?.enabled ?? true,
-            schedule: parseSchedule(globalConfig.cron?.jobs?.sunset_monitor?.schedule ?? 'interval:30d', auditWriter),
-            handler: (signal) => runSunsetMonitor({
-              fs: chestnutFs,
-              audit: auditWriter,
-              chestnutRoot,
-              motionAuditPath: path.join(chestnutRoot, 'motion', 'audit.tsv'),
-              rootAuditPath: path.join(chestnutRoot, 'audit.tsv'),
-              legacyConsts: [
-                'pid_file_legacy_format',
-                'inbox_legacy_claw_id_field',
-                'legacy_pending_task_no_mode',
-                'contract_yaml_legacy_acceptance_field',
-                'contract_yaml_legacy_escalation_field',
-              ],
-              motionInbox: diskMonitorInbox,
-              signal,
-            }),
-            timeoutMs: SUNSET_MONITOR_CRON_TIMEOUT_MS,
-          },
+          // phase 6: sunset-monitor cron 砍 — sunset_ready 是开发者代码清理信号、不归 motion 决策
+          // 同效果可手动 grep audit.tsv 找 LEGACY_* event 计数（无需 cron / 不该 spam motion inbox）
         ], auditWriter);
       } catch (e) {
         auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=cron_runner`, `phase=construct`, `reason=${errMsg(e)}`);

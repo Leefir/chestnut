@@ -198,9 +198,7 @@
       "cron_retention_cleanup_delete_failed",
       "cron_runner_started",
       "cron_runner_stopped",
-      "cron_state_save_failed",
-      "sunset_query_fail",
-      "sunset_ready"
+      "cron_state_save_failed"
     ],
     "core_evolution-system_retro-audit-events": [
       "contract_retro_cleanup_failed",

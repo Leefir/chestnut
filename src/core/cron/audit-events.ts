@@ -34,6 +34,5 @@ export const CRON_AUDIT_EVENTS = {
   OUTBOX_SUMMARY_CLEARED: 'cron_outbox_summary_cleared',                   // NEW phase 1476 (0 unread → archive 旧 pending summary mv→done / 不 delete / DP 不丢弃)
   OUTBOX_SUMMARY_FAILED: 'cron_outbox_summary_failed',                     // NEW phase 1476 (tick handler throw)
   STATE_SAVE_FAILED: 'cron_state_save_failed',                             // NEW phase 1210
-  SUNSET_READY: 'sunset_ready',                                             // NEW phase 1258 F.22
-  SUNSET_QUERY_FAIL: 'sunset_query_fail',                                   // NEW phase 1258 F.22
+  // phase 6: SUNSET_READY / SUNSET_QUERY_FAIL 砍 — sunset-monitor cron 移除 / dev-side 信号不该走 motion inbox
 } as const;
