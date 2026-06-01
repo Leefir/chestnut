@@ -60,6 +60,7 @@ import { registerWatchdogFormatters } from '../watchdog/inbox-formatter.js';
 import { formatUserChat } from '../core/gateway/index.js';
 import { createHeartbeatInboxFormatter } from '../core/heartbeat/index.js';
 import { registerContractFormatters } from '../core/contract/inbox-formatters.js';
+import { registerAsyncTaskSystemFormatters } from '../core/async-task-system/inbox-formatter.js';
 import { registerDaemonFormatters } from '../daemon/inbox-formatter.js';
 import { registerMemoryFormatters } from '../core/memory/inbox-formatter.js';
 import { createSubmitSubtaskTool } from '../core/contract/index.js';
@@ -493,6 +494,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     formatterRegistry.register('user_chat', formatUserChat);               // Gateway 业主
     registerWatchdogFormatters(formatterRegistry);                         // Watchdog 业主：crash_notification + claw_inactivity
     registerContractFormatters(formatterRegistry);                         // ContractSystem 业主：contract_events + 3 verification_*
+    registerAsyncTaskSystemFormatters(formatterRegistry);                  // AsyncTaskSystem 业主：task_queue_overflow (phase 7)
     registerDaemonFormatters(formatterRegistry);                           // DaemonLoop 业主：startup_check
     registerMemoryFormatters(formatterRegistry);                           // MemorySystem 业主：random_dream + deep_dream
     if (isMotion) {

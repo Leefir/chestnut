@@ -1,11 +1,24 @@
 /**
  * @module L6.Assembly.Guidance
- * phase 1469: composer for inbox type `task_queue_overflow` — NO_GUIDANCE sentinel 占位.
+ * phase 7 γ7: real composer for `task_queue_overflow`.
  *
- * 本 phase β scope = infrastructure + 全 register 22 type 表态.
- * 真 composer 推 phase γN 业主 state schema 细分 + CLI-by-need 同步补 CLI 后真做.
+ * task_queue_overflow = system-level overload (1000 pending tasks accumulated).
+ * 超出 motion 决策能力 — motion 是 user 通道、不该自家 retry / 不该等 / 应立即升级。
+ * Chain: system → motion → user → developer.
+ *
+ * No CLI action for motion (system internal queue / no inspection or cancel verb).
+ * Composer 教 motion immediately escalate to user.
  */
 
-import { NO_GUIDANCE } from '../types.js';
+import type { GuidanceComposer, GuidanceEntry } from '../types.js';
 
-export const composer = NO_GUIDANCE;
+interface TaskQueueOverflowState {
+  cap?: string;
+  queue_length?: string;
+}
+
+export const composer: GuidanceComposer<TaskQueueOverflowState> = (_state): GuidanceEntry | null => {
+  return {
+    text: 'This is a system-level overload beyond agent control. Surface to the user immediately and ask them to report this to the developer. Do not retry dispatching new tasks.',
+  };
+};

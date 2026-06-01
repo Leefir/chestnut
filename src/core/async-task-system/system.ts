@@ -75,6 +75,8 @@ export class AsyncTaskSystem {
   private readonly registry: ToolRegistry;
   private readonly llm: LLMOrchestrator;
   private readonly motionInbox?: InboxWriter;
+  // phase 7: dedup overflow 通知 / 同 overflow 窗口 (queue 满) 多次 reject 仅 1 通知 / 队列降回 cap 以下后清 0 允许下次再发
+  private overflowNotified = false;
   private auditWriter: AuditLog;
   private parentStreamLog?: StreamLog;
   private pendingWatcher?: Watcher;
@@ -313,21 +315,26 @@ export class AsyncTaskSystem {
         });
       });
 
-      // Notify motion of overflow rejection (best-effort)
-      if (this.motionInbox) {
+      // phase 7: Notify motion of system-level overload (best-effort) / dedup 同 overflow 窗口 1 通知
+      if (this.motionInbox && !this.overflowNotified) {
         try {
           this.motionInbox.writeSync({
             type: 'task_queue_overflow',
             source: 'async-task-system',
             priority: 'critical',
-            body: `Task ${task.id} (${task.kind}) rejected: queue at cap ${PENDING_QUEUE_MAX}`,
+            body: `Task queue is at capacity (${PENDING_QUEUE_MAX} pending). The system is unable to dispatch tasks fast enough — likely a chronic processing failure.`,
             idPrefix: `${Date.now()}_overflow`,
+            extraFields: {
+              cap: String(PENDING_QUEUE_MAX),
+              queue_length: String(this.pendingQueue.length),
+            },
           });
           emitPendingQueueOverflowNotified(this.auditWriter, {
             taskId: task.id,
             queueLength: this.pendingQueue.length,
             cap: PENDING_QUEUE_MAX,
           });
+          this.overflowNotified = true;   // dedup until queue drains below cap
         } catch (notifyErr) {
           emitMoveFailed(this.auditWriter, {
             taskId: task.id,
@@ -338,6 +345,11 @@ export class AsyncTaskSystem {
       }
 
       return;
+    }
+
+    // phase 7: queue 已降回 cap 以下 / 重置 dedup 允许下次 overflow 再发通知
+    if (this.overflowNotified && this.pendingQueue.length < PENDING_QUEUE_MAX) {
+      this.overflowNotified = false;
     }
 
     // task_started: SubAgentTask emitted in executeSubAgentTask after dir creation;
