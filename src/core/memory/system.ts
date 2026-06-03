@@ -1,15 +1,11 @@
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { AsyncTaskSystem } from '../async-task-system/index.js';
-import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
-import type { LLMOrchestratorConfig } from '../../foundation/llm-orchestrator/index.js';
+import type { LLMOrchestrator, LLMOrchestratorConfig } from '../../foundation/llm-orchestrator/index.js';
 import type { ProgressData } from '../contract/index.js';
 import { runDeepDream } from './deep-dream.js';
 import { runRandomDream } from './random-dream.js';
-import type { ClawId } from '../../foundation/identity/index.js';
-import { type ChestnutRoot } from '../../foundation/identity/index.js';
-import type { ContractId } from '../../foundation/identity/index.js';
-import { type ClawDir } from '../../foundation/identity/index.js';
+import type { ClawId, ChestnutRoot, ContractId, ClawDir } from '../../foundation/identity/index.js';
 
 
 
