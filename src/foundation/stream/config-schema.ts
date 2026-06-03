@@ -9,7 +9,7 @@ export const streamConfigSchema = z.object({
   retention: z.object({
     max_files: z.number().min(1).nullable().default(null),
     max_days: z.number().min(1).nullable().default(null),
-  }).optional(),
+  }).default({}),
 });
 
 export type StreamConfig = z.infer<typeof streamConfigSchema>;

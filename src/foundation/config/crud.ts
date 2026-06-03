@@ -7,6 +7,7 @@ import {
   createGlobalConfigSchema,
   getClawConfigSchema,
   type ClawGlobalConfig,
+  type ClawGlobalConfigInput,
   type ClawConfig,
 } from '../../assembly/compose-config.js';
 import {
@@ -57,7 +58,7 @@ export function isInitialized(deps: { fsFactory: (baseDir: string) => FileSystem
   return fs.existsSync(path.basename(configPath));
 }
 
-export function saveGlobalConfig(deps: { fsFactory: (baseDir: string) => FileSystem }, config: ClawGlobalConfig): void {
+export function saveGlobalConfig(deps: { fsFactory: (baseDir: string) => FileSystem }, config: ClawGlobalConfigInput): void {
   const configPath = getGlobalConfigPath();
   writeYamlConfig(
     { fsFactory: deps.fsFactory },

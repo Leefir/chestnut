@@ -12,6 +12,7 @@
 // Types (schemas.ts deleted in phase 10 Step D)
 export type {
   ClawGlobalConfig,
+  ClawGlobalConfigInput,
   ClawConfig,
 } from '../../assembly/compose-config.js';
 // Note: LLMProviderConfig moved to llm-orchestrator/llm-provider-config-schema.ts (phase 10)

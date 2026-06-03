@@ -21,46 +21,46 @@ export const cronJobsConfigSchema = z.object({
   disk_monitor: z.object({
     enabled: z.boolean().default(true),
     schedule: cronJobScheduleField.default('hourly'),
-  }).optional(),
+  }).default({}),
   llm_stats: z.object({
     enabled: z.boolean().default(true),
     schedule: cronJobScheduleField.default('daily:06:00'),
-  }).optional(),
+  }).default({}),
   dream_trigger: z.object({
     enabled: z.boolean().default(false),
     schedule: cronJobScheduleField.default('daily:04:00'),
     max_compression_tokens: z.number().min(500).max(20000).default(4000),
-  }).optional(),
+  }).default({}),
   contract_observer: z.object({
     enabled: z.boolean().default(true),
-    schedule: cronJobScheduleField.default('interval:1m'),
-  }).optional(),
+    schedule: cronJobScheduleField.default('interval:1s'),
+  }).default({}),
   metrics_snapshot: z.object({
     enabled: z.boolean().default(true),
     schedule: cronJobScheduleField.default('interval:5m'),
-  }).optional(),
+  }).default({}),
   git_gc_weekly: z.object({
     enabled: z.boolean().default(true),
     schedule: cronJobScheduleField.default('daily:03:00'),
-  }).optional(),
+  }).default({}),
   retention_cleanup: z.object({
     enabled: z.boolean().default(true),
     schedule: cronJobScheduleField.default('daily:04:00'),
-  }).optional(),
+  }).default({}),
   audit_size_monitor: z.object({
     enabled: z.boolean().default(true),
     schedule: cronJobScheduleField.default('interval:1h'),
-  }).optional(),
+  }).default({}),
   outbox_summary: z.object({
     enabled: z.boolean().default(true),
     schedule: cronJobScheduleField.default('interval:1s'),
-  }).optional(),
+  }).default({}),
 });
 
 export const cronConfigSchema = z.object({
   enabled: z.boolean().default(true),
   tick_interval_ms: z.number().min(100).max(60000).default(CRON_TICK_INTERVAL_MS),
-  jobs: cronJobsConfigSchema.optional(),
+  jobs: cronJobsConfigSchema.default({}),
 });
 
 export type CronConfig = z.infer<typeof cronConfigSchema>;

@@ -26,18 +26,18 @@ export function createGlobalConfigSchema() {
     version: z.string().default('1'),
     default_max_steps: agentExecutorConfigSchema,
     llm: llmOrchestratorConfigSchema,
-    motion: runtimeMotionConfigSchema.optional(),
+    motion: runtimeMotionConfigSchema.default({}),
     tool_timeout_ms: toolsConfigSchema,
-    watchdog: watchdogConfigSchema.optional(),
-    cron: cronConfigSchema.optional(),
-    viewport: viewportConfigSchema.optional(),
-    audit: auditConfigSchema.optional(),
-    stream: streamConfigSchema.optional(),
+    watchdog: watchdogConfigSchema.default({}),
+    cron: cronConfigSchema.default({}),
+    viewport: viewportConfigSchema.default({}),
+    audit: auditConfigSchema.default({}),
+    stream: streamConfigSchema.default({}),
     retention: z.object({
       ...messagingRetentionConfigSchema.shape,
       ...asyncTaskRetentionConfigSchema.shape,
       ...dialogRetentionConfigSchema.shape,
-    }).optional(),
+    }).default({}),
     // Future cross-field validation hook (currently 0 cross-field constraint):
     //   .refine((cfg) => <constraint>, { message: '...' })
   });
@@ -48,4 +48,7 @@ export function getClawConfigSchema() {
 }
 
 export type ClawGlobalConfig = z.infer<ReturnType<typeof createGlobalConfigSchema>>;
+// phase 12: input shape (defaults optional)，给 init / patch 等 caller 写 YAML 用。
+// 与 ClawGlobalConfig (output / 所有 default-fill 后的 fields 必填) 区分。
+export type ClawGlobalConfigInput = z.input<ReturnType<typeof createGlobalConfigSchema>>;
 export type ClawConfig = z.infer<typeof clawConfigSchema>;

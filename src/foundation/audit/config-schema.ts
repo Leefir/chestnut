@@ -8,7 +8,7 @@ import { z } from 'zod';
 export const auditConfigSchema = z.object({
   retention: z.object({
     max_size_mb: z.number().min(1).nullable().default(null),
-  }).optional(),
+  }).default({}),
 });
 
 export type AuditConfig = z.infer<typeof auditConfigSchema>;
