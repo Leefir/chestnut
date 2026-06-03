@@ -56,7 +56,7 @@ import {
   emitShutdownPendingCleanupsDrained,
 } from './audit-emit.js';
 import type { PostProcessor } from './post-processors/types.js';
-import type { AsyncTaskSystemOptions, SubAgentTask, ToolTask } from './types.js';
+import type { AsyncTaskSystemOptions, SubAgentTask, ToolTask, TaskKind, TaskExecutor } from './types.js';
 import { type TaskId, makeTaskId } from '../../foundation/identity/index.js';
 import { type ClawDir, makeClawDir, type ChestnutRoot } from '../../foundation/identity/index.js';
 
@@ -112,6 +112,7 @@ export class AsyncTaskSystem {
   private pendingQueue: Array<SubAgentTask | ToolTask> = [];
 
   private readonly retryBaseDelayMs: number;
+  private readonly executors: Record<TaskKind, TaskExecutor>;
 
   constructor(
     private readonly clawDir: ClawDir,
@@ -131,6 +132,55 @@ export class AsyncTaskSystem {
     this.fsFactory = options.fsFactory;
     this.chestnutRoot = options.chestnutRoot;
     this.askMotionToolFactory = options.askMotionToolFactory;
+
+    // Strategy table: dispatches task body by kind. Adding a new kind
+    // requires extending union + registering one entry — _startTask itself
+    // does not change. (phase 16 Step B / audit finding H2)
+    this.executors = {
+      tool: async (task, signal) => {
+        if (task.kind !== 'tool') return;
+        const tool = this.registry.getAll().find(t => t.name === task.toolName);
+        if (!tool) {
+          await this.fs.delete(`${TASKS_QUEUES_RUNNING_DIR}/${task.id}.json`).catch((err) => {
+            this.auditWriter?.write(
+              TASK_AUDIT_EVENTS.RUNNING_FILE_DELETE_FAILED,
+              `task_id=${task.id}`,
+              `reason=${formatErr(err)}`,
+            );
+          });
+          throw new Error(`Tool "${task.toolName}" not found in registry`);
+        }
+        const reconstructedCtx = this.buildToolTaskExecContext(task, signal);
+        const callback = () => tool.execute(task.args, reconstructedCtx);
+        await executeToolTask(task, callback, signal, {
+          fs: this.fs,
+          auditWriter: this.auditWriter,
+          retryBaseDelayMs: this.retryBaseDelayMs,
+          moveTaskToDone: this.moveTaskToDone.bind(this),
+          moveTaskToFailed: this.moveTaskToFailed.bind(this),
+        });
+      },
+      subagent: async (task, signal) => {
+        if (task.kind === 'tool') return;
+        await executeSubAgentTask(task, signal, {
+          fs: this.fs,
+          fsFactory: this.fsFactory,
+          auditWriter: this.auditWriter,
+          llm: this.llm,
+          registry: this.registry,
+          clawDir: this.clawDir,
+          chestnutRoot: this.chestnutRoot,
+          parentStreamLog: this.parentStreamLog,
+          postProcessors: this.postProcessors,
+          mainDialogStore: this.mainDialogStore,
+          moveTaskToDone: this.moveTaskToDone.bind(this),
+          moveTaskToFailed: this.moveTaskToFailed.bind(this),
+          toolTimeoutMs: this.toolTimeoutMs,
+          permissionChecker: this.permissionChecker,
+          askMotionToolFactory: this.askMotionToolFactory,
+        });
+      },
+    };
   }
 
   async initialize(): Promise<void> {
@@ -373,50 +423,8 @@ export class AsyncTaskSystem {
     signal: AbortSignal
   ): Promise<void> {
     try {
-      // Move file from pending to running (async operation)
       await this.movePendingToRunning(task.id);
-      
-      // Execute the task
-      if (task.kind === 'tool') {
-        const tool = this.registry.getAll().find(t => t.name === task.toolName);
-        if (!tool) {
-          await this.fs.delete(`${TASKS_QUEUES_RUNNING_DIR}/${task.id}.json`).catch((err) => {
-            this.auditWriter?.write(
-              TASK_AUDIT_EVENTS.RUNNING_FILE_DELETE_FAILED,
-              `task_id=${task.id}`,
-              `reason=${formatErr(err)}`,
-            );
-          });
-          throw new Error(`Tool "${task.toolName}" not found in registry`);
-        }
-        const reconstructedCtx = this.buildToolTaskExecContext(task, signal);
-        const callback = () => tool.execute(task.args, reconstructedCtx);
-        await executeToolTask(task, callback, signal, {
-          fs: this.fs,
-          auditWriter: this.auditWriter,
-          retryBaseDelayMs: this.retryBaseDelayMs,
-          moveTaskToDone: this.moveTaskToDone.bind(this),
-          moveTaskToFailed: this.moveTaskToFailed.bind(this),
-        });
-      } else {
-        await executeSubAgentTask(task, signal, {
-          fs: this.fs,
-          fsFactory: this.fsFactory,
-          auditWriter: this.auditWriter,
-          llm: this.llm,
-          registry: this.registry,
-          clawDir: this.clawDir,
-          chestnutRoot: this.chestnutRoot,
-          parentStreamLog: this.parentStreamLog,
-          postProcessors: this.postProcessors,
-          mainDialogStore: this.mainDialogStore,
-          moveTaskToDone: this.moveTaskToDone.bind(this),
-          moveTaskToFailed: this.moveTaskToFailed.bind(this),
-          toolTimeoutMs: this.toolTimeoutMs,
-          permissionChecker: this.permissionChecker,
-          askMotionToolFactory: this.askMotionToolFactory,
-        });
-      }
+      await this.executors[task.kind](task, signal);
     } catch (error) {
       const errorMsg = formatErr(error);
       emitStartFailed(this.auditWriter, {
