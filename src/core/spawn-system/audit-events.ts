@@ -11,4 +11,5 @@ export const SPAWN_AUDIT_EVENTS = {
   SYNC_FINISHED: 'spawn_sync_finished',
   SYNC_FAILED: 'spawn_sync_failed',
   TEMPLATE_UNKNOWN: 'spawn_template_unknown',
+  ASYNC_SCHEDULE_FAILED: 'spawn_async_schedule_failed',  // phase 26: 失败路径独立留痕、与 TASK_SCHEDULED 命名空间不冲突
 } as const;

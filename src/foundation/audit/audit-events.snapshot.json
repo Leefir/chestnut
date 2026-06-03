@@ -301,6 +301,7 @@
       "shadow_started"
     ],
     "core_spawn-system_audit-events": [
+      "spawn_async_schedule_failed",
       "spawn_sync_failed",
       "spawn_sync_finished",
       "spawn_sync_started",

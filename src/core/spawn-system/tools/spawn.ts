@@ -130,6 +130,11 @@ export const spawnTool: Tool = {
         };
       } catch (error) {
         const errorMsg = formatErr(error);
+        ctx.auditWriter?.write(
+          SPAWN_AUDIT_EVENTS.ASYNC_SCHEDULE_FAILED,
+          intent.slice(0, AUDIT_PREVIEW_LEN),
+          errorMsg,
+        );
         return { success: false, content: `Failed to create subagent: ${errorMsg}`, error: errorMsg };
       }
     }
