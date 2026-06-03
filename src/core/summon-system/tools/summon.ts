@@ -1,13 +1,13 @@
 import type { Tool, ExecContext } from '../../../foundation/tools/index.js';
 import type { ToolResult } from '../../../foundation/tool-protocol/index.js';
 
-import type { ToolDefinition } from '../../../foundation/llm-provider/types.js';
+
 import { createSkillSystem } from '../../../foundation/skill-system/index.js';
 import { DISPATCH_SKILLS_PATH as DISPATCH_SKILLS_DIR } from '../../../foundation/paths.js';
 
 import { DEFAULT_LLM_IDLE_TIMEOUT_MS } from '../../../foundation/llm-orchestrator/index.js';
 import { buildSummonContractTask, buildMinerSystemPrompt, buildMiningUserMessage } from '../../../prompts/index.js';
-import { ASK_MOTION_TOOL_NAME, ASK_MOTION_TOOL_DESCRIPTION, ASK_MOTION_TOOL_SCHEMA } from './ask-motion.js';
+
 
 import { SUMMON_AUDIT_EVENTS, emitSummonDispatched, emitSummonRejectedShadow } from '../audit-events.js';
 import { SUMMON_CONTRACT_EXTRACT_POSTPROCESSOR_NAME } from '../post-processors/contract-extract.js';
@@ -108,103 +108,48 @@ export class SummonTool implements Tool {
       }
     }
 
-    // 确定执行模式：shadow（默认、继承 Motion 上下文）或 mining（实验中、ask_motion 问答构建上下文）
+    // 模式 + 参数
     const mode = (args.mode as 'mining' | 'shadow') ?? 'shadow';
     const isMining = mode === 'mining';
-    const callerType: SummonCallerType = isMining ? SUMMON_CALLER_TYPES.MINER : SUMMON_CALLER_TYPES.SHADOW;
     const verify = args.verify === true;
-
-    // 根据模式构建用户消息
     const userMessage = isMining
       ? buildMiningUserMessage(args.goal as string, skillsSummary, args.targetClaw as string | undefined, { verify })
       : buildSummonContractTask(args.goal as string, skillsSummary, args.targetClaw as string | undefined, { verify });
-    if (isMining && !ctx.llm) {
-      return { success: false, content: 'Mining mode requires LLM service, but none is available.' };
-    }
-
-    const idleTimeoutMs = typeof args.idleTimeoutMs === 'number'
-      ? args.idleTimeoutMs
-      : DEFAULT_LLM_IDLE_TIMEOUT_MS;
-
-    // phase 1406: shadow reads caller deep snapshot via ToolProtocol caller协议.
-    // mining uses independent system prompt + ctx.registry for miner profile.
-    let systemPrompt: string;
-    let toolsForLLM: ToolDefinition[];
-    let dialogMessages: import('../../../foundation/llm-provider/types.js').Message[];
-
-    if (isMining) {
-      systemPrompt = buildMinerSystemPrompt();
-      const minerTools = ctx.registry
-        ? ctx.registry.formatForLLM(ctx.registry.getForProfile('miner'))
-        : [];
-      toolsForLLM = [
-        ...minerTools,
-        { name: ASK_MOTION_TOOL_NAME, description: ASK_MOTION_TOOL_DESCRIPTION, input_schema: ASK_MOTION_TOOL_SCHEMA },
-      ];
-      dialogMessages = [];
-    } else {
-      // shadow path: caller deep snapshot (Motion's systemPrompt + tools + messages).
-      if (!ctx.getCallerSnapshot) {
-        return {
-          success: false,
-          content: 'summon shadow mode requires caller snapshot (ExecContext.getCallerSnapshot not bound by Assembly).',
-          error: 'summon_caller_snapshot_unavailable',
-        };
-      }
-      const snap = await ctx.getCallerSnapshot();
-      systemPrompt = snap.systemPrompt;
-      toolsForLLM = snap.tools;
-      dialogMessages = snap.messages;
-      if (dialogMessages.length === 0) {
-        ctx.auditWriter?.write(SUMMON_AUDIT_EVENTS.NO_DIALOG_CONTEXT);
-      }
-    }
-
-    const motionClawDir = isMining ? ctx.clawDir : undefined;
-
-    // 装配 mainContextSnapshot from ctx.currentToolUseId
+    const idleTimeoutMs = typeof args.idleTimeoutMs === 'number' ? args.idleTimeoutMs : DEFAULT_LLM_IDLE_TIMEOUT_MS;
     const mainContextSnapshot = ctx.clawId && ctx.currentToolUseId
       ? { clawId: ctx.clawId, toolUseId: ctx.currentToolUseId }
       : undefined;
 
-    // 调度 summoner（声明式 postProcessor 替代 closure 注册）
-    try {
-      let taskId: TaskId;
-      if (!isMining) {
-        const stripped = stripIncompleteToolUse(dialogMessages) ?? dialogMessages ?? [];
-        const result = await spawnShadowSubagent({
-          task: userMessage,
-          mainMessages: stripped,
-          ctx,
-          systemPrompt: systemPrompt ?? '',
-          toolsForLLM: toolsForLLM ?? [],
-          timeoutMs: SUMMON_SUBAGENT_TIMEOUT_MS,
-          idleTimeoutMs,
-          postProcessor: SUMMON_CONTRACT_EXTRACT_POSTPROCESSOR_NAME,
-          shadowIdPrefix: 'summon',
-        });
-        taskId = result.taskId;
-      } else {
-        taskId = makeTaskId(await ctx.taskSystem!.schedule('subagent', {
-          kind: 'subagent',
-          mode: 'standard',
-          intent: userMessage,
-          timeoutMs: SUMMON_SUBAGENT_TIMEOUT_MS,
-          maxSteps: (args.maxSteps as number) ?? ctx.subagentMaxSteps ?? ctx.maxSteps,
-          parentClawId: ctx.clawId,
-          originClawId: ctx.originClawId ?? ctx.clawId,
-          callerType,                    // 'miner'
-          motionClawDir,
-          postProcessor: SUMMON_CONTRACT_EXTRACT_POSTPROCESSOR_NAME,  // 声明式 post-processor
-          mainContextSnapshot,
-          systemPrompt,                            // phase 546: 透传 caller-side specialized prompt（mining: buildMinerSystemPrompt）
-        }));
-      }
+    if (isMining && !ctx.llm) {
+      return { success: false, content: 'Mining mode requires LLM service, but none is available.' };
+    }
 
+    // dispatch
+    try {
+      const result = isMining
+        ? await this.executeMining({
+            userMessage,
+            idleTimeoutMs,
+            ctx,
+            mainContextSnapshot,
+            callerType: SUMMON_CALLER_TYPES.MINER,
+            motionClawDir: ctx.clawDir,
+            maxSteps: args.maxSteps as number | undefined,
+          })
+        : await this.executeShadow({
+            userMessage,
+            idleTimeoutMs,
+            ctx,
+            mainContextSnapshot,
+          });
+
+      if (!('taskId' in result)) return result;
+
+      // audit + success return
       if (ctx.auditWriter && ctx.currentToolUseId) {
         emitSummonDispatched(ctx.auditWriter, {
           toolUseId: ctx.currentToolUseId,
-          taskId,
+          taskId: result.taskId,
           mode,
           targetClaw: args.targetClaw as string | undefined,
           verify,
@@ -213,11 +158,76 @@ export class SummonTool implements Tool {
 
       return {
         success: true,
-        content: `Summon subagent started (${mode} mode). Task ID: ${taskId}. Result will arrive in inbox when complete.`,
-        metadata: { taskId },
+        content: `Summon subagent started (${mode} mode). Task ID: ${result.taskId}. Result will arrive in inbox when complete.`,
+        metadata: { taskId: result.taskId },
       };
     } catch (e) {
       throw e;
     }
+  }
+
+  private async executeShadow(opts: {
+    userMessage: string;
+    idleTimeoutMs: number;
+    ctx: ExecContext;
+    mainContextSnapshot: { clawId: string; toolUseId: string } | undefined;
+  }): Promise<{ taskId: TaskId } | { success: false; content: string; error?: string }> {
+    const { userMessage, idleTimeoutMs, ctx } = opts;
+    if (!ctx.getCallerSnapshot) {
+      return {
+        success: false,
+        content: 'summon shadow mode requires caller snapshot (ExecContext.getCallerSnapshot not bound by Assembly).',
+        error: 'summon_caller_snapshot_unavailable',
+      };
+    }
+    const snap = await ctx.getCallerSnapshot();
+    if (snap.messages.length === 0) {
+      ctx.auditWriter?.write(SUMMON_AUDIT_EVENTS.NO_DIALOG_CONTEXT);
+    }
+    const stripped = stripIncompleteToolUse(snap.messages) ?? snap.messages ?? [];
+    const result = await spawnShadowSubagent({
+      task: userMessage,
+      mainMessages: stripped,
+      ctx,
+      systemPrompt: snap.systemPrompt ?? '',
+      toolsForLLM: snap.tools ?? [],
+      timeoutMs: SUMMON_SUBAGENT_TIMEOUT_MS,
+      idleTimeoutMs,
+      postProcessor: SUMMON_CONTRACT_EXTRACT_POSTPROCESSOR_NAME,
+      shadowIdPrefix: 'summon',
+    });
+    return { taskId: result.taskId };
+  }
+
+  private async executeMining(opts: {
+    userMessage: string;
+    idleTimeoutMs: number;
+    ctx: ExecContext;
+    mainContextSnapshot: { clawId: string; toolUseId: string } | undefined;
+    callerType: SummonCallerType;
+    motionClawDir: string | undefined;
+    maxSteps: number | undefined;
+  }): Promise<{ taskId: TaskId } | { success: false; content: string }> {
+    const { userMessage, ctx, mainContextSnapshot, callerType, motionClawDir, maxSteps } = opts;
+    const systemPrompt = buildMinerSystemPrompt();
+    // toolsForLLM is built for LLM-side miner profile; current schedule signature
+    // doesn't pass tools (mining branch reads ctx.registry on subagent boot per phase 1406).
+    // Kept as documentation of intent; if AsyncTask schedule grows tools param later, plumb through.
+
+    const taskId = makeTaskId(await ctx.taskSystem!.schedule('subagent', {
+      kind: 'subagent',
+      mode: 'standard',
+      intent: userMessage,
+      timeoutMs: SUMMON_SUBAGENT_TIMEOUT_MS,
+      maxSteps: maxSteps ?? ctx.subagentMaxSteps ?? ctx.maxSteps,
+      parentClawId: ctx.clawId,
+      originClawId: ctx.originClawId ?? ctx.clawId,
+      callerType,
+      motionClawDir,
+      postProcessor: SUMMON_CONTRACT_EXTRACT_POSTPROCESSOR_NAME,
+      mainContextSnapshot,
+      systemPrompt,
+    }));
+    return { taskId };
   }
 }
