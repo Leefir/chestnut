@@ -121,15 +121,33 @@ export async function runContractVerifier(config: VerifierConfig): Promise<Verif
       const doneResult = capturedResult as { result?: string };
       if (doneResult.result) {
         try {
-          const r = JSON.parse(doneResult.result) as { passed: boolean; reason: string; issues?: string[] };
-          if (r.passed && config.audit) {
-            emitContractVerifierPassed(config.audit, { contractId: config.contractId, agentId: config.agentId });
+          const parsed: unknown = JSON.parse(doneResult.result);
+          // phase 21: inline schema check 防 corrupt JSON 流入业务（playbook 静默失败 §8）
+          if (!isValidVerifierResult(parsed)) {
+            if (config.audit) {
+              emitContractVerifierResultParseFailed(
+                config.audit,
+                {
+                  contractId: config.contractId,
+                  agentId: config.agentId,
+                  clawId: config.clawId,
+                  stage: 'done_result_schema_invalid',
+                  reason: `raw=${doneResult.result.slice(0, 200)}`,
+                },
+              );
+            }
+            // fall through to legacy format check (line ~152) per phase 1133 intent
+          } else {
+            const r = parsed;
+            if (r.passed && config.audit) {
+              emitContractVerifierPassed(config.audit, { contractId: config.contractId, agentId: config.agentId });
+            }
+            return {
+              passed: r.passed,
+              feedback: doneResult.result,
+              structured: r,
+            };
           }
-          return {
-            passed: r.passed,
-            feedback: doneResult.result,
-            structured: r,
-          };
         } catch (parseErr) {
           // phase 1133 (r126 C fork C-3): emit audit before fall-through to text JSON parsing below
           // 保留 fall-through intent / 但 parse 失败信息不再 silent（DP「不丢弃静默」）
@@ -167,7 +185,24 @@ export async function runContractVerifier(config: VerifierConfig): Promise<Verif
       return { passed: false, feedback: `LLM 返回格式错误: 无法解析 JSON — ${text}` };
     }
     const jsonStr = jsonMatch[1] || jsonMatch[0];
-    const result = JSON.parse(jsonStr) as { passed: boolean; reason: string; issues?: string[] };
+    const parsedText: unknown = JSON.parse(jsonStr);
+    // phase 21: inline schema check 防 corrupt JSON 流入业务（playbook 静默失败 §8）
+    if (!isValidVerifierResult(parsedText)) {
+      if (config.audit) {
+        emitContractVerifierResultParseFailed(
+          config.audit,
+          {
+            contractId: config.contractId,
+            agentId: config.agentId,
+            clawId: config.clawId,
+            stage: 'text_json_schema_invalid',
+            reason: `raw=${jsonStr.slice(0, 200)}`,
+          },
+        );
+      }
+      return { passed: false, feedback: `verifier result schema invalid: ${jsonStr.slice(0, 200)}` };
+    }
+    const result = parsedText;
     if (result.passed && config.audit) {
       emitContractVerifierPassed(config.audit, { contractId: config.contractId, agentId: config.agentId });
     }
@@ -201,4 +236,19 @@ export async function runContractVerifier(config: VerifierConfig): Promise<Verif
     return { passed: false, feedback: `LLM 验收失败: ${msg}` };
   }
   // 不需要 finally cleanup（runSubagent 现 0 创建 subagent workspace dir / phase 805 sub-3 闭环）
+}
+
+// phase 21: verifier 结果 schema check（playbook 静默失败 §8）
+function isValidVerifierResult(
+  x: unknown,
+): x is { passed: boolean; reason: string; issues?: string[] } {
+  if (typeof x !== 'object' || x === null) return false;
+  const o = x as { passed?: unknown; reason?: unknown; issues?: unknown };
+  if (typeof o.passed !== 'boolean') return false;
+  if (typeof o.reason !== 'string') return false;
+  if (o.issues !== undefined) {
+    if (!Array.isArray(o.issues)) return false;
+    if (!o.issues.every((s: unknown) => typeof s === 'string')) return false;
+  }
+  return true;
 }
