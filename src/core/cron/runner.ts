@@ -14,7 +14,11 @@ export type CronSchedule =
   | { type: 'hourly' }                     // 每小时整点
   | { type: 'interval'; ms: number };      // 每 N 毫秒（接收 s/m/h 单位、内部 ms 表示）
 
-/** 将配置字符串解析为 CronSchedule
+type ParseScheduleResult =
+  | { ok: true; schedule: CronSchedule }
+  | { ok: false; reason: 'invalid_daily_time' | 'invalid_interval' | 'fallback_hourly' };
+
+/** 纯解析、0 audit 副作用。
  * 格式：'hourly' | 'daily:HH:MM' | 'interval:N[smh]'
  *
  * 单位:
@@ -23,33 +27,52 @@ export type CronSchedule =
  * - 'h' = hours (`interval:6h` → ms=21_600_000)
  *
  * phase 1216 (r131 B): suffix 严格 enforce、防 phase 793 起 silent drift 复发
+ * Phase 28 Step C: 拆 audit 到 thin wrapper (parseSchedule)
  */
-export function parseSchedule(s: string, audit?: AuditLog): CronSchedule | null {
-  if (s === 'hourly') return { type: 'hourly' };
+export function parseScheduleRaw(s: string): ParseScheduleResult {
+  if (s === 'hourly') return { ok: true, schedule: { type: 'hourly' } };
   if (s.startsWith('daily:')) {
     const [hh, mm] = s.slice(6).split(':').map(Number);
     if (isNaN(hh) || isNaN(mm) || hh < 0 || hh > 23 || mm < 0 || mm > 59) {
-      audit?.write(CRON_AUDIT_EVENTS.PARSE_INVALID, `input=${s}`, 'reason=invalid_daily_time');
-      return null;
+      return { ok: false, reason: 'invalid_daily_time' };
     }
-    return { type: 'daily', time: s.slice(6) };
+    return { ok: true, schedule: { type: 'daily', time: s.slice(6) } };
   }
   if (s.startsWith('interval:')) {
     const match = s.slice(9).match(/^(\d+)([smh])$/);
     if (!match) {
-      audit?.write(CRON_AUDIT_EVENTS.PARSE_INVALID, `input=${s}`, 'reason=invalid_interval');
-      return null;
+      return { ok: false, reason: 'invalid_interval' };
     }
     const value = parseInt(match[1], 10);
     if (value <= 0) {
-      audit?.write(CRON_AUDIT_EVENTS.PARSE_INVALID, `input=${s}`, 'reason=invalid_interval');
-      return null;
+      return { ok: false, reason: 'invalid_interval' };
     }
     const multiplier = { s: 1_000, m: 60_000, h: 3_600_000 }[match[2] as 's' | 'm' | 'h'];
-    return { type: 'interval', ms: value * multiplier };
+    return { ok: true, schedule: { type: 'interval', ms: value * multiplier } };
   }
-  audit?.write(CRON_AUDIT_EVENTS.PARSE_FALLBACK, `input=${s}`, 'fallback=hourly');
-  return { type: 'hourly' };
+  return { ok: false, reason: 'fallback_hourly' };
+}
+
+/** 将配置字符串解析为 CronSchedule（backward-compat thin wrapper，含 audit）。
+ * 新代码优先用 parseScheduleRaw 以获得纯解析语义。
+ */
+export function parseSchedule(s: string, audit?: AuditLog): CronSchedule | null {
+  const r = parseScheduleRaw(s);
+  if (r.ok) return r.schedule;
+  switch (r.reason) {
+    case 'invalid_daily_time':
+    case 'invalid_interval':
+      audit?.write(CRON_AUDIT_EVENTS.PARSE_INVALID, `input=${s}`, `reason=${r.reason}`);
+      return null;
+    case 'fallback_hourly':
+      audit?.write(CRON_AUDIT_EVENTS.PARSE_FALLBACK, `input=${s}`, 'fallback=hourly');
+      return { type: 'hourly' };
+  }
+}
+
+export interface CronStateFs {
+  read(path: string, encoding: string): Promise<string>;
+  writeAtomic(path: string, content: string): Promise<void>;
 }
 
 export interface CronJob {
@@ -85,7 +108,7 @@ export class CronRunner {
   constructor(
     private readonly jobs: CronJob[],
     private readonly audit: AuditLog,
-    private readonly fs?: { read: (path: string, encoding: string) => Promise<string>; writeAtomic: (path: string, content: string) => Promise<void> },
+    private readonly fs?: CronStateFs,
   ) {}
 
   private async loadState(): Promise<void> {
@@ -185,7 +208,10 @@ export class CronRunner {
     this.audit.write(CRON_AUDIT_EVENTS.RUNNER_STOPPED, `jobs=${this.jobs.length}`);
   }
 
-  /** 供测试用：手动触发一次检查 */
+  /**
+   * @internal Test entry + production setInterval 内部调用入口；外部 caller 不应直接调用。
+   * 供测试用：手动触发一次检查（test 模拟 setInterval tick）
+   */
   tick(): void {
     const now = new Date();
     // P1.14 stuck watchdog：cancelling 中 job tick 计数 / 阈值后 audit + 强清 cancelling 让下 tick 自然重试（D1c 中断可恢复 + handler 幂等假设）
