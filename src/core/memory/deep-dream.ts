@@ -171,6 +171,168 @@ async function maybeMergeCompressions(
 
 // ─── 单 claw 处理 ─────────────────────────────────────────────
 
+interface DreamRunContext {
+  clawId: ClawId;
+  clawDir: ClawDir;
+  clawFs: FileSystem;
+  motionFs: FileSystem | undefined;
+  llm: LLMOrchestrator;
+  maxCompressionTokens: number;
+  audit: AuditLog;
+  signal?: AbortSignal;
+}
+
+interface DreamRunPlan {
+  state: DreamStateData;
+  dialogStore: DialogStore;
+  sessionFiles: SessionFile[];
+  today: string;
+}
+
+async function prepareDeepDreamRun(ctx: DreamRunContext): Promise<DreamRunPlan | null> {
+  const today = new Date().toLocaleDateString('sv');
+  const state = loadDreamState(ctx.clawFs, ctx.audit, ctx.clawId);
+  const dialogStore = new DialogStore(ctx.clawFs, 'dialog', ctx.audit, 'current.json', ctx.clawId);
+  const sessionFiles = await discoverUnprocessed(dialogStore, state, today);
+  if (sessionFiles.length === 0) {
+    ctx.audit.write(MEMORY_AUDIT_EVENTS.DEEP_DREAM_JOB, `step=skip_empty`, `clawId=${ctx.clawId}`);
+    return null;
+  }
+  ctx.audit.write(MEMORY_AUDIT_EVENTS.DEEP_DREAM_JOB, `step=started`, `clawId=${ctx.clawId}`, `session_count=${sessionFiles.length}`);
+  return { state, dialogStore, sessionFiles, today };
+}
+
+async function processSession(
+  ctx: DreamRunContext,
+  sf: SessionFile,
+  plan: DreamRunPlan,
+  compressions: string[],
+  dreamOutputs: string[],
+  processedArchives: string[],
+): Promise<string[]> {
+  let sessionData: SessionData;
+  try {
+    if (sf.filename === 'current.json') {
+      const result = await plan.dialogStore.load();
+      if (result.source !== 'current') return compressions;
+      sessionData = result.session;
+    } else {
+      sessionData = await plan.dialogStore.readArchive(sf.filename);
+    }
+  } catch (err) {
+    ctx.audit.write(MEMORY_AUDIT_EVENTS.DEEP_DREAM_ERROR,
+      `step=read_session`,
+      `clawId=${ctx.clawId}`,
+      `file=${sf.filename}`,
+      `reason=${formatErr(err)}`,
+    );
+    if (sf.filename !== 'current.json') {
+      processedArchives.push(sf.filename);
+      return compressions;
+    }
+    const retryCount = (plan.state.currentSessionRetryCount ?? 0) + 1;
+    plan.state.currentSessionRetryCount = retryCount;
+    if (retryCount >= 3) {
+      ctx.audit.write(MEMORY_AUDIT_EVENTS.DEEP_DREAM_RETRY_EXHAUSTED,
+        `clawId=${ctx.clawId}`,
+        `file=${sf.filename}`,
+        `retries=${retryCount}`,
+      );
+      processedArchives.push(sf.filename);
+    }
+    return compressions;
+  }
+
+  const sessionText = serializeSession(sessionData.messages ?? []);
+  if (!sessionText.trim()) {
+    if (sf.filename !== 'current.json') processedArchives.push(sf.filename);
+    return compressions;
+  }
+
+  const userMsg: Message = { role: 'user', content: buildDreamInput(compressions, sessionText) };
+  let dreamOutput: string;
+  try {
+    const res = await ctx.llm.call({ signal: ctx.signal, system: DEEP_DREAM_SYSTEM_PROMPT, messages: [userMsg] });
+    dreamOutput = responseText(res);
+  } catch (err) {
+    ctx.audit.write(MEMORY_AUDIT_EVENTS.DEEP_DREAM_CALL_FAILED, `step=call_1`, `clawId=${ctx.clawId}`, `file=${sf.filename}`, `reason=${formatErr(err)}`);
+    return compressions;
+  }
+
+  dreamOutputs.push(`### ${sf.filename}\n\n${dreamOutput}`);
+
+  let compression: string;
+  try {
+    const res = await ctx.llm.call({
+      signal: ctx.signal,
+      messages: [
+        userMsg,
+        { role: 'assistant', content: dreamOutput },
+        { role: 'user', content: COMPRESSION_PROMPT },
+      ],
+    });
+    compression = responseText(res);
+  } catch (err) {
+    ctx.audit.write(MEMORY_AUDIT_EVENTS.DEEP_DREAM_CALL_FAILED, `step=call_2`, `clawId=${ctx.clawId}`, `file=${sf.filename}`, `reason=${formatErr(err)}`);
+    compression = dreamOutput.slice(0, ctx.maxCompressionTokens);
+  }
+
+  compressions.push(compression);
+  const merged = await maybeMergeCompressions(compressions, ctx.maxCompressionTokens, ctx.llm, ctx.signal);
+
+  if (sf.filename !== 'current.json') {
+    processedArchives.push(sf.filename);
+  }
+  return merged;
+}
+
+async function persistDreamRun(
+  ctx: DreamRunContext,
+  plan: DreamRunPlan,
+  dreamOutputs: string[],
+  processedArchives: string[],
+): Promise<void> {
+  if (processedArchives.length > 0 || plan.sessionFiles.some(f => f.filename === 'current.json')) {
+    const currentProcessedToday = plan.sessionFiles.some(f => f.filename === 'current.json');
+    const updatedState: DreamStateData = {
+      processedArchives: [...new Set([...plan.state.processedArchives, ...processedArchives])],
+      currentSessionDreamedDate: currentProcessedToday ? plan.today : plan.state.currentSessionDreamedDate,
+      currentSessionRetryCount: currentProcessedToday ? 0 : plan.state.currentSessionRetryCount,
+    };
+    saveDreamState(ctx.clawFs, updatedState, ctx.audit, ctx.clawId);
+  }
+
+  if (dreamOutputs.length === 0) return;
+
+  const dreamOutput = dreamOutputs.join('\n\n---\n\n');
+
+  if (ctx.motionFs) {
+    const dreamId = `${Date.now()}_${ctx.clawId}`;
+    const dreamOutputPath = `memory/dream-outputs/${dreamId}.txt`;
+    await ctx.motionFs.ensureDir('memory/dream-outputs');
+    await ctx.motionFs.writeAtomic(dreamOutputPath, dreamOutput);
+    ctx.audit.write(
+      MEMORY_AUDIT_EVENTS.DREAM_OUTPUT_PERSISTED,
+      `dreamId=${dreamId}`,
+      `path=${dreamOutputPath}`,
+      `bytes=${dreamOutput.length}`,
+    );
+  }
+
+  const clawAudit = createSystemAudit(ctx.clawFs, ctx.clawDir);
+  notifyInbox(ctx.clawFs, {
+    inboxDir: INBOX_PENDING_DIR,
+    type: 'deep_dream',
+    source: 'cron:dream',
+    priority: 'low',
+    body: dreamOutput,
+    idPrefix: `${Date.now()}_deep_dream`,
+    extraFields: { session_count: String(dreamOutputs.length) },
+  }, clawAudit);
+
+  ctx.audit.write(MEMORY_AUDIT_EVENTS.DEEP_DREAM_JOB, `step=finished`, `clawId=${ctx.clawId}`, `dream_count=${dreamOutputs.length}`);
+}
+
 async function runDeepDreamForClaw(
   clawId: ClawId,
   clawDir: ClawDir,
@@ -181,164 +343,21 @@ async function runDeepDreamForClaw(
   audit: AuditLog,
   signal?: AbortSignal,
 ): Promise<void> {
-  const today = new Date().toLocaleDateString('sv');   // ← 统一在此计算
-  const state = loadDreamState(clawFs, audit, clawId);
-  // DialogStore 管理 dialog 资源的唯一入口（M#3）
-  const dialogStore = new DialogStore(clawFs, 'dialog', audit, 'current.json', clawId);
-  const sessionFiles = await discoverUnprocessed(dialogStore, state, today);  // ← 传入 today
-
-  if (sessionFiles.length === 0) {
-    audit.write(MEMORY_AUDIT_EVENTS.DEEP_DREAM_JOB, `step=skip_empty`, `clawId=${clawId}`);
-    return;
-  }
-
-  audit.write(MEMORY_AUDIT_EVENTS.DEEP_DREAM_JOB, `step=started`, `clawId=${clawId}`, `session_count=${sessionFiles.length}`);
+  const ctx: DreamRunContext = { clawId, clawDir, clawFs, motionFs, llm, maxCompressionTokens, audit, signal };
+  const plan = await prepareDeepDreamRun(ctx);
+  if (!plan) return;
 
   let compressions: string[] = [];
   const dreamOutputs: string[] = [];
   const processedArchives: string[] = [];
 
-  for (const sf of sessionFiles) {
-    // 读取并序列化会话（走 DialogStore 公开 API：version migration + validation 已封装）
-    let sessionData: SessionData;
-    try {
-      if (sf.filename === 'current.json') {
-        const result = await dialogStore.load();
-        // current.json 损坏/缺失时 DialogStore 内部走 archive 恢复或 cold start。
-        // deep-dream 只处理真正的 current session（source='current'），
-        // 其他情况（archive 恢复 / empty）跳过，保留当日重试可能。
-        if (result.source !== 'current') {
-          continue;
-        }
-        sessionData = result.session;
-      } else {
-        sessionData = await dialogStore.readArchive(sf.filename);
-      }
-    } catch (err) {
-      audit.write(MEMORY_AUDIT_EVENTS.DEEP_DREAM_ERROR,
-        `step=read_session`,
-        `clawId=${clawId}`,
-        `file=${sf.filename}`,
-        `reason=${formatErr(err)}`,
-      );
-      // 损坏 archive 永标记跳过（防 retry-storm / mirror line 198-201 空 session 模式）
-      if (sf.filename !== 'current.json') {
-        processedArchives.push(sf.filename);
-        continue;
-      }
-      // Phase 1200: current.json retry stop-loss (max 3 attempts per day)
-      const retryCount = (state.currentSessionRetryCount ?? 0) + 1;
-      state.currentSessionRetryCount = retryCount;
-      if (retryCount >= 3) {
-        audit.write(MEMORY_AUDIT_EVENTS.DEEP_DREAM_RETRY_EXHAUSTED,
-          `clawId=${clawId}`,
-          `file=${sf.filename}`,
-          `retries=${retryCount}`,
-        );
-        // Mark as processed to stop further retries today
-        processedArchives.push(sf.filename);
-      }
-      continue;
-    }
-    const sessionText = serializeSession(sessionData.messages ?? []);
-    if (!sessionText.trim()) {
-      // 空会话跳过，但仍标记为已处理
-      if (sf.filename !== 'current.json') processedArchives.push(sf.filename);
-      continue;
-    }
-
-    // Call 1：梦境生成
-    const userMsg: Message = {
-      role: 'user',
-      content: buildDreamInput(compressions, sessionText),
-    };
-    let dreamOutput: string;
-    try {
-      const res = await llm.call({
-        signal,
-        system: DEEP_DREAM_SYSTEM_PROMPT,
-        messages: [userMsg],
-      });
-      dreamOutput = responseText(res);
-    } catch (err) {
-      audit.write(MEMORY_AUDIT_EVENTS.DEEP_DREAM_CALL_FAILED, `step=call_1`, `clawId=${clawId}`, `file=${sf.filename}`, `reason=${formatErr(err)}`);
-      continue;
-    }
-
-    dreamOutputs.push(`### ${sf.filename}\n\n${dreamOutput}`);
-
-    // Call 2：压缩
-    let compression: string;
-    try {
-      const res = await llm.call({
-        signal,
-        messages: [
-          userMsg,
-          { role: 'assistant', content: dreamOutput },
-          { role: 'user', content: COMPRESSION_PROMPT },
-        ],
-      });
-      compression = responseText(res);
-    } catch (err) {
-      audit.write(MEMORY_AUDIT_EVENTS.DEEP_DREAM_CALL_FAILED, `step=call_2`, `clawId=${clawId}`, `file=${sf.filename}`, `reason=${formatErr(err)}`);
-      // 压缩失败不阻断流程，截取前 maxCompressionTokens chars 防 meta-compression 超上下文
-      compression = dreamOutput.slice(0, maxCompressionTokens);
-    }
-
-    compressions.push(compression);
-    compressions = await maybeMergeCompressions(compressions, maxCompressionTokens, llm, signal);
-
-    if (sf.filename !== 'current.json') {
-      processedArchives.push(sf.filename);
-    }
+  for (const sf of plan.sessionFiles) {
+    compressions = await processSession(ctx, sf, plan, compressions, dreamOutputs, processedArchives);
   }
 
-  // 更新 state（无论是否有梦境输出，都记录已处理的 archive 文件）
-  if (processedArchives.length > 0 || sessionFiles.some(f => f.filename === 'current.json')) {
-    const currentProcessedToday = sessionFiles.some(f => f.filename === 'current.json');
-    const updatedState: DreamStateData = {
-      processedArchives: [...new Set([...state.processedArchives, ...processedArchives])],
-      currentSessionDreamedDate: currentProcessedToday
-        ? today
-        : state.currentSessionDreamedDate,
-      // Phase 1200: reset retry count when current.json is successfully processed
-      currentSessionRetryCount: currentProcessedToday ? 0 : state.currentSessionRetryCount,
-    };
-    saveDreamState(clawFs, updatedState, audit, clawId);
-  }
-
-  if (dreamOutputs.length === 0) return;
-
-  const dreamOutput = dreamOutputs.join('\n\n---\n\n');
-
-  // NEW: disk snapshot（motion 域）
-  if (motionFs) {
-    const dreamId = `${Date.now()}_${clawId}`;
-    const dreamOutputPath = `memory/dream-outputs/${dreamId}.txt`;
-    await motionFs.ensureDir('memory/dream-outputs');
-    await motionFs.writeAtomic(dreamOutputPath, dreamOutput);
-    audit.write(
-      MEMORY_AUDIT_EVENTS.DREAM_OUTPUT_PERSISTED,
-      `dreamId=${dreamId}`,
-      `path=${dreamOutputPath}`,
-      `bytes=${dreamOutput.length}`,
-    );
-  }
-
-  // 投递到 claw inbox（self-notify / chrooted fs / 走 deprecated notifyInbox helper）
-  const clawAudit = createSystemAudit(clawFs, clawDir);
-  notifyInbox(clawFs, {
-    inboxDir: INBOX_PENDING_DIR,
-    type: 'deep_dream',
-    source: 'cron:dream',
-    priority: 'low',
-    body: dreamOutput,
-    idPrefix: `${Date.now()}_deep_dream`,
-    extraFields: { session_count: String(dreamOutputs.length) },
-  }, clawAudit);
-
-  audit.write(MEMORY_AUDIT_EVENTS.DEEP_DREAM_JOB, `step=finished`, `clawId=${clawId}`, `dream_count=${dreamOutputs.length}`);
+  await persistDreamRun(ctx, plan, dreamOutputs, processedArchives);
 }
+
 
 // ─── 主函数 ───────────────────────────────────────────────────
 
