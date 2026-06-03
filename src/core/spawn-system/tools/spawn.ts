@@ -99,11 +99,18 @@ export const spawnTool: Tool = {
     }
 
     if (asyncMode) {
+      if (!ctx.taskSystem) {
+        return {
+          success: false,
+          content: '[chestnut spawn] task_system not available in execution context — async path requires AsyncTaskSystem injection',
+          error: 'task_system_unavailable',
+        };
+      }
       const mainContextSnapshot = ctx.clawId && ctx.currentToolUseId
         ? { clawId: ctx.clawId, toolUseId: ctx.currentToolUseId }
         : undefined;
       try {
-        const taskId = await ctx.taskSystem!.schedule('subagent', {
+        const taskId = await ctx.taskSystem.schedule('subagent', {
           kind: 'subagent',
           mode: 'standard',
           intent,
