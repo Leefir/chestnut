@@ -11,6 +11,7 @@
  */
 
 import * as path from 'path';
+import { formatErr } from "../utils/index.js";
 import { exec } from '../process-exec/index.js';
 import { isFileNotFound, type FileSystem } from '../fs/types.js';
 import type { AuditLog } from '../audit/index.js';
@@ -220,7 +221,7 @@ export class Snapshot {
     try {
       await this.fs.removeDir(gitDir);
     } catch (cleanupErr) {
-      const reason = cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr);
+      const reason = formatErr(cleanupErr);
       emitSnapshotInitCleanupFailed(this.audit, {
         dir: this.dir,
         reason,
@@ -304,7 +305,7 @@ export class Snapshot {
             dir: this.dir,
             context: 'realpath_failed',
             cleanupDir,
-            reason: err instanceof Error ? err.message : String(err),
+            reason: formatErr(err),
           });
           continue;
         }
@@ -349,12 +350,12 @@ export class Snapshot {
             // phase 892: 双 fail 独立 event 区分 outer SYNC_CLEAN_FAILED / mirror init() INIT_CLEANUP_FAILED 模板
             emitSnapshotSyncRestoreFailed(this.audit, {
               dir: cleanupDir,
-              restoreReason: restoreErr instanceof Error ? restoreErr.message : String(restoreErr),
+              restoreReason: formatErr(restoreErr),
             });
           }
           emitSnapshotSyncCleanFailed(this.audit, {
             dir: cleanupDir,
-            reason: e instanceof Error ? e.message : String(e),
+            reason: formatErr(e),
           });
         }
       }

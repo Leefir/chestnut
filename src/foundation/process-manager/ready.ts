@@ -1,4 +1,5 @@
 import { getReadyFile, getPidFile, ensureStatusDir } from './paths.js';
+import { formatErr } from "../utils/index.js";
 import { isAlive as l1IsAlive, getProcessStartTime, makeProcessStartTime, type ProcessStartTime } from '../process-exec/index.js';
 import { PROCESS_MANAGER_AUDIT_EVENTS } from './audit-events.js';
 import type { ProcessManagerContext } from './types.js';
@@ -26,7 +27,7 @@ export async function markReady(ctx: ProcessManagerContext, clawId: ClawId): Pro
       PROCESS_MANAGER_AUDIT_EVENTS.READY_MARK_WROTE,
       `claw=${clawId}`,
       `context=write_failed`,
-      `reason=${e?.message ?? String(e)}`,
+      `reason=${formatErr(e)}`,
     );
   }
 }
@@ -45,7 +46,7 @@ export async function markNotReady(ctx: ProcessManagerContext, clawId: ClawId): 
       PROCESS_MANAGER_AUDIT_EVENTS.READY_MARK_REMOVED,
       `claw=${clawId}`,
       `context=remove_failed`,
-      `reason=${err?.message ?? String(err)}`,
+      `reason=${formatErr(err)}`,
     );
   }
 }
@@ -78,7 +79,7 @@ export function isReady(ctx: ProcessManagerContext, clawId: ClawId): boolean {
     ctx.audit.write(
       PROCESS_MANAGER_AUDIT_EVENTS.READY_CHECK_READ_FAILED,
       `claw=${clawId}`,
-      `reason=${err?.message ?? String(err)}`,
+      `reason=${formatErr(err)}`,
     );
     return false;
   }
@@ -96,7 +97,7 @@ export function isReady(ctx: ProcessManagerContext, clawId: ClawId): boolean {
     ctx.audit.write(
       PROCESS_MANAGER_AUDIT_EVENTS.READY_CHECK_PARSE_FAILED,
       `claw=${clawId}`,
-      `reason=${err?.message ?? String(err)}`,
+      `reason=${formatErr(err)}`,
     );
     return false; // schema 不符 / legacy raw int (虽 readyMarker 永远写 JSON) → 视 not ready
   }
@@ -114,7 +115,7 @@ export function isReady(ctx: ProcessManagerContext, clawId: ClawId): boolean {
         ctx.audit.write(
           PROCESS_MANAGER_AUDIT_EVENTS.READY_STALE_CLEANUP_FAILED,
           `claw=${clawId}`,
-          `reason=${e?.message ?? String(e)}`,
+          `reason=${formatErr(e)}`,
         );
       }
       // ENOENT silent: benign race / next markReady or already gone
@@ -128,7 +129,7 @@ export function isReady(ctx: ProcessManagerContext, clawId: ClawId): boolean {
       PROCESS_MANAGER_AUDIT_EVENTS.READY_CHECK_ISALIVE_THROW,
       `claw=${clawId}`,
       `ready_pid=${readyPid}`,
-      `reason=${err?.message ?? String(err)}`,
+      `reason=${formatErr(err)}`,
     );
     return false;
   }

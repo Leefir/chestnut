@@ -5,6 +5,7 @@
  */
 
 import type { StreamChunk } from './types.js';
+import { formatErr } from "../utils/index.js";
 import type { CombinedAbortHandle } from './abort-helper.js';
 import { LLMError, LLMRateLimitError } from './errors.js';
 import { AUDIT_PREVIEW_LEN } from '../constants.js';
@@ -60,7 +61,7 @@ export async function* parseAnthropicSSEStream(
           onStreamParseError?.({
             provider: providerName,
             raw: data.slice(0, AUDIT_PREVIEW_LEN),
-            error: err instanceof Error ? err.message : String(err),
+            error: formatErr(err),
           });
           continue;
         }

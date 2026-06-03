@@ -4,6 +4,7 @@
  */
 
 import * as path from 'path';
+import { formatErr } from "../utils/index.js";
 import type { FileSystem } from '../fs/types.js';
 import type { AuditLog } from '../audit/index.js';
 import { type ClawDir } from '../identity/index.js';
@@ -52,11 +53,11 @@ export async function cleanupRetention(opts: {
             dirDeleted++;
           }
         } catch (err) {
-          audit.write(MESSAGING_AUDIT_EVENTS.RETENTION_CLEANUP_DELETE_FAILED, `context=per-file`, `dir=${dir}`, `file=${entry.name}`, `reason=${err instanceof Error ? err.message : String(err)}`);
+          audit.write(MESSAGING_AUDIT_EVENTS.RETENTION_CLEANUP_DELETE_FAILED, `context=per-file`, `dir=${dir}`, `file=${entry.name}`, `reason=${formatErr(err)}`);
         }
       }
     } catch (err) {
-      audit.write(MESSAGING_AUDIT_EVENTS.RETENTION_CLEANUP_DELETE_FAILED, `context=per-dir`, `dir=${dir}`, `reason=${err instanceof Error ? err.message : String(err)}`);
+      audit.write(MESSAGING_AUDIT_EVENTS.RETENTION_CLEANUP_DELETE_FAILED, `context=per-dir`, `dir=${dir}`, `reason=${formatErr(err)}`);
     }
 
     if (relPath === 'outbox/processing' && dirDeleted > 0) {

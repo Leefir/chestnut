@@ -12,6 +12,7 @@
  */
 
 import type { Tool, ExecContext } from '../tools/index.js';
+import { formatErr } from "../utils/index.js";
 import type { ToolResult } from '../tool-protocol/index.js';
 
 import { backupToSync } from './sync-backup.js';
@@ -106,7 +107,7 @@ export const writeTool: Tool = {
     } catch (error) {
       return {
         success: false,
-        content: `Error writing file: ${error instanceof Error ? error.message : String(error)}`,
+        content: `Error writing file: ${formatErr(error)}`,
       };
     }
   },

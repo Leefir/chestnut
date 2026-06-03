@@ -7,6 +7,7 @@
  */
 
 import type { Tool, ExecContext, ExecutionInfra, ExecutionAudit } from '../../tools/index.js';
+import { formatErr } from "../../utils/index.js";
 import type { ToolResult } from '../../tool-protocol/index.js';
 import { createSkillSystem, type SkillSystem } from '../index.js';
 
@@ -76,7 +77,7 @@ export function createSkillTool(skillRegistry: SkillSystem, opts: SkillToolOptio
           const content = await tempRegistry.loadFull(name);
           return { success: true, content, metadata: { name: name } };
         } catch (error) {
-          const errorMsg = error instanceof Error ? error.message : String(error);
+          const errorMsg = formatErr(error);
           return {
             success: false,
             content: `Failed to load skill "${name}" from dispatch pool: ${errorMsg}`,
@@ -93,7 +94,7 @@ export function createSkillTool(skillRegistry: SkillSystem, opts: SkillToolOptio
           metadata: { name: name },
         };
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
+        const errorMsg = formatErr(error);
         return {
           success: false,
           content: `Failed to load skill "${name}": ${errorMsg}`,

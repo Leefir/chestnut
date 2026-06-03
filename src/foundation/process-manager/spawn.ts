@@ -1,4 +1,5 @@
 import * as path from 'path';
+import { formatErr } from "../utils/index.js";
 import { spawnDetached, kill } from '../process-exec/index.js';
 import { DAEMON_SHUTDOWN_GRACE_MS, SPAWN_POLL_INTERVAL_MS } from './constants.js';
 import { PROCESS_MANAGER_AUDIT_EVENTS } from './audit-events.js';
@@ -99,7 +100,7 @@ async function cleanupOrphans(
         PROCESS_MANAGER_AUDIT_EVENTS.ORPHAN_SIGTERM_FAILED,
         `claw=${clawId}`,
         `pid=${pid}`,
-        `reason=${err?.message || String(err)}`,
+        `reason=${formatErr(err)}`,
       );
     }
   }
@@ -141,7 +142,7 @@ async function cleanupLock(
             `claw=${clawId}`,
             `op=sigterm`,
             `pid=${lockHolder.pid}`,
-            `reason=${err?.message || String(err)}`,
+            `reason=${formatErr(err)}`,
           );
         }
       }
@@ -155,7 +156,7 @@ async function cleanupLock(
           `claw=${clawId}`,
           `op=delete`,
           `path=${lockFile}`,
-          `reason=${err instanceof Error ? err.message : String(err)}`,
+          `reason=${formatErr(err)}`,
         );
       }
     }
@@ -164,7 +165,7 @@ async function cleanupLock(
       ctx.audit.write(
         PROCESS_MANAGER_AUDIT_EVENTS.LOCKFILE_READ_FAILED,
         `claw=${clawId}`,
-        `reason=${err?.code || err?.message || String(err)}`,
+        `reason=${err?.code || formatErr(err)}`,
       );
     }
   }
@@ -237,7 +238,7 @@ async function handlePidFileConflict(
         PROCESS_MANAGER_AUDIT_EVENTS.PID_READ_FAILED,
         `claw=${clawId}`,
         `context=eexist_check`,
-        `reason=${readErr?.message ?? String(readErr)}`,
+        `reason=${formatErr(readErr)}`,
       );
     }
   }
@@ -253,7 +254,7 @@ async function handlePidFileConflict(
       PROCESS_MANAGER_AUDIT_EVENTS.PID_REMOVE_FAILED,
       `claw=${clawId}`,
       `context=spawn_retry_overwrite`,
-      `reason=${err instanceof Error ? err.message : String(err)}`,
+      `reason=${formatErr(err)}`,
     );
   });
   ctx.fs.writeExclusiveSync(pidFile, String(process.pid));
@@ -319,14 +320,14 @@ async function spawnAndAwaitReady(
         PROCESS_MANAGER_AUDIT_EVENTS.PID_REMOVE_FAILED,
         `claw=${clawId}`,
         `context=spawn_cleanup`,
-        `reason=${removeErr instanceof Error ? removeErr.message : String(removeErr)}`,
+        `reason=${formatErr(removeErr)}`,
       );
     });
     ctx.audit.write(
       PROCESS_MANAGER_AUDIT_EVENTS.PROCESS_SPAWN_FAILED,
       `claw=${clawId}`,
       `command=${options.command}`,
-      `reason=${err instanceof Error ? err.message : String(err)}`,
+      `reason=${formatErr(err)}`,
       `code=${(err as NodeJS.ErrnoException).code ?? 'unknown'}`,
       `duration_ms=${Date.now() - startMs}`,
     );

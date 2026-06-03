@@ -168,7 +168,7 @@ export async function performRegimeSwitch(
         original: oldMessages,
         strategy,
         timestamp: new Date().toISOString(),
-        reason: saveErr instanceof Error ? saveErr.message : String(saveErr),
+        reason: formatErr(saveErr),
       }, null, 2);
       await systemFs.writeAtomic(recoveryPath, recoveryData);
       audit.write(
@@ -176,7 +176,7 @@ export async function performRegimeSwitch(
         `phase=save`,
         `recovery_path=${recoveryPath}`,
         `inherited_count=${repaired.length}`,
-        `reason=${saveErr instanceof Error ? saveErr.message : String(saveErr)}`,
+        `reason=${formatErr(saveErr)}`,
       );
     } catch (dumpErr) {
       // dump 失败的 final fallback：纯 audit / inherited 极端场景丢失
@@ -184,8 +184,8 @@ export async function performRegimeSwitch(
         auditEvents.REGIME_SWITCH_FAILED,
         `phase=save_and_dump`,
         `recovery_path=${recoveryPath}`,
-        `save_reason=${saveErr instanceof Error ? saveErr.message : String(saveErr)}`,
-        `dump_reason=${dumpErr instanceof Error ? dumpErr.message : String(dumpErr)}`,
+        `save_reason=${formatErr(saveErr)}`,
+        `dump_reason=${formatErr(dumpErr)}`,
         `inherited_count=${repaired.length}`,
       );
     }

@@ -1,4 +1,5 @@
 import { type ChestnutRoot } from '../../../foundation/identity/index.js';
+import { formatErr } from "../../utils/index.js";
 /**
  * @module L2.Messaging
  * notify_claw tool - motion 视角、向 target claw inbox 直接发消息（指挥型 push 模型）
@@ -112,7 +113,7 @@ export function createNotifyClawTool(deps: NotifyClawDeps): Tool {
           content: `Notified ${to}: ${type} (interrupt=${interrupt})`,
         };
       } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error);
+        const reason = formatErr(error);
         deps.audit.write(
           MESSAGING_AUDIT_EVENTS.NOTIFY_CLAW_FAILED,
           `claw=${to}`,

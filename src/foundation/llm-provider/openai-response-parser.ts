@@ -5,6 +5,7 @@
  */
 
 import type { LLMResponse, ContentBlock } from './types.js';
+import { formatErr } from "../utils/index.js";
 import { LLMEmptyResponseError } from './errors.js';
 
 interface OpenAIResponse {
@@ -94,7 +95,7 @@ export function parseResponse(
           provider: providerName,
           toolName: tc.function.name,
           rawArgs: tc.function.arguments,
-          error: err instanceof Error ? err.message : String(err),
+          error: formatErr(err),
         });
         content.push({
           type: 'tool_use',

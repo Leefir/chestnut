@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { formatErr } from "../utils/index.js";
 import type { FileSystem } from '../fs/types.js';
 import type { AuditLog } from './types.js';
 import { pushFallback } from './writer.js';
@@ -75,7 +76,7 @@ export class BatchedAuditWriter implements AuditLog {
         this.fs.syncSync(this.filePath);
       } catch (syncErr) {
         // fsync failure = best-effort warning; do NOT pushFallback (avoid double-write on next reconcile)
-        const reason = syncErr instanceof Error ? syncErr.message : String(syncErr);
+        const reason = formatErr(syncErr);
         console.error(
           `[AUDIT WARNING] batched fsync failed: path=${this.filePath} lines=${batch.length} reason=${reason}`,
         );
@@ -86,7 +87,7 @@ export class BatchedAuditWriter implements AuditLog {
         this._resetTimer();
       }
     } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
+      const reason = formatErr(err);
       console.error(
         `[AUDIT CRITICAL] batched flush failed: path=${this.filePath} lines=${batch.length} reason=${reason}`,
       );

@@ -162,7 +162,7 @@ export function createExecTool(): Tool {
         if (!(error instanceof ProcessExecError)) {
           return {
             success: false,
-            content: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            content: `Error: ${formatErr(error)}`,
           };
         }
 

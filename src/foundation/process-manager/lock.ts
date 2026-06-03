@@ -1,4 +1,5 @@
 import * as path from 'path';
+import { formatErr } from "../utils/index.js";
 import { isAlive as l1IsAlive, getProcessStartTime, makeProcessStartTime, type ProcessStartTime } from '../process-exec/index.js';
 import { PROCESS_MANAGER_AUDIT_EVENTS } from './audit-events.js';
 import { getLockFile } from './paths.js';
@@ -44,7 +45,7 @@ export function readLockPid(
       ctx.audit.write(
         PROCESS_MANAGER_AUDIT_EVENTS.LOCKFILE_READ_FAILED,
         `claw=${clawId}`,
-        `reason=${err?.message || String(err)}`,
+        `reason=${formatErr(err)}`,
       );
     }
     return null;
@@ -89,7 +90,7 @@ export function acquireLock(ctx: ProcessManagerContext, clawId: ClawId): void {
         PROCESS_MANAGER_AUDIT_EVENTS.LOCKFILE_CLEANUP_FAILED,
         `claw=${clawId}`,
         `op=acquire_retry`,
-        `reason=${e?.message || String(e)}`,
+        `reason=${formatErr(e)}`,
       );
     }
   }
@@ -126,7 +127,7 @@ export function releaseLock(ctx: ProcessManagerContext, clawId: ClawId): void {
         PROCESS_MANAGER_AUDIT_EVENTS.LOCKFILE_CLEANUP_FAILED,
         `claw=${clawId}`,
         `op=release`,
-        `reason=${err?.message || String(err)}`,
+        `reason=${formatErr(err)}`,
       );
     }
   }

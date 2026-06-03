@@ -6,6 +6,7 @@
  */
 
 import { randomUUID } from 'crypto';
+import { formatErr } from "../utils/index.js";
 import * as path from 'path';
 import type { ExecContext } from '../tools/index.js';
 import { FILE_TOOL_AUDIT_EVENTS } from './audit-events.js';
@@ -34,7 +35,7 @@ export async function backupToSync(
       FILE_TOOL_AUDIT_EVENTS.BACKUP_FAILED,
       `source=${source}`,
       `path=${filePath}`,
-      `reason=${err instanceof Error ? err.message : String(err)}`,
+      `reason=${formatErr(err)}`,
     );
     return null;
   }

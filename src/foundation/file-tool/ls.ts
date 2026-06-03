@@ -6,6 +6,7 @@
  */
 
 import * as nodePath from 'path';
+import { formatErr } from "../utils/index.js";
 import type { Tool, ExecContext } from '../tools/index.js';
 import type { ToolResult } from '../tool-protocol/index.js';
 import { LS_MAX_ENTRIES } from './constants.js';
@@ -103,7 +104,7 @@ export const lsTool: Tool = {
       } catch (error) {
         return {
           success: false,
-          content: `Error listing directory: ${error instanceof Error ? error.message : String(error)}\nTip: To list another claw's directory, use the "claw" parameter: { "path": ".", "claw": "<claw-id>" }`,
+          content: `Error listing directory: ${formatErr(error)}\nTip: To list another claw's directory, use the "claw" parameter: { "path": ".", "claw": "<claw-id>" }`,
         };
       }
     } else {
@@ -113,7 +114,7 @@ export const lsTool: Tool = {
       } catch (error) {
         return {
           success: false,
-          content: `Error listing directory: ${error instanceof Error ? error.message : String(error)}\nTip: To list another claw's directory, use the "claw" parameter: { "path": ".", "claw": "<claw-id>" }`,
+          content: `Error listing directory: ${formatErr(error)}\nTip: To list another claw's directory, use the "claw" parameter: { "path": ".", "claw": "<claw-id>" }`,
         };
       }
     }

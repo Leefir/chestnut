@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { formatErr } from "../utils/index.js";
 import * as nodeFs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { UUID_SHORT_LEN } from '../../constants.js';
@@ -83,7 +84,7 @@ function dumpFallback(): void {
       }
     } catch (syncErr) {
       // fsync best-effort: data already written, durability warning only
-      const reason = syncErr instanceof Error ? syncErr.message : String(syncErr);
+      const reason = formatErr(syncErr);
       console.error(
         `[AUDIT WARNING] fallback fsync failed: path=${fallbackPath} reason=${reason}`,
       );
@@ -98,7 +99,7 @@ function dumpFallback(): void {
       pendingFallback.unshift(...batch);
       // drop counter 不动（dropCountSinceLastDump 维持、下次 dump 重试 frontmatter）
     }
-    const reason = err instanceof Error ? err.message : String(err);
+    const reason = formatErr(err);
     console.error(
       `[AUDIT CRITICAL] fallback dump failed: reason=${reason} pending=${pendingFallback.length}`,
     );
@@ -161,7 +162,7 @@ export async function reconcileFallbackDumps(fs: FileSystem): Promise<void> {
           try {
             fs.syncSync(origin);
           } catch (syncErr) {
-            const reason = syncErr instanceof Error ? syncErr.message : String(syncErr);
+            const reason = formatErr(syncErr);
             console.error(`[AUDIT WARNING] reconcile fallback fsync failed: origin=${origin} reason=${reason}`);
           }
           // phase 1380: drop metadata audit emit per origin
@@ -217,11 +218,11 @@ export class AuditWriter implements AuditLog {
       try {
         this.fs.syncSync(this.filePath);
       } catch (syncErr) {
-        const reason = syncErr instanceof Error ? syncErr.message : String(syncErr);
+        const reason = formatErr(syncErr);
         console.error(`[AUDIT WARNING] sync failed: type=${type} path=${this.filePath} reason=${reason}`);
       }
     } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
+      const reason = formatErr(err);
       console.error(`[AUDIT CRITICAL] write failed: type=${type} path=${this.filePath} reason=${reason}`);
       pushFallback(line, this.filePath);
     }
@@ -243,7 +244,7 @@ export class AuditWriter implements AuditLog {
       // 其他 errno 仍 warn
       const code = (err as NodeJS.ErrnoException)?.code;
       if (!(err instanceof FileNotFoundError) && code !== 'ENOENT') {
-        const reason = err instanceof Error ? err.message : String(err);
+        const reason = formatErr(err);
         console.error(`[AUDIT CRITICAL] rotation check failed: path=${this.filePath} reason=${reason}`);
       }
     }

@@ -4,6 +4,7 @@
  */
 
 import type { Tool, ExecContext } from '../../tools/index.js';
+import { formatErr } from "../../utils/index.js";
 import { MOTION_CLAW_ID } from '../../../constants.js';
 import type { ToolResult } from '../../tool-protocol/index.js';
 import type { OutboxWriter } from '../index.js';
@@ -78,7 +79,7 @@ export function createSendTool(outboxWriter: OutboxWriter): Tool {
       } catch (error) {
         return {
           success: false,
-          content: `Error sending message: ${error instanceof Error ? error.message : String(error)}`,
+          content: `Error sending message: ${formatErr(error)}`,
         };
       }
     },

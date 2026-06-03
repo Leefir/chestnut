@@ -11,6 +11,7 @@
  * + phase 1118 in-file marker補 (`coding plan/phase1118/`).
  */
 import { createServer, connect, type Server, type Socket } from 'node:net';
+import { formatErr } from "../utils/index.js";
 import * as path from 'path';
 import { randomUUID } from 'node:crypto';
 import type { FileSystem } from '../fs/types.js';
@@ -96,7 +97,7 @@ export class UnixDomainSocketTransport implements Transport {
                 return;
               }
               // 其他 IO 错 reject 透传 reason / caller 通过 listen() reject 链路 audit STARTUP_FAILED
-              reject(new Error(`unlink stale socket ${this.socketPath} failed: ${err instanceof Error ? err.message : String(err)}`));
+              reject(new Error(`unlink stale socket ${this.socketPath} failed: ${formatErr(err)}`));
             },
           );
         } else {

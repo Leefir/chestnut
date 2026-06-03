@@ -163,7 +163,7 @@ export const readTool: Tool = {
       } catch (error) {
         return {
           success: false,
-          content: `Error reading file: ${error instanceof Error ? error.message : String(error)}`,
+          content: `Error reading file: ${formatErr(error)}`,
         };
       }
     } else {
@@ -172,7 +172,7 @@ export const readTool: Tool = {
       } catch (error) {
         return {
           success: false,
-          content: `Error reading file: ${error instanceof Error ? error.message : String(error)}\nTip: To read another claw's file, use the "claw" parameter: { "path": "../MEMORY.md", "claw": "<claw-id>" }`,
+          content: `Error reading file: ${formatErr(error)}\nTip: To read another claw's file, use the "claw" parameter: { "path": "../MEMORY.md", "claw": "<claw-id>" }`,
         };
       }
     }
@@ -251,7 +251,7 @@ export const readTool: Tool = {
     } catch (error) {
       return {
         success: false,
-        content: `Error reading file: ${error instanceof Error ? error.message : String(error)}`,
+        content: `Error reading file: ${formatErr(error)}`,
       };
     }
   },

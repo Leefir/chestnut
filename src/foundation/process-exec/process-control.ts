@@ -7,6 +7,7 @@
  */
 
 import { ProcessExecError } from './errors.js';
+import { formatErr } from "../utils/index.js";
 import { getProcessStartTime, type ProcessStartTime } from './process-starttime.js';
 
 export type Signal = 'TERM' | 'KILL' | 'INT';
@@ -29,7 +30,7 @@ export function kill(pid: number, signal: Signal): void {
   } catch (err: any) {
     if (err?.code === 'ESRCH') return;
     throw new ProcessExecError({
-      message: `kill(${pid}, ${signal}) failed: ${err?.message ?? String(err)}`,
+      message: `kill(${pid}, ${signal}) failed: ${formatErr(err)}`,
       code: err?.code,
       signal,
     });

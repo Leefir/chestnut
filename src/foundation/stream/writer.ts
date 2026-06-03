@@ -2,6 +2,7 @@
  * StreamWriter - 追加写 stream.jsonl
  */
 import type { FileSystem } from '../fs/types.js';
+import { formatErr } from "../utils/index.js";
 import { STREAM_FILE, type StreamEvent, type StreamLog } from './types.js';
 import type { AuditLog } from '../audit/index.js';
 import { STREAM_AUDIT_EVENTS } from './audit-events.js';
@@ -45,7 +46,7 @@ export class StreamWriter implements StreamLog {
         } catch (err) {
           this.audit.write(
             STREAM_AUDIT_EVENTS.TRUNCATION_REPAIR_FAILED,
-            `reason=${err instanceof Error ? err.message : String(err)}`,
+            `reason=${formatErr(err)}`,
             'archive_will_proceed=true',
           );
         }
@@ -55,7 +56,7 @@ export class StreamWriter implements StreamLog {
         archiveFailed = true;
         this.audit.write(
           STREAM_AUDIT_EVENTS.ARCHIVE_FAILED,
-          `reason=${err instanceof Error ? err.message : String(err)}`,
+          `reason=${formatErr(err)}`,
         );
       }
     }
@@ -124,7 +125,7 @@ export class StreamWriter implements StreamLog {
       this.audit.write(
         STREAM_AUDIT_EVENTS.APPEND_FAILED,
         `type=${event.type}`,
-        `reason=${err instanceof Error ? err.message : String(err)}`,
+        `reason=${formatErr(err)}`,
         `body=${line.trimEnd()}`,
       );
     }
@@ -165,14 +166,14 @@ export class StreamWriter implements StreamLog {
           this.audit.write(
             STREAM_AUDIT_EVENTS.ARCHIVE_PRUNE_FAILED,
             `path=${p}`,
-            `reason=${err instanceof Error ? err.message : String(err)}`,
+            `reason=${formatErr(err)}`,
           );
         }
       }
     } catch (err) {
       this.audit.write(
         STREAM_AUDIT_EVENTS.ARCHIVE_PRUNE_FAILED,
-        `reason=${err instanceof Error ? err.message : String(err)}`,
+        `reason=${formatErr(err)}`,
       );
     }
   }

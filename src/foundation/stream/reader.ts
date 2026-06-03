@@ -15,6 +15,7 @@
  */
 
 import type { FileSystem } from '../fs/types.js';
+import { formatErr } from "../utils/index.js";
 import type { StreamEvent } from './types.js';
 import type { AuditLog } from '../audit/index.js';
 import { createWatcher, type Watcher } from '../file-watcher/index.js';
@@ -66,7 +67,7 @@ export async function readAll(
   } catch (err) {
     audit.write(
       STREAM_AUDIT_EVENTS.READER_READ_FAILED,
-      `reason=${err instanceof Error ? err.message : String(err)}`,
+      `reason=${formatErr(err)}`,
     );
     throw err;
   }
@@ -79,7 +80,7 @@ export async function readAll(
       audit.write(
         STREAM_AUDIT_EVENTS.READER_PARSE_FAILED,
         `line_prefix=${line.slice(0, 80)}`,
-        `reason=${err instanceof Error ? err.message : String(err)}`,
+        `reason=${formatErr(err)}`,
       );
     }
   }
@@ -186,7 +187,7 @@ export function createStreamReader(
                 } catch (cbErr) {
                   audit.write(
                     STREAM_AUDIT_EVENTS.READER_CALLBACK_FAILED,
-                    `reason=${cbErr instanceof Error ? cbErr.message : String(cbErr)}`,
+                    `reason=${formatErr(cbErr)}`,
                   );
                 }
               } catch (err) {
@@ -195,7 +196,7 @@ export function createStreamReader(
                 audit.write(
                   STREAM_AUDIT_EVENTS.READER_PARSE_FAILED,
                   `line_prefix=${line.slice(0, 80)}`,
-                  `reason=${err instanceof Error ? err.message : String(err)}`,
+                  `reason=${formatErr(err)}`,
                 );
                 if (await checkEscalation()) {
                   return;
@@ -207,7 +208,7 @@ export function createStreamReader(
         } catch (err) {
           audit.write(
             STREAM_AUDIT_EVENTS.READER_READ_FAILED,
-            `reason=${err instanceof Error ? err.message : String(err)}`,
+            `reason=${formatErr(err)}`,
           );
         }
       } while (pendingNotify && active);

@@ -1,4 +1,5 @@
 import { PROCESS_MANAGER_AUDIT_EVENTS } from './audit-events.js';
+import { formatErr } from "../utils/index.js";
 import { getPidFile, ensureStatusDir } from './paths.js';
 import { getProcessStartTime, makeProcessStartTime, type ProcessStartTime } from '../process-exec/index.js';
 import type { ProcessManagerContext } from './types.js';
@@ -46,7 +47,7 @@ export async function readPid(ctx: ProcessManagerContext, clawId: ClawId): Promi
     ctx.audit.write(
       PROCESS_MANAGER_AUDIT_EVENTS.PID_READ_FAILED,
       `claw=${clawId}`,
-      `reason=${err?.message || String(err)}`,
+      `reason=${formatErr(err)}`,
     );
     return null;
   }
@@ -64,7 +65,7 @@ export async function removePid(ctx: ProcessManagerContext, clawId: ClawId): Pro
     ctx.audit.write(
       PROCESS_MANAGER_AUDIT_EVENTS.PID_REMOVE_FAILED,
       `claw=${clawId}`,
-      `reason=${err instanceof Error ? err.message : String(err)}`,
+      `reason=${formatErr(err)}`,
     );
   }
 }
@@ -83,7 +84,7 @@ export async function selfWritePid(ctx: ProcessManagerContext, clawId: ClawId): 
       ...(startTime ? [`startTime=${startTime}`] : ['startTime_skipped']),
     );
   } catch (e: any) {
-    ctx.audit.write(PROCESS_MANAGER_AUDIT_EVENTS.PID_WRITE_FAILED, `claw=${clawId}`, `reason=${e?.message ?? String(e)}`);
+    ctx.audit.write(PROCESS_MANAGER_AUDIT_EVENTS.PID_WRITE_FAILED, `claw=${clawId}`, `reason=${formatErr(e)}`);
     throw e;
   }
 }

@@ -8,6 +8,7 @@
  * Refs: coding plan/phase10/Step B.md §3.2
  */
 import * as path from 'path';
+import { formatErr } from "../utils/index.js";
 import * as yaml from 'js-yaml';
 import type { FileSystem } from '../fs/types.js';
 
@@ -63,27 +64,27 @@ export function loadYamlConfig<T>(
   try {
     content = fs.readSync(basename);
   } catch (err) {
-    throw new Error(`Failed to read config: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(`Failed to read config: ${formatErr(err)}`);
   }
 
   let parsed: unknown;
   try {
     parsed = yaml.load(content);
   } catch (err) {
-    throw new Error(`Invalid YAML in config: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(`Invalid YAML in config: ${formatErr(err)}`);
   }
 
   let expanded: unknown;
   try {
     expanded = expandEnvVars(parsed);
   } catch (err) {
-    throw new Error(`Invalid config (env var): ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(`Invalid config (env var): ${formatErr(err)}`);
   }
 
   try {
     return schema.parse(expanded);
   } catch (error) {
-    throw new Error(`Invalid config: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Invalid config: ${formatErr(error)}`);
   }
 }
 

@@ -8,6 +8,7 @@
  */
 
 import * as path from 'path';
+import { formatErr } from "../utils/index.js";
 import type { FileSystem } from '../fs/types.js';
 
 import type { Message, ToolUseBlock, ToolResultBlock, ToolDefinition } from '../llm-provider/types.js';
@@ -93,7 +94,7 @@ export class DialogStore {
       if (code === 'ENOENT' || code === 'FS_NOT_FOUND') {
         // Cold start: missing file is expected
       } else {
-        this.audit.write(DIALOG_AUDIT_EVENTS.CORRUPTED, 'file=current.json', `reason=${err instanceof Error ? err.message : String(err)}`);
+        this.audit.write(DIALOG_AUDIT_EVENTS.CORRUPTED, 'file=current.json', `reason=${formatErr(err)}`);
         // Rename corrupted file so subsequent loads don't retry parsing it
         try {
           await this.fs.move(this.currentPath, this.currentPath + '.corrupted');
@@ -101,7 +102,7 @@ export class DialogStore {
           this.audit.write(
             DIALOG_AUDIT_EVENTS.CORRUPTED_ISOLATE_FAILED,
             `path=${this.currentPath}`,
-            `reason=${renameErr instanceof Error ? renameErr.message : String(renameErr)}`,
+            `reason=${formatErr(renameErr)}`,
           );
         }
         this.corruptedPoisoned = true;
@@ -333,7 +334,7 @@ export class DialogStore {
         this.audit.write(
           DIALOG_AUDIT_EVENTS.SAVE_FAILED,
           `path=${this.currentPath}`,
-          `reason=${err instanceof Error ? err.message : String(err)}`,
+          `reason=${formatErr(err)}`,
         );
         throw err;
       }
@@ -348,7 +349,7 @@ export class DialogStore {
         this.flushPromise = Promise.resolve();
       }
     }).catch((e) => {
-      this.audit.write(DIALOG_AUDIT_EVENTS.FLUSH_CHAIN_ERROR, `reason=${e instanceof Error ? e.message : String(e)}`);
+      this.audit.write(DIALOG_AUDIT_EVENTS.FLUSH_CHAIN_ERROR, `reason=${formatErr(e)}`);
     });
     return next;
   }
@@ -419,7 +420,7 @@ export class DialogStore {
       this.audit.write(
         DIALOG_AUDIT_EVENTS.ARCHIVE_FAILED,
         `path=${this.currentPath}`,
-        `reason=${err instanceof Error ? err.message : String(err)}`,
+        `reason=${formatErr(err)}`,
       );
       throw err;
     }
@@ -494,7 +495,7 @@ export class DialogStore {
         this.audit.write(
           DIALOG_AUDIT_EVENTS.CORRUPTED_ISOLATE_FAILED,
           `path=${filePath}`,
-          `reason=${moveErr instanceof Error ? moveErr.message : String(moveErr)}`,
+          `reason=${formatErr(moveErr)}`,
         );
       }
       throw err;
@@ -534,7 +535,7 @@ export class DialogStore {
           this.audit.write(
             DIALOG_AUDIT_EVENTS.CORRUPTED,
             `file=${entry.name}`,
-            `reason=${err instanceof Error ? err.message : String(err)}`,
+            `reason=${formatErr(err)}`,
           );
           // Continue to next archive
         }
@@ -550,7 +551,7 @@ export class DialogStore {
       this.audit.write(
         DIALOG_AUDIT_EVENTS.ARCHIVE_READ_FAILED,
         `dir=${this.archiveDir}`,
-        `reason=${err instanceof Error ? err.message : String(err)}`,
+        `reason=${formatErr(err)}`,
       );
       return null;
     }
@@ -676,7 +677,7 @@ export class DialogStore {
           DIALOG_AUDIT_EVENTS.CORRUPTED,
           'file=current.json',
           `context=restore_${inclusive ? 'prefix' : 'before'}`,
-          `reason=${err instanceof Error ? err.message : String(err)}`,
+          `reason=${formatErr(err)}`,
         );
       }
       // current 不存在或损坏 / 走 archive
@@ -713,7 +714,7 @@ export class DialogStore {
           this.audit.write(
             DIALOG_AUDIT_EVENTS.ARCHIVE_PARSE_FAILED,
             `file=${entry.name}`,
-            `reason=${err instanceof Error ? err.message : String(err)}`,
+            `reason=${formatErr(err)}`,
           );
           // 单个 archive 损坏跳过 / 继续找
         }
@@ -721,7 +722,7 @@ export class DialogStore {
     } catch (err) {
       this.audit.write(
         DIALOG_AUDIT_EVENTS.ARCHIVE_DIR_FAILED,
-        `reason=${err instanceof Error ? err.message : String(err)}`,
+        `reason=${formatErr(err)}`,
       );
       // archive dir 失败 / 走最终抛错
     }

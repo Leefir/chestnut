@@ -6,6 +6,7 @@
  */
 
 import * as path from 'path';
+import { formatErr } from "../utils/index.js";
 import { ExecContextImpl, cloneExecContext } from './context.js';
 
 import {
@@ -211,7 +212,7 @@ export class ToolExecutorImpl implements IToolExecutor {
     } catch (err) {
       result = {
         success: false,
-        content: err instanceof Error ? err.message : String(err),
+        content: formatErr(err),
       };
     } finally {
       clearTimeout(timeoutId);
@@ -260,7 +261,7 @@ export class ToolExecutorImpl implements IToolExecutor {
         timeoutMs: safeNumber((args as Record<string, unknown>)?.timeoutMs),
       }).catch(err => ({
         success: false,
-        content: err instanceof Error ? err.message : String(err),
+        content: formatErr(err),
       } as ToolResult));
     });
 

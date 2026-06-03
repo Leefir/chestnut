@@ -1,4 +1,5 @@
 import { isAlive as l1IsAlive, makeProcessStartTime, type ProcessStartTime } from '../process-exec/index.js';
+import { formatErr } from "../utils/index.js";
 import { getPidFile } from './paths.js';
 import type { ProcessManagerContext } from './types.js';
 import type { ClawId } from '../identity/index.js';
@@ -59,7 +60,7 @@ export function getAliveStatus(
       if (code === 'ESRCH' || code === 'EPERM') {
         return { alive: false, reason: `isAlive ${code}` };
       }
-      return { alive: true, reason: `isAlive probe failed: ${err.message ?? String(err)}`, pid };
+      return { alive: true, reason: `isAlive probe failed: ${formatErr(err)}`, pid };
     }
   } catch (err: any) {
     if (err.code === 'ENOENT' || err.code === 'FS_NOT_FOUND') {

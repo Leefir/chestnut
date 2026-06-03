@@ -7,6 +7,7 @@
  */
 
 import type { FileSystem } from '../../foundation/fs/types.js';
+import { formatErr } from "../utils/index.js";
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { ToolError } from '../errors.js';
 import { SKILL_AUDIT_EVENTS } from './audit-events.js';
@@ -143,7 +144,7 @@ export class SkillSystem {
         this.audit?.write(SKILL_AUDIT_EVENTS.LOAD_FAILED,
           `skill_dir=${skillDir}`,
           `skills_dir=${this.skillsDir}`,
-          `error=${err instanceof Error ? err.message : String(err)}`,
+          `error=${formatErr(err)}`,
         );
         continue;
       }

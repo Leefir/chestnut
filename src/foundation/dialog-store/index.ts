@@ -17,6 +17,7 @@ export type { RegimeStrategy, RegimeSwitchAuditEvents, PerformRegimeSwitchOpts, 
 export { DIALOG_DIR, DIALOG_ARCHIVE_DIR } from './dirs.js';
 
 import type { FileSystem } from '../fs/types.js';
+import { formatErr } from "../utils/index.js";
 import type { AuditLog } from '../audit/index.js';
 import { DialogStore } from './store.js';
 
@@ -62,11 +63,11 @@ export async function cleanupArchives(opts: {
           totalDeleted++;
         }
       } catch (err) {
-        audit.write(DIALOG_AUDIT_EVENTS.CLEANUP_ARCHIVES_DELETE_FAILED, `context=per-file`, `dir=${dir}`, `file=${entry.name}`, `reason=${err instanceof Error ? err.message : String(err)}`);
+        audit.write(DIALOG_AUDIT_EVENTS.CLEANUP_ARCHIVES_DELETE_FAILED, `context=per-file`, `dir=${dir}`, `file=${entry.name}`, `reason=${formatErr(err)}`);
       }
     }
   } catch (err) {
-    audit.write(DIALOG_AUDIT_EVENTS.CLEANUP_ARCHIVES_DELETE_FAILED, `context=per-dir`, `dir=${dir}`, `reason=${err instanceof Error ? err.message : String(err)}`);
+    audit.write(DIALOG_AUDIT_EVENTS.CLEANUP_ARCHIVES_DELETE_FAILED, `context=per-dir`, `dir=${dir}`, `reason=${formatErr(err)}`);
   }
 
   return totalDeleted;

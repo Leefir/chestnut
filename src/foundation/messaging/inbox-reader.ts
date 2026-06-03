@@ -11,6 +11,7 @@
  */
 
 import * as path from 'path';
+import { formatErr } from "../utils/index.js";
 import { randomUUID } from 'crypto';
 import type { FileSystem } from '../fs/types.js';
 import { makeClawId } from '../identity/index.js';
@@ -90,7 +91,7 @@ export class InboxReader {
     } catch (err) {
       const code = (err as { code?: string })?.code;
       if (code === 'FS_NOT_FOUND' || code === 'ENOENT') return;
-      const reason = err instanceof Error ? err.message : String(err);
+      const reason = formatErr(err);
       emitInboxListFailed(this.audit, {
         dir: this.inflightDir,
         op: 'reconcile',
@@ -109,7 +110,7 @@ export class InboxReader {
         await this.fs.move(sourcePath, targetPath);
         revertedCount++;
       } catch (err) {
-        const reason = err instanceof Error ? err.message : String(err);
+        const reason = formatErr(err);
         emitInboxMoveFailed(this.audit, {
           file: entry.name,
           op: 'reconcile_pending',
@@ -142,7 +143,7 @@ export class InboxReader {
     } catch (err) {
       const code = (err as { code?: string })?.code;
       if (code === 'FS_NOT_FOUND' || code === 'ENOENT') return [];
-      const reason = err instanceof Error ? err.message : String(err);
+      const reason = formatErr(err);
       emitInboxListFailed(this.audit, {
         dir: this.pendingDir,
         errorCode: classifyErrno(err),
@@ -200,7 +201,7 @@ export class InboxReader {
 
         results.push({ message, filePath });
       } catch (err) {
-        const reason = err instanceof Error ? err.message : String(err);
+        const reason = formatErr(err);
         emitInboxFailed(this.audit, {
           file: entry.name,
           errorCode: classifyErrno(err),
@@ -246,7 +247,7 @@ export class InboxReader {
         handles.push({ filePath: inflightPath, originalFileName: fileName });
         deliveredEntries.push({ message: entry.message, filePath: inflightPath });
       } catch (err) {
-        const reason = err instanceof Error ? err.message : String(err);
+        const reason = formatErr(err);
         emitInboxMoveFailed(this.audit, {
           file: fileName,
           op: 'deliver_inflight',
@@ -269,7 +270,7 @@ export class InboxReader {
     try {
       await this.fs.move(handle.filePath, targetPath);
     } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
+      const reason = formatErr(err);
       emitInboxMoveFailed(this.audit, {
         file: fileName,
         op: 'ack_done',
@@ -289,7 +290,7 @@ export class InboxReader {
     try {
       await this.fs.move(handle.filePath, targetPath);
     } catch (err) {
-      const errReason = err instanceof Error ? err.message : String(err);
+      const errReason = formatErr(err);
       emitInboxMoveFailed(this.audit, {
         file: fileName,
         op: 'nack_pending',
@@ -309,7 +310,7 @@ export class InboxReader {
     try {
       await this.fs.move(filePath, targetPath);
     } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
+      const reason = formatErr(err);
       emitInboxMoveFailed(this.audit, {
         file: fileName,
         op: 'done',
@@ -332,7 +333,7 @@ export class InboxReader {
     } catch (err) {
       const code = (err as { code?: string })?.code;
       if (code === 'FS_NOT_FOUND' || code === 'ENOENT') return [];
-      const reason = err instanceof Error ? err.message : String(err);
+      const reason = formatErr(err);
       emitInboxListFailed(this.audit, {
         dir: this.pendingDir,
         op: 'peek',
@@ -370,7 +371,7 @@ export class InboxReader {
     try {
       await this.fs.move(filePath, targetPath);
     } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
+      const reason = formatErr(err);
       emitInboxMoveFailed(this.audit, {
         file: fileName,
         op: 'failed',

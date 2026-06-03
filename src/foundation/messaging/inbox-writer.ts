@@ -6,6 +6,7 @@
  */
 
 import * as path from 'path';
+import { formatErr } from "../utils/index.js";
 import { randomUUID } from 'crypto';
 import type { FileSystem } from '../fs/types.js';
 import type { InboxMessage } from '../messaging/types.js';
@@ -64,7 +65,7 @@ export class InboxWriter {
     try {
       await this.fs.writeAtomic(filePath, encodeInbox(msg, extraFields));
     } catch (e) {
-      const reason = e instanceof Error ? e.message : String(e);
+      const reason = formatErr(e);
       emitInboxWriteFailed(this.audit, { file: filename, to: msg.to, reason });
       throw e;
     }
@@ -96,7 +97,7 @@ export class InboxWriter {
       const content = encodeInbox(message, opts.extraFields);
       this.fs.writeAtomicSync(path.join(this.inboxDir, filename), content);
     } catch (e) {
-      const reason = e instanceof Error ? e.message : String(e);
+      const reason = formatErr(e);
       emitInboxWriteFailed(this.audit, { file: filename, to: opts.to, reason });
       throw e;
     }

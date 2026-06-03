@@ -1,4 +1,5 @@
 import type { FileSystem } from '../fs/types.js';
+import { formatErr } from "../utils/index.js";
 import type { StreamEvent, StreamLog } from './types.js';
 import type { AuditLog } from '../audit/index.js';
 import { STREAM_AUDIT_EVENTS } from './audit-events.js';
@@ -31,7 +32,7 @@ export class PerResourceStreamWriter implements StreamLog {
         STREAM_AUDIT_EVENTS.APPEND_FAILED,
         `path=${this.filePath}`,
         `type=${event.type}`,
-        `reason=${err instanceof Error ? err.message : String(err)}`,
+        `reason=${formatErr(err)}`,
         `body=${line.trimEnd()}`,
       );
     }

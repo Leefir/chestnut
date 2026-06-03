@@ -5,6 +5,7 @@
  */
 
 import * as path from 'path';
+import { formatErr } from "../utils/index.js";
 import { randomUUID } from 'crypto';
 import type { FileSystem } from '../fs/types.js';
 import type { OutboxMessage } from '../messaging/types.js';
@@ -98,7 +99,7 @@ export class OutboxWriter {
         to: options.to,
         type: options.type,
         id: message.id,
-        reason: err instanceof Error ? err.message : String(err),
+        reason: formatErr(err),
       });
       throw err;
     }
