@@ -30,6 +30,17 @@ import { makeTaskId } from '../../foundation/identity/index.js';
 
 
 export async function runContractVerifier(config: VerifierConfig): Promise<VerifierResult> {
+  // phase 19 Step D: explicit runtime check replaces non-null assertion (LSP/M#4).
+  // Assembler is expected to inject fsFactory; absence is a programming error in the
+  // ContractSystem assembly path, not a runtime fallback case.
+  if (!config.fsFactory) {
+    throw new Error(
+      'runContractVerifier: config.fsFactory is required but not injected. ' +
+      'This is a programming error in the ContractSystem assembly path. ' +
+      `contractId=${config.contractId}, agentId=${config.agentId}`,
+    );
+  }
+
   // phase 1080: crash-recovery — skip verifier if contract was cancelled
   if (config.contractId) {
     const progressPath = path.join(
@@ -96,7 +107,7 @@ export async function runContractVerifier(config: VerifierConfig): Promise<Verif
       clawDir: config.clawDir,
       chestnutRoot: config.chestnutRoot,
       fs: config.fs,
-      fsFactory: config.fsFactory!,
+      fsFactory: config.fsFactory,
       llm: config.llm,
       registry,
       prompt: config.prompt,

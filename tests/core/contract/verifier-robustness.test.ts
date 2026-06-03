@@ -52,6 +52,7 @@ function makeConfig(overrides: Partial<VerifierConfig> = {}): VerifierConfig {
     toolRegistry: {
       getForProfile: vi.fn().mockReturnValue([]),
     } as unknown as VerifierConfig['toolRegistry'],
+    fsFactory: vi.fn(() => ({}) as unknown as VerifierConfig['fs']),
     ...overrides,
   };
 }
