@@ -31,8 +31,6 @@ export interface RetroResult {
     | 'finished'
     | 'skipped_duplicate'
     | 'skipped_index_missing'
-    | 'subagent_timeout'
-    | 'no_skill_output'
     | 'error';
   detail?: string;
 }
@@ -75,16 +73,24 @@ export class EvolutionSystem {
    * mirror phase 1285 InboxReader.init() 模板
    */
   async init(): Promise<void> {
-    if (!this.stateFileLoaded) {
-      this.stateLoadPromise ??= this._loadState();
-      await this.stateLoadPromise;
-      this.stateFileLoaded = true;
-    }
+    await this._ensureStateLoaded();
     this.deps.audit.write(
       RETRO_AUDIT_EVENTS.EVOLUTION_BOOT_RECONCILE,
       `processed_count=${this.processedContractIds.size}`,
       `recovered=${this.processedContractIds.size > 0}`,
     );
+  }
+
+  private async _ensureStateLoaded(): Promise<void> {
+    if (this.stateFileLoaded) return;
+    this.stateLoadPromise ??= this._loadState();
+    try {
+      await this.stateLoadPromise;
+      this.stateFileLoaded = true;
+    } catch {
+      // _loadState 已 audit；重置缓存允许下次重试，stateFileLoaded 保持 false
+      this.stateLoadPromise = null;
+    }
   }
 
   private async _loadState(): Promise<void> {
@@ -116,7 +122,7 @@ export class EvolutionSystem {
         RETRO_AUDIT_EVENTS.STATE_LOAD_FAILED,
         `reason=${formatErr(e)}`,
       );
-      // best-effort: 0 dedupe / 不抛
+      throw e; // 由 _ensureStateLoaded 决定 sticky vs retry
     }
   }
 
@@ -163,12 +169,8 @@ export class EvolutionSystem {
     contractId: ContractId,
     ctx: MotionReviewContext,
   ): Promise<RetroResult> {
-    // Step 0: lazy load state (first call only / atomic via Promise cache)
-    if (!this.stateFileLoaded) {
-      this.stateLoadPromise ??= this._loadState();
-      await this.stateLoadPromise;
-      this.stateFileLoaded = true;
-    }
+    // Step 0: lazy load state (first call only / retry on failure)
+    await this._ensureStateLoaded();
 
     // Step 1: dedupe check
     if (this.processedContractIds.has(contractId)) {
