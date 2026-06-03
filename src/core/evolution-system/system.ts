@@ -158,14 +158,6 @@ export class EvolutionSystem {
     }
   }
 
-  async start(): Promise<void> {
-    // Subscribe to contract_completed event (Assembly wires this up via callback)
-  }
-
-  async stop(): Promise<void> {
-    // Cleanup hooks
-  }
-
   /** handleReviewRequest 6 步业务（phase411 Step B 物理迁自 ContractSystem） */
   async runRetroForContract(
     contractId: ContractId,
