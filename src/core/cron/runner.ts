@@ -5,7 +5,6 @@
 
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { formatErr } from "../../foundation/utils/index.js";
-import { isFileNotFound } from '../../foundation/fs/types.js';
 import { CRON_AUDIT_EVENTS } from './audit-events.js';
 import { CRON_TICK_INTERVAL_MS } from './constants.js';
 
@@ -70,11 +69,6 @@ export function parseSchedule(s: string, audit?: AuditLog): CronSchedule | null 
   }
 }
 
-export interface CronStateFs {
-  read(path: string, encoding: string): Promise<string>;
-  writeAtomic(path: string, content: string): Promise<void>;
-}
-
 export interface CronJob {
   name: string;
   enabled: boolean;
@@ -102,43 +96,14 @@ export class CronRunner {
   private _activeAbortControllers = new Map<string, AbortController>();
   // F5: per-job initial scan guard to prevent daily double-fire on daemon restart
   private _initialScanDone = new Set<string>();
-  // phase1109: cron state persistence (crash recovery for daily/hourly dedup)
-  private stateFile = 'cron/state.json';
 
   constructor(
     private readonly jobs: CronJob[],
     private readonly audit: AuditLog,
-    private readonly fs?: CronStateFs,
   ) {}
-
-  private async loadState(): Promise<void> {
-    if (!this.fs) return;
-    try {
-      const raw = await this.fs.read(this.stateFile, 'utf-8');
-      const state = JSON.parse(raw);
-      if (Array.isArray(state.lastRunKeys)) {
-        for (const [k, v] of state.lastRunKeys) this.lastRunKey.set(k, v);
-      }
-      if (Array.isArray(state.initialScanDone)) {
-        for (const k of state.initialScanDone) this._initialScanDone.add(k);
-      }
-    } catch (e) {
-      // phase 1154 r+ derive: 双码 narrow via foundation helper (FileSystem 抽象层抛 FS_NOT_FOUND)
-      if (!isFileNotFound(e)) throw e;
-    }
-  }
-
-  private async saveState(): Promise<void> {
-    if (!this.fs) return;
-    await this.fs.writeAtomic(this.stateFile, JSON.stringify({
-      lastRunKeys: [...this.lastRunKey],
-      initialScanDone: [...this._initialScanDone],
-    }));
-  }
 
   /** 启动调度器，tickIntervalMs 决定检查粒度（默认 1 秒） */
   start(tickIntervalMs = CRON_TICK_INTERVAL_MS): void {
-    this.loadState().catch(() => { /* silent: non-critical state load, next tick retries */ });
     if (this.timer) return;
     this.timer = setInterval(() => this.tick(), tickIntervalMs);
     this.audit.write(CRON_AUDIT_EVENTS.RUNNER_STARTED, `jobs=${this.jobs.length}`);
@@ -378,11 +343,6 @@ export class CronRunner {
           }
         });
     }
-    // Persist cron state after each tick (fire-and-forget, non-blocking)
-    this.saveState().catch((err) => {
-      const reason = formatErr(err);
-      this.audit.write(CRON_AUDIT_EVENTS.STATE_SAVE_FAILED, `reason=${reason}`);
-    });
   }
 
   private computeRunKey(now: Date, schedule: CronSchedule): string {
