@@ -8,11 +8,19 @@
 import type { Tool, ExecContext } from '../../../foundation/tools/index.js';
 import type { ToolResult } from '../../../foundation/tool-protocol/index.js';
 import { runSpawnSync } from '../system.js';
+import {
+  resolveSpawnTemplate,
+  DEFAULT_SPAWN_TEMPLATE,
+  listSpawnTemplateNames,
+} from '../templates.js';
+import { SPAWN_AUDIT_EVENTS } from '../audit-events.js';
+import { AUDIT_PREVIEW_LEN } from '../../../foundation/constants.js';
 
 /**
  * Spawn tool implementation
  *
  * phase 763：从 async-task-system/tools/spawn.ts 迁至 spawn-system 模块（M#1 业务语义独立）。
+ * phase 11：加 template 参数 / caller-side 预制 system prompt 选择 / 未知名 reject 不静默 fall back。
  * 直接写 tasks/queues/pending/ 文件，由 async-task-system watcher 异步调度。
  */
 import { formatErr } from '../_helpers.js';
@@ -45,6 +53,10 @@ export const spawnTool: Tool = {
         type: 'boolean',
         description: 'true (default): async execution, returns immediately, result via inbox. false: sync execution, blocks until result is available inline.',
       },
+      template: {
+        type: 'string',
+        description: "Named system prompt template for the subagent. 'default' (default) uses the standard subagent system prompt.",
+      },
     },
     required: ['intent'],
   },
@@ -59,8 +71,9 @@ export const spawnTool: Tool = {
       ? args.maxSteps
       : (ctx.subagentMaxSteps ?? ctx.maxSteps);
     const asyncMode = args.async === undefined ? true : Boolean(args.async);
+    const templateName = typeof args.template === 'string' ? args.template : DEFAULT_SPAWN_TEMPLATE;
 
-    // shadow 防御（per shadow D6 A ratify）
+    // shadow 防御（per shadow D6 A ratify）/ 先于 template resolve、保既有 reject 顺序
     if (ctx.isShadow && asyncMode) {
       return {
         success: false,
@@ -69,8 +82,23 @@ export const spawnTool: Tool = {
       };
     }
 
+    // template resolve（phase 11）/ 未知名 reject 不静默 fall back、留 audit
+    const systemPrompt = resolveSpawnTemplate(templateName);
+    if (systemPrompt === null) {
+      const available = listSpawnTemplateNames().join(', ');
+      ctx.auditWriter?.write(
+        SPAWN_AUDIT_EVENTS.TEMPLATE_UNKNOWN,
+        templateName.slice(0, AUDIT_PREVIEW_LEN),
+        available,
+      );
+      return {
+        success: false,
+        content: `[chestnut spawn] unknown template: '${templateName}'. Available: ${available}`,
+        error: 'spawn_template_unknown',
+      };
+    }
+
     if (asyncMode) {
-      // 既有 async 路径，0 改
       const mainContextSnapshot = ctx.clawId && ctx.currentToolUseId
         ? { clawId: ctx.clawId, toolUseId: ctx.currentToolUseId }
         : undefined;
@@ -81,6 +109,7 @@ export const spawnTool: Tool = {
           intent,
           timeoutMs,
           maxSteps,
+          systemPrompt,
           parentClawId: ctx.clawId,
           originClawId: ctx.originClawId ?? ctx.clawId,
           callerType: 'subagent',
@@ -98,7 +127,6 @@ export const spawnTool: Tool = {
       }
     }
 
-    // NEW sync 路径
-    return runSpawnSync({ intent, timeoutMs, maxSteps, ctx });
+    return runSpawnSync({ intent, timeoutMs, maxSteps, systemPrompt, ctx });
   },
 };

@@ -14,7 +14,6 @@ import { UUID_SHORT_LEN } from '../../constants.js';
 import { TASKS_SYNC_SPAWN_DIR } from './constants.js';
 import { runSubagent, createPerTaskRegistry, getDisplayResult } from '../subagent/index.js';
 import { AUDIT_PREVIEW_LEN } from '../../foundation/constants.js';
-import { DEFAULT_SUBAGENT_SYSTEM_PROMPT } from '../../prompts/index.js';
 import { SPAWN_AUDIT_EVENTS } from './audit-events.js';
 import { formatErr } from './_helpers.js';
 
@@ -23,6 +22,7 @@ export interface RunSpawnSyncOptions {
   intent: string;
   timeoutMs: number;
   maxSteps?: number;
+  systemPrompt: string;
   ctx: ExecContext;
 }
 
@@ -57,7 +57,7 @@ export async function runSpawnSync(opts: RunSpawnSyncOptions): Promise<ToolResul
       llm: opts.ctx.llm,
       registry: subagentRegistry,
       prompt: opts.intent,
-      systemPrompt: DEFAULT_SUBAGENT_SYSTEM_PROMPT,
+      systemPrompt: opts.systemPrompt,
       resultDir,
       maxSteps: opts.maxSteps ?? opts.ctx.subagentMaxSteps ?? opts.ctx.maxSteps,
       timeoutMs: opts.timeoutMs,
