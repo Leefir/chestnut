@@ -35,16 +35,16 @@ export function loadGlobalConfig(deps: { fsFactory: (baseDir: string) => FileSys
   } catch (err) {
     if (err instanceof Error) {
       if (err.message.startsWith('Failed to read config:')) {
-        throw new Error(err.message);
+        throw new Error(err.message, { cause: err });
       }
       if (err.message.startsWith('Invalid YAML in config:')) {
-        throw new Error(err.message);
+        throw new Error(err.message, { cause: err });
       }
       if (err.message.startsWith('Invalid config (env var):')) {
-        throw new Error(err.message.replace('Invalid config (env var):', 'Invalid global config (env var):'));
+        throw new Error(err.message.replace('Invalid config (env var):', 'Invalid global config (env var):'), { cause: err });
       }
       if (err.message.startsWith('Invalid config:')) {
-        throw new Error(err.message.replace('Invalid config:', 'Invalid global config:'));
+        throw new Error(err.message.replace('Invalid config:', 'Invalid global config:'), { cause: err });
       }
     }
     throw err;
@@ -81,16 +81,16 @@ export function loadClawConfig(deps: { fsFactory: (baseDir: string) => FileSyste
   } catch (err) {
     if (err instanceof Error) {
       if (err.message.startsWith('Failed to read config:')) {
-        throw new Error(err.message);
+        throw new Error(err.message, { cause: err });
       }
       if (err.message.startsWith('Invalid YAML in config:')) {
-        throw new Error(err.message);
+        throw new Error(err.message, { cause: err });
       }
       if (err.message.startsWith('Invalid config (env var):')) {
-        throw new Error(err.message.replace('Invalid config (env var):', 'Invalid claw config (env var):'));
+        throw new Error(err.message.replace('Invalid config (env var):', 'Invalid claw config (env var):'), { cause: err });
       }
       if (err.message.startsWith('Invalid config:')) {
-        throw new Error(err.message.replace('Invalid config:', 'Invalid claw config:'));
+        throw new Error(err.message.replace('Invalid config:', 'Invalid claw config:'), { cause: err });
       }
     }
     throw err;
