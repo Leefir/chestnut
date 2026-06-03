@@ -15,10 +15,22 @@ import type { VerificationMutex } from './verification-mutex.js';
 
 
 
-export interface VerificationContext extends LockContext {
+/**
+ * phase 19 Step A: VerificationContext split into 3 role interfaces (ISP).
+ * Composed via `&` intersection — runtime ctx instance unchanged, structurally compatible.
+ */
+
+export interface VerificationLockContext extends LockContext {
+  withProgressLock: <T>(contractId: ContractId, fn: () => Promise<T>) => Promise<T>;
+  /** phase 1465: per-ContractSystem instance race guard for verification pipeline (ML#3 + Tier 1 flaky_test_zero_tolerance) */
+  verificationMutex: VerificationMutex;
+}
+
+export interface VerificationContractContext {
   clawDir: ClawDir;
   clawId: ClawId;
-  llm?: LLMOrchestrator;
+  /** phase 1389: ctx-injected chestnutRoot (single truth source, no heuristic derivation) */
+  chestnutRoot: ChestnutRoot;
   contractDir: (contractId: ContractId) => Promise<string>;
   loadContractYaml: (contractId: ContractId) => Promise<ContractYaml>;
   getProgress: (contractId: ContractId) => Promise<ProgressData>;
@@ -26,7 +38,12 @@ export interface VerificationContext extends LockContext {
   checkAllSubtasksCompleted: (contractId: ContractId, progress: ProgressData) => Promise<boolean>;
   moveContractToArchive: (contractId: ContractId) => Promise<void>;
   emitContractCompleted: (contractId: ContractId) => Promise<void>;
-  onNotify?: (type: string, data: Record<string, unknown>) => void;
+}
+
+export interface VerificationExecutionContext {
+  llm?: LLMOrchestrator;
+  toolRegistry: ToolRegistry;
+  toolTimeoutMs?: number;
   runScriptVerification: (scriptFile: string, contractAbsDir: ClawDir) => Promise<VerificationResult>;
   runLLMVerification: (
     promptFile: string,
@@ -37,12 +54,11 @@ export interface VerificationContext extends LockContext {
     evidence: string,
     artifacts: string[],
   ) => Promise<VerificationResult>;
-  withProgressLock: <T>(contractId: ContractId, fn: () => Promise<T>) => Promise<T>;
-  toolRegistry: ToolRegistry;
   runVerifierWithCancel: (contractId: ContractId, config: Omit<VerifierConfig, 'signal' | 'chestnutRoot'>) => Promise<VerifierResult>;
-  toolTimeoutMs?: number;
-  /** phase 1389: ctx-injected chestnutRoot (single truth source, no heuristic derivation) */
-  chestnutRoot: ChestnutRoot;
-  /** phase 1465: per-ContractSystem instance race guard for verification pipeline (ML#3 + Tier 1 flaky_test_zero_tolerance) */
-  verificationMutex: VerificationMutex;
+  onNotify?: (type: string, data: Record<string, unknown>) => void;
 }
+
+export type VerificationContext =
+  & VerificationLockContext
+  & VerificationContractContext
+  & VerificationExecutionContext;

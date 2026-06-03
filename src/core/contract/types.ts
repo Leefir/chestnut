@@ -121,34 +121,41 @@ export interface VerificationResult {
 
 /**
  * Verifier scheduling config（移自 verifier-scheduler.ts / phase427 STALE 推翻 / inline）
+ *
+ * phase 19 Step A: split into VerifierIdentityConfig + VerifierRuntimeConfig (ISP).
+ * VerifierConfig is the intersection — runtime shape unchanged, structurally compatible.
  */
-export interface VerifierConfig {
+export interface VerifierIdentityConfig {
   agentId: string;
   prompt: string;
   clawDir: ClawDir;
   /** phase 1387: Assembly 装配期注入的 chestnut 根目录 */
   chestnutRoot: ChestnutRoot;
   clawId: ClawId;               // phase 514 / caller's clawId for subagent context
-  llm: LLMOrchestrator;
-  fs: FileSystem;
-  // phase 1490: maxSteps optional / undefined propagate → SubAgent boundary fallback to DEFAULT_MAX_STEPS (agent-executor owner)
-  maxSteps?: number;
-  idleTimeoutMs: number;
-  onIdleTimeout?: () => void;
-  /** Audit writer / phase 646 ⚓ verifier cleanup audit / per `feedback_audit_injection_alpha_template` */
-  audit: AuditLog;
-  /** AbortSignal for cancel propagation / phase 993 D.1 / contract cancel 提前 abort verifier (vs idleTimeoutMs 等待) */
-  signal?: AbortSignal;
-
   /** phase 1080: contractId for crash-recovery status check / phase 1151: made required for audit emit contractId col */
   contractId: ContractId;
+}
+
+export interface VerifierRuntimeConfig {
+  llm: LLMOrchestrator;
+  fs: FileSystem;
+  /** Audit writer / phase 646 ⚓ verifier cleanup audit / per `feedback_audit_injection_alpha_template` */
+  audit: AuditLog;
   /** ContractSystem 装配期注入 / verifier subagent 内部用 getForProfile('readonly') 派生 read+ls+search 工具子集 / + reportTool 注册 / 与 system prompt 指令 align（M#7 / phase 704） */
   toolRegistry: ToolRegistry;
+  idleTimeoutMs: number;
+  // phase 1490: maxSteps optional / undefined propagate → SubAgent boundary fallback to DEFAULT_MAX_STEPS (agent-executor owner)
+  maxSteps?: number;
+  onIdleTimeout?: () => void;
+  /** AbortSignal for cancel propagation / phase 993 D.1 / contract cancel 提前 abort verifier (vs idleTimeoutMs 等待) */
+  signal?: AbortSignal;
   /** Tool-level wall-clock timeout inherited from globalConfig.tool_timeout_ms (phase 1029 / F-2) */
   toolTimeoutMs?: number;
   /** Factory for cross-claw FileSystem access (injected by ContractSystem) */
   fsFactory?: (baseDir: string) => FileSystem;
 }
+
+export type VerifierConfig = VerifierIdentityConfig & VerifierRuntimeConfig;
 
 export interface VerifierResult {
   passed: boolean;
