@@ -39,6 +39,56 @@ type VerificationConfig =
   | { subtask_id: string; type: 'script'; script_file?: string }
   | { subtask_id: string; type: 'llm'; prompt_file?: string };
 
+/**
+ * phase 19 Step B: dispatch via handler registry (OCP).
+ * New verification type = new entry in VERIFICATION_HANDLERS, no source-code branch change.
+ */
+type VerificationHandlerArgs = {
+  contractAbsDir: ClawDir;
+  contractId: ContractId;
+  subtaskId: SubtaskId;
+  subtaskDesc: string;
+  evidence: string;
+  artifacts: string[];
+};
+
+type VerificationHandler<T extends VerificationConfig['type']> = (
+  ctx: VerificationContext,
+  cfg: Extract<VerificationConfig, { type: T }>,
+  args: VerificationHandlerArgs,
+) => Promise<VerificationResult>;
+
+const VERIFICATION_HANDLERS: { [T in VerificationConfig['type']]: VerificationHandler<T> } = {
+  script: async (ctx, cfg, args) => {
+    if (!cfg.script_file) {
+      emitContractVerificationResetFailed(ctx.audit, {
+        context: 'ContractSystem.runVerificationByType',
+        message: 'verification config missing script_file',
+      });
+      return { passed: false, feedback: 'verification config script 类型缺少 script_file' };
+    }
+    return ctx.runScriptVerification(cfg.script_file, args.contractAbsDir);
+  },
+  llm: async (ctx, cfg, args) => {
+    if (!cfg.prompt_file) {
+      emitContractVerificationResetFailed(ctx.audit, {
+        context: 'ContractSystem.runVerificationByType',
+        message: 'verification config missing prompt_file',
+      });
+      return { passed: false, feedback: 'verification config llm 类型缺少 prompt_file' };
+    }
+    return ctx.runLLMVerification(
+      cfg.prompt_file,
+      args.contractAbsDir,
+      args.contractId,
+      args.subtaskId,
+      args.subtaskDesc,
+      args.evidence,
+      args.artifacts,
+    );
+  },
+};
+
 async function runVerificationByType(
   ctx: VerificationContext,
   verificationConfig: VerificationConfig,
@@ -49,41 +99,10 @@ async function runVerificationByType(
   evidence: string,
   artifacts: string[],
 ): Promise<VerificationResult> {
-  if (verificationConfig.type === 'script') {
-    const scriptFile = verificationConfig.script_file;
-    if (!scriptFile) {
-      emitContractVerificationResetFailed(
-        ctx.audit,
-        {
-          context: 'ContractSystem.runVerificationByType',
-          message: 'verification config missing script_file',
-        },
-      );
-      return { passed: false, feedback: 'verification config script 类型缺少 script_file' };
-    }
-    return ctx.runScriptVerification(scriptFile, contractAbsDir);
-  }
-
-  const promptFile = verificationConfig.prompt_file;
-  if (!promptFile) {
-    emitContractVerificationResetFailed(
-      ctx.audit,
-      {
-        context: 'ContractSystem.runVerificationByType',
-        message: 'verification config missing prompt_file',
-      },
-    );
-    return { passed: false, feedback: 'verification config llm 类型缺少 prompt_file' };
-  }
-  return ctx.runLLMVerification(
-    promptFile,
-    contractAbsDir,
-    contractId,
-    subtaskId,
-    subtaskDesc,
-    evidence,
-    artifacts,
-  );
+  const handler = VERIFICATION_HANDLERS[verificationConfig.type] as VerificationHandler<typeof verificationConfig.type>;
+  return handler(ctx, verificationConfig as Extract<VerificationConfig, { type: typeof verificationConfig.type }>, {
+    contractAbsDir, contractId, subtaskId, subtaskDesc, evidence, artifacts,
+  });
 }
 
 type ApplyOutcome =

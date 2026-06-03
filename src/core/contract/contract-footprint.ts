@@ -207,49 +207,73 @@ interface RouteAccumulator {
   toolCounts: Record<string, number>;
 }
 
+/**
+ * phase 19 Step B: routeRow dispatch via handler registries (OCP).
+ * New row type / tool name = new entry, no source-code branch change.
+ */
+type ToolExecHandler = (cols: string[], seq: number, acc: RouteAccumulator) => void;
+
+const TOOL_EXEC_HANDLERS: Record<string, ToolExecHandler> = {
+  write: (cols, seq, acc) => {
+    const file = colValue(cols, 'path') ?? colValue(cols, 'file') ?? '';
+    const bytesStr = colValue(cols, 'bytes') ?? colValue(cols, 'size') ?? '0';
+    acc.writes.push({ file, bytes: Number(bytesStr) || 0, step: seq });
+  },
+  edit: (cols, seq, acc) => {
+    const file = colValue(cols, 'path') ?? colValue(cols, 'file') ?? '';
+    acc.edits.push({ file, step: seq });
+  },
+  multi_edit: (cols, seq, acc) => {
+    const file = colValue(cols, 'path') ?? colValue(cols, 'file') ?? '';
+    acc.edits.push({ file, step: seq });
+  },
+  read: (cols, seq, acc) => {
+    const file = colValue(cols, 'path') ?? colValue(cols, 'file') ?? '';
+    acc.reads.push({ file, step: seq });
+  },
+  exec: (cols, seq, acc) => {
+    const command = colValue(cols, 'command') ?? colValue(cols, 'cmd') ?? '';
+    const exitStr = colValue(cols, 'exit') ?? colValue(cols, 'exit_code') ?? '0';
+    acc.execCommands.push({ command, exitCode: Number(exitStr) || 0, step: seq });
+  },
+};
+
+type RowHandler = (row: AuditRow, acc: RouteAccumulator) => void;
+
+const handleToolExec: RowHandler = (row, acc) => {
+  const toolName = row.cols[0] ?? 'unknown';
+  acc.toolCounts[toolName] = (acc.toolCounts[toolName] ?? 0) + 1;
+  TOOL_EXEC_HANDLERS[toolName]?.(row.cols, row.seq, acc);
+};
+
+const handleSubtaskCompleted: RowHandler = (row, acc) => {
+  const subtaskId = colValue(row.cols, 'subtaskId') ?? colValue(row.cols, 'subtask_id') ?? '';
+  acc.submits.push({ subtaskId, step: row.seq });
+  acc.toolCounts['submit_subtask'] = (acc.toolCounts['submit_subtask'] ?? 0) + 1;
+};
+
+const handleSpawn: RowHandler = (row, acc) => {
+  const taskId = colValue(row.cols, 'taskId') ?? colValue(row.cols, 'task_id') ?? '';
+  acc.spawns.push({ taskId, step: row.seq });
+  acc.toolCounts['spawn'] = (acc.toolCounts['spawn'] ?? 0) + 1;
+};
+
+const handleInbox: RowHandler = (row, acc) => {
+  const to = colValue(row.cols, 'to') ?? '';
+  acc.sends.push({ to, step: row.seq });
+  acc.toolCounts['send'] = (acc.toolCounts['send'] ?? 0) + 1;
+};
+
+const ROW_HANDLERS: Record<string, RowHandler> = {
+  tool_exec: handleToolExec,
+  subtask_completed: handleSubtaskCompleted,
+  spawn_task_created: handleSpawn,
+  task_spawned: handleSpawn,
+  inbox_written: handleInbox,
+  outbox_written: handleInbox,
+  inbox_send: handleInbox,
+};
+
 function routeRow(row: AuditRow, acc: RouteAccumulator): void {
-  const { type, cols, seq } = row;
-
-  if (type === 'tool_exec') {
-    const toolName = cols[0] ?? 'unknown';
-    acc.toolCounts[toolName] = (acc.toolCounts[toolName] ?? 0) + 1;
-
-    if (toolName === 'write') {
-      const file = colValue(cols, 'path') ?? colValue(cols, 'file') ?? '';
-      const bytesStr = colValue(cols, 'bytes') ?? colValue(cols, 'size') ?? '0';
-      acc.writes.push({ file, bytes: Number(bytesStr) || 0, step: seq });
-    } else if (toolName === 'edit' || toolName === 'multi_edit') {
-      const file = colValue(cols, 'path') ?? colValue(cols, 'file') ?? '';
-      acc.edits.push({ file, step: seq });
-    } else if (toolName === 'read') {
-      const file = colValue(cols, 'path') ?? colValue(cols, 'file') ?? '';
-      acc.reads.push({ file, step: seq });
-    } else if (toolName === 'exec') {
-      const command = colValue(cols, 'command') ?? colValue(cols, 'cmd') ?? '';
-      const exitStr = colValue(cols, 'exit') ?? colValue(cols, 'exit_code') ?? '0';
-      acc.execCommands.push({ command, exitCode: Number(exitStr) || 0, step: seq });
-    }
-    return;
-  }
-
-  if (type === 'subtask_completed') {
-    const subtaskId = colValue(cols, 'subtaskId') ?? colValue(cols, 'subtask_id') ?? '';
-    acc.submits.push({ subtaskId, step: seq });
-    acc.toolCounts['submit_subtask'] = (acc.toolCounts['submit_subtask'] ?? 0) + 1;
-    return;
-  }
-
-  if (type === 'spawn_task_created' || type === 'task_spawned') {
-    const taskId = colValue(cols, 'taskId') ?? colValue(cols, 'task_id') ?? '';
-    acc.spawns.push({ taskId, step: seq });
-    acc.toolCounts['spawn'] = (acc.toolCounts['spawn'] ?? 0) + 1;
-    return;
-  }
-
-  if (type === 'inbox_written' || type === 'outbox_written' || type === 'inbox_send') {
-    const to = colValue(cols, 'to') ?? '';
-    acc.sends.push({ to, step: seq });
-    acc.toolCounts['send'] = (acc.toolCounts['send'] ?? 0) + 1;
-    return;
-  }
+  ROW_HANDLERS[row.type]?.(row, acc);
 }
