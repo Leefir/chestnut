@@ -26,7 +26,16 @@ import type { AuditLog } from '../../foundation/audit/index.js';
 export interface GatewayInput {
   /** StreamReader 工厂；Gateway 注入 onEvent 回调后调用 start */
   streamFactory: (onEvent: (event: StreamEvent) => void) => StreamReader;
-  /** 已处于 listening 状态的 Transport；undefined = offline */
+  /**
+   * 已处于 listening 状态的 Transport；undefined = offline。
+   *
+   * Gateway 在 `start()` 期间注入 4 个回调：`onConnect` / `onDisconnect` /
+   * `onMessage` / `onTransportError`。**onMessage 回调内抛错的传播契约**：
+   * - Transport 必须 catch 回调抛错（safeFire-style）、转 `fireTransportError({
+   *   kind: 'callback_error', callbackName: 'onMessage', error, connectionId? })`
+   * - Gateway 的 `onTransportError` 处理器统一分类审计、不抛二次错误
+   * 若 Transport 不实现错误隔离、onMessage 抛错会冒到 transport 事件循环、违反 M#10。
+   */
   transport?: Transport;
   /** Daemon 注入的 interrupt 回调 */
   interrupt: (reason: 'user') => void;
