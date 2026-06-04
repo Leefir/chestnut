@@ -43,7 +43,7 @@ describe('phase 7: overflow dedup (system-level overload, 1 notif per window)', 
     const realFs = new NodeFileSystem({ baseDir });
     const system = new AsyncTaskSystem(baseDir, realFs, {
       auditWriter: audit, llm: {} as any, contractManager: {} as any,
-      outboxWriter: {} as any, registry: {} as any, motionInbox: mockInbox,
+      outboxWriter: {} as any, registry: {} as any, selfInbox: mockInbox,
     });
 
     const pendingQueue = (system as any).pendingQueue as any[];
@@ -71,7 +71,7 @@ describe('phase 7: overflow dedup (system-level overload, 1 notif per window)', 
     const realFs = new NodeFileSystem({ baseDir });
     const system = new AsyncTaskSystem(baseDir, realFs, {
       auditWriter: audit, llm: {} as any, contractManager: {} as any,
-      outboxWriter: {} as any, registry: {} as any, motionInbox: mockInbox,
+      outboxWriter: {} as any, registry: {} as any, selfInbox: mockInbox,
     });
 
     const pendingQueue = (system as any).pendingQueue as any[];
@@ -101,7 +101,7 @@ describe('phase 7: overflow dedup (system-level overload, 1 notif per window)', 
     const realFs = new NodeFileSystem({ baseDir });
     const system = new AsyncTaskSystem(baseDir, realFs, {
       auditWriter: audit, llm: {} as any, contractManager: {} as any,
-      outboxWriter: {} as any, registry: {} as any, motionInbox: mockInbox,
+      outboxWriter: {} as any, registry: {} as any, selfInbox: mockInbox,
     });
 
     const pendingQueue = (system as any).pendingQueue as any[];

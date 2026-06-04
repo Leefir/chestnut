@@ -72,7 +72,7 @@ export class AsyncTaskSystem {
   private readonly maxConcurrent: number;
   private readonly registry: ToolRegistry;
   private readonly llm: LLMOrchestrator;
-  private readonly motionInbox?: InboxWriter;
+  private readonly selfInbox?: InboxWriter;
   // phase 7: dedup overflow 通知 / 同 overflow 窗口 (queue 满) 多次 reject 仅 1 通知 / 队列降回 cap 以下后清 0 允许下次再发
   private overflowNotified = false;
   private auditWriter: AuditLog;
@@ -124,7 +124,7 @@ export class AsyncTaskSystem {
     this.parentStreamLog = options.parentStreamLog;
     this.retryBaseDelayMs = options.retryBaseDelayMs ?? DEFAULT_RETRY_BASE_DELAY_MS;
     this.llm = options.llm;
-    this.motionInbox = options.motionInbox;
+    this.selfInbox = options.selfInbox;
     this.mainDialogStore = options.mainDialogStore;
     this.registry = options.registry;
     this.toolTimeoutMs = options.toolTimeoutMs;
@@ -308,10 +308,11 @@ export class AsyncTaskSystem {
         });
       });
 
-      // phase 7: Notify motion of system-level overload (best-effort) / dedup 同 overflow 窗口 1 通知
-      if (this.motionInbox && !this.overflowNotified) {
+      // phase 7: Notify self daemon of system-level overload (best-effort) / dedup 同 overflow 窗口 1 通知
+      // phase 37 rename: motion daemon → 写 motion 自家、worker daemon → 写 worker 自家
+      if (this.selfInbox && !this.overflowNotified) {
         try {
-          this.motionInbox.writeSync({
+          this.selfInbox.writeSync({
             type: 'task_queue_overflow',
             source: 'async-task-system',
             priority: 'critical',

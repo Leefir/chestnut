@@ -30,8 +30,12 @@ export interface AsyncTaskSystemOptions {
   llm: LLMOrchestrator;
   contractManager: ContractSystem;
   outboxWriter: OutboxWriter;
-  /** Motion inbox for overflow notification (optional, backward compat) */
-  motionInbox?: InboxWriter;
+  /**
+   * Self inbox for overflow notification (本 daemon 自家 inbox).
+   * phase 37: rename from `motionInbox` 命名 hygiene (实际是本 daemon 自家、
+   * worker case 不写 motion inbox)。motion daemon: 写 motion 自家; worker daemon: 写 worker 自家.
+   */
+  selfInbox?: InboxWriter;
   // main dialog store ref for subagent context restoration
   mainDialogStore?: DialogStore;
   registry: ToolRegistry;     // NEW: caller 注入填充好的 registry / Assembly own 装配

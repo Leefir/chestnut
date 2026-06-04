@@ -33,7 +33,7 @@ describe('pending queue overflow motion notify', () => {
     fs.mkdirSync(path.join(baseDir, 'subagents'), { recursive: true });
   });
 
-  it('反向 1: overflow 触发 -> motionInbox.writeSync called + audit PENDING_QUEUE_OVERFLOW_NOTIFIED + file moved to failed', async () => {
+  it('反向 1: overflow 触发 -> selfInbox.writeSync called + audit PENDING_QUEUE_OVERFLOW_NOTIFIED + file moved to failed', async () => {
     const { audit, writes } = makeMockAudit();
     const inboxWrites: Array<Record<string, unknown>> = [];
     const mockInbox: InboxWriter = {
@@ -48,7 +48,7 @@ describe('pending queue overflow motion notify', () => {
       contractManager: {} as any,
       outboxWriter: {} as any,
       registry: {} as any,
-      motionInbox: mockInbox,
+      selfInbox: mockInbox,
     });
 
     // 塞满 pendingQueue 到 PENDING_QUEUE_MAX (src const)
@@ -60,7 +60,7 @@ describe('pending queue overflow motion notify', () => {
     // 触发 overflow
     await (system as any)._enqueueAndDispatch({ id: 'overflow-task', kind: 'subagent' } as any);
 
-    // 验收 1: motionInbox.writeSync called
+    // 验收 1: selfInbox.writeSync called
     expect(inboxWrites.length).toBeGreaterThanOrEqual(1);
     const msg = inboxWrites.find(w => w.type === 'task_queue_overflow');
     expect(msg).toBeDefined();
@@ -73,7 +73,7 @@ describe('pending queue overflow motion notify', () => {
     expect(notifiedAudit).toBeDefined();
   });
 
-  it('反向 2: motionInbox 未传 -> 保持既有行为 (0 writeSync, 0 audit NOTIFIED, 0 throw, audit OVERFLOW still emitted)', async () => {
+  it('反向 2: selfInbox 未传 -> 保持既有行为 (0 writeSync, 0 audit NOTIFIED, 0 throw, audit OVERFLOW still emitted)', async () => {
     const { audit, writes } = makeMockAudit();
 
     const realFs = new NodeFileSystem({ baseDir });
@@ -84,7 +84,7 @@ describe('pending queue overflow motion notify', () => {
       contractManager: {} as any,
       outboxWriter: {} as any,
       registry: {} as any,
-      // 不传 motionInbox
+      // 不传 selfInbox
     });
 
     const pendingQueue = (system as any).pendingQueue as any[];
@@ -124,7 +124,7 @@ describe('pending queue overflow motion notify', () => {
       contractManager: {} as any,
       outboxWriter: {} as any,
       registry: {} as any,
-      motionInbox: mockInbox,
+      selfInbox: mockInbox,
     });
 
     const pendingQueue = (system as any).pendingQueue as any[];

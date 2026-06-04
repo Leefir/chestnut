@@ -52,7 +52,7 @@ export async function createRuntimeAssembly(
   const {
     taskSystem, permissionChecker, sessionManager, makeDialogStore,
     inboxReader, formatterRegistry, guidanceRegistry,
-    motionInboxDir,
+    selfInboxDir,
   } = business;
 
   // --- Snapshot（phase155B 已搬，但需保证在 Runtime 之前） ---
@@ -97,7 +97,7 @@ export async function createRuntimeAssembly(
       streamWriter,
       clawId,
       systemFs,
-      motionInboxDir,
+      selfInboxDir,
       auditWriter,
     });
 

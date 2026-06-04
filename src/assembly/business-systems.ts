@@ -54,8 +54,8 @@ export interface BusinessSysOutput {
   taskSystem: AsyncTaskSystem;
   evolutionSystem?: EvolutionSystem;
   permissionChecker: ReturnType<typeof createClawPermissionChecker>;
-  motionInboxDir: string;
-  motionInbox: ReturnType<typeof InboxWriter.__internal_create>;
+  selfInboxDir: string;
+  selfInbox: ReturnType<typeof InboxWriter.__internal_create>;
   toolExecutor: IToolExecutor;
   sessionManager: DialogStore;
   makeDialogStore: () => DialogStore;
@@ -82,7 +82,7 @@ export async function createBusinessSystems(input: BusinessSysInput): Promise<Bu
     toolTimeoutMs, maxConcurrent, outboxWriter,
   } = core;
 
-  // A.6 motionInboxDir 提前到 taskSystem / callback 定义前（双链路保险 / cron job 注册块同步引用）
+  // A.6 selfInboxDir 提前到 taskSystem / callback 定义前（双链路保险 / cron job 注册块同步引用）
   const permissionChecker = createClawPermissionChecker({
     clawDir,
     strict: true,
@@ -96,8 +96,8 @@ export async function createBusinessSystems(input: BusinessSysInput): Promise<Bu
       TASKS_SYNC_SHADOW_DIR,
     ],
   });
-  const motionInboxDir = path.join(clawDir, 'inbox', 'pending');
-  const motionInbox = InboxWriter.__internal_create(systemFs, makeInboxPath(motionInboxDir), auditWriter);
+  const selfInboxDir = path.join(clawDir, 'inbox', 'pending');
+  const selfInbox = InboxWriter.__internal_create(systemFs, makeInboxPath(selfInboxDir), auditWriter);
 
   // --- 9. AsyncTaskSystem（仅构造，不调 initialize / startDispatch；业务动作归 Runtime） ---
   let taskSystem: AsyncTaskSystem;
@@ -111,7 +111,7 @@ export async function createBusinessSystems(input: BusinessSysInput): Promise<Bu
       registry: toolRegistry,
       toolTimeoutMs,
       permissionChecker,
-      motionInbox,
+      selfInbox,
       fsFactory,
       chestnutRoot: resolveChestnutRoot(clawDir, isMotion),
       askMotionToolFactory: (llmArg, motionDialogStore) => new AskMotionTool(llmArg, motionDialogStore),
@@ -252,8 +252,8 @@ export async function createBusinessSystems(input: BusinessSysInput): Promise<Bu
     taskSystem,
     evolutionSystem,
     permissionChecker,
-    motionInboxDir,
-    motionInbox,
+    selfInboxDir,
+    selfInbox,
     toolExecutor,
     sessionManager,
     makeDialogStore,
