@@ -197,5 +197,7 @@ export const CLAW_VERB_FACTS: readonly VerbFact[] = [
   },
 ] as const;
 
+export type ClawVerbName = (typeof CLAW_VERB_FACTS)[number]['name'];
+
 /** verb 名集合（运行时 lookup / invariant 守同 router VERB_NAMES）。 */
-export const CLAW_VERB_NAMES: readonly string[] = CLAW_VERB_FACTS.map((f) => f.name);
+export const CLAW_VERB_NAMES: readonly ClawVerbName[] = CLAW_VERB_FACTS.map((f) => f.name) as readonly ClawVerbName[];

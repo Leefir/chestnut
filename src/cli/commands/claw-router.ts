@@ -42,6 +42,7 @@ import type { FileSystem } from '../../foundation/fs/types.js';
 import { clawStepsCommand, clawStepCommand } from './claw-steps.js';
 import {
   CLAW_VERB_FACTS,
+  type ClawVerbName,
   type VerbFact,
 } from '../help/index.js';
 import {
@@ -56,30 +57,16 @@ export interface RouterDeps {
 
 // ── Verb registry ───────────────────────────────────────────────────────────
 
-const VERB_NAMES = [
-  'create',
-  'chat',
-  'stop',
-  'health',
-  'send',
-  'outbox',
-  'import',
-  'read',
-  'ls',
-  'steps',
-  'step',
-  'daemon',
-  'trace',
-  'status',
-  'watch',     // phase 5: subscribe to one-shot inactivity follow-up
-] as const;
+const INSTANCE_VERB_NAMES: readonly string[] = CLAW_VERB_FACTS
+  .filter((f) => f.form === 'instance')
+  .map((f) => f.name);
 
-type VerbName = typeof VERB_NAMES[number];
+type VerbName = ClawVerbName;
 
-const VERB_SET: ReadonlySet<string> = new Set(VERB_NAMES);
+const VERB_SET: ReadonlySet<string> = new Set(INSTANCE_VERB_NAMES);
 
-/** Test-only re-export of VERB_NAMES so invariant tests can assert fact/router parity. */
-export const __TEST_VERB_NAMES_FROM_ROUTER: readonly string[] = VERB_NAMES;
+/** Test-only re-export of verb names so invariant tests can assert fact/router parity. */
+export const __TEST_VERB_NAMES_FROM_ROUTER: readonly string[] = INSTANCE_VERB_NAMES;
 
 // Verb names that ALSO appear as top-level subject (flat verbs).
 // Used to reject claw names that collide with reserved tokens.
@@ -165,7 +152,7 @@ export async function dispatchClawSubcommand(
     const verbHelp = renderClawVerbHelp(verbToken);
     if (!verbHelp) {
       throw new CliError(
-        `unknown verb '${verbToken}'. available: ${VERB_NAMES.join(', ')}`,
+        `unknown verb '${verbToken}'. available: ${INSTANCE_VERB_NAMES.join(', ')}`,
       );
     }
     writeHelp(verbHelp);
@@ -190,12 +177,12 @@ export async function dispatchClawSubcommand(
   const verbToken = args[0];
   if (!verbToken) {
     throw new CliError(
-      `missing verb. usage: 'chestnut claw <name> <verb>' (available verbs: ${VERB_NAMES.join(', ')})`,
+      `missing verb. usage: 'chestnut claw <name> <verb>' (available verbs: ${INSTANCE_VERB_NAMES.join(', ')})`,
     );
   }
   if (!VERB_SET.has(verbToken)) {
     throw new CliError(
-      `unknown verb '${verbToken}' for claw '${name}'. available: ${VERB_NAMES.join(', ')}`,
+      `unknown verb '${verbToken}' for claw '${name}'. available: ${INSTANCE_VERB_NAMES.join(', ')}`,
     );
   }
   // Sanity: `<name>` must not be a reserved subject token.
