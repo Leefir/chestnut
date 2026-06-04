@@ -17,6 +17,7 @@ import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 import { createAgentProcessManager } from '../foundation/process-manager/agent-factory.js';
 import { type Runtime, type RuntimeDependencies } from '../core/runtime/index.js';
 import { createRuntime } from '../core/runtime/index.js';
+import { createContractNotifyCallback } from './contract-notify-callback.js';
 import { createLLMOrchestrator, type LLMOrchestrator } from '../foundation/llm-orchestrator/index.js';
 import { createLLMAuditSink } from './llm-audit-sink.js';
 import { ASSEMBLY_AUDIT_EVENTS } from './audit-events.js';
@@ -46,7 +47,7 @@ import { spawnTool } from '../core/spawn-system/index.js';
 import { SummonTool } from '../core/summon-system/index.js';
 import { createShadowTool } from '../core/shadow-system/index.js';
 import { cleanupOrphanedTemp } from './cleanup.js';
-import { createInboxReader, createOutboxWriter, notifyInbox, notifyClaw, InboxWriter, makeInboxPath } from '../foundation/messaging/index.js';
+import { createInboxReader, createOutboxWriter, notifyClaw, InboxWriter, makeInboxPath } from '../foundation/messaging/index.js';
 // phase 1414: formatter registry + Messaging 自家通用 formatter
 import { createMessageFormatterRegistry, registerMessagingFormatters } from '../foundation/messaging/index.js';
 // phase 1469: motion guidance registry (motion-only / claw 不装)
@@ -547,30 +548,13 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     }
 
     // contractNotify callback 在 Runtime 构造前形成（注入 deps 而非 setter）
-    const contractNotifyCallback = (type: string, data: Record<string, unknown>) => {
-      streamWriter!.write({ ts: Date.now(), type: 'user_notify', subtype: type, ...data });
-
-      // A.6 双链路：motion inbox 只接契约终态事件（决策点）
-      // subtask_completed / verification_failed 仅 streamWriter（viewport 可见、motion 决策无用）
-      if (type === 'contract_completed') {
-        // phase 1487: A3 path 透传 source_claw 给 motion guidance composer
-        // composer 见 source_claw == MOTION_CLAW_ID → null (motion 自家、session 已含上下文)
-        // A3 callback 写 motionInboxDir = clawDir/inbox/pending (当前 claw 自家)：
-        //   - motion daemon (clawId=motion): 写 motion 自家 inbox (motion sees this case)
-        //   - worker daemon (clawId=worker-X): 写 worker 自家 inbox (motion never sees)
-        // A3 thin body 无 subtask 信息 → 无 problem_pairs（仅 motion own case 走此 path）
-        notifyInbox(systemFs, {
-          inboxDir: motionInboxDir,
-          type: 'contract_events',
-          source: 'system',
-          priority: 'high',
-          body: `[${type}] claw=${clawId} ${formatNotifyData(data)}`,
-          extraFields: {
-            source_claw: clawId,
-          },
-        }, auditWriter);
-      }
-    };
+    const contractNotifyCallback = createContractNotifyCallback({
+      streamWriter: streamWriter!,
+      clawId,
+      systemFs,
+      motionInboxDir,
+      auditWriter,
+    });
 
     const dependencies: RuntimeDependencies = {
       fsFactory,
@@ -925,8 +909,4 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   }
 }
 
-function formatNotifyData(data: Record<string, unknown>): string {
-  return Object.entries(data)
-    .map(([k, v]) => `${k}=${typeof v === 'string' ? v : JSON.stringify(v)}`)
-    .join(' ');
-}
+
