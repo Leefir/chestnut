@@ -5,6 +5,7 @@ import { join } from 'path';
 describe('foundation/fs: no direct `new NodeFileSystem` outside bootstrap (phase 1283)', () => {
   const BOOTSTRAP_ALLOWLIST = [
     'src/assembly/assemble.ts',
+    'src/assembly/core-infrastructure.ts',
     'src/cli/index.ts',
     'src/daemon-entry.ts',
     'src/watchdog-entry.ts',

@@ -26,7 +26,7 @@ describe('phase 1416 F1 + phase 1423 F5: PM factories + agent-factory barrel-onl
     let hits = '';
     try {
       hits = execSync(
-        `grep -rnE "from ['\\\"][^'\\\"]*process-manager/(factories|agent-factory)\\.js['\\\"]" ${srcRoot} --include='*.ts' | grep -vE "^${srcRoot}/foundation/process-manager/" | grep -v "^${srcRoot}/assembly/assemble.ts:"`,
+        `grep -rnE "from ['\\\"][^'\\\"]*process-manager/(factories|agent-factory)\\.js['\\\"]" ${srcRoot} --include='*.ts' | grep -vE "^${srcRoot}/foundation/process-manager/" | grep -vE "^${srcRoot}/assembly/(assemble|core-infrastructure)\.ts:"`,
         { encoding: 'utf8' },
       );
     } catch (e: any) {

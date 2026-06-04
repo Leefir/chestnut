@@ -3,32 +3,30 @@ import { formatErr } from '../foundation/utils/index.js';
 
 import type { FileSystem } from '../foundation/fs/types.js';
 
-import { createAuditWriter, createSystemAudit, type AuditLog } from '../foundation/audit/index.js';
-import { reconcileFallbackDumps } from '../foundation/audit/index.js';
+import { createSystemAudit, type AuditLog } from '../foundation/audit/index.js';
 import { createSnapshot } from '../foundation/snapshot/index.js';
 import { SNAPSHOT_IGNORE_PATTERNS } from './snapshot-patterns.js';
 import type { Snapshot } from '../foundation/snapshot/index.js';
 import { createStreamWriter } from '../foundation/stream/index.js';
 import type { StreamWriter } from '../foundation/stream/index.js';
-import type { ProcessManager } from '../foundation/process-manager/index.js';
-import { isFileNotFound } from '../foundation/fs/types.js';
-import { NodeFileSystem } from '../foundation/fs/node-fs.js';
 
-import { createAgentProcessManager } from '../foundation/process-manager/agent-factory.js';
+import { isFileNotFound } from '../foundation/fs/types.js';
+
+
+
 import { type Runtime, type RuntimeDependencies } from '../core/runtime/index.js';
 import { createRuntime } from '../core/runtime/index.js';
 import { createContractNotifyCallback } from './contract-notify-callback.js';
-import { createLLMOrchestrator, type LLMOrchestrator } from '../foundation/llm-orchestrator/index.js';
-import { createLLMAuditSink } from './llm-audit-sink.js';
+import type { CoreInfraOutput } from './core-infrastructure.js';
+
 import { ASSEMBLY_AUDIT_EVENTS } from './audit-events.js';
 import { CLAWS_DIR, DISPATCH_SKILLS_PATH } from '../foundation/paths.js';
-import { createToolRegistry, type ToolRegistry } from '../foundation/tools/index.js';
+
 import { createToolExecutor } from '../foundation/tools/index.js';
 import type { IToolExecutor } from '../foundation/tools/index.js';
 import { writePendingToolTaskFile } from '../core/async-task-system/index.js';
-import { createSkillSystem, SkillSystem } from '../foundation/skill-system/index.js';
-import { SKILLS_DIR_DEFAULT } from '../foundation/skill-system/index.js';
-import { ContractSystem, createContractSystem } from '../core/contract/index.js';
+
+import { createContractSystem } from '../core/contract/index.js';
 import { ContractAuditor } from '../core/contract/contract-auditor.js';
 import { createEvolutionSystem } from '../core/evolution-system/index.js';
 import type { EvolutionSystem } from '../core/evolution-system/index.js';
@@ -37,17 +35,17 @@ import { createAsyncTaskSystem } from '../core/async-task-system/index.js';
 import type { AsyncTaskSystem } from '../core/async-task-system/system.js';
 import { summonContractExtractPostProcessor, SUMMON_CONTRACT_EXTRACT_POSTPROCESSOR_NAME, AskMotionTool } from '../core/summon-system/index.js';
 
-import { createFileTools, TASKS_SYNC_WRITE_DIR } from '../foundation/file-tool/index.js';
-import { createCommandTools, TASKS_SYNC_EXEC_DIR } from '../foundation/command-tool/index.js';
+
 import { createClawPermissionChecker } from '../core/permissions/claw-permissions.js';
 import { TASKS_SYNC_SUBAGENT_DIR } from '../core/subagent/index.js';
 import { TASKS_SYNC_SPAWN_DIR } from '../core/spawn-system/index.js';
 import { TASKS_SYNC_SHADOW_DIR } from '../core/shadow-system/index.js';
-import { spawnTool } from '../core/spawn-system/index.js';
-import { SummonTool } from '../core/summon-system/index.js';
+import { TASKS_SYNC_EXEC_DIR } from '../foundation/command-tool/index.js';
+import { TASKS_SYNC_WRITE_DIR } from '../foundation/file-tool/index.js';
+
 import { createShadowTool } from '../core/shadow-system/index.js';
 import { cleanupOrphanedTemp } from './cleanup.js';
-import { createInboxReader, createOutboxWriter, notifyClaw, InboxWriter, makeInboxPath } from '../foundation/messaging/index.js';
+import { createInboxReader, notifyClaw, InboxWriter, makeInboxPath } from '../foundation/messaging/index.js';
 // phase 1414: formatter registry + Messaging 自家通用 formatter
 import { createMessageFormatterRegistry, registerMessagingFormatters } from '../foundation/messaging/index.js';
 // phase 1469: motion guidance registry (motion-only / claw 不装)
@@ -72,7 +70,7 @@ import { createSendTool } from '../foundation/messaging/tools/send.js';
 import { createNotifyClawTool } from '../foundation/messaging/tools/notify-claw.js';
 import { createDialogStore } from '../foundation/dialog-store/index.js';
 import type { InboxReader } from '../foundation/messaging/index.js';
-import type { OutboxWriter } from '../foundation/messaging/index.js';
+
 import type { DialogStore } from '../foundation/dialog-store/index.js';
 
 import { createHeartbeat, type Heartbeat } from '../core/runtime/index.js';
@@ -94,11 +92,12 @@ import { createOutboxSummaryJob } from '../core/cron/jobs/outbox-summary.js';
 import { buildLLMConfig } from '../foundation/llm-orchestrator/config-adapter.js';
 
 import type { AssembleConfig, Instances } from './types.js';
+import { createCoreInfrastructure } from './core-infrastructure.js';
 import { createGateway } from '../core/gateway/index.js';
 import type { Gateway } from '../core/gateway/index.js';
 import { createAskUserTool } from '../core/gateway/index.js';
 import { createStreamReader, STREAM_FILE, findRecentTurnStartOffset } from '../foundation/stream/index.js';
-import { TASKS_SYNC_DIR } from '../core/async-task-system/index.js';
+
 import { DIALOG_DIR } from '../foundation/dialog-store/dirs.js';
 import { makeClawId, resolveChestnutRoot, type ClawDir, makeClawDir } from '../foundation/identity/index.js';
 import { MOTION_CLAW_ID } from '../constants.js';
@@ -147,163 +146,23 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
     throw new Error('clawConfig is required when identity=claw');
   }
   const isMotion = identity === 'motion';
-  const auditMaxSizeMb = globalConfig.audit.retention.max_size_mb;
 
-  // phase155A + B + C 联合约定：system 组件无权限校验；工具层强制权限校验
-  // systemFs: used by AuditWriter / Snapshot / DialogStore / Skill/Contract/Outbox/Inbox/Task/Context/Stream
-  const fsFactory = (baseDir: string): FileSystem => new NodeFileSystem({ baseDir });
-  const systemFs = fsFactory(clawDir);
-  // clawFs: used by tools via ExecContextImpl.fs
-  // phase430: PermissionChecker removed from NodeFileSystem ctor;
-  // claw-space boundary is enforced by L4 caller (tools) autonomy.
-  const clawFs = fsFactory(clawDir);
-  const parentFs = fsFactory(path.join(clawDir, '..'));
+  const lockState = { acquired: false };
+  let core: CoreInfraOutput | undefined;
 
-  // syncDir = clawDir/tasks/sync (装配-level 共享 dir / 应然 §A.7)
-  const syncDir = path.join(clawDir, TASKS_SYNC_DIR);
-  await clawFs.ensureDir(syncDir);
-
-  // --- 1. AuditWriter (daemon.ts L100-104) ---
-  let auditWriter: AuditLog;
-  try {
-    auditWriter = createAuditWriter(systemFs, 'audit.tsv', auditMaxSizeMb);
-  } catch (e) {
-    throw new Error(`Assembly: audit writer construct failed: ${formatErr(e)}`, { cause: e });
-  }
-
-  // Reconcile prior crash fallback dumps after audit writer is ready
-  try {
-    await reconcileFallbackDumps(systemFs);
-  } catch (err) {
-    auditWriter.write(
-      ASSEMBLY_AUDIT_EVENTS.FALLBACK_RECONCILE_FAILED,
-      `reason=${formatErr(err)}`,
-    );
-  }
-
-  // --- 2. ProcessManager + acquireLock (daemon.ts L107-108) ---
-  let processManager: ProcessManager;
-  try {
-    processManager = createAgentProcessManager({ fsFactory }, auditWriter);
-  } catch (e) {
-    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=process_manager`, `phase=construct`, `reason=${formatErr(e)}`);
-    throw new Error(`Assembly: ProcessManager construct failed: ${formatErr(e)}`, { cause: e });
-  }
-
-  let lockAcquired = false;
-  try {
-    processManager.acquireLock(clawId);
-    lockAcquired = true;
-  } catch (e) {
-    auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_LOCK_CONFLICT, `clawId=${clawId}`);
-    throw e;
-  }
-
-  let llm: LLMOrchestrator | undefined;
   let streamWriter: StreamWriter | undefined;
   // Phase 1200: contractSystemCache dispose hook (motion lifecycle end-of-life)
   let disposeContractSystems: (() => Promise<void>) | undefined;
 
   try {
-    // --- 3. Runtime (daemon.ts L111-137) ---
-    let llmConfig: ReturnType<typeof buildLLMConfig>;
-    try {
-      llmConfig = isMotion
-        ? buildLLMConfig(globalConfig)
-        : buildLLMConfig(globalConfig, clawConfig!);
-    } catch (e) {
-      auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=llm_config`, `phase=construct`, `reason=${formatErr(e)}`);
-      throw new Error(`Assembly: buildLLMConfig failed: ${formatErr(e)}`, { cause: e });
-    }
-
-    // --- L3-L5: 派生配置统一求值（motion vs claw 分叉） ---
-    // phase 1485: 不再在 assembly 层 fallback DEFAULT_MAX_STEPS — undefined 直传 Runtime、
-    // runReact 内部持有唯一 fallback（agent-executor 自持默认值）。
-    const globalDefaultMaxSteps = globalConfig.default_max_steps;
-    const maxSteps: number | undefined = isMotion
-      ? (globalConfig.motion.max_steps ?? globalDefaultMaxSteps)
-      : (clawConfig!.max_steps ?? globalDefaultMaxSteps);
-    const maxConcurrent = isMotion
-      ? globalConfig.motion.max_concurrent_tasks
-      : clawConfig!.max_concurrent_tasks;
-    const toolProfile = isMotion ? 'full' : clawConfig!.tool_profile;
-    const toolTimeoutMs = globalConfig.tool_timeout_ms;
-    const idleTimeoutMs = globalConfig.motion.llm_idle_timeout_ms;
-
-    // --- L3-L5: llm ---
-    try {
-      llm = createLLMOrchestrator({ ...llmConfig, events: createLLMAuditSink(auditWriter) });
-    } catch (e) {
-      auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=llm`, `phase=construct`, `reason=${formatErr(e)}`);
-      throw new Error(`Assembly: LLMOrchestrator construct failed: ${formatErr(e)}`, { cause: e });
-    }
-
-    // --- L3-L5: toolRegistry（空；SummonTool 留给 Runtime） ---
-    let toolRegistry: ToolRegistry;
-    try {
-      toolRegistry = createToolRegistry();
-
-      // phase428 FileTool 抽出 → foundation/file-tool/ / Assembly 显式注册
-      // phase1006: permissionChecker 改由 ExecContext 注入，createFileTools 无需 factory
-      for (const tool of createFileTools()) {
-        toolRegistry.register(tool);
-      }
-
-      toolRegistry.register(spawnTool);
-      // shadowTool 改为 post-runtime 注册（需要 Runtime.getTurnSnapshot）
-
-      // phase 1406: SummonTool 走标准注册路径（构造期 0 参 / accessesCaller=true /
-      // shadow path 通过 ExecContext.getCallerSnapshot() 读 caller 深度态、
-      // mining path 用 ctx.registry 取 miner profile 工具）。不再走 Runtime
-      // initialize() 内反向 import + new + register「结构性循环依赖妥协」。
-      toolRegistry.register(new SummonTool());
-
-      // phase378 后 exec 业务归 CommandTool L2 / 不再经 registerBuiltinTools / Assembly 显式注册
-      const commandTools = createCommandTools();
-      toolRegistry.register(commandTools.exec);
-    } catch (e) {
-      auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=tool_registry`, `phase=construct`, `reason=${formatErr(e)}`);
-      throw new Error(`Assembly: ToolRegistry construct failed: ${formatErr(e)}`, { cause: e });
-    }
-
-    // --- L3-L5: skillRegistry (lazy init / phase 1053 α-6) ---
-    let skillRegistry: SkillSystem;
-    try {
-      skillRegistry = createSkillSystem(systemFs, SKILLS_DIR_DEFAULT, auditWriter);
-    } catch (e) {
-      auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=skill_registry`, `phase=construct`, `reason=${formatErr(e)}`);
-      throw new Error(`Assembly: SkillSystem construct failed: ${formatErr(e)}`, { cause: e });
-    }
-
-    // --- L3-L5: contractManager ---
-    let contractManager: ContractSystem;
-    try {
-      contractManager = createContractSystem({
-        clawDir, clawId, fs: systemFs, audit: auditWriter, llm,
-        toolRegistry,   // phase 704: toolRegistry 注入 ContractSystem
-        toolTimeoutMs,  // phase 1029 / F-2
-        fsFactory,
-        chestnutRoot: resolveChestnutRoot(clawDir, isMotion),  // phase 1406: 单一 truth source
-      });
-    } catch (e) {
-      auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=contract_manager`, `phase=construct`, `reason=${formatErr(e)}`);
-      throw new Error(`Assembly: ContractSystem construct failed: ${formatErr(e)}`, { cause: e });
-    }
-    try {
-      await contractManager.init();
-    } catch (e) {
-      auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=contract_manager`, `phase=init`, `reason=${formatErr(e)}`);
-      throw new Error(`Assembly: ContractSystem.init failed: ${formatErr(e)}`, { cause: e });
-    }
-
-    // --- L2: outboxWriter ---
-    let outboxWriter: OutboxWriter;
-    try {
-      outboxWriter = createOutboxWriter(clawId, clawDir, systemFs, auditWriter);
-    } catch (e) {
-      auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=outbox_writer`, `phase=construct`, `reason=${formatErr(e)}`);
-      throw new Error(`Assembly: OutboxWriter construct failed: ${formatErr(e)}`, { cause: e });
-    }
+    core = await createCoreInfrastructure({ config, lockState });
+    const {
+      fsFactory, systemFs, clawFs, parentFs,
+      auditWriter, processManager,
+      llmConfig, llm,
+      maxSteps, maxConcurrent, toolProfile, toolTimeoutMs, idleTimeoutMs,
+      toolRegistry, skillRegistry, contractManager, outboxWriter,
+    } = core;
 
     // A.6 motionInboxDir 提前到 taskSystem / callback 定义前（双链路保险 / cron job 注册块同步引用）
     const permissionChecker = createClawPermissionChecker({
@@ -812,14 +671,14 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   } catch (e) {
     // Best-effort cleanup of already-constructed resources
     streamWriter?.close?.();
-    llm?.close()?.catch(() => {
+    core?.llm?.close()?.catch(() => {
       // silent: assemble throw 兜底 teardown 路径，原 error e 在末尾 throw 不丢失；llm.close 异步失败属次生 error，无 auditWriter 可信通道（catch 内 auditWriter 自身可能未完成构造）
     });
-    if (lockAcquired) {
+    if (lockState.acquired && core) {
       try {
-        processManager.releaseLock(clawId);
+        core.processManager.releaseLock(clawId);
       } catch (releaseErr) {
-        auditWriter.write(
+        core.auditWriter.write(
           ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED,
           `module=lockfile_release`,
           `phase=assemble_throw_cleanup`,

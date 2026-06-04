@@ -64,8 +64,9 @@ module.exports = {
     {
       name: 'nodefilesystem-only-from-bootstrap',
       comment: [
-        'ML#7 耦合界面稳定：NodeFileSystem 直构造仅 4 bootstrap site:',
+        'ML#7 耦合界面稳定：NodeFileSystem 直构造仅 5 bootstrap site:',
         '  - assembly/assemble.ts',
+        '  - assembly/core-infrastructure.ts',
         '  - cli/index.ts',
         '  - daemon-entry.ts',
         '  - watchdog-entry.ts',
@@ -77,6 +78,7 @@ module.exports = {
         path: '^src',
         pathNot: [
           '^src/assembly/assemble\\.ts$',
+          '^src/assembly/core-infrastructure\\.ts$',
           '^src/cli/index\\.ts$',
           '^src/daemon-entry\\.ts$',
           '^src/watchdog-entry\\.ts$',
@@ -142,6 +144,7 @@ module.exports = {
         'phase 1416 F1 立 factories.ts、phase 1423 F5 扩 agent-factory.ts。',
         'allowlist (by-design):',
         '  - src/assembly/assemble.ts: 装配根 bootstrap、L6 装配胶水允许 deep import L2 internal',
+        '  - src/assembly/core-infrastructure.ts: 装配子工厂、bootstrap 同级 allowlist',
         'scope: 本规则治 factories.ts + agent-factory.ts。sister deep imports（paths.ts /',
         'signal-clean-stop.ts）按 case-by-case 评估、不一律 barrel-only。',
         '示例 fix: import { createAgentProcessManager } from "../../foundation/process-manager/index.js"',
@@ -153,6 +156,7 @@ module.exports = {
         pathNot: [
           '^src/foundation/process-manager/',
           '^src/assembly/assemble\\.ts$',
+          '^src/assembly/core-infrastructure\\.ts$',
         ],
       },
       to: { path: '^src/foundation/process-manager/(factories|agent-factory)\\.ts$' },
