@@ -10,6 +10,7 @@ import { isWatchdogAlive } from './watchdog-pid.js';
 import { startCommand as rawStartCommand } from './watchdog-cli.js';
 import { WATCHDOG_AUDIT_EVENTS } from './audit-events.js';
 import { ensureAuditWired } from './audit-wiring.js';
+import { sweepOrphanWatchdogs as defaultSweep } from './orphan-sweep.js';
 export { ensureAuditWired };
 
 const LOCK_ACQUIRE_TIMEOUT_MS = 3000;
@@ -21,7 +22,15 @@ const LOCK_RETRY_INTERVAL_MS = 50;
  * - 已活 → no-op
  * - 未活 → 取 lock + spawn + 释放 lock
  */
-export async function ensureWatchdog(fsFactory: (baseDir: string) => FileSystem): Promise<void> {
+type SweepFn = (
+  fsFactory: (baseDir: string) => FileSystem,
+  opts: { excludePid: number | null },
+) => Promise<unknown>;
+
+export async function ensureWatchdog(
+  fsFactory: (baseDir: string) => FileSystem,
+  sweep: SweepFn = defaultSweep,
+): Promise<void> {
   ensureAuditWired(fsFactory);
   if (isWatchdogAlive(fsFactory)) return; // throws WatchdogPidForeignWorkspaceError if foreign
 
@@ -41,8 +50,7 @@ export async function ensureWatchdog(fsFactory: (baseDir: string) => FileSystem)
     if (!isWatchdogAlive(fsFactory)) {
       // phase 1269 sub-4: sweep stray watchdogs 先 (commit ece0926c 精确化恢复)
       // 防 silent removal / TOCTOU / crash 残留 → pid 0 但进程在
-      const { sweepOrphanWatchdogs } = await import('./orphan-sweep.js');
-      await sweepOrphanWatchdogs(fsFactory, { excludePid: null });
+      await sweep(fsFactory, { excludePid: null });
       await rawStartCommand(fsFactory);
     }
   } finally {
