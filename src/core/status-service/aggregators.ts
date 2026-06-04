@@ -16,6 +16,10 @@ import type { ContractSystem } from '../contract/index.js';
 import { TASKS_QUEUES_PENDING_DIR, TASKS_QUEUES_RUNNING_DIR } from '../async-task-system/index.js';
 import { CLAWSPACE_DIR } from '../../foundation/paths.js';
 
+function assertNever(x: never): never {
+  throw new Error(`Unhandled variant: ${JSON.stringify(x)}`);
+}
+
 // ── Views ───────────────────────────────────────────────────────────────────
 
 export type ContractView =
@@ -143,35 +147,47 @@ export async function computeStorageView(fs: FileSystem): Promise<StorageView> {
 export function formatContractView(v: ContractView): string {
   if (v.type === 'no-active') return 'Contract: No active contract';
   if (v.type === 'error') return 'Contract: Error loading';
-  const lines = [`Contract: "${v.title}" (${v.doneCount}/${v.totalCount} subtasks done)`];
-  for (const s of v.subtasks) {
-    const icon = s.status === 'completed' ? '✓' : '○';
-    lines.push(`  ${icon} ${s.id}: ${s.description}`);
+  if (v.type === 'active') {
+    const lines = [`Contract: "${v.title}" (${v.doneCount}/${v.totalCount} subtasks done)`];
+    for (const s of v.subtasks) {
+      const icon = s.status === 'completed' ? '✓' : '○';
+      lines.push(`  ${icon} ${s.id}: ${s.description}`);
+    }
+    return lines.join('\n');
   }
-  return lines.join('\n');
+  return assertNever(v);
 }
 
 export function formatTaskView(v: TaskView): string {
   if (v.type === 'unavailable') return `Tasks: unavailable (${v.message})`;
-  if (v.running > 0) return `Tasks: ${v.running} running, ${v.pending} pending`;
-  if (v.pending > 0) return `Tasks: ${v.pending} pending`;
-  return 'Tasks: idle';
+  if (v.type === 'counts') {
+    if (v.running > 0) return `Tasks: ${v.running} running, ${v.pending} pending`;
+    if (v.pending > 0) return `Tasks: ${v.pending} pending`;
+    return 'Tasks: idle';
+  }
+  return assertNever(v);
 }
 
 export function formatStorageView(v: StorageView): string[] {
   const lines: string[] = [];
-  if (v.memoryMd.type === 'size') {
-    lines.push(`MEMORY.md: ${(v.memoryMd.bytes / 1024).toFixed(1)}KB`);
-  } else if (v.memoryMd.type === 'not-found') {
+  const md = v.memoryMd;
+  if (md.type === 'size') {
+    lines.push(`MEMORY.md: ${(md.bytes / 1024).toFixed(1)}KB`);
+  } else if (md.type === 'not-found') {
     lines.push('MEMORY.md: Not found');
+  } else if (md.type === 'error') {
+    lines.push(`MEMORY.md: Error (${md.message})`);
   } else {
-    lines.push(`MEMORY.md: Error (${v.memoryMd.message})`);
+    assertNever(md);
   }
 
-  if (v.clawspace.type === 'count') {
-    lines.push(`Clawspace: ${v.clawspace.files} files`);
+  const cs = v.clawspace;
+  if (cs.type === 'count') {
+    lines.push(`Clawspace: ${cs.files} files`);
+  } else if (cs.type === 'error') {
+    lines.push(`Clawspace: Error (${cs.message})`);
   } else {
-    lines.push(`Clawspace: Error (${v.clawspace.message})`);
+    assertNever(cs);
   }
 
   return lines;
