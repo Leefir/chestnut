@@ -31,5 +31,6 @@ export const MESSAGING_AUDIT_EVENTS = {
   NOTIFY_CLAW_FAILED: 'notify_claw_failed',
   RETENTION_CLEANUP_DELETE_FAILED: 'messaging_retention_cleanup_delete_failed',
   OUTBOX_PROCESSING_ORPHAN_CLEANED: 'outbox_processing_orphan_cleaned',
+  OUTBOX_LIST_FAILED: 'outbox_list_failed',
   UNKNOWN_DESTINATION_DLQ: 'messaging_unknown_destination_dlq',
 } as const;

@@ -174,6 +174,14 @@ export function emitOutboxSent(
   audit.write(MESSAGING_AUDIT_EVENTS.OUTBOX_SENT, ...cols);
 }
 
+// ─── OUTBOX_LIST_FAILED ───────────────────────────────────────────────────────
+export function emitOutboxListFailed(
+  audit: AuditLog,
+  opts: { dir: string; reason: string },
+): void {
+  audit.write(MESSAGING_AUDIT_EVENTS.OUTBOX_LIST_FAILED, `dir=${opts.dir}`, `reason=${opts.reason}`);
+}
+
 // ─── OUTBOX_PROCESSING_ORPHAN_CLEANED ─────────────────────────────────────────
 export function emitOutboxProcessingOrphanCleaned(
   audit: AuditLog,

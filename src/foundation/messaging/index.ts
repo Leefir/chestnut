@@ -9,6 +9,9 @@
 export { OutboxWriter, makeOutboxPath } from './outbox-writer.js';
 export type { OutboxWriteOptions, OutboxPath } from './outbox-writer.js';
 
+// phase 42: outbox 读侧（业主入口、用于聚合查询如 outbox-summary 未读计数）
+export { OutboxReader } from './outbox-reader.js';
+
 export { InboxWriter, makeInboxPath } from './inbox-writer.js';
 export type { InboxMessageOptionsBase, InboxMessageMeta, InboxPath } from './inbox-writer.js';
 
