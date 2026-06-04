@@ -3,6 +3,7 @@ import { formatErr } from "../utils/index.js";
 import type { FileSystem } from '../fs/types.js';
 import type { AuditLog } from './types.js';
 import { pushFallback } from './writer.js';
+import { esc } from './_helpers.js';
 
 const UUID_SHORT_LEN = 8;
 
@@ -12,9 +13,6 @@ const DEFAULT_BATCH_SIZE = 50;
 /** BatchedAuditWriter constructor option fallback default — periodic flush interval (ms) */
 const DEFAULT_FLUSH_INTERVAL_MS = 1000;
 
-function esc(val: string): string {
-  return val.replace(/\\/g, '\\\\').replace(/\t/g, '\\t').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\0/g, '\\0');
-}
 
 export interface BatchedAuditWriterOptions {
   maxSizeMb?: number | null;
@@ -67,7 +65,9 @@ export class BatchedAuditWriter implements AuditLog {
           }
         } catch (err) {
           if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-            console.error('Audit rotation failed:', err);
+            console.error(
+            `[AUDIT CRITICAL] batched rotation failed: path=${this.filePath} reason=${formatErr(err)}`,
+          );
           }
         }
       }

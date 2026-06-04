@@ -144,7 +144,9 @@ describe('BatchedAuditWriter', () => {
 
     writer.write('event_z', 'k=v');
     expect(writes.length).toBe(1);
-    expect(consoleSpy).toHaveBeenCalledWith('Audit rotation failed:', expect.any(Error));
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '[AUDIT CRITICAL] batched rotation failed: path=/tmp/test.tsv reason=permission denied',
+    );
     consoleSpy.mockRestore();
   });
 });

@@ -1,3 +1,33 @@
+/**
+ * @module L2.AuditLog
+ * @layer L2 基础层
+ *
+ * 审计日志追加写、模块级 fallback 池兜底崩溃路径。
+ *
+ * **设计意图：模块级 fallback 池共享**
+ *
+ * `pendingFallback` array + drop counter 是 module-scope 变量、所有 `AuditWriter` 实例共享。
+ * 设计动机：
+ * - **崩溃兜底**：主写入路径失败时、所有 writer 共享同一 fallback 队列、统一 dump 到 /tmp/clawforum-audit-fallback-*.tsv
+ * - **跨实例 reconcile**：daemon 重启后 `reconcileFallbackDumps` 扫所有 dump、回放至各对应 audit.tsv（per-file partition by origin frontmatter）
+ * - **drop 计数全局聚合**：buffer overflow 时 FIFO drop 累计 counter、不分实例、便于 frontmatter 观测
+ *
+ * 多实例隔离：每 AuditWriter 实例 own 自家 `filePath` + `sequence` 状态、不共享。
+ * 共享部分仅限崩溃路径的 fallback 池。
+ *
+ * phase 1380 加 drop 观测性、phase 1374 加 reconcile fsync、phase 908 加 TOCTOU race-loser skip。
+ *
+ * Resources: audit.tsv
+ * Dependencies: FileSystem
+ * Coupling: none
+ * Consumers: Daemon, Runtime, ContractSystem, SubagentSystem
+ *
+ * 递归边界：AuditWriter 自身 write/rotation 失败是"审计的审计"死角，
+ * 无法进入结构化事件流（会无限递归），唯一兜底是 console.error
+ * 以 [AUDIT CRITICAL] 前缀输出。这是 L2 层唯一允许保留的 console 出口
+ * （依赖 AuditLog 的其他 L2 模块不得效仿）。
+ */
+
 import { randomUUID } from 'crypto';
 import { formatErr } from "../utils/index.js";
 import * as nodeFs from 'node:fs';
@@ -6,6 +36,7 @@ import { UUID_SHORT_LEN } from '../../constants.js';
 import { FileNotFoundError } from '../fs/types.js';
 import type { FileSystem } from '../fs/types.js';
 import type { AuditLog } from './types.js';
+import { esc } from './_helpers.js';
 
 export const FALLBACK_BUFFER_CAP = 1000;
 const FALLBACK_FRONTMATTER_PREFIX = '# drop_count_since_last_dump=';
@@ -267,11 +298,3 @@ export function _resetFallbackForTest(): void {
   }
 }
 
-function esc(s: string): string {
-  return s
-    .replace(/\\/g, '\\\\')   // \\ 先转（防后续替换产生的 \\ 被二次转义）
-    .replace(/\t/g, '\\t')
-    .replace(/\n/g, '\\n')
-    .replace(/\r/g, '\\r')
-    .replace(/\0/g, '\\0');
-}
