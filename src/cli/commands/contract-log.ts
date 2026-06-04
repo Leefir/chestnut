@@ -1,0 +1,84 @@
+/**
+ * Show contract log for a claw
+ */
+
+import * as yaml from 'js-yaml';
+import { ContractSystem, type ContractYaml, type ProgressData } from '../../core/contract/index.js';
+import { getClawDir } from '../../foundation/config/index.js';
+import { createSystemAudit } from '../../foundation/audit/index.js';
+import { isFileNotFound } from '../../foundation/fs/types.js';
+import { createToolRegistry } from '../../foundation/tools/index.js';
+import { CliError } from '../errors.js';
+import type { FileSystem } from '../../foundation/fs/types.js';
+import type { ClawId } from '../../foundation/identity/index.js';
+import { makeContractId } from '../../foundation/identity/index.js';
+import { resolveChestnutRoot } from '../../foundation/identity/index.js';
+
+export async function contractLogCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, clawId: ClawId, contractId?: string): Promise<void> {
+  const clawDir = getClawDir(clawId);
+  const clawFs = deps.fsFactory(clawDir);
+  const chestnutRoot = resolveChestnutRoot(clawDir, /* isMotion */ false);  // phase 1406: 单一 truth source
+  const manager = new ContractSystem({ clawDir, clawId, fs: clawFs, audit: createSystemAudit(clawFs, clawDir), toolRegistry: createToolRegistry(), fsFactory: deps.fsFactory, chestnutRoot });
+
+  // 若未指定 contractId，用 active 契约
+  let resolvedId = contractId;
+  if (!resolvedId) {
+    const active = await manager.loadActive();
+    if (!active) {
+      console.log(`No active contract for claw ${clawId}`);
+      return;
+    }
+    resolvedId = active.id;
+  }
+
+  // 读契约 YAML（active/paused/archive 均可）
+  let contractYaml: ContractYaml;
+  try {
+    const raw = await manager.readContractYamlRaw(makeContractId(resolvedId));
+    contractYaml = yaml.load(raw) as ContractYaml;
+  } catch (err) {
+    // phase 906 r115 O fork (audit-2026-05-16 NEW.P2.6): preserve Error cause chain
+    throw new CliError(
+      `Contract "${resolvedId}" not found for claw ${clawId}`,
+      { cause: err },
+    );
+  }
+
+  // 读 progress（active/paused/archive 均可）
+  let progress: ProgressData | null = null;
+  try {
+    progress = await manager.getProgress(makeContractId(resolvedId));
+  } catch (err) {
+    // phase 906 r115 O fork (audit-2026-05-16 NEW.P2.6): narrow to ENOENT only
+    // file missing = expected (注释原意「progress 文件缺失」)，其他错误 = real bug bubble
+    if (!isFileNotFound(err)) {
+      throw err;
+    }
+  }
+
+  console.log(`Contract: ${resolvedId}`);
+  console.log(`Title: ${contractYaml.title}`);
+  console.log(`Goal: ${contractYaml.goal}`);
+  console.log(`Status: ${progress?.status ?? 'unknown'}`);
+  if (progress?.started_at) console.log(`Started: ${progress.started_at}`);
+  console.log('');
+  console.log('Subtasks:');
+
+  for (const subtask of contractYaml.subtasks) {
+    const st = progress?.subtasks[subtask.id];
+    const status = st?.status ?? 'pending';
+    const label = `[${status}]`.padEnd(13);
+    console.log(`  ${label} ${subtask.id}: ${subtask.description}`);
+    if (st?.evidence) {
+      const ev = st.evidence.length > 300 ? st.evidence.slice(0, 300) + '…' : st.evidence;
+      console.log(`               Evidence: ${ev}`);
+    }
+    if (st?.last_failed_feedback) {
+      const feedbackDisplay = st.last_failed_feedback.feedback;
+      console.log(`               Last feedback: ${feedbackDisplay}`);
+    }
+    if (st?.retry_count) {
+      console.log(`               Retries: ${st.retry_count}`);
+    }
+  }
+}

@@ -112,7 +112,7 @@ describe('notifyContractCreated audit observability', () => {
 });
 
 describe('phase 906 Step B1: contract.ts cause chain + ENOENT narrow', () => {
-  const contractPath = path.join(__dirname, '../../src/cli/commands/contract.ts');
+  const contractPath = path.join(__dirname, '../../src/cli/commands/contract-log.ts');
   const sourceCode = fs.readFileSync(contractPath, 'utf-8');
 
   it('contractLogCommand catch 块保留 Error cause chain', () => {
