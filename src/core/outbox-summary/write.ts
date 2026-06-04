@@ -52,9 +52,9 @@ export async function writeNewSummary(
 }
 
 function formatBody(state: OutboxSummaryState): string {
-  const summary = Object.entries(state.counts)
+  const head = `[system] outbox 未读：共 ${state.total_claws} 个 claw ${state.total_msgs} 条消息`;
+  const lines = Object.entries(state.counts)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([id, n]) => `${id}(${n})`)
-    .join(', ');
-  return `[system] outbox 未读：${summary}。共 ${state.total_claws} 个 claw ${state.total_msgs} 条消息。`;
+    .map(([id, n]) => `- ${id} (${n}): 「${state.previews[id] ?? '(无预览)'}」`);
+  return [head, ...lines].join('\n');
 }

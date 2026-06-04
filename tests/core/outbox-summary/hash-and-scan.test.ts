@@ -71,6 +71,7 @@ describe('phase 1476: scanOutboxes (real fs)', () => {
     expect(state.total_claws).toBe(0);
     expect(state.total_msgs).toBe(0);
     expect(state.file_set).toEqual([]);
+    expect(state.previews).toEqual({});
   });
 
   it('skips motion claw', async () => {
@@ -78,6 +79,7 @@ describe('phase 1476: scanOutboxes (real fs)', () => {
     await fsAsync.writeFile(path.join(root, 'claws/motion/outbox/pending/foo.md'), 'x');
     const state = await scanOutboxes({ chestnutRoot: makeChestnutRoot(root), fs, outboxReader });
     expect(state.counts).toEqual({});
+    expect(state.previews).toEqual({});
   });
 
   it('counts pending files per claw', async () => {
@@ -91,6 +93,7 @@ describe('phase 1476: scanOutboxes (real fs)', () => {
     expect(state.total_claws).toBe(2);
     expect(state.total_msgs).toBe(3);
     expect(state.file_set).toEqual(['clawA:a1.md', 'clawA:a2.md', 'clawB:b1.md']);
+    expect(state.previews).toEqual({ clawA: '(读取失败)', clawB: '(读取失败)' });
   });
 
   it('ignores non-.md files', async () => {
@@ -99,12 +102,14 @@ describe('phase 1476: scanOutboxes (real fs)', () => {
     await fsAsync.writeFile(path.join(root, 'claws/clawA/outbox/pending/junk.txt'), 'x');
     const state = await scanOutboxes({ chestnutRoot: makeChestnutRoot(root), fs, outboxReader });
     expect(state.counts).toEqual({ clawA: 1 });
+    expect(state.previews).toEqual({ clawA: '(读取失败)' });
   });
 
   it('claws/<id>/outbox missing → silent skip', async () => {
     await fsAsync.mkdir(path.join(root, 'claws/clawA'), { recursive: true });
     const state = await scanOutboxes({ chestnutRoot: makeChestnutRoot(root), fs, outboxReader });
     expect(state.counts).toEqual({});
+    expect(state.previews).toEqual({});
   });
 
   it('hash deterministic for same fileSet', async () => {

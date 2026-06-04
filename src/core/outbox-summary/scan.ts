@@ -16,6 +16,7 @@ import type { ChestnutRoot } from '../../foundation/identity/index.js';
 import { CLAWS_DIR } from '../../foundation/paths.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
 import { computeHash } from './hash.js';
+import { PREVIEW_MAX_CHARS } from './types.js';
 import type { OutboxSummaryState } from './types.js';
 
 export interface ScanDeps {
@@ -41,6 +42,7 @@ export async function scanOutboxes(deps: ScanDeps): Promise<OutboxSummaryState> 
 
   const counts: Record<string, number> = {};
   const fileSet: string[] = [];
+  const previews: Record<string, string> = {};
 
   for (const clawId of clawIds) {
     const clawDir = path.join(clawsDir, clawId);
@@ -48,6 +50,13 @@ export async function scanOutboxes(deps: ScanDeps): Promise<OutboxSummaryState> 
     if (files.length > 0) {
       counts[clawId] = files.length;
       for (const f of files) fileSet.push(`${clawId}:${f}`);
+
+      const last = await outboxReader.peekLastOutboxPending(clawDir);
+      if (last) {
+        previews[clawId] = truncatePreview(last.message.content);
+      } else {
+        previews[clawId] = '(读取失败)';
+      }
     }
   }
 
@@ -61,6 +70,7 @@ export async function scanOutboxes(deps: ScanDeps): Promise<OutboxSummaryState> 
     total_msgs: totalMsgs,
     file_set: fileSet,
     hash,
+    previews,
   };
 }
 
@@ -71,5 +81,23 @@ function emptyState(): OutboxSummaryState {
     total_msgs: 0,
     file_set: [],
     hash: computeHash([]),
+    previews: {},
   };
+}
+
+/**
+ * 截断 outbox message content 作 motion summary 预览：
+ * - 取首行（split('\n')[0]）
+ * - trim
+ * - 若空 → '(空消息)'
+ * - 否则按 grapheme 切到 PREVIEW_MAX_CHARS、超长加 '…'
+ *
+ * 用 Array.from 切防 surrogate pair 中断（emoji / 多字节）。
+ */
+export function truncatePreview(content: string): string {
+  const firstLine = content.split('\n')[0]?.trim() ?? '';
+  if (!firstLine) return '(空消息)';
+  const chars = Array.from(firstLine);
+  if (chars.length <= PREVIEW_MAX_CHARS) return firstLine;
+  return chars.slice(0, PREVIEW_MAX_CHARS).join('') + '…';
 }

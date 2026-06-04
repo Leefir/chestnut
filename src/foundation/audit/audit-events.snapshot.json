@@ -406,6 +406,7 @@
       "inbox_watcher_failed",
       "inbox_write_failed",
       "inbox_written",
+      "messaging_outbox_peek_failed",
       "messaging_retention_cleanup_delete_failed",
       "messaging_unknown_destination_dlq",
       "notify_claw_failed",

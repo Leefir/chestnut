@@ -8,6 +8,8 @@
  * - Assembly composer 经 Runtime extraMeta 接 stringified 字段
  */
 
+export const PREVIEW_MAX_CHARS = 40 as const;
+
 /** Output of one outbox-summary scan tick. */
 export interface OutboxSummaryState {
   /** Map clawId → unread file count (only claws with > 0 unread are present). */
@@ -24,6 +26,8 @@ export interface OutboxSummaryState {
    * 同 count 不同 msg → 不同 hash（user 2026-05-30 ratify by phase 1476 anti-pattern #2）.
    */
   hash: string;
+  /** phase 44 NEW: truncated preview of the latest unread message per claw. */
+  previews: Record<string, string>;
 }
 
 /** Per-tick state for guidance extraMeta（Record<string,string> only / serialized）. */
