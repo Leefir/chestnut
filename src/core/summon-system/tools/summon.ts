@@ -214,7 +214,14 @@ export class SummonTool implements Tool {
     // doesn't pass tools (mining branch reads ctx.registry on subagent boot per phase 1406).
     // Kept as documentation of intent; if AsyncTask schedule grows tools param later, plumb through.
 
-    const taskId = makeTaskId(await ctx.taskSystem!.schedule('subagent', {
+    if (!ctx.taskSystem) {
+      return {
+        success: false,
+        content: '[summon mining] task_system not available in execution context — async path requires AsyncTaskSystem injection',
+      };
+    }
+
+    const taskId = makeTaskId(await ctx.taskSystem.schedule('subagent', {
       kind: 'subagent',
       mode: 'standard',
       intent: userMessage,
