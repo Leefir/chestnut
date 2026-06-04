@@ -10,6 +10,9 @@ import { MOTION_CLAW_ID } from '../../../constants.js';
 import { makeClawId } from '../../../foundation/identity/index.js'
 import { type ChestnutRoot } from '../../../foundation/identity/index.js';
 import { makeClawDir } from '../../../foundation/identity/index.js';
+import type { CronJob } from '../../cron/runner.js';
+import { parseSchedule } from '../../cron/runner.js';
+import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
 
 
 /**
@@ -24,6 +27,13 @@ export interface ContractObserverOptions {
   motionAudit: AuditLog;      // motion system audit (装配方预 build)
   notifyClaw: (fs: FileSystem, chestnutRoot: ChestnutRoot, targetClawId: string, payload: InboxMessageOptionsBase, audit: AuditLog) => void; // 装配方 closure 包装
   signal?: AbortSignal;
+}
+
+export interface ContractObserverJobDeps {
+  chestnutRoot: ChestnutRoot;
+  fs: FileSystem;
+  motionAudit: AuditLog;
+  notifyClaw: (fs: FileSystem, chestnutRoot: ChestnutRoot, targetClawId: string, payload: InboxMessageOptionsBase, audit: AuditLog) => void;
 }
 
 // 持久化文件：上次观察时间戳
@@ -121,4 +131,17 @@ export async function runContractObserver(options: ContractObserverOptions): Pro
   const now = Date.now();
   fs.ensureDirSync(path.dirname(stateFile));
   fs.writeAtomicSync(stateFile, JSON.stringify({ lastCheckTs: now }));
+}
+
+export function createContractObserverJob(
+  deps: ContractObserverJobDeps,
+  globalConfig: ClawGlobalConfig,
+): CronJob {
+  return {
+    name: 'contract-observer',
+    enabled: globalConfig.cron.jobs.contract_observer.enabled,
+    schedule: parseSchedule(globalConfig.cron.jobs.contract_observer.schedule, deps.motionAudit),
+    handler: (signal) => runContractObserver({ ...deps, signal }),
+    timeoutMs: CONTRACT_OBSERVER_CRON_TIMEOUT_MS,
+  };
 }

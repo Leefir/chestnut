@@ -6,6 +6,9 @@ import type { AuditLog } from '../../../foundation/audit/index.js';
 import { CRON_AUDIT_EVENTS } from '../audit-events.js';
 import type { StreamLog } from '../../../foundation/stream/index.js';
 import { CLAWSPACE_DIR, CLAWS_DIR } from '../../../foundation/paths.js';
+import type { CronJob } from '../runner.js';
+import { parseSchedule } from '../runner.js';
+import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
 
 /**
  * Cron job timeout (ms) / 防 stuck handler 占 cron tick.
@@ -50,6 +53,15 @@ export interface DiskMonitorOptions {
   signal?: AbortSignal;
 }
 
+export interface DiskMonitorJobDeps {
+  chestnutRoot: ChestnutRoot;
+  limitMB: number;
+  fs: FileSystem;
+  audit: AuditLog;
+  motionAudit: AuditLog;
+  streamLog?: StreamLog;
+}
+
 export async function runDiskMonitor(opts: DiskMonitorOptions): Promise<void> {
   const clawsDir = path.join(opts.chestnutRoot, CLAWS_DIR);
   if (!opts.fs.existsSync(clawsDir)) return;
@@ -91,4 +103,17 @@ export async function runDiskMonitor(opts: DiskMonitorOptions): Promise<void> {
 /** Test-only: reset dedup state between cases. */
 export function __resetDiskMonitorState(): void {
   diskOverThreshold = false;
+}
+
+export function createDiskMonitorJob(
+  deps: DiskMonitorJobDeps,
+  globalConfig: ClawGlobalConfig,
+): CronJob {
+  return {
+    name: 'disk-monitor',
+    enabled: globalConfig.cron.jobs.disk_monitor.enabled,
+    schedule: parseSchedule(globalConfig.cron.jobs.disk_monitor.schedule, deps.audit),
+    handler: (signal) => runDiskMonitor({ ...deps, signal }),
+    timeoutMs: DISK_MONITOR_CRON_TIMEOUT_MS,
+  };
 }

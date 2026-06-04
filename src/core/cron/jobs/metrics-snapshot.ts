@@ -2,6 +2,9 @@ import type { FileSystem } from '../../../foundation/fs/types.js';
 import type { AuditLog } from '../../../foundation/audit/index.js';
 import { CRON_AUDIT_EVENTS } from '../audit-events.js';
 import { type ClawDir } from '../../../foundation/identity/index.js';
+import type { CronJob } from '../runner.js';
+import { parseSchedule } from '../runner.js';
+import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
 
 /**
  * Cron job timeout (ms) / 防 stuck handler 占 cron tick.
@@ -14,6 +17,12 @@ export interface MetricsSnapshotOptions {
   fs: FileSystem;       // baseDir 可访问 motionDir（用于 chestnutFs）
   audit: AuditLog;
   signal?: AbortSignal;
+}
+
+export interface MetricsSnapshotJobDeps {
+  motionDir: ClawDir;
+  fs: FileSystem;
+  audit: AuditLog;
 }
 
 /** 统计目录下文件数，目录不存在返回 0 */
@@ -50,4 +59,17 @@ export async function runMetricsSnapshot(opts: MetricsSnapshotOptions): Promise<
     `tasks_queue_pending=${tasksQueuePending}`,
     `tasks_running=${tasksRunning}`,
   );
+}
+
+export function createMetricsSnapshotJob(
+  deps: MetricsSnapshotJobDeps,
+  globalConfig: ClawGlobalConfig,
+): CronJob {
+  return {
+    name: 'metrics-snapshot',
+    enabled: globalConfig.cron.jobs.metrics_snapshot.enabled,
+    schedule: parseSchedule(globalConfig.cron.jobs.metrics_snapshot.schedule, deps.audit),
+    handler: (signal) => runMetricsSnapshot({ ...deps, signal }),
+    timeoutMs: METRICS_SNAPSHOT_CRON_TIMEOUT_MS,
+  };
 }

@@ -18,6 +18,9 @@ import type { FileSystem } from '../../../foundation/fs/types.js';
 import type { AuditLog } from '../../../foundation/audit/index.js';
 import type { StreamLog } from '../../../foundation/stream/index.js';
 import { CRON_AUDIT_EVENTS } from '../audit-events.js';
+import type { CronJob } from '../runner.js';
+import { parseSchedule } from '../runner.js';
+import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
 
 /**
  * Cron job timeout (ms) / 防 stuck handler 占 cron tick.
@@ -41,6 +44,17 @@ export interface AuditSizeMonitorOptions {
   criticalBytes?: number;
   streamLog?: StreamLog;   // phase 8: motion streamWriter / 警告改 viewport user_notify 注入
   signal?: AbortSignal;
+}
+
+export interface AuditSizeMonitorJobDeps {
+  fs: FileSystem;
+  audit: AuditLog;
+  chestnutRoot: ChestnutRoot;
+  motionAuditPath: string;
+  rootAuditPath: string;
+  warnBytes?: number;
+  criticalBytes?: number;
+  streamLog?: StreamLog;
 }
 
 export async function runAuditSizeMonitor(opts: AuditSizeMonitorOptions): Promise<void> {
@@ -98,4 +112,17 @@ export async function runAuditSizeMonitor(opts: AuditSizeMonitorOptions): Promis
 /** Test-only: reset dedup state between cases. */
 export function __resetAuditSizeMonitorState(): void {
   auditOverThreshold.clear();
+}
+
+export function createAuditSizeMonitorJob(
+  deps: AuditSizeMonitorJobDeps,
+  globalConfig: ClawGlobalConfig,
+): CronJob {
+  return {
+    name: 'audit-size-monitor',
+    enabled: globalConfig.cron.jobs.audit_size_monitor.enabled,
+    schedule: parseSchedule(globalConfig.cron.jobs.audit_size_monitor.schedule, deps.audit),
+    handler: (signal) => runAuditSizeMonitor({ ...deps, signal }),
+    timeoutMs: AUDIT_SIZE_MONITOR_CRON_TIMEOUT_MS,
+  };
 }

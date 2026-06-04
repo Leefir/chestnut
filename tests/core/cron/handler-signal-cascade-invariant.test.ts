@@ -7,26 +7,38 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '../../..');
 
 describe('cron handler signal cascade invariant (phase 1266 r135 B fork)', () => {
-  it('all assemble.ts cron handler arrows must wire signal param', () => {
-    const assemblePath = path.join(repoRoot, 'src', 'assembly', 'assemble.ts');
-    const src = readFileSync(assemblePath, 'utf-8');
+  it('all cron job factory handlers must wire signal param', () => {
+    const jobsDir = path.join(repoRoot, 'src', 'core', 'cron', 'jobs');
+    const contractJobsDir = path.join(repoRoot, 'src', 'core', 'contract', 'jobs');
 
-    // Find all handler: lines and check none use () => (no signal)
-    // dream-trigger's async (signal) is acceptable
-    const handlerLines = src.split('\n').filter(line => line.includes('handler:'));
+    const jobFiles = [
+      ...readdirSync(jobsDir)
+        .filter(f => f.endsWith('.ts') && !f.endsWith('.test.ts'))
+        .map(f => path.join(jobsDir, f)),
+      ...readdirSync(contractJobsDir)
+        .filter(f => f.endsWith('.ts') && !f.endsWith('.test.ts'))
+        .map(f => path.join(contractJobsDir, f)),
+    ];
+
     const violations: string[] = [];
 
-    for (const line of handlerLines) {
-      // Matches handler: () => or handler: async () => (no signal param)
-      // Does NOT match handler: (signal) => or handler: async (signal) =>
-      if (/handler:\s*(async\s*)?\(\s*\)\s*=>/.test(line)) {
-        violations.push(line.trim());
+    for (const filePath of jobFiles) {
+      const src = readFileSync(filePath, 'utf-8');
+      const fileName = path.basename(filePath);
+
+      const handlerLines = src.split('\n').filter(line => line.includes('handler:'));
+      for (const line of handlerLines) {
+        // Matches handler: () => or handler: async () => (no signal param)
+        // Does NOT match handler: (signal) => or handler: async (signal) =>
+        if (/handler:\s*(async\s*)?\(\s*\)\s*=>/.test(line)) {
+          violations.push(`${fileName}: ${line.trim()}`);
+        }
       }
     }
 
     expect(
       violations,
-      `Found ${violations.length} handler arrow(s) missing signal param in assemble.ts`,
+      `Found ${violations.length} handler arrow(s) missing signal param in cron job factories`,
     ).toEqual([]);
   });
 
@@ -66,8 +78,8 @@ describe('cron handler signal cascade invariant (phase 1266 r135 B fork)', () =>
   });
 
   it('反向 3: dream-trigger cooperative invariant (already wire signal)', () => {
-    const assemblePath = path.join(repoRoot, 'src', 'assembly', 'assemble.ts');
-    const src = readFileSync(assemblePath, 'utf-8');
+    const dreamTriggerPath = path.join(repoRoot, 'src', 'core', 'cron', 'jobs', 'dream-trigger.ts');
+    const src = readFileSync(dreamTriggerPath, 'utf-8');
 
     // Dream-trigger must remain cooperative with async (signal) =>
     const dreamTriggerMatch = src.match(

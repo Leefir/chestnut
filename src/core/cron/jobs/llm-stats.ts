@@ -7,6 +7,9 @@ import { MOTION_CLAW_ID } from '../../../constants.js';
 import { type ClawId, makeClawId } from '../../../foundation/identity/index.js'
 import { type ChestnutRoot } from '../../../foundation/identity/index.js';
 import { type ClawDir } from '../../../foundation/identity/index.js';
+import type { CronJob } from '../runner.js';
+import { parseSchedule } from '../runner.js';
+import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
 
 
 /**
@@ -60,6 +63,14 @@ export interface LlmStatsOptions {
   motionFs: FileSystem;       // baseDir = motionDir
   audit: AuditLog;
   signal?: AbortSignal;
+}
+
+export interface LlmStatsJobDeps {
+  chestnutRoot: ChestnutRoot;
+  motionDir: ClawDir;
+  chestnutFs: FileSystem;
+  motionFs: FileSystem;
+  audit: AuditLog;
 }
 
 export async function runLlmStats(opts: LlmStatsOptions): Promise<void> {
@@ -183,5 +194,18 @@ function aggregate(entries: ParsedLlmRow[], targetDate: string, signal?: AbortSi
     avgLatencyMs: latencyCount > 0 ? Math.round(latencySum / latencyCount) : 0,
     byModel,
     byClaw,
+  };
+}
+
+export function createLlmStatsJob(
+  deps: LlmStatsJobDeps,
+  globalConfig: ClawGlobalConfig,
+): CronJob {
+  return {
+    name: 'llm-stats',
+    enabled: globalConfig.cron.jobs.llm_stats.enabled,
+    schedule: parseSchedule(globalConfig.cron.jobs.llm_stats.schedule, deps.audit),
+    handler: (signal) => runLlmStats({ ...deps, signal }),
+    timeoutMs: LLM_STATS_CRON_TIMEOUT_MS,
   };
 }

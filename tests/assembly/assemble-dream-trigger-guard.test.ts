@@ -84,15 +84,35 @@ vi.mock('../../src/core/cron/runner.js', () => ({
   parseSchedule: vi.fn((s: string) => s),
 }));
 
-vi.mock('../../src/core/cron/jobs/disk-monitor.js', () => ({
-  runDiskMonitor: vi.fn(),
-  DISK_MONITOR_CRON_TIMEOUT_MS: 60_000,
-}));
+vi.mock('../../src/core/cron/jobs/disk-monitor.js', () => {
+  const mockRunDiskMonitor = vi.fn();
+  return {
+    runDiskMonitor: mockRunDiskMonitor,
+    DISK_MONITOR_CRON_TIMEOUT_MS: 60_000,
+    createDiskMonitorJob: vi.fn((deps, globalConfig) => ({
+      name: 'disk-monitor',
+      enabled: globalConfig.cron.jobs.disk_monitor.enabled,
+      schedule: globalConfig.cron.jobs.disk_monitor.schedule,
+      handler: (signal: AbortSignal) => mockRunDiskMonitor({ ...deps, signal }),
+      timeoutMs: 60_000,
+    })),
+  };
+});
 
-vi.mock('../../src/core/cron/jobs/llm-stats.js', () => ({
-  runLlmStats: vi.fn(),
-  LLM_STATS_CRON_TIMEOUT_MS: 60_000,
-}));
+vi.mock('../../src/core/cron/jobs/llm-stats.js', () => {
+  const mockRunLlmStats = vi.fn();
+  return {
+    runLlmStats: mockRunLlmStats,
+    LLM_STATS_CRON_TIMEOUT_MS: 60_000,
+    createLlmStatsJob: vi.fn((deps, globalConfig) => ({
+      name: 'llm-stats',
+      enabled: globalConfig.cron.jobs.llm_stats.enabled,
+      schedule: globalConfig.cron.jobs.llm_stats.schedule,
+      handler: (signal: AbortSignal) => mockRunLlmStats({ ...deps, signal }),
+      timeoutMs: 60_000,
+    })),
+  };
+});
 
 const mockMemorySystem = {
   runDeepDream: vi.fn(),
@@ -104,10 +124,20 @@ vi.mock('../../src/core/memory/index.js', () => ({
   memorySearchTool: { name: 'memory_search' },
 }));
 
-vi.mock('../../src/core/contract/jobs/contract-observer.js', () => ({
-  runContractObserver: vi.fn(),
-  CONTRACT_OBSERVER_CRON_TIMEOUT_MS: 5 * 60_000,
-}));
+vi.mock('../../src/core/contract/jobs/contract-observer.js', () => {
+  const mockRunContractObserver = vi.fn();
+  return {
+    runContractObserver: mockRunContractObserver,
+    CONTRACT_OBSERVER_CRON_TIMEOUT_MS: 5 * 60_000,
+    createContractObserverJob: vi.fn((deps, globalConfig) => ({
+      name: 'contract-observer',
+      enabled: globalConfig.cron.jobs.contract_observer.enabled,
+      schedule: globalConfig.cron.jobs.contract_observer.schedule,
+      handler: (signal: AbortSignal) => mockRunContractObserver({ ...deps, signal }),
+      timeoutMs: 5 * 60_000,
+    })),
+  };
+});
 
 vi.mock('../../src/foundation/llm-orchestrator/orchestrator.js', () => ({
   LLMOrchestratorImpl: vi.fn(() => ({ close: vi.fn(), healthCheck: vi.fn(), getProviderInfo: vi.fn() })),

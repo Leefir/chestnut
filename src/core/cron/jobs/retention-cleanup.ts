@@ -6,6 +6,9 @@ import { cleanupRetention } from '../../../foundation/messaging/index.js';
 import { cleanupExpiredTaskFiles } from '../../async-task-system/index.js';
 import { cleanupArchives } from '../../../foundation/dialog-store/index.js';
 import { type ClawDir } from '../../../foundation/identity/index.js';
+import type { CronJob } from '../runner.js';
+import { parseSchedule } from '../runner.js';
+import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
 
 /**
  * Cron job timeout (ms) / 防 stuck handler 占 cron tick.
@@ -26,6 +29,18 @@ export interface RetentionCleanupOptions {
   signal?: AbortSignal;
 }
 
+export interface RetentionCleanupJobDeps {
+  motionDir: ClawDir;
+  fs: FileSystem;
+  audit: AuditLog;
+  maxDays: {
+    inbox?: number;
+    outbox?: number;
+    tasks?: number;
+    dialog?: number;
+  };
+}
+
 export async function runRetentionCleanup(opts: RetentionCleanupOptions): Promise<void> {
   const { motionDir, fs, audit, maxDays, signal } = opts;
 
@@ -42,4 +57,17 @@ export async function runRetentionCleanup(opts: RetentionCleanupOptions): Promis
   }
 
   audit.write(CRON_AUDIT_EVENTS.RETENTION_CLEANUP, `deleted=${totalDeleted}`);
+}
+
+export function createRetentionCleanupJob(
+  deps: RetentionCleanupJobDeps,
+  globalConfig: ClawGlobalConfig,
+): CronJob {
+  return {
+    name: 'retention-cleanup',
+    enabled: globalConfig.cron.jobs.retention_cleanup.enabled,
+    schedule: parseSchedule(globalConfig.cron.jobs.retention_cleanup.schedule, deps.audit),
+    handler: (signal) => runRetentionCleanup({ ...deps, signal }),
+    timeoutMs: RETENTION_CLEANUP_CRON_TIMEOUT_MS,
+  };
 }

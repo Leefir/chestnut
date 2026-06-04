@@ -15,6 +15,9 @@ import type { FileSystem } from '../../../foundation/fs/types.js';
 import type { ChestnutRoot } from '../../../foundation/identity/index.js';
 import { CRON_AUDIT_EVENTS } from '../audit-events.js';
 import { runOutboxSummaryTick } from '../../outbox-summary/index.js';
+import type { CronJob } from '../runner.js';
+import { parseSchedule } from '../runner.js';
+import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
 
 /** Cron job timeout per ML#2 (per-module business decides). 5s 充裕：dedup scan = file list only. */
 export const OUTBOX_SUMMARY_CRON_TIMEOUT_MS = 5_000;
@@ -24,6 +27,12 @@ export interface OutboxSummaryJobOptions {
   fs: FileSystem;
   audit: AuditLog;
   signal?: AbortSignal;
+}
+
+export interface OutboxSummaryJobDeps {
+  chestnutRoot: ChestnutRoot;
+  fs: FileSystem;
+  audit: AuditLog;
 }
 
 export async function runOutboxSummary(opts: OutboxSummaryJobOptions): Promise<void> {
@@ -40,4 +49,17 @@ export async function runOutboxSummary(opts: OutboxSummaryJobOptions): Promise<v
     );
     throw err;
   }
+}
+
+export function createOutboxSummaryJob(
+  deps: OutboxSummaryJobDeps,
+  globalConfig: ClawGlobalConfig,
+): CronJob {
+  return {
+    name: 'outbox-summary',
+    enabled: globalConfig.cron.jobs.outbox_summary.enabled,
+    schedule: parseSchedule(globalConfig.cron.jobs.outbox_summary.schedule, deps.audit),
+    handler: (signal) => runOutboxSummary({ ...deps, signal }),
+    timeoutMs: OUTBOX_SUMMARY_CRON_TIMEOUT_MS,
+  };
 }

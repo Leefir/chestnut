@@ -6,6 +6,9 @@ import type { FileSystem } from '../../../foundation/fs/types.js';
 import type { AuditLog } from '../../../foundation/audit/index.js';
 import { CRON_AUDIT_EVENTS } from '../audit-events.js';
 import { CLAWS_DIR } from '../../../foundation/paths.js';
+import type { CronJob } from '../runner.js';
+import { parseSchedule } from '../runner.js';
+import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
 
 /**
  * Cron job timeout (ms) / 防 stuck handler 占 cron tick.
@@ -18,6 +21,12 @@ export interface GitGcWeeklyOptions {
   fs: FileSystem;
   audit: AuditLog;
   signal?: AbortSignal;
+}
+
+export interface GitGcWeeklyJobDeps {
+  chestnutRoot: ChestnutRoot;
+  fs: FileSystem;
+  audit: AuditLog;
 }
 
 export async function runGitGcWeekly(opts: GitGcWeeklyOptions): Promise<void> {
@@ -44,4 +53,17 @@ export async function runGitGcWeekly(opts: GitGcWeeklyOptions): Promise<void> {
   }
 
   audit.write(CRON_AUDIT_EVENTS.GIT_GC_WEEKLY, `step=complete`, `claws=${clawIds.length}`);
+}
+
+export function createGitGcWeeklyJob(
+  deps: GitGcWeeklyJobDeps,
+  globalConfig: ClawGlobalConfig,
+): CronJob {
+  return {
+    name: 'git-gc-weekly',
+    enabled: globalConfig.cron.jobs.git_gc_weekly.enabled,
+    schedule: parseSchedule(globalConfig.cron.jobs.git_gc_weekly.schedule, deps.audit),
+    handler: (signal) => runGitGcWeekly({ ...deps, signal }),
+    timeoutMs: GIT_GC_WEEKLY_CRON_TIMEOUT_MS,
+  };
 }

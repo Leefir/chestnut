@@ -76,26 +76,21 @@ import type { OutboxWriter } from '../foundation/messaging/index.js';
 import type { DialogStore } from '../foundation/dialog-store/index.js';
 
 import { createHeartbeat, type Heartbeat } from '../core/runtime/index.js';
-import { createCronRunner, parseSchedule, CronRunner } from '../core/cron/index.js';
-import { runDiskMonitor } from '../core/cron/jobs/disk-monitor.js';
-import { runLlmStats } from '../core/cron/jobs/llm-stats.js';
-import { runMetricsSnapshot } from '../core/cron/jobs/metrics-snapshot.js';
-import { runGitGcWeekly } from '../core/cron/jobs/git-gc-weekly.js';
-import { runRetentionCleanup } from '../core/cron/jobs/retention-cleanup.js';
-import { runAuditSizeMonitor } from '../core/cron/jobs/audit-size-monitor.js';
+import { createCronRunner, CronRunner } from '../core/cron/index.js';
+import { createDiskMonitorJob } from '../core/cron/jobs/disk-monitor.js';
+import { createLlmStatsJob } from '../core/cron/jobs/llm-stats.js';
+import { createMetricsSnapshotJob } from '../core/cron/jobs/metrics-snapshot.js';
+import { createGitGcWeeklyJob } from '../core/cron/jobs/git-gc-weekly.js';
+import { createRetentionCleanupJob } from '../core/cron/jobs/retention-cleanup.js';
+import { createAuditSizeMonitorJob } from '../core/cron/jobs/audit-size-monitor.js';
+import { createDreamTriggerJob } from '../core/cron/jobs/dream-trigger.js';
 // phase 6: sunset-monitor cron 砍 — sunset_ready 不归 motion 决策 / 改 dev-side 手动查 audit.tsv 直接 grep LEGACY_*
 import { createMemorySystem, memorySearchTool } from '../core/memory/index.js';
 import type { MemorySystem } from '../core/memory/index.js';
-import { runContractObserver } from '../core/contract/jobs/contract-observer.js';
+import { createClawContractBridge } from '../core/memory/claw-contract-bridge.js';
+import { createContractObserverJob } from '../core/contract/jobs/contract-observer.js';
 // phase 1476: outbox-drain cron 砍 — pull 模型替 push（详 design/modules/l5_cron.md A.phase1476-outbox-summary-cron-job）
-import { runOutboxSummary, OUTBOX_SUMMARY_CRON_TIMEOUT_MS } from '../core/cron/jobs/outbox-summary.js';
-import { DISK_MONITOR_CRON_TIMEOUT_MS } from '../core/cron/jobs/disk-monitor.js';
-import { LLM_STATS_CRON_TIMEOUT_MS } from '../core/cron/jobs/llm-stats.js';
-import { METRICS_SNAPSHOT_CRON_TIMEOUT_MS } from '../core/cron/jobs/metrics-snapshot.js';
-import { CONTRACT_OBSERVER_CRON_TIMEOUT_MS } from '../core/contract/jobs/contract-observer.js';
-import { GIT_GC_WEEKLY_CRON_TIMEOUT_MS } from '../core/cron/jobs/git-gc-weekly.js';
-import { RETENTION_CLEANUP_CRON_TIMEOUT_MS } from '../core/cron/jobs/retention-cleanup.js';
-import { AUDIT_SIZE_MONITOR_CRON_TIMEOUT_MS } from '../core/cron/jobs/audit-size-monitor.js';
+import { createOutboxSummaryJob } from '../core/cron/jobs/outbox-summary.js';
 import { buildLLMConfig } from '../foundation/llm-orchestrator/config-adapter.js';
 
 import type { AssembleConfig, Instances } from './types.js';
@@ -105,17 +100,9 @@ import { createAskUserTool } from '../core/gateway/index.js';
 import { createStreamReader, STREAM_FILE, findRecentTurnStartOffset } from '../foundation/stream/index.js';
 import { TASKS_SYNC_DIR } from '../core/async-task-system/index.js';
 import { DIALOG_DIR } from '../foundation/dialog-store/dirs.js';
-import { makeClawId, type ClawId, resolveChestnutRoot, type ClawDir, makeClawDir } from '../foundation/identity/index.js';
-import type { ContractId } from '../foundation/identity/index.js';
+import { makeClawId, resolveChestnutRoot, type ClawDir, makeClawDir } from '../foundation/identity/index.js';
 import { MOTION_CLAW_ID } from '../constants.js';
 
-
-/**
- * dream-trigger 是 assembly 装配 memorySystem capability 的 cron wrapper、
- * 无 dedicated cron job module (handler 1 行 inline memorySystem 直调).
- * 故 timeout const inline at assembly natural owner、显式标 ML#2/#3 例外.
- */
-const DREAM_TRIGGER_CRON_TIMEOUT_MS = 30 * 60_000;  // 30 min
 
 // 内部 helper（从 daemon.ts L42-75 搬入）
 export function detectUncleanExit(_auditDir: string, auditWriter: AuditLog, fs: FileSystem): void {
@@ -683,7 +670,6 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       const chestnutRoot = resolveChestnutRoot(clawDir, true);  // phase 1406: motion-only context (isMotion+cron guard)
       const tickMs = globalConfig.cron.tick_interval_ms;
       const diskLimitMB = globalConfig.watchdog.disk_warning_mb;
-      const diskScheduleStr = globalConfig.cron.jobs.disk_monitor.schedule;
 
       // phase155D：预制 chestnutFs，被 disk-monitor / dream-trigger 闭包共用（冻结 §6）
       // 失败语义：与既有模块（Snapshot / StreamWriter）一致 —— audit 写 assemble_failed 后上抛
@@ -699,23 +685,15 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       let memorySystem: MemorySystem | undefined;
       if (isMotion) {
         // M#3: random-dream 读取 contract progress 走 ContractSystem API（phase 1104）
-        const contractSystemCache = new Map<string, import('../core/contract/index.js').ContractSystem>();
+        const clawContractBridge = createClawContractBridge({
+          fsFactory,
+          chestnutRoot,
+          llm,
+          toolRegistry,
+          toolTimeoutMs,
+        });
         disposeContractSystems = async () => {
-          for (const cs of contractSystemCache.values()) {
-            await cs.close();
-          }
-          contractSystemCache.clear();
-        };
-        const getContractProgress = async (clawId: ClawId, contractId: ContractId): Promise<import('../core/contract/index.js').ProgressData> => {
-          let cs = contractSystemCache.get(clawId);
-          if (!cs) {
-            const cDir = makeClawDir(path.join(chestnutRoot, CLAWS_DIR, clawId));
-            const cFs = fsFactory(cDir);
-            const cAudit = createSystemAudit(cFs, cDir);
-            cs = createContractSystem({ clawDir: cDir, clawId, fs: cFs, audit: cAudit, llm, toolRegistry, toolTimeoutMs, fsFactory, chestnutRoot });
-            contractSystemCache.set(clawId, cs);
-          }
-          return cs.getProgress(contractId);
+          await clawContractBridge.dispose();
         };
 
         try {
@@ -730,7 +708,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
             llmConfig,
             maxCompressionTokens: globalConfig.cron.jobs.dream_trigger.max_compression_tokens,
             clawFsFactory: fsFactory,
-            getContractProgress,
+            getContractProgress: clawContractBridge.getContractProgress,
           });
         } catch (e) {
           auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=memory_system`, `phase=construct`, `reason=${formatErr(e)}`);
@@ -742,133 +720,65 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
       // phase 8: diskMonitorInbox 移除 — disk + audit-size 警告改 viewport stream（移出 motion inbox / dev_warning subtype）
 
       try {
-        cronRunner = createCronRunner([
-          {
-            name: 'disk-monitor',
-            enabled: globalConfig.cron.jobs.disk_monitor.enabled,
-            schedule: parseSchedule(diskScheduleStr, auditWriter),
-            handler: (signal) => runDiskMonitor({
-              chestnutRoot,
-              limitMB: diskLimitMB,
-              fs: chestnutFs,
-              audit: auditWriter,
-              motionAudit: auditWriter,  // phase 724 α：主 auditWriter 单 instance 复用
-              streamLog: streamWriter!,   // phase 8: viewport stream (取代 motionInbox)
-              signal,
-            }),
-            timeoutMs: DISK_MONITOR_CRON_TIMEOUT_MS,
-          },
-          {
-            name: 'llm-stats',
-            enabled: globalConfig.cron.jobs.llm_stats.enabled,
-            schedule: parseSchedule(globalConfig.cron.jobs.llm_stats.schedule, auditWriter),
-            handler: (signal) => runLlmStats({
-              chestnutRoot,
-              motionDir: clawDir,
-              chestnutFs,
-              motionFs: systemFs,
-              audit: auditWriter,
-              signal,
-            }),
-            timeoutMs: LLM_STATS_CRON_TIMEOUT_MS,
-          },
-          {
-            name: 'dream-trigger',
-            enabled: globalConfig.cron.jobs.dream_trigger.enabled,
-            schedule: parseSchedule(globalConfig.cron.jobs.dream_trigger.schedule, auditWriter),
-            handler: async (signal) => {
-              if (!memorySystem) return;
-              await memorySystem.runDeepDream(undefined, { signal });
-              await memorySystem.runRandomDream({ signal });
+        const cronJobs = [
+          createDiskMonitorJob({
+            chestnutRoot,
+            limitMB: diskLimitMB,
+            fs: chestnutFs,
+            audit: auditWriter,
+            motionAudit: auditWriter,  // phase 724 α：主 auditWriter 单 instance 复用
+            streamLog: streamWriter!,   // phase 8: viewport stream (取代 motionInbox)
+          }, globalConfig),
+          createLlmStatsJob({
+            chestnutRoot,
+            motionDir: clawDir,
+            chestnutFs,
+            motionFs: systemFs,
+            audit: auditWriter,
+          }, globalConfig),
+          createDreamTriggerJob({ memorySystem: memorySystem! }, globalConfig),
+          createMetricsSnapshotJob({
+            motionDir: makeClawDir(path.join(chestnutRoot, 'motion')),
+            fs: chestnutFs,
+            audit: auditWriter,
+          }, globalConfig),
+          createContractObserverJob({
+            chestnutRoot,
+            fs: chestnutFs,
+            motionAudit: auditWriter,  // phase 724 α：主 auditWriter 单 instance 复用
+            notifyClaw: (fs, chestnutRoot, targetClawId, payload, audit) => notifyClaw(fs, chestnutRoot, targetClawId, payload, audit),
+          }, globalConfig),
+          createGitGcWeeklyJob({
+            chestnutRoot,
+            fs: chestnutFs,
+            audit: auditWriter,
+          }, globalConfig),
+          createRetentionCleanupJob({
+            motionDir: clawDir,
+            fs: chestnutFs,
+            audit: auditWriter,
+            maxDays: {
+              inbox: globalConfig.retention.inbox_max_days,
+              outbox: globalConfig.retention.outbox_max_days,
+              tasks: globalConfig.retention.tasks_max_days,
+              dialog: globalConfig.retention.dialog_max_days,
             },
-            timeoutMs: DREAM_TRIGGER_CRON_TIMEOUT_MS,
-          },
-          {
-            name: 'metrics-snapshot',
-            enabled: globalConfig.cron.jobs.metrics_snapshot.enabled,
-            schedule: parseSchedule(globalConfig.cron.jobs.metrics_snapshot.schedule, auditWriter),
-            handler: (signal) => runMetricsSnapshot({
-              motionDir: makeClawDir(path.join(chestnutRoot, 'motion')),
-              fs: chestnutFs,
-              audit: auditWriter,
-              signal,
-            }),
-            timeoutMs: METRICS_SNAPSHOT_CRON_TIMEOUT_MS,
-          },
-          {
-            name: 'contract-observer',
-            enabled: globalConfig.cron.jobs.contract_observer.enabled,
-            schedule: parseSchedule(globalConfig.cron.jobs.contract_observer.schedule, auditWriter),
-            handler: (signal) => runContractObserver({
-              chestnutRoot,
-              fs: chestnutFs,
-              motionAudit: auditWriter,  // phase 724 α：主 auditWriter 单 instance 复用
-              notifyClaw: (fs, chestnutRoot, targetClawId, payload, audit) => notifyClaw(fs, chestnutRoot, targetClawId, payload, audit),
-              signal,
-            }),
-            timeoutMs: CONTRACT_OBSERVER_CRON_TIMEOUT_MS,
-          },
-          {
-            name: 'git-gc-weekly',
-            enabled: globalConfig.cron.jobs.git_gc_weekly.enabled,
-            schedule: parseSchedule(globalConfig.cron.jobs.git_gc_weekly.schedule, auditWriter),
-            handler: (signal) => runGitGcWeekly({
-              chestnutRoot,
-              fs: chestnutFs,
-              audit: auditWriter,
-              signal,
-            }),
-            timeoutMs: GIT_GC_WEEKLY_CRON_TIMEOUT_MS,
-          },
-          {
-            name: 'retention-cleanup',
-            enabled: globalConfig.cron.jobs.retention_cleanup.enabled,
-            schedule: parseSchedule(globalConfig.cron.jobs.retention_cleanup.schedule, auditWriter),
-            handler: (signal) => runRetentionCleanup({
-              motionDir: clawDir,
-              fs: chestnutFs,
-              audit: auditWriter,
-              maxDays: {
-                inbox: globalConfig.retention.inbox_max_days,
-                outbox: globalConfig.retention.outbox_max_days,
-                tasks: globalConfig.retention.tasks_max_days,
-                dialog: globalConfig.retention.dialog_max_days,
-              },
-              signal,
-            }),
-            timeoutMs: RETENTION_CLEANUP_CRON_TIMEOUT_MS,
-          },
-          {
-            name: 'audit-size-monitor',
-            enabled: globalConfig.cron.jobs.audit_size_monitor.enabled,
-            schedule: parseSchedule(globalConfig.cron.jobs.audit_size_monitor.schedule, auditWriter),
-            handler: (signal) => runAuditSizeMonitor({
-              fs: chestnutFs,
-              audit: auditWriter,
-              chestnutRoot,
-              motionAuditPath: path.join(chestnutRoot, 'motion', 'audit.tsv'),
-              rootAuditPath: path.join(chestnutRoot, 'audit.tsv'),
-              streamLog: streamWriter!,   // phase 8: viewport stream (取代 motionInbox)
-              signal,
-            }),
-            timeoutMs: AUDIT_SIZE_MONITOR_CRON_TIMEOUT_MS,
-          },
-          // phase 1476: outbox-summary cron 替 outbox-drain（pull 模型 / 详 l5_cron.md A.phase1476-outbox-summary-cron-job）
-          {
-            name: 'outbox-summary',
-            enabled: globalConfig.cron.jobs.outbox_summary.enabled,
-            schedule: parseSchedule(globalConfig.cron.jobs.outbox_summary.schedule, auditWriter),
-            handler: (signal) => runOutboxSummary({
-              chestnutRoot,
-              fs: chestnutFs,
-              audit: auditWriter,
-              signal,
-            }),
-            timeoutMs: OUTBOX_SUMMARY_CRON_TIMEOUT_MS,
-          },
-          // phase 6: sunset-monitor cron 砍 — sunset_ready 是开发者代码清理信号、不归 motion 决策
-          // 同效果可手动 grep audit.tsv 找 LEGACY_* event 计数（无需 cron / 不该 spam motion inbox）
-        ], auditWriter);
+          }, globalConfig),
+          createAuditSizeMonitorJob({
+            fs: chestnutFs,
+            audit: auditWriter,
+            chestnutRoot,
+            motionAuditPath: path.join(chestnutRoot, 'motion', 'audit.tsv'),
+            rootAuditPath: path.join(chestnutRoot, 'audit.tsv'),
+            streamLog: streamWriter!,   // phase 8: viewport stream (取代 motionInbox)
+          }, globalConfig),
+          createOutboxSummaryJob({
+            chestnutRoot,
+            fs: chestnutFs,
+            audit: auditWriter,
+          }, globalConfig),
+        ];
+        cronRunner = createCronRunner(cronJobs, auditWriter);
       } catch (e) {
         auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=cron_runner`, `phase=construct`, `reason=${formatErr(e)}`);
         throw new Error(`Assembly: CronRunner construct failed: ${formatErr(e)}`, { cause: e });
