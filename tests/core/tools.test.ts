@@ -216,7 +216,7 @@ describe('Tools', () => {
       mockFs = {} as FileSystem;
     });
 
-    it('should throw ToolNotFoundError for unknown tool', async () => {
+    it('phase 70: unknown tool → ToolResult.success=false + content + audit', async () => {
       const ctx = new ExecContextImpl({
         clawId: 'test',
         clawDir: '/test',
@@ -226,9 +226,9 @@ describe('Tools', () => {
         fs: mockFs,
       });
 
-      await expect(
-        executor.execute({ toolName: 'unknown', args: {}, ctx })
-      ).rejects.toThrow(ToolNotFoundError);
+      const result = await executor.execute({ toolName: 'unknown', args: {}, ctx });
+      expect(result.success).toBe(false);
+      expect(result.content).toContain('Tool \'unknown\' not found');
     });
 
     it('should execute tool successfully', async () => {
@@ -409,7 +409,7 @@ describe('Tools', () => {
       expect(ends).toHaveLength(3);
     });
 
-    it('should throw ToolInvalidInputError when required schema field is missing', async () => {
+    it('phase 70: bad args → ToolResult.success=false + validation error + audit', async () => {
       registry.register({
         name: 'strict',
         description: 'Needs path',
@@ -433,9 +433,9 @@ describe('Tools', () => {
         fs: mockFs,
       });
 
-      await expect(
-        executor.execute({ toolName: 'strict', args: {}, ctx })
-      ).rejects.toThrow(ToolInvalidInputError);
+      const result = await executor.execute({ toolName: 'strict', args: {}, ctx });
+      expect(result.success).toBe(false);
+      expect(result.content).toContain('Invalid input for tool \'strict\'');
     });
 
     it('should return success when async=true (fs-driven, no taskSystem needed)', async () => {
@@ -594,6 +594,13 @@ describe('Tools', () => {
       expect(results[0]).not.toBeNull();
       expect(results[0]!.content).toBe('read-result');
       expect(results[1]).toBeNull();
+    });
+
+    it('phase 70: ToolNotFoundError + ToolInvalidInputError class still importable for external SDK compat', () => {
+      expect(typeof ToolNotFoundError).toBe('function');
+      expect(typeof ToolInvalidInputError).toBe('function');
+      expect(new ToolNotFoundError('foo').name).toBe('ToolNotFoundError');
+      expect(new ToolInvalidInputError('bar', 'bad').name).toBe('ToolInvalidInputError');
     });
   });
 });

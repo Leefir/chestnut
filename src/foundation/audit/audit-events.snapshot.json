@@ -472,6 +472,8 @@
         ],
         "foundation_tools_audit-events": [
             "tool_caller_access_violation",
+            "tool_invalid_input",
+            "tool_not_found",
             "tools_invariant_violation"
         ],
         "foundation_snapshot_audit-events": [
