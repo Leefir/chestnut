@@ -11,8 +11,7 @@ import { ContractSystem } from '../../../src/core/contract/manager.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
 import { createToolRegistry } from '../../../src/foundation/tools/index.js';
 import { makeContractYaml } from '../../helpers/contract-yaml.js';
-import { makeAudit, waitForAuditEvent } from '../../helpers/audit.js';
-import { CONTRACT_AUDIT_EVENTS } from '../../../src/core/contract/audit-events.js';
+import { makeAudit } from '../../helpers/audit.js';
 
 let tmpDir: string;
 let clawDir: string;
@@ -70,28 +69,5 @@ describe('verification pipeline mutex (phase 1371 sub-3)', () => {
     ).rejects.toThrow('already in progress');
   });
 
-  it('concompleteSubtaskSync during active pipeline → rejected with race audit', async () => {
-    const { audit, events, emitter } = makeAudit();
-    const manager = makeManager(audit);
 
-    const contractId = await manager.create(makeContractYaml({
-      subtasks: [{ id: 't1', description: 'd1' }],
-      verification: [{ subtask_id: 't1', type: 'script', script_file: 'verify.sh' }],
-    }));
-
-    // Mock runScriptVerification to delay so pipeline stays active
-    vi.spyOn(manager as any, 'runScriptVerification').mockImplementation(() => new Promise(() => {}));
-
-    // Start async pipeline
-    manager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'e1' });
-    await new Promise(r => setTimeout(r, 50));
-
-    // Direct completeSubtaskSync should also be rejected (via the same mutex)
-    // But completeSubtaskSync is only reachable via runVerificationPipeline when no verification config.
-    // For contracts WITH verification, completeSubtask is only called internally.
-    // Instead, verify that the first pipeline call itself is not blocked.
-    const raceEvents = events.filter(e => e[0] === CONTRACT_AUDIT_EVENTS.VERIFICATION_PIPELINE_RACE_REJECTED);
-    // We already tested rejection above; this test is a no-op placeholder for completeness.
-    expect(true).toBe(true);
-  });
 });
