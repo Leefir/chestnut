@@ -1,5 +1,5 @@
 import { formatErr } from './utils/index.js';
-import { type ClawDir } from '../foundation/paths.js';
+
 
 export type ErrorCode =
   // Permission errors (1xx)
@@ -81,7 +81,7 @@ export class PermissionError extends ClawError {
 export class PathNotInClawSpaceError extends PermissionError {
   readonly code: ErrorCode = 'PATH_NOT_IN_CLAW_SPACE';
 
-  constructor(path: string, clawDir: ClawDir) {
+  constructor(path: string, clawDir: string) {
     super(
       `Path "${path}" is not within claw root`,
       { path, clawDir }

@@ -5,7 +5,7 @@
  */
 
 
-import type { TaskId } from '../core/async-task-system/types.js';
+
 
 export const DEFAULT_SUBAGENT_SYSTEM_PROMPT = `You are a subagent assigned to complete a specific task.
 You CANNOT spawn other subagents - use your available tools to complete the task yourself.
@@ -34,7 +34,7 @@ Do NOT attempt to fix issues, execute tasks, or make assumptions about missing e
  * phase 514 加
  */
 export function buildSubagentSystemPrompt(args: {
-  taskId: TaskId;              // subagent task id
+  taskId: string;              // subagent task id
   callerClawId: string;        // caller's clawId
   subagentsDir: string;        // e.g. 'tasks/subagents' — caller 装配期注入
   systemPrompt?: string;       // optional custom system prompt to append after prefix
