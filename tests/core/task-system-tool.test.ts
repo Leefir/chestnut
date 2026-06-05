@@ -133,7 +133,11 @@ describe('AsyncTaskSystem Tool Tasks', () => {
       {
         read: (p: string) => fs.readFile(path.join(testClawDir, p), 'utf-8'),
         write: (p: string, c: string) => fs.writeFile(path.join(testClawDir, p), c),
-        writeAtomic: (p: string, c: string) => fs.writeFile(path.join(testClawDir, p), c),
+        writeAtomic: async (p: string, c: string) => {
+          const tmp = `${path.join(testClawDir, p)}.tmp.${Date.now()}.${Math.random()}`;
+          await fs.writeFile(tmp, c);
+          await fs.rename(tmp, path.join(testClawDir, p));
+        },
         append: (p: string, c: string) => fs.appendFile(path.join(testClawDir, p), c),
         delete: (p: string) => fs.unlink(path.join(testClawDir, p)),
         move: (from: string, to: string) => fs.rename(path.join(testClawDir, from), path.join(testClawDir, to)),
@@ -306,7 +310,13 @@ describe('AsyncTaskSystem Tool Tasks', () => {
       
       await waitFor(async () => {
         const files = await fs.readdir(path.join(testClawDir, 'inbox', 'pending')).catch(() => [] as string[]);
-        return (files as string[]).some(f => f.endsWith('.md'));
+        const inboxFiles = (files as string[]).filter(f => f.endsWith('.md'));
+        if (inboxFiles.length === 0) return false;
+        const content = await fs.readFile(
+          path.join(testClawDir, 'inbox', 'pending', inboxFiles[0]),
+          'utf-8',
+        );
+        return /---\n[\s\S]*?\n---\n\n[\s\S]+/.test(content);
       });
       
       // Check inbox/pending/ for the error result message
@@ -1165,7 +1175,13 @@ describe('AsyncTaskSystem Tool Tasks', () => {
 
       await waitFor(async () => {
         const files = await fs.readdir(path.join(testClawDir, 'inbox', 'pending')).catch(() => [] as string[]);
-        return (files as string[]).some(f => f.endsWith('.md'));
+        const inboxFiles = (files as string[]).filter(f => f.endsWith('.md'));
+        if (inboxFiles.length === 0) return false;
+        const content = await fs.readFile(
+          path.join(testClawDir, 'inbox', 'pending', inboxFiles[0]),
+          'utf-8',
+        );
+        return /---\n[\s\S]*?\n---\n\n[\s\S]+/.test(content);
       });
 
       // Should have been called 3 times (1 initial + 2 retries)
