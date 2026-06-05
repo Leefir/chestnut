@@ -121,6 +121,9 @@ async function applyVerificationOutcome(
 ): Promise<ApplyOutcome> {
   return ctx.withProgressLock(contractId, async () => {
     const progress = await ctx.getProgress(contractId);
+    if (!progress) {
+      throw new ToolError(`Contract "${contractId}" progress unavailable: schema corruption`);
+    }
 
     if (progress.status === 'cancelled') {
       emitContractVerificationResetFailed(
@@ -253,6 +256,9 @@ export async function runVerificationPipeline(
   const { contractId, subtaskId, evidence, artifacts } = params;
 
   const contractYaml = await ctx.loadContractYaml(contractId);
+  if (!contractYaml) {
+    throw new ToolError(`Contract "${contractId}" unloadable: contract.yaml schema corruption`);
+  }
   const verificationConfig = contractYaml.verification?.find(a => a.subtask_id === subtaskId);
 
   if (verificationConfig) {
@@ -272,6 +278,9 @@ export async function runVerificationPipeline(
 
   await ctx.withProgressLock(contractId, async () => {
     const progress = await ctx.getProgress(contractId);
+    if (!progress) {
+      throw new ToolError(`Contract "${contractId}" progress unavailable: schema corruption`);
+    }
     if (!progress.subtasks[subtaskId]) {
       throw new ToolError(`Unknown subtask "${subtaskId}". Valid subtask IDs: ${formatValidIds(progress)}`);
     }
@@ -323,7 +332,7 @@ export async function runVerificationPipeline(
         // phase 1399: writeVerificationError 内防嵌套锁未调 archiveAndEmit，此处补调
         if (result.archived === false) {
           const progressAfterLock = await ctx.getProgress(contractId);
-          if (progressAfterLock.status === 'completed') {
+          if (progressAfterLock && progressAfterLock.status === 'completed') {
             await archiveAndEmit(ctx, contractId, contractYaml.title, 'ContractSystem.backgroundVerification.errorForceAccept');
           }
         }
@@ -397,6 +406,9 @@ export async function runVerificationInBackground(
 
     if (!('kind' in outcome) && outcome.passed && outcome.allCompleted) {
       const progressAfterLock = await ctx.getProgress(contractId);
+      if (!progressAfterLock) {
+        throw new ToolError(`Contract "${contractId}" progress unavailable: schema corruption`);
+      }
       if (progressAfterLock.status === 'cancelled') {
         emitContractCompleteOnCancelled(
           ctx.audit,

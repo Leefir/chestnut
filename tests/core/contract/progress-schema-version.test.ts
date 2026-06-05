@@ -60,7 +60,8 @@ describe('progress.json schema_version invariant — phase 1134', () => {
       'utf-8',
     );
 
-    await expect(manager.getProgress(contractId)).rejects.toThrow(/unknown schema_version 99/);
+    const result = await manager.getProgress(contractId);
+    expect(result).toBeNull();
 
     const calls = mockAudit.write.mock.calls;
     const versionCall = calls.find((c: any[]) => c[0] === CONTRACT_AUDIT_EVENTS.PROGRESS_SCHEMA_INVALID);

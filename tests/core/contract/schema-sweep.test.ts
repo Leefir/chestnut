@@ -71,7 +71,8 @@ describe('getProgress schema check', () => {
     const progressPath = path.join(clawDir, 'contract', 'active', contractId, 'progress.json');
     await fs.writeFile(progressPath, JSON.stringify({ foo: 'bar' }), 'utf-8');
 
-    await expect(manager.getProgress(contractId)).rejects.toThrow(/schema invalid/);
+    const result = await manager.getProgress(contractId);
+    expect(result).toBeNull();
     expect(mockAudit.write).toHaveBeenCalledWith(
       'contract_progress_schema_invalid',
       expect.stringContaining(`contractId=${contractId}`),
@@ -107,7 +108,8 @@ describe('getProgress schema check', () => {
       'utf-8',
     );
 
-    await expect(manager.getProgress(contractId)).rejects.toThrow(/schema invalid/);
+    const result = await manager.getProgress(contractId);
+    expect(result).toBeNull();
     expect(mockAudit.write).toHaveBeenCalledWith(
       'contract_progress_schema_invalid',
       expect.stringContaining(`contractId=${contractId}`),
@@ -146,7 +148,8 @@ describe('loadContractYaml schema check', () => {
       getProgress: async () => ({ contract_id: contractId, status: 'running', subtasks: {} }) as any,
     };
 
-    await expect(loadContractYaml(ctx, contractId)).rejects.toThrow(/schema invalid/);
+    const result = await loadContractYaml(ctx, contractId);
+    expect(result).toBeNull();
     expect(mockAudit.write).toHaveBeenCalledWith(
       'contract_yaml_schema_invalid',
       expect.stringContaining(`contractId=${contractId}`),
@@ -174,7 +177,8 @@ describe('loadContractYaml schema check', () => {
       getProgress: async () => ({ contract_id: contractId, status: 'running', subtasks: {} }) as any,
     };
 
-    await expect(loadContractYaml(ctx, contractId)).rejects.toThrow(/schema invalid/);
+    const result = await loadContractYaml(ctx, contractId);
+    expect(result).toBeNull();
   });
 });
 

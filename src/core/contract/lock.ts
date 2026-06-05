@@ -21,7 +21,7 @@ import {
 import { CONTRACT_AUDIT_EVENTS } from './audit-events.js';
 import { isAlive } from '../../foundation/process-exec/index.js';
 import type { ContractId } from './types.js';
-
+import { isolateCorruptedFile } from './_isolation-helper.js';
 
 export interface LockContext {
   fs: FileSystem;
@@ -55,7 +55,22 @@ export async function acquireLock(ctx: LockContext, lockPath: string): Promise<v
             ctx.audit,
             { path: lockPath, raw: raw.slice(0, AUDIT_PREVIEW_LEN) },
           );
-          throw new Error('lock schema invalid');
+          // phase 66: 隔离 corrupt lock 文件、然后继续重试
+          const contractDir = path.dirname(lockPath);
+          const contractId = path.basename(contractDir);
+          const isolated = await isolateCorruptedFile(ctx.fs, ctx.audit, {
+            contractId: makeContractId(contractId),
+            contractDir,
+            filename: 'progress.lock',
+            reason: 'schema_invalid',
+          });
+          if (isolated) {
+            lastReason = 'lock schema corruption isolated; retrying';
+            continue;
+          }
+          // 隔离失败 → fallback 到 unlink stale lock（像处理 corrupt lock file 一样）
+          if (await unlinkStaleLock(ctx, lockPath, 'corrupt_lock_file_schema_invalid')) continue;
+          lastReason = 'unlink failed on corrupt lock file after isolation failed';
         }
         const { pid, time } = parsed as { pid: number; time: number };
         if (!isAlive(pid)) {

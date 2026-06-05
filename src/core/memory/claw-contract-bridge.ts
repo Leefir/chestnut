@@ -20,7 +20,7 @@ export interface ClawContractBridgeDeps {
 }
 
 export interface ClawContractBridge {
-  getContractProgress(clawId: ClawId, contractId: ContractId): Promise<ProgressData>;
+  getContractProgress(clawId: ClawId, contractId: ContractId): Promise<ProgressData | null>;
   dispose(): Promise<void>;
 }
 

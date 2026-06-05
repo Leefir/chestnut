@@ -7,10 +7,12 @@ import * as yaml from 'js-yaml';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { AUDIT_PREVIEW_LEN } from '../../foundation/constants.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
+import { ToolError } from '../../foundation/errors.js';
 import type { Contract } from '../contract/types.js';
 import type { ContractYaml, ProgressData } from './types.js';
 import { emitContractYamlSchemaInvalid } from './audit-emit.js';
 import { CONTRACT_AUDIT_EVENTS } from './audit-events.js';
+import { isolateCorruptedFile } from './_isolation-helper.js';
 
 const CONTRACT_DEFAULTS = {
   schema_version: 1,
@@ -24,13 +26,14 @@ export interface PersistenceContext {
   fs: FileSystem;
   audit: AuditLog;
   contractDir: (contractId: ContractId) => Promise<string>;
-  getProgress: (contractId: ContractId) => Promise<ProgressData>;
+  getProgress: (contractId: ContractId) => Promise<ProgressData | null>;
+  markCrashed?: (contractId: ContractId, cause: string) => Promise<void>;
 }
 
 export async function loadContractYaml(
   ctx: PersistenceContext,
   contractId: ContractId,
-): Promise<ContractYaml> {
+): Promise<ContractYaml | null> {
   const dir = await ctx.contractDir(contractId);
   const contractPath = `${dir}/${contractId}/contract.yaml`;
   const content = await ctx.fs.read(contractPath);
@@ -49,7 +52,15 @@ export async function loadContractYaml(
         current: CONTRACT_CURRENT_SCHEMA_VERSION,
       },
     );
-    throw new Error(`contract.yaml unknown schema_version ${String(parsed.schema_version)} for contract ${contractId} (current=${CONTRACT_CURRENT_SCHEMA_VERSION})`);
+    const contractDir = await ctx.contractDir(contractId);
+    await isolateCorruptedFile(ctx.fs, ctx.audit, {
+      contractId, contractDir, filename: 'contract.yaml',
+      reason: 'unknown_schema_version',
+    });
+    if (ctx.markCrashed) {
+      await ctx.markCrashed(contractId, 'system: schema_corruption_contract_yaml');
+    }
+    return null;
   }
 
   if (
@@ -61,7 +72,15 @@ export async function loadContractYaml(
       ctx.audit,
       { contractId, path: contractPath, raw: content.slice(0, AUDIT_PREVIEW_LEN) },
     );
-    throw new Error(`contract.yaml schema invalid for contract ${contractId}`);
+    const contractDir = await ctx.contractDir(contractId);
+    await isolateCorruptedFile(ctx.fs, ctx.audit, {
+      contractId, contractDir, filename: 'contract.yaml',
+      reason: 'schema_invalid',
+    });
+    if (ctx.markCrashed) {
+      await ctx.markCrashed(contractId, 'system: schema_corruption_contract_yaml');
+    }
+    return null;
   }
   // Backwards-compat: old yaml used `acceptance` field, now renamed to `verification`
   // SUNSET per phase 1257 r134 C fork: 30 天 audit `CONTRACT_YAML_LEGACY_ACCEPTANCE_FIELD` 0 触发 → r135+ phase 删本 fallback
@@ -110,7 +129,13 @@ export async function loadContract(
   contractId: ContractId,
 ): Promise<Contract> {
   const yamlContract = await loadContractYaml(ctx, contractId);
+  if (!yamlContract) {
+    throw new ToolError(`Contract "${contractId}" unloadable: contract.yaml schema corruption`);
+  }
   const progress = await ctx.getProgress(contractId);
+  if (!progress) {
+    throw new ToolError(`Contract "${contractId}" unloadable: progress schema corruption`);
+  }
   return {
     id: yamlContract.id ?? contractId,
     title: yamlContract.title,
@@ -156,6 +181,9 @@ export async function checkAllSubtasksCompleted(
   progress: ProgressData,
 ): Promise<boolean> {
   const contractYaml = await loadContractYaml(ctx, contractId);
+  if (!contractYaml) {
+    throw new ToolError(`Contract "${contractId}" unloadable: contract.yaml schema corruption`);
+  }
   return contractYaml.subtasks.every(st => {
     const subtask = progress.subtasks[st.id];
     return subtask?.status === 'completed';

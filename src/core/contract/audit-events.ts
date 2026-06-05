@@ -77,6 +77,9 @@ export const CONTRACT_AUDIT_EVENTS = {
   ARCHIVE_RECOVERED: 'contract_archive_recovered',
   // phase 1371 sub-3: verification pipeline mutex race rejection audit trace
   VERIFICATION_PIPELINE_RACE_REJECTED: 'verification_pipeline_race_rejected',
+  // phase 66 NEW: schema corruption isolation
+  CONTRACT_FILE_ISOLATED: 'contract_file_isolated',
+  CONTRACT_FILE_ISOLATION_FAILED: 'contract_file_isolation_failed',
   // phase 1235 B.3: typed emit empty contractId invariant
   TYPED_EMIT_INVARIANT_VIOLATION: 'contract_typed_emit_invariant_violation',
   // phase 1424: contract auditor 周期 LLM 对照 expectations 检查 + inbox 高优反馈

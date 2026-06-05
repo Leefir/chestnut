@@ -23,7 +23,7 @@ export interface MemorySystemOptions {
   /** 临时构建 per-claw FileSystem 的 factory（assembly 注入 / 业务 0 触 L1 impl）*/
   clawFsFactory: (clawDir: ClawDir) => FileSystem;
   /** M#3：random-dream 读取 contract progress 走 ContractSystem API */
-  getContractProgress?: (clawId: ClawId, contractId: ContractId) => Promise<ProgressData>;
+  getContractProgress?: (clawId: ClawId, contractId: ContractId) => Promise<ProgressData | null>;
 }
 
 export class MemorySystem {

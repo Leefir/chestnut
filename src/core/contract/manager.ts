@@ -45,6 +45,7 @@ import {
   emitContractProgressSchemaInvalid,
 } from './audit-emit.js';
 import { CONTRACT_AUDIT_EVENTS } from './audit-events.js';
+import { isolateCorruptedFile } from './_isolation-helper.js';
 import { CONTRACT_ACTIVE_DIR, CONTRACT_PAUSED_DIR, CONTRACT_ARCHIVE_DIR } from './dirs.js';
 import { UUID_SHORT_LEN } from '../../constants.js';
 
@@ -254,11 +255,9 @@ export class ContractSystem {
     }
     if (!active) return;
 
-    let contractYaml: ContractYaml;
-    try {
-      contractYaml = await this.loadContractYaml(makeContractId(active.id));
-    } catch {
-      return;
+    const contractYaml = await this.loadContractYaml(makeContractId(active.id));
+    if (!contractYaml) {
+      return;  // 容错：loadContractYaml schema corruption 不影响 Runtime
     }
 
     const interval = contractYaml.audit_interval ?? 0;
@@ -270,11 +269,9 @@ export class ContractSystem {
     // 同步 mark：防 fire-and-forget 期间 Runtime 再次进入 maybeAuditStep 时重复触发
     this.auditorState.set(active.id, currentStep);
 
-    let progress: ProgressData;
-    try {
-      progress = await this.getProgress(makeContractId(active.id));
-    } catch {
-      return;
+    const progress = await this.getProgress(makeContractId(active.id));
+    if (!progress) {
+      return;  // 容错：getProgress schema corruption 不影响 Runtime
     }
 
     const done: string[] = [];
@@ -333,6 +330,7 @@ export class ContractSystem {
       audit: this.audit,
       contractDir: (id) => this.contractDir(id),
       getProgress: (id) => this.getProgress(id),
+      markCrashed: (id, cause) => this.markCrashed(id, cause),
     };
   }
 
@@ -484,12 +482,14 @@ export class ContractSystem {
           if (progress.status === 'archive_pending_recovery') {
             const contractId = makeContractId(progress.contract_id ?? entry.name);
             const contractYaml = await this.loadContractYaml(contractId);
-            await archiveAndEmit(
-              this._verificationCtx(),
-              contractId,
-              contractYaml.title,
-              'ContractSystem.init.bootReconcile',
-            );
+            if (contractYaml) {
+              await archiveAndEmit(
+                this._verificationCtx(),
+                contractId,
+                contractYaml.title,
+                'ContractSystem.init.bootReconcile',
+              );
+            }
           }
         } catch {
           // silent: corrupted progress.json boot reconcile best-effort skip
@@ -711,7 +711,7 @@ export class ContractSystem {
     return contractId;
   }
 
-  async getProgress(contractId: ContractId): Promise<ProgressData> {
+  async getProgress(contractId: ContractId): Promise<ProgressData | null> {
     const dir = await this.contractDir(contractId);
     const progressPath = `${dir}/${contractId}/progress.json`;
     const content = await this.fs.read(progressPath);
@@ -730,7 +730,21 @@ export class ContractSystem {
           current: PROGRESS_CURRENT_SCHEMA_VERSION,
         },
       );
-      throw new Error(`progress.json unknown schema_version ${String(parsed.schema_version)} for contract ${contractId} (current=${PROGRESS_CURRENT_SCHEMA_VERSION})`);
+      await isolateCorruptedFile(this.fs, this.audit, {
+        contractId, contractDir: `${dir}/${contractId}`, filename: 'progress.json',
+        reason: 'unknown_schema_version',
+      });
+      try {
+        await this.markCrashed(contractId, 'system: schema_corruption_progress_json');
+      } catch (markErr) {
+        this.audit.write(
+          CONTRACT_AUDIT_EVENTS.CONTRACT_FILE_ISOLATION_FAILED,
+          `contractId=${contractId}`,
+          `context=markCrashed_after_isolation`,
+          `reason=${formatErr(markErr)}`,
+        );
+      }
+      return null;
     }
 
     if (
@@ -746,7 +760,21 @@ export class ContractSystem {
           raw: content.slice(0, AUDIT_PREVIEW_LEN),
         },
       );
-      throw new Error(`progress.json schema invalid for contract ${contractId}`);
+      await isolateCorruptedFile(this.fs, this.audit, {
+        contractId, contractDir: `${dir}/${contractId}`, filename: 'progress.json',
+        reason: 'schema_invalid',
+      });
+      try {
+        await this.markCrashed(contractId, 'system: schema_corruption_progress_json');
+      } catch (markErr) {
+        this.audit.write(
+          CONTRACT_AUDIT_EVENTS.CONTRACT_FILE_ISOLATION_FAILED,
+          `contractId=${contractId}`,
+          `context=markCrashed_after_isolation`,
+          `reason=${formatErr(markErr)}`,
+        );
+      }
+      return null;
     }
     return parsed as ProgressData;
   }
@@ -764,7 +792,7 @@ export class ContractSystem {
     }
   }
 
-  private async loadContractYaml(contractId: ContractId): Promise<ContractYaml> {
+  private async loadContractYaml(contractId: ContractId): Promise<ContractYaml | null> {
     return loadYaml(this._persistenceCtx(), contractId);
   }
 

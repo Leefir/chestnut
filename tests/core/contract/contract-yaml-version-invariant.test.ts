@@ -31,7 +31,8 @@ describe('phase 1019 r124 E fork: contract.yaml schema_version invariant', () =>
       getProgress: async () => ({ contract_id: contractId, status: 'running', subtasks: {} }) as any,
     };
 
-    await expect(loadContractYaml(ctx, contractId)).rejects.toThrow(/unknown schema_version/);
+    const result = await loadContractYaml(ctx, contractId);
+    expect(result).toBeNull();
     const calls = mockAudit.write.mock.calls;
     const versionCall = calls.find((c: any[]) => c[0] === CONTRACT_AUDIT_EVENTS.CONTRACT_YAML_SCHEMA_INVALID);
     expect(versionCall).toBeDefined();

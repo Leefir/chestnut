@@ -50,8 +50,8 @@ export interface VerificationContractContext {
   /** phase 19 Step C: optional notifyClaw injection (DIP). Default = foundation/messaging direct call. */
   notifyClaw?: NotifyClawFn;
   contractDir: (contractId: ContractId) => Promise<string>;
-  loadContractYaml: (contractId: ContractId) => Promise<ContractYaml>;
-  getProgress: (contractId: ContractId) => Promise<ProgressData>;
+  loadContractYaml: (contractId: ContractId) => Promise<ContractYaml | null>;
+  getProgress: (contractId: ContractId) => Promise<ProgressData | null>;
   saveProgress: (contractId: ContractId, progress: ProgressData) => Promise<void>;
   checkAllSubtasksCompleted: (contractId: ContractId, progress: ProgressData) => Promise<boolean>;
   moveContractToArchive: (contractId: ContractId) => Promise<void>;

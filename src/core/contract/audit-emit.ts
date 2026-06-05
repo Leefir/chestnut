@@ -764,5 +764,25 @@ export function emitContractVerificationPipelineRaceRejected(
   audit.write(CONTRACT_AUDIT_EVENTS.VERIFICATION_PIPELINE_RACE_REJECTED, ...cols);
 }
 
+// ─── CONTRACT_FILE_ISOLATED ─────────────────────────────────────────────────
+export function emitContractFileIsolated(
+  audit: AuditLog,
+  opts: {
+    contractId: ContractId;
+    filename: string;
+    reason: string;
+    backupPath: string;
+  },
+): void {
+  if (!assertContractIdNonEmpty(audit, opts.contractId, 'emitContractFileIsolated')) return;
+  audit.write(
+    CONTRACT_AUDIT_EVENTS.CONTRACT_FILE_ISOLATED,
+    `contractId=${opts.contractId}`,
+    `filename=${opts.filename}`,
+    `reason=${opts.reason}`,
+    `backupPath=${opts.backupPath}`,
+  );
+}
+
 // ─── Legacy helper: format error ──────────────────────────────────────────────
 export { formatErr };

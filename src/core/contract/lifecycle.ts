@@ -6,6 +6,7 @@
 import type { ContractId } from './types.js';
 import type { Contract } from '../contract/types.js';
 import type { ProgressData } from './types.js';
+import { PROGRESS_CURRENT_SCHEMA_VERSION } from './persistence.js';
 import { lockContract, releaseLock, type LockContext } from './lock.js';
 import { ToolError } from '../../foundation/errors.js';
 import { formatErr } from '../../foundation/utils/index.js';
@@ -26,7 +27,7 @@ export interface LifecycleContext extends LockContext {
   archiveDir: ArchiveDir;
   contractDir: (contractId: ContractId) => Promise<string>;
   loadContract: (contractId: ContractId) => Promise<Contract>;
-  getProgress: (contractId: ContractId) => Promise<ProgressData>;
+  getProgress: (contractId: ContractId) => Promise<ProgressData | null>;
   saveProgress: (contractId: ContractId, progress: ProgressData) => Promise<void>;
   checkAllSubtasksCompleted: (contractId: ContractId, progress: ProgressData) => Promise<boolean>;
   /** phase 1020 (r124 C fork): cancelContract abort propagation to active verifier subagents */
@@ -56,6 +57,9 @@ export async function pauseContract(
   try {
     // status update in SOURCE dir before move (canonical decision crash-safe)
     const progress = await ctx.getProgress(contractId);
+    if (!progress) {
+      throw new ToolError(`Cannot pause contract "${contractId}": progress unavailable (schema corruption)`);
+    }
     progress.status = 'paused';
     progress.checkpoint = checkpointNote;
     await ctx.saveProgress(contractId, progress);
@@ -101,6 +105,9 @@ export async function resumeContract(
   const targetLockPath = `${ctx.activeDir}/${contractId}/progress.lock`;
   try {
     const progress = await ctx.getProgress(contractId);
+    if (!progress) {
+      throw new ToolError(`Cannot resume contract "${contractId}": progress unavailable (schema corruption)`);
+    }
     progress.status = 'running';
     progress.checkpoint = null;
     await ctx.saveProgress(contractId, progress);
@@ -143,6 +150,9 @@ export async function cancelContract(
   try {
     // (2) canonical decision: saveProgress first (durable cancel mark)
     const progress = await ctx.getProgress(contractId);
+    if (!progress) {
+      throw new ToolError(`Cannot cancel contract "${contractId}": progress unavailable (schema corruption)`);
+    }
     progress.status = 'cancelled';
     progress.checkpoint = `cancelled: ${reason}`;
     await ctx.saveProgress(contractId, progress);
@@ -206,7 +216,30 @@ export async function markCrashed(
   const targetLockPath = `${ctx.archiveDir}/${contractId}/progress.lock`;
   try {
     // (2) canonical decision: saveProgress first (durable crashed mark)
-    const progress = await ctx.getProgress(contractId);
+    let progress: ProgressData;
+    try {
+      const p = await ctx.getProgress(contractId);
+      if (!p) {
+        throw new Error('progress unavailable (schema corruption)');
+      }
+      progress = p;
+    } catch (getProgressErr) {
+      // phase 66: progress.json 自身 schema corruption → fallback minimal progress
+      ctx.audit.write(
+        'mark_crashed_graceful_fallback',
+        `contractId=${contractId}`,
+        `reason=getProgress_failed`,
+        `cause=${cause}`,
+        `error=${formatErr(getProgressErr)}`,
+      );
+      progress = {
+        schema_version: PROGRESS_CURRENT_SCHEMA_VERSION,
+        contract_id: contractId,
+        status: 'crashed',
+        checkpoint: `crashed: ${cause}`,
+        subtasks: {},
+      };
+    }
     progress.status = 'crashed';
     progress.checkpoint = `crashed: ${cause}`;
     await ctx.saveProgress(contractId, progress);
@@ -236,6 +269,7 @@ export async function isContractComplete(
   contractId: ContractId,
 ): Promise<boolean> {
   const progress = await ctx.getProgress(contractId);
+  if (!progress) return false;
   return ctx.checkAllSubtasksCompleted(contractId, progress);
 }
 

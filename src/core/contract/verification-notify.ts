@@ -19,7 +19,7 @@ function resolveNotify(ctx: VerificationContext): NotifyClawFn {
 import type { ContractId } from './types.js';
 import type { SubtaskId } from './types.js';
 import { formatErr } from '../../foundation/utils/index.js';
-import { ToolTimeoutError } from '../../foundation/errors.js';
+import { ToolError, ToolTimeoutError } from '../../foundation/errors.js';
 import type { LastFailedFeedback, AcceptanceFailedNotification } from './types.js';
 import {
   emitContractNotifyFailed,
@@ -164,6 +164,9 @@ export async function handleVerificationErrorRetry(
   try {
     await ctx.withProgressLock(contractId, async () => {
       const progress = await ctx.getProgress(contractId);
+      if (!progress) {
+        throw new ToolError(`Contract "${contractId}" unloadable: progress schema corruption`);
+      }
       const subtask = progress.subtasks[subtaskId];
       if (subtask && subtask.status === 'in_progress') {
         subtask.status = 'todo';
@@ -171,6 +174,9 @@ export async function handleVerificationErrorRetry(
         subtask.last_failed_feedback = { feedback: feedbackText, cause };
 
         const contractYaml = await ctx.loadContractYaml(contractId);
+        if (!contractYaml) {
+          throw new ToolError(`Contract "${contractId}" unloadable: contract.yaml schema corruption`);
+        }
         const maxAttempts = contractYaml.verification_attempts ?? 3;
 
         if (subtask.retry_count >= maxAttempts) {

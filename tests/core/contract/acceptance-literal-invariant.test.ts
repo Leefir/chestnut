@@ -23,8 +23,8 @@ describe('phase 1267 D.3: acceptance literal 0 hit in src/core/contract/ (except
         const line = lines[i];
         if (!line.includes('acceptance')) continue;
 
-        // Allow the backwards-compat section in persistence.ts (lines ~66-77)
-        if (entry === 'persistence.ts' && i >= 65 && i <= 76) continue;
+        // Allow the backwards-compat section in persistence.ts (lines ~84-97)
+        if (entry === 'persistence.ts' && i >= 83 && i <= 97) continue;
 
         // Allow audit event constant names that reference legacy field
         if (line.includes('CONTRACT_YAML_LEGACY_ACCEPTANCE_FIELD')) continue;

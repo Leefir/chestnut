@@ -7,6 +7,7 @@ import type { VerificationContext } from './verification-types.js';
 import type { VerificationResult, SubtaskId } from './types.js';
 import { safeNotify } from './verification-notify.js';
 import { formatValidIds } from './verification-format.js';
+import { ToolError } from '../../foundation/errors.js';
 import { formatErr } from '../../foundation/utils/index.js';
 import type { ContractId } from './types.js';
 import {
@@ -41,6 +42,9 @@ export async function archiveAndEmit(
     try {
       await ctx.withProgressLock(contractId, async () => {
         const progress = await ctx.getProgress(contractId);
+        if (!progress) {
+          throw new ToolError(`Contract "${contractId}" progress unavailable: schema corruption`);
+        }
         if (progress.status === 'completed') {
           progress.status = 'running';
           await ctx.saveProgress(contractId, progress);
@@ -51,6 +55,9 @@ export async function archiveAndEmit(
       try {
         await ctx.withProgressLock(contractId, async () => {
           const progress = await ctx.getProgress(contractId);
+          if (!progress) {
+            throw new ToolError(`Contract "${contractId}" progress unavailable: schema corruption`);
+          }
           progress.status = 'archive_pending_recovery';
           await ctx.saveProgress(contractId, progress);
         });
@@ -96,9 +103,15 @@ export async function completeSubtaskSync(
   let allCompleted = false;
   let result: VerificationResult = { passed: true, feedback: 'No verification criteria configured' };
   const contractYaml = await ctx.loadContractYaml(contractId);
+  if (!contractYaml) {
+    throw new ToolError(`Contract "${contractId}" unloadable: contract.yaml schema corruption`);
+  }
 
   await ctx.withProgressLock(contractId, async () => {
     const progress = await ctx.getProgress(contractId);
+    if (!progress) {
+      throw new ToolError(`Contract "${contractId}" progress unavailable: schema corruption`);
+    }
 
     if (progress.status === 'cancelled') {
       emitContractVerificationResetFailed(
@@ -177,6 +190,9 @@ export async function completeSubtaskSync(
 
   if (allCompleted) {
     const progressAfterLock = await ctx.getProgress(contractId);
+    if (!progressAfterLock) {
+      throw new ToolError(`Contract "${contractId}" progress unavailable: schema corruption`);
+    }
     if (progressAfterLock.status === 'cancelled') {
       emitContractCompleteOnCancelled(ctx.audit, { contractId, subtaskId });
       return { ...result, allCompleted: false };

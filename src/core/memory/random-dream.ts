@@ -42,7 +42,7 @@ export interface RandomDreamOptions {
   subagentMaxSteps?: number;
   signal?: AbortSignal;
   /** 读取指定 claw+contract 的 progress（M#3：不走直接文件访问） */
-  getContractProgress?: (clawId: ClawId, contractId: ContractId) => Promise<ProgressData>;
+  getContractProgress?: (clawId: ClawId, contractId: ContractId) => Promise<ProgressData | null>;
 }
 
 interface WeightedContract {
@@ -145,7 +145,7 @@ async function computeWeight(
   processedIds: Set<string>,
   clawsSeen: Set<string>,     // 本次已选中的 clawId 集合
   audit: AuditLog,
-  getContractProgress?: (clawId: ClawId, contractId: ContractId) => Promise<ProgressData>,
+  getContractProgress?: (clawId: ClawId, contractId: ContractId) => Promise<ProgressData | null>,
 ): Promise<{ weight: number; hint: string }> {
   let weight = 10;
   const hints: string[] = [];
@@ -167,6 +167,9 @@ async function computeWeight(
   if (getContractProgress) {
     try {
       const progress = await getContractProgress(clawId, contractId);
+      if (!progress) {
+        throw new Error('progress unavailable (schema corruption)');
+      }
       const subtasks = Object.values(progress.subtasks ?? {});
       const factors = calculateWeightFactors(subtasks);
       weight += factors.recencyBonus + factors.difficultyBonus;
@@ -217,7 +220,7 @@ async function discoverWeightedContracts(
   fs: FileSystem,
   state: RandomDreamState,
   audit: AuditLog,
-  getContractProgress?: (clawId: ClawId, contractId: ContractId) => Promise<ProgressData>,
+  getContractProgress?: (clawId: ClawId, contractId: ContractId) => Promise<ProgressData | null>,
 ): Promise<WeightedContract[]> {
   const processedIds = new Set(state.processedContractIds);
   const clawsSeen = new Set<string>();
