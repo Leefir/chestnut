@@ -18,10 +18,6 @@ export function getWorkspaceRoot(): string {
   return process.env.CHESTNUT_ROOT ?? process.cwd();
 }
 
-export function getGlobalConfigPath(): string {
-  return path.join(getWorkspaceRoot(), '.chestnut', 'config.yaml');
-}
-
 /**
  * Validate identifier-class param (clawId / skillName / etc) against traversal.
  * @throws Error if name contains '/', '..', is empty, '.' or starts with '.'.

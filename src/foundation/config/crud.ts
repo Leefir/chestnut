@@ -16,10 +16,8 @@ import {
   patchYamlConfig,
   configExists,
 } from './loader.js';
-import {
-  getGlobalConfigPath,
-  getClawConfigPath,
-} from '../paths.js';
+import { getClawConfigPath } from '../paths.js';
+import { getGlobalConfigPath } from './global-config-path.js';
 import type { FileSystem } from '../fs/types.js';
 
 export function loadGlobalConfig(deps: { fsFactory: (baseDir: string) => FileSystem }): ClawGlobalConfig {

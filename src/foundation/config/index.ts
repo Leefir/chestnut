@@ -6,7 +6,7 @@
  * - crud.ts (load/save/exists)
  * - adapters.ts (toProviderConfig + buildLLMConfig)
  *
- * Path getters (getWorkspaceRoot, getClawDir, ...) now live in foundation/paths.ts.
+ * Path getters live in foundation/paths.ts; getGlobalConfigPath own here (phase 73).
  */
 
 // Types (schemas.ts deleted in phase 10 Step D)
@@ -21,12 +21,12 @@ export type {
 // Path getters + shared constants (canonical owner: foundation/paths.ts)
 export {
   getWorkspaceRoot,
-  getGlobalConfigPath,
   getClawDir,
   getChestnutRoot,
   getNamedSubrootDir,
   getClawConfigPath,
 } from '../paths.js';
+export { getGlobalConfigPath } from './global-config-path.js';
 
 // CRUD
 export {
