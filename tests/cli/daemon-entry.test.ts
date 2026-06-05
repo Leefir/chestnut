@@ -24,6 +24,16 @@ vi.mock('../../src/daemon/daemon.js', () => ({
   createDaemonCommand: vi.fn(() => vi.fn().mockResolvedValue(undefined)),
 }));
 
+/**
+ * daemon-entry.ts top-level `await import` 拉 assembly + daemon + foundation
+ * transitive graph (~10+ module)。isolated project (isolate: true) 591 file
+ * 并行冷 transform 下超 vitest 全局 hookTimeout 10s floor (实测 report:
+ * transform 40s / collect 137s)。3× baseline 经验余量、不调全局 config 避影响
+ * 其他 110 isolated test。未来若 30s 仍不够 → 信号是 import graph 又重了、
+ * 应回查 daemon-entry import 而非加 budget。
+ */
+const HEAVY_TRANSITIVE_IMPORT_HOOK_TIMEOUT_MS = 30_000;
+
 describe('daemon-entry shim audit', () => {
   let originalArgv: string[];
   let errorSpy: vi.SpyInstance;
@@ -35,7 +45,7 @@ describe('daemon-entry shim audit', () => {
     // 单次 import 触发 daemon-entry.js top-level 副作用 (装配 audit sink + register handler)
     await import('../../src/daemon-entry.js');
     await Promise.resolve(); // 让 top-level await 完成
-  });
+  }, HEAVY_TRANSITIVE_IMPORT_HOOK_TIMEOUT_MS);
 
   afterAll(() => {
     process.argv = originalArgv;
