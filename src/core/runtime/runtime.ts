@@ -36,7 +36,7 @@ import { escapeForLog } from '../../foundation/tools/index.js';
 import { MaxStepsExceededError, WallTimeExceededError, ConsecutiveParseErrorsExceededError, ConsecutiveMaxTokensToolUseError } from '../agent-executor/index.js';
 import { DEFAULT_MAX_STEPS } from '../agent-executor/index.js';
 import { LLMAllProvidersFailedError } from '../../foundation/llm-orchestrator/index.js';
-import { makeContractId } from '../../foundation/identity/index.js';
+import { makeContractId } from '../contract/types.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { Snapshot } from '../../foundation/snapshot/index.js';
 import type { InboxReader, InboxEntry, InboxHandle, OutboxWriter } from '../../foundation/messaging/index.js';
