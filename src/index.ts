@@ -20,7 +20,7 @@ export type { CallerType } from './core/caller-types.js';
 export type { ErrorCode, ErrorDetails } from './foundation/errors.js';
 export {
   ClawError, PermissionError, PathNotInClawSpaceError, WriteOperationForbiddenError,
-  ToolError, ToolNotFoundError, ToolInvalidInputError, ToolTimeoutError, isProgrammingBug,
+  ToolError, ToolTimeoutError, isProgrammingBug,
 } from './foundation/errors.js';
 export {
   LLMError, LLMRateLimitError, LLMTimeoutError, LLMAuthError, LLMNetworkError,

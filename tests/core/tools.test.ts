@@ -14,9 +14,7 @@ import { ExecContextImpl } from '../../src/foundation/tools/context.js';
 import type { Tool, ToolResult } from '../../src/foundation/tool-protocol/index.js';
 import type { FileSystem } from '../../src/foundation/fs/types.js';
 import {
-  ToolNotFoundError,
   ToolTimeoutError,
-  ToolInvalidInputError,
 } from '../../src/foundation/errors.js';
 
 describe('Tools', () => {
@@ -594,13 +592,6 @@ describe('Tools', () => {
       expect(results[0]).not.toBeNull();
       expect(results[0]!.content).toBe('read-result');
       expect(results[1]).toBeNull();
-    });
-
-    it('phase 70: ToolNotFoundError + ToolInvalidInputError class still importable for external SDK compat', () => {
-      expect(typeof ToolNotFoundError).toBe('function');
-      expect(typeof ToolInvalidInputError).toBe('function');
-      expect(new ToolNotFoundError('foo').name).toBe('ToolNotFoundError');
-      expect(new ToolInvalidInputError('bar', 'bad').name).toBe('ToolInvalidInputError');
     });
   });
 });

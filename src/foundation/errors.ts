@@ -108,25 +108,6 @@ export class ToolError extends ClawError {
   readonly code: ErrorCode = 'TOOL_EXECUTION_FAILED';
 }
 
-export class ToolNotFoundError extends ToolError {
-  readonly code: ErrorCode = 'TOOL_NOT_FOUND';
-
-  constructor(toolName: string) {
-    super(`Tool "${toolName}" not found`, { toolName });
-  }
-}
-
-export class ToolInvalidInputError extends ToolError {
-  readonly code: ErrorCode = 'TOOL_INVALID_INPUT';
-
-  constructor(toolName: string, validationError: string) {
-    super(
-      `Invalid input for tool "${toolName}": ${validationError}`,
-      { toolName, validationError }
-    );
-  }
-}
-
 export class ToolTimeoutError extends ToolError {
   readonly code: ErrorCode = 'TOOL_TIMEOUT';
 
