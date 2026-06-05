@@ -456,7 +456,8 @@
       "skill_duplicate_rejected",
       "skill_load_failed",
       "skill_namespace_invalid",
-      "skill_registry_loaded"
+      "skill_registry_loaded",
+      "skill_version_invalid"
     ],
     "foundation_audit_audit-events": [
       "audit_fallback_dropped"

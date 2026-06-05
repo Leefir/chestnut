@@ -9,4 +9,5 @@ export const SKILL_AUDIT_EVENTS = {
   DUPLICATE_REJECTED: 'skill_duplicate_rejected',
   NAMESPACE_INVALID: 'skill_namespace_invalid',
   DIR_NOT_FOUND: 'skill_dir_not_found',
+  VERSION_INVALID: 'skill_version_invalid',   // NEW phase 59 / skillsystem-auditor §P4
 } as const;

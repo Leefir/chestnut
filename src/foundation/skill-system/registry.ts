@@ -15,6 +15,15 @@ import { SKILL_AUDIT_EVENTS } from './audit-events.js';
 // phase 1235 B.1: namespace pattern + duplicate reject
 const SKILL_NAME_NAMESPACE_PATTERN = /^[a-z0-9-]+(\/[a-z0-9-]+)?$/;
 
+/**
+ * Minimal semver prefix match: accepts X.Y.Z + optional pre-release / build metadata.
+ * Examples accepted: 1.0.0, 0.0.0, 1.2.3-beta, 1.2.3+build.123
+ * Examples rejected: latest, v1, 1.0, beta, foo
+ *
+ * phase 59 / skillsystem-auditor §P4 follow-up.
+ */
+const SKILL_VERSION_PATTERN = /^\d+\.\d+\.\d+/;
+
 export class SkillDuplicateError extends Error {
   constructor(
     public readonly skillName: string,
@@ -182,6 +191,18 @@ export class SkillSystem {
     };
     // Phase 1200: ratify first-wins design row + audit fallback usage
     const versionSource: 'frontmatter' | 'fallback_default' = frontmatter.version ? 'frontmatter' : 'fallback_default';
+
+    // phase 59 / skillsystem-auditor §P4: semver validation (observation only)
+    if (versionSource === 'frontmatter' && !SKILL_VERSION_PATTERN.test(meta.version)) {
+      this.audit?.write(
+        SKILL_AUDIT_EVENTS.VERSION_INVALID,
+        `name=${meta.name}`,
+        `version=${meta.version}`,
+        `expected=X.Y.Z (semver prefix)`,
+        `skillDir=${skillDir}`,
+      );
+      // 不抛、不修正 meta.version、observation only
+    }
 
     // phase 1235 B.1: namespace validation
     if (!SKILL_NAME_NAMESPACE_PATTERN.test(meta.name)) {
