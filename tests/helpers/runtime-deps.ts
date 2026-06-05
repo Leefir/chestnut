@@ -11,6 +11,7 @@ import { LLMOrchestratorImpl } from '../../src/foundation/llm-orchestrator/orche
 import { ToolRegistryImpl } from '../../src/foundation/tools/registry.js';
 import { ToolExecutorImpl } from '../../src/foundation/tools/executor.js';
 import { createSkillSystem } from '../../src/foundation/skill-system/index.js';
+import { CLAW_SUBDIRS } from '../../src/assembly/claw-subdirs.js';
 import { createClawPermissionChecker } from '../../src/core/permissions/claw-permissions.js';
 import { ContractSystem } from '../../src/core/contract/manager.js';
 import { AsyncTaskSystem } from '../../src/core/async-task-system/system.js';
@@ -91,5 +92,7 @@ export async function makeRuntimeDeps(input: MakeRuntimeDepsInput): Promise<Runt
       return createDialogStore(systemFs, 'dialog', auditWriter, 'current.json', clawId);
     },
     formatterRegistry,
+    // phase 69: DI 注入 claw 子目录列表
+    clawSubdirs: CLAW_SUBDIRS,
   };
 }

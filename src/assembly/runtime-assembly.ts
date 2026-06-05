@@ -24,6 +24,7 @@ import { TASKS_SYNC_WRITE_DIR } from '../foundation/file-tool/index.js';
 import { createShadowTool } from '../core/shadow-system/index.js';
 import { resolveChestnutRoot } from '../foundation/paths.js';
 import { MOTION_CLAW_ID } from '../constants.js';
+import { CLAW_SUBDIRS } from './claw-subdirs.js';
 import type { AssembleConfig } from './types.js';
 
 export interface RuntimeAssemblyInput {
@@ -135,6 +136,8 @@ export async function createRuntimeAssembly(
       contractNotifyCallback,
       // phase 521: regime switch coordination / Assembly own factory / closure capture 5 const
       dialogStoreFactory: makeDialogStore,
+      // phase 69: L6 Assembly 装配期注入 claw 子目录列表
+      clawSubdirs: CLAW_SUBDIRS,
       ...messagingDeps,
       ...toolingDeps,
       ...lifecycleDeps,

@@ -28,6 +28,7 @@ import { createOutboxWriter } from '../../src/foundation/messaging/index.js';
 import { OutboxWriter } from '../../src/foundation/messaging/index.js';
 import { createOutboxWriter } from '../../src/foundation/messaging/index.js';
 import { INBOX_PENDING_DIR, INBOX_DONE_DIR, INBOX_FAILED_DIR } from '../../src/foundation/messaging/dirs.js';
+import { CLAW_SUBDIRS } from '../../src/assembly/claw-subdirs.js';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -49,6 +50,7 @@ describe('Runtime.initialize() failure audits', () => {
 
     return {
       systemFs, clawFs, auditWriter, snapshot, sessionManager, inboxReader, outboxWriter,
+      clawSubdirs: CLAW_SUBDIRS,
     };
   }
 
@@ -70,6 +72,11 @@ describe('Runtime.initialize() failure audits', () => {
       } as any,
       contextInjector: {} as any,
       execContext: {} as any,
+      dialogStoreFactory: vi.fn(),
+      formatterRegistry: {} as any,
+      fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir }),
+      permissionChecker: {} as any,
+      skillRegistry: {} as any,
     };
   }
 

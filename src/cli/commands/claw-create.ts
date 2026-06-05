@@ -3,8 +3,9 @@
  */
 
 import {
-  loadGlobalConfig, saveClawConfig, clawExists, getClawDir, CLAW_SUBDIRS,
+  loadGlobalConfig, saveClawConfig, clawExists, getClawDir,
 } from '../../foundation/config/index.js';
+import { CLAW_SUBDIRS } from '../../assembly/claw-subdirs.js';
 // path module intentionally not used in this file after refactor
 import { CliError } from '../errors.js';
 import { buildAgentsMdTemplate } from '../../prompts/index.js';

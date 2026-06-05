@@ -29,7 +29,6 @@ import { RUNTIME_AUDIT_EVENTS, REACT_LOOP_AUDIT_EVENTS } from './runtime-audit-e
 import { handleTurnInterrupt, writeErrorResponse } from './error-response.js';
 import { TASK_AUDIT_EVENTS } from '../async-task-system/audit-events.js';
 // phase 1414: HEARTBEAT_AUDIT_EVENTS import removed — heartbeat 自家 inbox-formatter 持 audit
-import { CLAW_SUBDIRS } from '../../foundation/paths.js';
 // phase 1406: DIALOG_DIR no longer used here — regime-switch recovery path is owned by performRegimeSwitch helper
 import { oneLine, formatErr } from '../../foundation/utils/index.js';
 import { escapeForLog } from '../../foundation/tools/index.js';
@@ -133,6 +132,8 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon, IRuntimeChat 
   // phase 521: regime switch coordination
   private dialogStoreFactory!: () => DialogStore;
   protected lastIdentityHash?: string;  // protected: TestRuntime subclass needs read access for regime switch tests
+  /** phase 69: L6 Assembly 装配期注入 claw 子目录列表 */
+  private clawSubdirs!: readonly string[];
 
   constructor(options: RuntimeOptions) {
     // phase 1485: ctor 不再 fallback DEFAULT_MAX_STEPS — assemble 层 undefined 直传、
@@ -145,6 +146,7 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon, IRuntimeChat 
     this.auditWriter = options.dependencies.auditWriter;
     const deps = options.dependencies;
     this.dialogStoreFactory = deps.dialogStoreFactory;
+    this.clawSubdirs = deps.clawSubdirs;                // phase 69: DI 注入 claw 子目录列表
     this.formatterRegistry = deps.formatterRegistry;   // phase 1414: ctor-time bind（formatInboxMessage 可在 initialize 前调）
     this.guidanceCompose = deps.guidanceCompose;        // phase 27 Step D P5: callback hook
     if (deps.parentStreamLog) {
@@ -1191,7 +1193,7 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon, IRuntimeChat 
   }
 
   private async ensureDirectories(_clawDir: ClawDir): Promise<void> {
-    for (const dir of CLAW_SUBDIRS) {
+    for (const dir of this.clawSubdirs) {
       await this.systemFs.ensureDir(dir);
     }
   }

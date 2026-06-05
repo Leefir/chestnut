@@ -19,7 +19,6 @@ export type {
 // Note: FORMAT_MAP moved to llm-orchestrator/llm-provider-config-schema.ts (phase 10)
 
 // Path getters + shared constants (canonical owner: foundation/paths.ts)
-export { CLAW_SUBDIRS } from '../paths.js';
 export {
   getWorkspaceRoot,
   getGlobalConfigPath,

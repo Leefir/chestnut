@@ -8,42 +8,10 @@
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import type { FileSystem } from './fs/types.js';
-import { INBOX_PENDING_DIR, INBOX_DONE_DIR, INBOX_FAILED_DIR, OUTBOX_PENDING_DIR } from './messaging/dirs.js';
-
-
 // ── Path constants ──
 
 export const CLAWS_DIR = 'claws' as const;
 export const CLAWSPACE_DIR = 'clawspace' as const;
-
-export const CLAW_SUBDIRS = [
-  'dialog',
-  'dialog/archive',
-  INBOX_PENDING_DIR,
-  INBOX_DONE_DIR,
-  INBOX_FAILED_DIR,
-  OUTBOX_PENDING_DIR,
-  'outbox/done',
-  'outbox/failed',
-  'tasks/queues/pending',
-  'tasks/queues/running',
-  'tasks/queues/done',
-  'tasks/queues/failed',
-  'tasks/queues/results',
-  'tasks/sync/exec',
-  'tasks/sync/write',
-  'tasks/sync/search',
-  'tasks/sync/subagent',
-  'tasks/sync/spawn',
-  'tasks/sync/shadow',
-  'tasks/subagents',
-  'memory',
-  'contract',
-  'skills',
-  CLAWSPACE_DIR,
-  'logs',
-  'status',
-] as const;
 
 // ── Runtime path resolution ──
 
