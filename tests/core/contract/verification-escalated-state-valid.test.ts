@@ -63,12 +63,10 @@ describe('force-accept state transition valid (phase 1399)', () => {
     // First failure (wait for background done before next call to avoid mutex race)
     await manager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'e1' });
     await waitForAuditEvent(emitter, events, CONTRACT_AUDIT_EVENTS.VERIFICATION_BACKGROUND_DONE);
-    await new Promise(r => setTimeout(r, 100));
 
     // Second failure → force-accept (retry_count reaches verification_attempts=2)
     await manager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'e2' });
-    await waitForAuditEvent(emitter, events, CONTRACT_AUDIT_EVENTS.VERIFICATION_BACKGROUND_DONE);
-    await new Promise(r => setTimeout(r, 100));
+    await waitForAuditEvent(emitter, events, CONTRACT_AUDIT_EVENTS.COMPLETED);
 
     // Verify force-accepted audit
     const forceAcceptedEvents = events.filter(e => e[0] === CONTRACT_AUDIT_EVENTS.SUBTASK_FORCE_ACCEPTED);
