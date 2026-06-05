@@ -269,7 +269,7 @@ describe('Runtime RetryOutboxInterrupt', () => {
       expect(err.message).toBe('LLM exploded');
     });
 
-    it('MaxStepsExceededError 时 outbox.write 失败 → audit outbox_write_failed scenario=max_steps_exhausted', async () => {
+    it('MaxStepsExceededError 且 contract_id 缺失时 outbox.write 失败 → audit outbox_write_failed scenario=agent_loop_crash_no_contract', async () => {
       const runtime = await makeTestRuntime();
       edgeRuntimes.push(runtime);
       await runtime.initialize();
@@ -286,7 +286,6 @@ describe('Runtime RetryOutboxInterrupt', () => {
           content: 'hello',
           priority: 'normal',
           timestamp: new Date().toISOString(),
-          contract_id: 'c-1',
         } as InboxMessage],
         addressedHandles: [],
       };
@@ -300,7 +299,7 @@ describe('Runtime RetryOutboxInterrupt', () => {
 
       await expect(runtime.processBatch()).rejects.toThrow(MaxStepsExceededError);
 
-      expect(audit.some(e => /^outbox_write_failed\tcontext=error_response\tscenario=max_steps_exhausted\treason=outbox disk full$/.test(e))).toBe(true);
+      expect(audit.some(e => /^outbox_write_failed\tcontext=error_response\tscenario=agent_loop_crash_no_contract\treason=outbox disk full$/.test(e))).toBe(true);
     });
 
     it('non-interrupt error 时 outbox.write 失败 → audit outbox_write_failed scenario=non_interrupt_error', async () => {

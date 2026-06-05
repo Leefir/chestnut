@@ -50,7 +50,7 @@ export function handleTurnInterrupt(
 export async function writeErrorResponse(
   info: InboxMessage,
   errorMsg: string,
-  scenario: 'max_steps_exhausted' | 'non_interrupt_error',
+  scenario: 'max_steps_exhausted' | 'non_interrupt_error' | 'mark_crashed_failed' | 'agent_loop_crash_no_contract',
   audit: AuditLog,
   outbox: OutboxWriter,
 ): Promise<void> {

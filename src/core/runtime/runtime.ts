@@ -33,8 +33,10 @@ import { CLAW_SUBDIRS } from '../../foundation/paths.js';
 // phase 1406: DIALOG_DIR no longer used here — regime-switch recovery path is owned by performRegimeSwitch helper
 import { oneLine, formatErr } from '../../foundation/utils/index.js';
 import { escapeForLog } from '../../foundation/tools/index.js';
-import { MaxStepsExceededError } from '../agent-executor/index.js';
+import { MaxStepsExceededError, WallTimeExceededError, ConsecutiveParseErrorsExceededError, ConsecutiveMaxTokensToolUseError } from '../agent-executor/index.js';
 import { DEFAULT_MAX_STEPS } from '../agent-executor/index.js';
+import { LLMAllProvidersFailedError } from '../../foundation/llm-orchestrator/index.js';
+import { makeContractId } from '../../foundation/identity/index.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { Snapshot } from '../../foundation/snapshot/index.js';
 import type { InboxReader, InboxEntry, InboxHandle, OutboxWriter } from '../../foundation/messaging/index.js';
@@ -788,11 +790,36 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon, IRuntimeChat 
           await this.inboxReader.nack(h, formatErr(err));
         }
       }
-      // Notify each inbox sender so they're not left hanging
-      if (err instanceof MaxStepsExceededError) {
-        const errorMsg = err.message;
+      // phase 63 NEW: 5 typed Error → ContractSystem.markCrashed 映射 contract_crashed 通道
+      const isAgentLoopCrash =
+        err instanceof MaxStepsExceededError ||
+        err instanceof WallTimeExceededError ||
+        err instanceof ConsecutiveParseErrorsExceededError ||
+        err instanceof ConsecutiveMaxTokensToolUseError ||
+        err instanceof LLMAllProvidersFailedError;
+
+      if (isAgentLoopCrash) {
         for (const info of infos) {
-          await writeErrorResponse(info, errorMsg, 'max_steps_exhausted', this.auditWriter, this.outboxWriter);
+          const contractId = info.metadata?.contract_id;
+          if (contractId) {
+            try {
+              await this.contractManager.markCrashed(
+                makeContractId(contractId),
+                `system: ${err.constructor.name.toLowerCase()}`,
+              );
+            } catch (markErr) {
+              this.auditWriter.write(
+                REACT_LOOP_AUDIT_EVENTS.MARK_CRASHED_FAILED,
+                `contractId=${contractId}`,
+                `err=${err.constructor.name}`,
+                `markErr=${formatErr(markErr)}`,
+              );
+              await writeErrorResponse(info, formatErr(err), 'mark_crashed_failed', this.auditWriter, this.outboxWriter);
+            }
+          } else {
+            // contract_id 缺失（非典型路径）→ phase 76+ 待治、保留 fallback string
+            await writeErrorResponse(info, formatErr(err), 'agent_loop_crash_no_contract', this.auditWriter, this.outboxWriter);
+          }
         }
       } else if (!(err instanceof PriorityInboxInterrupt || err instanceof UserInterrupt || err instanceof IdleTimeoutSignal)) {
         // Non-interrupt error (LLM crash, tool error, etc.) — notify senders
@@ -801,10 +828,10 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon, IRuntimeChat 
           await writeErrorResponse(info, errorMsg, 'non_interrupt_error', this.auditWriter, this.outboxWriter);
         }
       }
-      // Log unexpected errors to audit (aborts and MaxSteps are expected control flow)
+      // Log unexpected errors to audit (aborts and 5 agent-loop crashes are expected control flow)
       if (
         !(err instanceof PriorityInboxInterrupt || err instanceof UserInterrupt || err instanceof IdleTimeoutSignal) &&
-        !(err instanceof MaxStepsExceededError)
+        !isAgentLoopCrash
       ) {
         const errorMsg = formatErr(err);
         this.auditWriter.write(

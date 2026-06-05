@@ -262,6 +262,7 @@
       "llm_error",
       "llm_unknown_stop_reason",
       "llm_unparseable_tool_use",
+      "mark_crashed_failed",
       "max_tokens_assistant_empty_skipped",
       "max_tokens_prebuilt_only_final",
       "max_tokens_state_a_orphan_drop",
