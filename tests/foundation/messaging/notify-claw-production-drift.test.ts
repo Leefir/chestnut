@@ -49,7 +49,7 @@ describe('notify_claw production drift regression (phase 1021)', () => {
     // existsSync → resolveAndCheck throw PermissionError、escape execute()
     await expect(
       tool.execute({ to: 'worker-1', body: 'hello' }, { callerLabel: 'motion' } as any)
-    ).rejects.toThrow(/absolute; paths must be relative to clawspace/);
+    ).rejects.toThrow(/absolute; paths must be relative to base directory/);
 
     // NOTIFY_CLAW_FAILED audit 0 emit (throw 在 try 之外)
     const failedRows = audit.events.filter(r => r[0] === MESSAGING_AUDIT_EVENTS.NOTIFY_CLAW_FAILED);

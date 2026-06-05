@@ -1426,7 +1426,7 @@ describe('Builtin Tools', () => {
       const result = await readTool.execute({ path: '../c11/secret.md', claw: 'c1' }, motionCtx);
 
       expect(result.success).toBe(false);
-      expect(result.content).toMatch(/attempts to escape claw root/);
+      expect(result.content).toMatch(/attempts to escape base root/);
     });
 
     it('allows cross-claw read when targetPath equals clawRoot (path="")', async () => {
