@@ -23,8 +23,8 @@ export type ContractStatus =
   | 'running'
   | 'paused'
   | 'completed'
-  | 'failed'
   | 'cancelled'
+  | 'crashed'                                  // phase 63: agent loop 推不动契约的终态
   | 'archive_pending_recovery';  // phase 1371 sub-2: archiveAndEmit partial recovery state
 
 export type SubtaskStatus =

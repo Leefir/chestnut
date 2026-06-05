@@ -19,6 +19,7 @@ export const KNOWN_INBOX_TYPES = [
   // phase 8: cron_disk_warning + audit_size_alert 移除（dev_warning 改 viewport stream）
   // phase 9: 'message' catch-all 拆为 4 typed event:
   'task_result', 'contract_created', 'contract_resume', 'contract_audit_feedback',
+  'contract_cancelled', 'contract_crashed',    // phase 63: contract 终态字面分离（取代 contract_events 单一字面 cover 3 类）
 ];
 
 export function validatePriority(value: unknown): Priority {

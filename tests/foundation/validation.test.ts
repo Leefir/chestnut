@@ -36,7 +36,9 @@ describe('KNOWN_INBOX_TYPES', () => {
     expect(KNOWN_INBOX_TYPES).not.toContain('message');
     expect(KNOWN_INBOX_TYPES).not.toContain('cron_disk_warning');
     expect(KNOWN_INBOX_TYPES).not.toContain('audit_size_alert');
-    expect(KNOWN_INBOX_TYPES).toHaveLength(14);
+    expect(KNOWN_INBOX_TYPES).toContain('contract_cancelled');
+    expect(KNOWN_INBOX_TYPES).toContain('contract_crashed');
+    expect(KNOWN_INBOX_TYPES).toHaveLength(16);  // phase 63: +2 contract 终态字面
   });
 });
 
