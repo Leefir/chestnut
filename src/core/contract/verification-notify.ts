@@ -5,8 +5,7 @@
 
 import type { VerificationContext, NotifyClawFn } from './verification-types.js';
 import { notifyClaw as defaultNotifyClaw } from '../../foundation/messaging/index.js';
-import { makeChestnutRoot } from '../../foundation/paths.js';
-import { getChestnutRoot } from '../../foundation/paths.js';
+
 
 /**
  * phase 19 Step C: resolve notify channel via ctx injection point (DIP).
@@ -69,7 +68,7 @@ export function writeVerificationInbox(
     body = feedback || 'No feedback provided';
   }
 
-  const chestnutRoot = ctx.chestnutRoot ?? makeChestnutRoot(getChestnutRoot());
+  const chestnutRoot = ctx.chestnutRoot;
   resolveNotify(ctx)(ctx.fs, chestnutRoot, ctx.clawId, {
     type: verdict === 'passed' ? 'verification_result' : 'verification_rejection',
     source: 'contract_system',
@@ -104,7 +103,7 @@ export function writeForceAcceptInbox(
     ? `Subtask ${subtaskId} force-accepted after ${retryCount} attempts. All subtasks complete!${summary}`
     : `Subtask ${subtaskId} force-accepted after ${retryCount} attempts.${summary}`;
 
-  const chestnutRoot = ctx.chestnutRoot ?? makeChestnutRoot(getChestnutRoot());
+  const chestnutRoot = ctx.chestnutRoot;
   resolveNotify(ctx)(ctx.fs, chestnutRoot, ctx.clawId, {
     type: 'verification_result',
     source: 'contract_system',
@@ -132,7 +131,7 @@ export function notifyVerificationError(
   subtaskId: SubtaskId,
   errorMsg: string,
 ): void {
-  const chestnutRoot = ctx.chestnutRoot ?? makeChestnutRoot(getChestnutRoot());
+  const chestnutRoot = ctx.chestnutRoot;
   resolveNotify(ctx)(ctx.fs, chestnutRoot, ctx.clawId, {
     type: 'verification_error',
     source: 'contract_system',

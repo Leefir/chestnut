@@ -15,10 +15,11 @@ import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
 import type { VerificationContext } from '../../../src/core/contract/verification-types.js';
 import { createToolRegistry } from '../../../src/foundation/tools/index.js';
 
-function makeMinimalCtx(clawDir: string, clawId: string, nodeFs: NodeFileSystem): VerificationContext {
+function makeMinimalCtx(clawDir: string, clawId: string, nodeFs: NodeFileSystem, chestnutRoot: string): VerificationContext {
   return {
     clawDir: clawDir as any,
     clawId: clawId as any,
+    chestnutRoot: chestnutRoot as any,
     audit: { write: () => {} } as any,
     fs: nodeFs as any,
     contractDir: vi.fn(async (id: string) => path.join(clawDir, 'contract', 'active', id)),
@@ -62,7 +63,8 @@ describe('phase 1405 Fix 1: writeForceAcceptInbox', () => {
     fs.mkdirSync(inboxPending, { recursive: true });
 
     const nodeFs = new NodeFileSystem({ baseDir: clawDir });
-    const ctx = makeMinimalCtx(clawDir, 'test-claw', nodeFs);
+    const chestnutRoot = path.join(tempDir, '.chestnut');
+    const ctx = makeMinimalCtx(clawDir, 'test-claw', nodeFs, chestnutRoot);
 
     writeForceAcceptInbox(ctx, 'c1' as any, 'st1' as any, false, 3, 'bad output');
 
@@ -82,7 +84,8 @@ describe('phase 1405 Fix 1: writeForceAcceptInbox', () => {
     fs.mkdirSync(inboxPending, { recursive: true });
 
     const nodeFs = new NodeFileSystem({ baseDir: clawDir });
-    const ctx = makeMinimalCtx(clawDir, 'test-claw', nodeFs);
+    const chestnutRoot = path.join(tempDir, '.chestnut');
+    const ctx = makeMinimalCtx(clawDir, 'test-claw', nodeFs, chestnutRoot);
 
     writeForceAcceptInbox(ctx, 'c1' as any, 'st1' as any, true, 2, undefined);
 

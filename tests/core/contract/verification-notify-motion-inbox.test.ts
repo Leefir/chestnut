@@ -8,10 +8,11 @@ import type { VerificationContext } from '../../../src/core/contract/verificatio
 import { createToolRegistry } from '../../../src/foundation/tools/index.js';
 import { vi } from 'vitest';
 
-function makeMinimalCtx(clawDir: string, clawId: string, nodeFs: NodeFileSystem): VerificationContext {
+function makeMinimalCtx(clawDir: string, clawId: string, nodeFs: NodeFileSystem, chestnutRoot: string): VerificationContext {
   return {
     clawDir: clawDir as any,
     clawId: clawId as any,
+    chestnutRoot: chestnutRoot as any,
     audit: { write: () => {} } as any,
     fs: nodeFs as any,
     contractDir: vi.fn(async (id: string) => path.join(clawDir, 'contract', 'active', id)),
@@ -62,7 +63,8 @@ describe('phase 1388 Bug B: verification-notify Motion 端写正确 motion/inbox
     fs.mkdirSync(path.join(motionDir, 'inbox', 'pending'), { recursive: true });
 
     const nodeFs = new NodeFileSystem({ baseDir: motionDir });
-    const ctx = makeMinimalCtx(motionDir, 'motion', nodeFs);
+    const chestnutRoot = path.join(tempDir, '.chestnut');
+    const ctx = makeMinimalCtx(motionDir, 'motion', nodeFs, chestnutRoot);
 
     writeVerificationInbox(ctx, 'c1', 'st1', 'passed', false);
 
@@ -81,7 +83,8 @@ describe('phase 1388 Bug B: verification-notify Motion 端写正确 motion/inbox
     fs.mkdirSync(path.join(motionDir, 'inbox', 'pending'), { recursive: true });
 
     const nodeFs = new NodeFileSystem({ baseDir: motionDir });
-    const ctx = makeMinimalCtx(motionDir, 'motion', nodeFs);
+    const chestnutRoot = path.join(tempDir, '.chestnut');
+    const ctx = makeMinimalCtx(motionDir, 'motion', nodeFs, chestnutRoot);
     (ctx.getProgress as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       contract_id: 'c1',
       status: 'running',
@@ -105,7 +108,8 @@ describe('phase 1388 Bug B: verification-notify Motion 端写正确 motion/inbox
     fs.mkdirSync(path.join(clawDir, 'inbox', 'pending'), { recursive: true });
 
     const nodeFs = new NodeFileSystem({ baseDir: clawDir });
-    const ctx = makeMinimalCtx(clawDir, 'test-claw', nodeFs);
+    const chestnutRoot = path.join(tempDir, '.chestnut');
+    const ctx = makeMinimalCtx(clawDir, 'test-claw', nodeFs, chestnutRoot);
 
     writeVerificationInbox(ctx, 'c1', 'st1', 'passed', false);
 

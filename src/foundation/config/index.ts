@@ -22,10 +22,12 @@ export type {
 export {
   getWorkspaceRoot,
   getClawDir,
-  getChestnutRoot,
-  getNamedSubrootDir,
   getClawConfigPath,
 } from '../paths.js';
+export {
+  getChestnutRoot,
+  getNamedSubrootDir,
+} from '../../assembly/install-paths.js';
 export { getGlobalConfigPath } from './global-config-path.js';
 
 // CRUD

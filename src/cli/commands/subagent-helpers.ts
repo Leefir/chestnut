@@ -4,10 +4,8 @@
  */
 
 import * as path from 'path';
-import {
-  getClawDir,
-  getNamedSubrootDir,
-} from '../../foundation/paths.js';
+import { getClawDir } from '../../foundation/paths.js';
+import { getNamedSubrootDir } from '../../assembly/install-paths.js';
 import { type ClawDir, makeClawDir } from '../../foundation/paths.js';
 import {
   TASKS_QUEUES_DONE_DIR,

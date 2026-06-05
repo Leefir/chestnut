@@ -77,21 +77,6 @@ export function getClawDir(name: string): ClawDir {
   return makeClawDir(path.join(getWorkspaceRoot(), '.chestnut', 'claws', name));
 }
 
-export function getChestnutRoot(): string {
-  return path.join(getWorkspaceRoot(), '.chestnut');
-}
-
-/**
- * Generic helper to get a named subroot dir under .chestnut/.
- * Caller side owns the name (e.g., motion reserved name).
- *
- * @param name - subroot name (caller-owned, e.g., motion, claws)
- * @returns path joined under workspaceRoot/.chestnut/<name>
- */
-export function getNamedSubrootDir(name: string): string {
-  return path.join(getWorkspaceRoot(), '.chestnut', name);
-}
-
 export function getClawConfigPath(name: string): string {
   return path.join(getClawDir(name), 'config.yaml');
 }
