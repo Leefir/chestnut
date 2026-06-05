@@ -148,7 +148,15 @@ export class AsyncTaskSystem {
               `reason=${formatErr(err)}`,
             );
           });
-          throw new Error(`Tool "${task.toolName}" not found in registry`);
+          const violationMsg = `Tool "${task.toolName}" not found in registry (装配 bug)`;
+          this.auditWriter?.write(
+            TASK_AUDIT_EVENTS.INVARIANT_VIOLATION,
+            `site=async-task-system/system.ts:151`,
+            `kind=tool_not_found_registry`,
+            `toolName=${task.toolName}`,
+            `msg=${violationMsg}`,
+          );
+          throw new Error(`[INVARIANT VIOLATION] async-task-system: ${violationMsg}`);
         }
         const reconstructedCtx = this.buildToolTaskExecContext(task, signal);
         const callback = () => tool.execute(task.args, reconstructedCtx);
@@ -573,7 +581,15 @@ export class AsyncTaskSystem {
       const queueIdx = this.pendingQueue.findIndex(t => t.id === taskId);
 
       if (queueIdx === -1 && !fileExists) {
-        throw new Error(`Task ${taskId} not found in running or pending`);
+        const violationMsg = `Task ${taskId} not found in running or pending (race / caller bug)`;
+        this.auditWriter?.write(
+          TASK_AUDIT_EVENTS.INVARIANT_VIOLATION,
+          `site=async-task-system/system.ts:576`,
+          `kind=task_not_found`,
+          `taskId=${taskId}`,
+          `msg=${violationMsg}`,
+        );
+        throw new Error(`[INVARIANT VIOLATION] async-task-system: ${violationMsg}`);
       }
 
       let task: SubAgentTask | ToolTask | undefined =

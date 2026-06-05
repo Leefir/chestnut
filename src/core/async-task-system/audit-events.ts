@@ -38,4 +38,5 @@ export const TASK_AUDIT_EVENTS = {
   RUNNING_FILE_DELETE_FAILED: 'task_running_file_delete_failed', // ← NEW (phase 1324 / r137 C fork F.hot.6)
   CLEANUP_RETENTION_DELETE_FAILED: 'task_cleanup_retention_delete_failed',
   TASK_SHUTDOWN_TIMEOUT_HIT: 'task_shutdown_timeout_hit', // ← NEW (phase 1332 / r138 C fork N4)
+  INVARIANT_VIOLATION: 'async_task_invariant_violation',  // phase 66 NEW
 } as const;

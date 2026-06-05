@@ -169,8 +169,14 @@ export class ToolExecutorImpl implements IToolExecutor {
           options.toolUseId ?? '',
           'reason=accessesCaller_not_declared',
         );
+        audit?.write(
+          TOOL_AUDIT_EVENTS.INVARIANT_VIOLATION,
+          `site=executor.ts:172`,
+          `kind=caller_access_not_declared`,
+          `toolName=${toolNameLocal}`,
+        );
         throw new Error(
-          `Tool '${toolNameLocal}' did not declare accessesCaller=true ` +
+          `[INVARIANT VIOLATION] tools/executor: Tool '${toolNameLocal}' did not declare accessesCaller=true ` +
           `but called ctx.getCallerSnapshot()`,
         );
       };
@@ -184,8 +190,14 @@ export class ToolExecutorImpl implements IToolExecutor {
           options.toolUseId ?? '',
           'reason=provider_not_bound',
         );
+        audit?.write(
+          TOOL_AUDIT_EVENTS.INVARIANT_VIOLATION,
+          `site=executor.ts:188`,
+          `kind=caller_access_provider_not_bound`,
+          `toolName=${toolNameLocal}`,
+        );
         throw new Error(
-          `Tool '${toolNameLocal}' declared accessesCaller=true but ExecContext ` +
+          `[INVARIANT VIOLATION] tools/executor: Tool '${toolNameLocal}' declared accessesCaller=true but ExecContext ` +
           `was constructed without getCallerSnapshot provider`,
         );
       };

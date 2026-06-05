@@ -12,4 +12,5 @@
  */
 export const TOOL_AUDIT_EVENTS = {
   TOOL_CALLER_ACCESS_VIOLATION: 'tool_caller_access_violation',
+  INVARIANT_VIOLATION: 'tools_invariant_violation',   // phase 66 NEW
 } as const;

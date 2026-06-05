@@ -17,6 +17,7 @@ import type { IToolExecutor, ToolRegistry } from '../../foundation/tools/index.j
 import type { StepCallbacks } from './types.js';
 import { safeCallback, toToolResultBlock } from './utils.js';
 import { throwAbortError } from './abort-helpers.js';
+import { STEP_EXECUTOR_AUDIT_EVENTS } from './audit-events.js';
 import { safeNumber } from '../../foundation/utils/index.js';
 import { makeToolUseId } from '../../foundation/tool-protocol/index.js';
 
@@ -161,7 +162,17 @@ export async function executeToolCalls(
 
   return toolCalls.map((_, i) => {
     const r = results.get(i);
-    if (!r) throw new Error(`[step-executor] Missing result for tool call at index ${i}`);
+    if (!r) {
+      const violationMsg = `Missing result for tool call at index ${i}`;
+      ctx.auditWriter?.write(
+        STEP_EXECUTOR_AUDIT_EVENTS.INVARIANT_VIOLATION,
+        `site=tool-execution.ts:164`,
+        `kind=missing_tool_result`,
+        `index=${i}`,
+        `msg=${violationMsg}`,
+      );
+      throw new Error(`[INVARIANT VIOLATION] step-executor: ${violationMsg}`);
+    }
     return r;
   });
 }

@@ -77,6 +77,7 @@
             "viewport_unknown_event"
         ],
         "core_async-task-system_audit-events": [
+            "async_task_invariant_violation",
             "legacy_pending_task_no_mode",
             "pending_ingest_failed",
             "result_delivery_ensure_dir_failed",
@@ -470,7 +471,8 @@
             "exec_motion_self_kill_blocked"
         ],
         "foundation_tools_audit-events": [
-            "tool_caller_access_violation"
+            "tool_caller_access_violation",
+            "tools_invariant_violation"
         ],
         "foundation_snapshot_audit-events": [
             "snapshot_commit_failed",
@@ -530,6 +532,9 @@
             "watchdog_subscription_consumed_recovered",
             "watchdog_subscription_corrupt",
             "watchdog_subscription_fired"
+        ],
+        "core_step-executor_audit-events": [
+            "step_executor_invariant_violation"
         ]
     }
 }
