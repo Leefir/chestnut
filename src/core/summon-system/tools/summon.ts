@@ -3,7 +3,7 @@ import type { ToolResult } from '../../../foundation/tool-protocol/index.js';
 
 
 import { createSkillSystem } from '../../../foundation/skill-system/index.js';
-import { DISPATCH_SKILLS_PATH as DISPATCH_SKILLS_DIR } from '../../../foundation/paths.js';
+import { DISPATCH_SKILLS_PATH as DISPATCH_SKILLS_DIR } from '../dispatch-skills-paths.js';
 
 import { DEFAULT_LLM_IDLE_TIMEOUT_MS } from '../../../foundation/llm-orchestrator/index.js';
 import { buildSummonContractTask, buildMinerSystemPrompt, buildMiningUserMessage } from '../../../prompts/index.js';

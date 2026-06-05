@@ -16,12 +16,6 @@ import { INBOX_PENDING_DIR, INBOX_DONE_DIR, INBOX_FAILED_DIR, OUTBOX_PENDING_DIR
 export const CLAWS_DIR = 'claws' as const;
 export const CLAWSPACE_DIR = 'clawspace' as const;
 
-/** dispatch-skills 子目录名（path segment / 与 CLAWSPACE_DIR 拼接 / phase 1354 r-phase1354 物理迁自 core/evolution-system/dispatch-skills-paths.ts、切 evolution↔summon 2-cycle）*/
-export const DISPATCH_SKILLS_SUBDIR = 'dispatch-skills' as const;
-
-/** dispatch-skills 完整相对路径（caller 自取 motionBaseDir + 本路径）*/
-export const DISPATCH_SKILLS_PATH = `${CLAWSPACE_DIR}/${DISPATCH_SKILLS_SUBDIR}` as const;
-
 export const CLAW_SUBDIRS = [
   'dialog',
   'dialog/archive',
