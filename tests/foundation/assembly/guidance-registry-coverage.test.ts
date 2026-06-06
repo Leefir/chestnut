@@ -38,6 +38,10 @@ const NON_SENDER_SCAN_TYPES = new Set([
   'verification_error',          // src/core/contract/verification-notify.ts via resolveNotify(ctx)(...)
   'verification_rejection',      // src/core/contract/verification-notify.ts via resolveNotify(ctx)(...)
   'verification_result',         // src/core/contract/verification-notify.ts via resolveNotify(ctx)(...)
+  // phase 92: random-dream L4 surface 去 chestnutRoot (DI notify callback pattern).
+  // type: 'random_dream' 字面量仍在 random-dream.ts，但投递改由 caller-bound
+  // notifyMotion callback 执行，scanner 不抓 `notifyMotion(...)` 调用形态。
+  'random_dream',                // src/core/memory/random-dream.ts via opts.notifyMotion(msg) DI callback
 ]);
 
 import { describe, it, expect } from 'vitest';

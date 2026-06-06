@@ -23,6 +23,7 @@ describe('MemorySystem', () => {
     llmConfig: { providers: [] } as any,
     maxCompressionTokens: 100,
     clawFsFactory: vi.fn(),
+    notifyMotion: vi.fn(),
   };
 
   beforeEach(() => {
@@ -75,12 +76,12 @@ describe('MemorySystem', () => {
       await sys.runRandomDream();
       expect(runRandomDreamMock).toHaveBeenCalledOnce();
       expect(runRandomDreamMock).toHaveBeenCalledWith(expect.objectContaining({
-        clawsDir: '/tmp/chestnut/claws',
         motionDir: '/tmp/motion',
         taskSystem: mockOpts.taskSystem,
         fs: mockOpts.fs,
         motionFs: mockOpts.motionFs,
         audit: mockOpts.audit,
+        notifyMotion: mockOpts.notifyMotion,
       }));
     });
   });

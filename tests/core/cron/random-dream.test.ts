@@ -19,6 +19,8 @@ import { runRandomDream, type RandomDreamOptions } from '../../../src/core/memor
 import { RANDOM_DREAM_SYSTEM_PROMPT } from '../../../src/core/memory/prompts/random-dream.js';
 import { MEMORY_AUDIT_EVENTS } from '../../../src/core/memory/audit-events.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
+import { notifyClaw } from '../../../src/foundation/messaging/index.js';
+import { MOTION_CLAW_ID } from '../../../src/constants.js';
 import type { AsyncTaskSystem } from '../../../src/core/async-task-system/system.js';
 import { createTempDir, cleanupTempDir } from '../../utils/temp.js';
 
@@ -37,13 +39,14 @@ function makeMockTaskSystem(): AsyncTaskSystem {
 const mockAudit = { write: vi.fn() };
 
 function makeOpts(chestnutRoot: string, motionDir: string): RandomDreamOptions {
+  const fs = new NodeFileSystem({ baseDir: chestnutRoot });
   return {
-    chestnutRoot,
-    motionDir,
+    motionDir: motionDir as any,
     taskSystem: makeMockTaskSystem(),
-    fs: new NodeFileSystem({ baseDir: chestnutRoot }),
+    fs,
     motionFs: new NodeFileSystem({ baseDir: motionDir }),
     audit: mockAudit as any,
+    notifyMotion: (msg) => notifyClaw(fs, chestnutRoot, MOTION_CLAW_ID, msg, mockAudit as any),
   };
 }
 

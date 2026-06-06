@@ -7,6 +7,7 @@ import { runDeepDream } from './deep-dream.js';
 import { runRandomDream } from './random-dream.js';
 import type { ContractId } from '../contract/types.js';
 import type { ClawId, ClawDir } from '../../foundation/paths.js';
+import type { RandomDreamNotifyMotionFn } from './random-dream.js';
 
 
 
@@ -24,6 +25,8 @@ export interface MemorySystemOptions {
   clawFsFactory: (clawDir: ClawDir) => FileSystem;
   /** M#3：random-dream 读取 contract progress 走 ContractSystem API */
   getContractProgress?: (clawId: ClawId, contractId: ContractId) => Promise<ProgressData | null>;
+  /** phase 92: random-dream caller-bound notify motion */
+  notifyMotion: RandomDreamNotifyMotionFn;
 }
 
 export class MemorySystem {
@@ -46,12 +49,12 @@ export class MemorySystem {
 
   async runRandomDream(opts?: { signal?: AbortSignal }): Promise<void> {
     return runRandomDream({
-      clawsDir: this.opts.clawsDir,
       motionDir: this.opts.motionDir,
       taskSystem: this.opts.taskSystem,
       fs: this.opts.fs,
       motionFs: this.opts.motionFs,
       audit: this.opts.audit,
+      notifyMotion: this.opts.notifyMotion,
       signal: opts?.signal,
       getContractProgress: this.opts.getContractProgress,
     });

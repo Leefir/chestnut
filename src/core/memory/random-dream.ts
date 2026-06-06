@@ -6,13 +6,11 @@ import type { FileSystem } from '../../foundation/fs/types.js';
 import { MEMORY_AUDIT_EVENTS } from './audit-events.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { AsyncTaskSystem } from '../async-task-system/index.js';
-import { notifyClaw } from '../../foundation/messaging/index.js';
-import { createSystemAudit } from '../../foundation/audit/index.js';
+import type { InboxMessageOptionsBase } from '../../foundation/messaging/index.js';
 import type { ProgressData } from '../contract/index.js';
 import type { ClawId } from '../../foundation/paths.js';
 import type { ContractId } from '../contract/types.js';
 import { type TaskId, makeTaskId } from '../async-task-system/types.js';
-import { makeChestnutRoot } from '../../assembly/install-paths.js';
 import { listArchiveContracts } from '../contract/index.js';
 import { type ClawDir } from '../../foundation/paths.js';
 import {
@@ -25,9 +23,10 @@ const DEFAULT_RANDOM_DREAM_MAX_STEPS = 200;
 
 // ─── 类型定义 ────────────────────────────────────────────────
 
+/** phase 92: DI callback - caller (L6 装配期) bind chestnutRoot + MOTION_CLAW_ID + notifyClaw + fs + audit */
+export type RandomDreamNotifyMotionFn = (message: InboxMessageOptionsBase) => void;
+
 export interface RandomDreamOptions {
-  /** phase 84: clawsDir 暂未 use（field 留过渡、原 chestnutRoot 字段是 dead field、L423 仍内部 compute chestnutRoot from motionDir作 motion-specific notifyClaw business）*/
-  clawsDir: string;
   motionDir: ClawDir;
   taskSystem: AsyncTaskSystem;
   fs: FileSystem;             // baseDir = chestnutRoot
@@ -41,6 +40,8 @@ export interface RandomDreamOptions {
   subagentTimeoutMs?: number;
   /** Subagent max steps / default 200 / phase 651 */
   subagentMaxSteps?: number;
+  /** phase 92: caller-bound notify motion inbox */
+  notifyMotion: RandomDreamNotifyMotionFn;
   signal?: AbortSignal;
   /** 读取指定 claw+contract 的 progress（M#3：不走直接文件访问） */
   getContractProgress?: (clawId: ClawId, contractId: ContractId) => Promise<ProgressData | null>;
@@ -354,7 +355,6 @@ export async function runRandomDream(opts: RandomDreamOptions): Promise<void> {
   opts.audit.write(MEMORY_AUDIT_EVENTS.RANDOM_DREAM_JOB, `step=scheduled`, `count=${weightedContracts.length}`);
 
   // 调度 sub-agent（文件驱动，watcher 异步拾起）
-  const motionAudit = createSystemAudit(opts.fs, opts.motionDir);
   const subagentTimeoutMs = opts.subagentTimeoutMs ?? DEFAULT_RANDOM_DREAM_TIMEOUT_MS;
   const subagentMaxSteps = opts.subagentMaxSteps ?? DEFAULT_RANDOM_DREAM_MAX_STEPS;
 
@@ -420,14 +420,13 @@ export async function runRandomDream(opts: RandomDreamOptions): Promise<void> {
     `bytes=${dreamOutput.length}`,
   );
 
-  // 投递到 motion inbox（motionAudit 已在调度前实例化，直接复用）
-  const chestnutRoot = makeChestnutRoot(path.dirname(opts.motionDir));
-  notifyClaw(opts.fs, chestnutRoot, MOTION_CLAW_ID, {
+  // phase 92: 通过 caller-bound notifyMotion 投递到 motion inbox
+  opts.notifyMotion({
     type: 'random_dream',
     source: 'cron:dream',
     priority: 'low',
     body: dreamOutput,
     idPrefix: `${Date.now()}_random_dream`,
     extraFields: { dream_count: String(outputs.length) },
-  }, motionAudit);
+  });
 }
