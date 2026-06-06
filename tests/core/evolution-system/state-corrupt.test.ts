@@ -11,17 +11,17 @@ import { RETRO_AUDIT_EVENTS } from '../../../src/core/evolution-system/retro-aud
 // ============================================================================
 // Mock: SkillSystem
 // ============================================================================
-const { mockSkillRegistryLoadAll, mockSkillRegistryFormatForContext } = vi.hoisted(() => ({
-  mockSkillRegistryLoadAll: vi.fn().mockResolvedValue(undefined),
-  mockSkillRegistryFormatForContext: vi.fn().mockReturnValue('No skills loaded'),
-}));
+const { mockSkillRegistryLoadAll, mockSkillRegistryFormatForContext, mockSkillFactory } = vi.hoisted(() => {
+  const loadAll = vi.fn().mockResolvedValue(undefined);
+  const format = vi.fn().mockReturnValue('No skills loaded');
+  return {
+    mockSkillRegistryLoadAll: loadAll,
+    mockSkillRegistryFormatForContext: format,
+    mockSkillFactory: vi.fn(() => ({ loadAll, formatForContext: format })),
+  };
+});
 
-vi.mock('../../../src/foundation/skill-system/registry.js', () => ({
-  SkillSystem: vi.fn().mockImplementation(() => ({
-    loadAll: mockSkillRegistryLoadAll,
-    formatForContext: mockSkillRegistryFormatForContext,
-  })),
-}));
+
 
 // ============================================================================
 // Mock: AsyncTaskSystem.schedule
@@ -50,6 +50,7 @@ async function setupEvolutionSystem(stateFileContent?: string) {
     audit: mockAudit as any,
     taskSystem: { schedule: mockSchedule } as any,
     contractManager: {} as any,
+    createSkillSystem: mockSkillFactory as any,
   });
 
   return { motionDir, evolutionSystem, mockAudit };

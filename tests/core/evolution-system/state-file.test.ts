@@ -15,17 +15,17 @@ import { createToolRegistry } from '../../../src/foundation/tools/index.js';
 // ============================================================================
 // Mock: SkillSystem
 // ============================================================================
-const { mockSkillRegistryLoadAll, mockSkillRegistryFormatForContext } = vi.hoisted(() => ({
-  mockSkillRegistryLoadAll: vi.fn().mockResolvedValue(undefined),
-  mockSkillRegistryFormatForContext: vi.fn().mockReturnValue('No skills loaded'),
-}));
+const { mockSkillRegistryLoadAll, mockSkillRegistryFormatForContext, mockSkillFactory } = vi.hoisted(() => {
+  const loadAll = vi.fn().mockResolvedValue(undefined);
+  const format = vi.fn().mockReturnValue('No skills loaded');
+  return {
+    mockSkillRegistryLoadAll: loadAll,
+    mockSkillRegistryFormatForContext: format,
+    mockSkillFactory: vi.fn(() => ({ loadAll, formatForContext: format })),
+  };
+});
 
-vi.mock('../../../src/foundation/skill-system/registry.js', () => ({
-  SkillSystem: vi.fn().mockImplementation(() => ({
-    loadAll: mockSkillRegistryLoadAll,
-    formatForContext: mockSkillRegistryFormatForContext,
-  })),
-}));
+
 
 // ============================================================================
 // Mock: taskSystem.schedule
@@ -89,6 +89,7 @@ async function setupFixtures(overrides?: {
     taskSystem: { schedule: mockSchedule } as any,
     contractManager: mockContractManager,
     retroSubagentTimeoutMs: overrides?.retroSubagentTimeoutMs,
+    createSkillSystem: mockSkillFactory as any,
   });
   const ctx: MotionReviewContext = {
     motionFs,

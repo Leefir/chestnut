@@ -4,6 +4,7 @@ import { formatErr } from "../../foundation/utils/index.js";
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { AsyncTaskSystem } from '../async-task-system/index.js';
 import { ContractSystem } from '../contract/index.js';
+import { createSkillSystem as defaultCreateSkillSystem } from '../../foundation/skill-system/index.js';
 import { scheduleRetro } from './retro-scheduler.js';
 import { RETRO_AUDIT_EVENTS } from './retro-audit-events.js';
 import * as path from 'path';
@@ -23,6 +24,7 @@ export interface EvolutionSystemDeps {
   taskSystem: AsyncTaskSystem;
   contractManager: ContractSystem;
   retroSubagentTimeoutMs?: number;   // default 600000ms (10 min)
+  createSkillSystem?: typeof defaultCreateSkillSystem;
 }
 
 export interface RetroResult {
@@ -288,6 +290,7 @@ export class EvolutionSystem {
         audit: this.deps.audit,
         retroSubagentTimeoutMs: this.deps.retroSubagentTimeoutMs,
         taskSystem: this.deps.taskSystem,
+        createSkillSystem: this.deps.createSkillSystem,
       });
     } catch (e) {
       this.deps.audit.write(
