@@ -6,6 +6,7 @@
 
 import type { AuditSink } from './types.js';
 import { LLM_PROVIDER_AUDIT_EVENTS } from './audit-events.js';
+import { OPENAI_FORMATTER_CONTENT_PREVIEW_CHARS } from './constants.js';
 
 
 interface OpenAIMessage {
@@ -89,7 +90,7 @@ export function formatMessages(
             LLM_PROVIDER_AUDIT_EVENTS.TOOL_RESULT_MISSING_ID,
             `provider=openai`,
             `reason=tool_use_id_empty_or_undefined`,
-            `content_preview=${(typeof tr.content === 'string' ? tr.content : JSON.stringify(tr.content)).slice(0, 80)}`,
+            `content_preview=${(typeof tr.content === 'string' ? tr.content : JSON.stringify(tr.content)).slice(0, OPENAI_FORMATTER_CONTENT_PREVIEW_CHARS)}`,
           );
           continue; // skip 该 tool_result、不 emit 非法 message
         }
