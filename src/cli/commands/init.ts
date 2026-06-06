@@ -29,6 +29,9 @@ import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { checkLLMConnection, promptReconfigure, LLM_ERROR_LABELS } from '../llm-connection-check.js';
 
+/** init probe 失败时 console.log Details 字段截断防 base64 body / 长 stack dump 灌 stdout */
+const INIT_PROBE_DETAILS_CONSOLE_PREVIEW_CHARS = 200;
+
 // Known providers shown in "Select provider" list (excludes generic custom-* entries)
 const PROVIDER_LIST = [
   'anthropic',
@@ -334,7 +337,7 @@ export async function initCommand(deps: { fsFactory: (baseDir: string) => FileSy
       );
       console.log(`  ✗ ${LLM_ERROR_LABELS[probe.errorType]}`);
       // 截断防 base64 body / 长 stack dump 灌 stdout
-      console.log(`  Details: ${probe.message.slice(0, 200)}`);
+      console.log(`  Details: ${probe.message.slice(0, INIT_PROBE_DETAILS_CONSOLE_PREVIEW_CHARS)}`);
 
       if (probe.errorType === 'auth' || probe.errorType === 'model') {
         // actionable errors → 提供 reconfigure 选项
