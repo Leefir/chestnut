@@ -37,6 +37,7 @@ import { createDirContext } from '../foundation/audit/index.js';
 import { getChestnutRoot, getClawDir, loadGlobalConfig } from '../foundation/config/index.js';
 import { createSummonStateStore, createSummonContractCreateGate } from '../core/summon-system/index.js';
 import { parseIntOption } from './parse-int-option.js';
+import { collectColFilter } from './commands/audit-query.js';
 
 const fsFactory = (baseDir: string): FileSystem => new NodeFileSystem({ baseDir });
 
@@ -335,6 +336,75 @@ watchdogCmd.on('command:*', (ops) => {
   console.error(`error: unknown command '${ops[0]}'\n`);
   console.error('Available commands:');
   for (const c of watchdogCmd.commands) {
+    console.error(`  ${c.name().padEnd(12)}  ${c.description()}`);
+  }
+  process.exitCode = 1;
+});
+
+// audit command group
+const auditCmd = program
+  .command('audit')
+  .description('Audit log query and inspection (read-only)');
+
+// audit query
+auditCmd
+  .command('query')
+  .description('Query audit log records with filters and optional follow')
+  .requiredOption('-c, --claw <id>', 'Target claw ID')
+  .option('--file <name>', "Audit file name (default 'audit'; multi-file aware)", 'audit')
+  .option('--all-files', 'Query across all audit files in this claw')
+  .option('--type <pattern>', 'Glob pattern matched against event type (e.g. cron_*)')
+  .option('--since-ts <iso>', 'Inclusive lower bound on ts (ISO 8601)')
+  .option('--until-ts <iso>', 'Inclusive upper bound on ts (ISO 8601)')
+  .option('--from-seq <n>', 'Inclusive lower bound on seq')
+  .option('--to-seq <n>', 'Inclusive upper bound on seq')
+  .option('--trace <id>', 'Exact trace_id match')
+  .option('--col <key=val>', 'Col filter (AND semantics, repeatable)', collectColFilter, {})
+  .option('--limit <n>', 'Max records to yield')
+  .option('--json', 'Output as JSON-line (default TSV passthrough)')
+  .option('--follow', 'Tail mode: emit existing then watch for new appends')
+  .action(withCliErrorHandling(async (opts: {
+    claw: string;
+    file: string;
+    allFiles?: boolean;
+    type?: string;
+    sinceTs?: string;
+    untilTs?: string;
+    fromSeq?: string;
+    toSeq?: string;
+    trace?: string;
+    col?: Record<string, string>;
+    limit?: string;
+    json?: boolean;
+    follow?: boolean;
+  }) => {
+    const { auditQueryCommand } = await import('./commands/audit-query.js');
+    await auditQueryCommand({ fsFactory }, {
+      ...opts,
+      fromSeq: opts.fromSeq !== undefined ? parseIntOption(opts.fromSeq, '--from-seq must be a number') : undefined,
+      toSeq: opts.toSeq !== undefined ? parseIntOption(opts.toSeq, '--to-seq must be a number') : undefined,
+      limit: opts.limit !== undefined ? parseIntOption(opts.limit, '--limit must be a number') : undefined,
+    });
+  }));
+
+// audit info
+auditCmd
+  .command('info')
+  .description('Show audit file metadata and schema routing')
+  .requiredOption('-c, --claw <id>', 'Target claw ID')
+  .option('--json', 'Output as JSON')
+  .action(withCliErrorHandling(async (opts: {
+    claw: string;
+    json?: boolean;
+  }) => {
+    const { auditInfoCommand } = await import('./commands/audit-info.js');
+    await auditInfoCommand({ fsFactory }, opts);
+  }));
+
+auditCmd.on('command:*', (ops) => {
+  console.error(`error: unknown command '${ops[0]}'\n`);
+  console.error('Available commands:');
+  for (const c of auditCmd.commands) {
     console.error(`  ${c.name().padEnd(12)}  ${c.description()}`);
   }
   process.exitCode = 1;

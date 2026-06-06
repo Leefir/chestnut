@@ -24,6 +24,8 @@ const VI_MOCK_FILES = [
   'tests/assembly/detect-unclean-exit.test.ts',
   // phase 1421: tests/cli/already-running-sentinel.test.ts moved to fast project
   // — daemon command bodies extracted with DI seam; tests no longer need vi.mock.
+  'tests/cli/audit-info.test.ts',
+  'tests/cli/audit-query.test.ts',
   'tests/cli/daemon-entry.test.ts',
   // phase 99 (SHA df8f4558): l1IsAlive DI injected via ProcessManagerContext — tests no longer need vi.mock for process-exec isAlive.
   // 'tests/cli/chat-viewport-claw-manager-narrow.test.ts',

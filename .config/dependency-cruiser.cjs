@@ -35,6 +35,7 @@ module.exports = {
         pathNot: [
           '^src/foundation/fs/',
           '^src/foundation/audit/writer\\.ts$',
+          '^src/foundation/audit/reader\\.ts$',
           '^src/foundation/process-exec/spawn-detached\\.ts$',
         ],
       },
