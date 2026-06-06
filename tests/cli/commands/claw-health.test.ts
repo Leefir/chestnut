@@ -30,6 +30,7 @@ vi.mock('../../../src/foundation/config/index.js', () => ({
   clawExists: vi.fn(),
   getClawDir: vi.fn(),
   getGlobalConfigPath: vi.fn(),
+  getClawConfigPath: vi.fn(),
 }));
 
 vi.mock('../../../src/foundation/audit/index.js', async (importOriginal) => ({
@@ -47,11 +48,12 @@ describe('claw-health', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const { loadGlobalConfig, clawExists, getClawDir, getGlobalConfigPath } = await import('../../../src/foundation/config/index.js');
+    const { loadGlobalConfig, clawExists, getClawDir, getGlobalConfigPath, getClawConfigPath } = await import('../../../src/foundation/config/index.js');
     vi.mocked(loadGlobalConfig).mockReturnValue({} as any);
     vi.mocked(clawExists).mockReturnValue(true);
     vi.mocked(getClawDir).mockImplementation((name: string) => path.join('/tmp/chestnut/claws', name));
     vi.mocked(getGlobalConfigPath).mockReturnValue('/tmp/chestnut/config.yaml');
+    vi.mocked(getClawConfigPath).mockImplementation((name: string) => path.join('/tmp/chestnut/claws', name, 'config.yaml'));
   });
 
   afterEach(() => {

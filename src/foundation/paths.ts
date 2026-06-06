@@ -6,31 +6,6 @@
  */
 
 import * as path from 'path';
-// ── Runtime path resolution ──
-
-/** Workspace root — prefers CHESTNUT_ROOT env var (inherited by exec child processes). */
-export function getWorkspaceRoot(): string {
-  return process.env.CHESTNUT_ROOT ?? process.cwd();
-}
-
-/**
- * Validate identifier-class param (clawId / skillName / etc) against traversal.
- * @throws Error if name contains '/', '..', is empty, '.' or starts with '.'.
- */
-function assertSafeClawId(name: string): void {
-  if (
-    typeof name !== 'string' ||
-    name === '' ||
-    name === '.' ||
-    name.startsWith('.') ||
-    name.includes('/') ||
-    name.includes('\\') ||
-    /[\x00-\x1f]/.test(name) ||
-    name.includes('..')
-  ) {
-    throw new Error(`Invalid claw id: ${JSON.stringify(name)}`);
-  }
-}
 
 // ============================================================================
 // phase 64: ClawId / ClawDir / ChestnutRoot branded types + resolveChestnutRoot
@@ -71,14 +46,3 @@ export function resolveChestnutRoot(clawDir: ClawDir, isMotion: boolean): Chestn
     ? makeChestnutRoot(path.join(clawDir, '..'))  // Motion-only callsite: motion clawDir = <root>/motion → root
     : makeChestnutRoot(path.join(clawDir, '..', '..'));
 }
-
-export function getClawDir(name: string): ClawDir {
-  assertSafeClawId(name);
-  return makeClawDir(path.join(getWorkspaceRoot(), '.chestnut', 'claws', name));
-}
-
-export function getClawConfigPath(name: string): string {
-  return path.join(getClawDir(name), 'config.yaml');
-}
-
-

@@ -15,7 +15,7 @@
  */
 
 import {
-  loadGlobalConfig, clawExists, getChestnutRoot,
+  loadGlobalConfig, clawExists, getChestnutRoot, getClawConfigPath,
 } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
@@ -39,7 +39,8 @@ export async function watchCommand(
   const audit = extraDeps?.audit;
   loadGlobalConfig(deps);
 
-  if (!clawExists(deps, name)) {
+  const configPath = getClawConfigPath(name);
+  if (!clawExists(deps, configPath)) {
     throw new CliError(`Claw "${name}" does not exist`);
   }
 

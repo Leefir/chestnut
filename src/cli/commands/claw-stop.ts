@@ -4,7 +4,7 @@
  */
 
 import {
-  loadGlobalConfig, clawExists, getClawDir,
+  loadGlobalConfig, clawExists, getClawDir, getClawConfigPath,
 } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import { createProcessManagerForCLI } from '../../foundation/process-manager/index.js';
@@ -17,7 +17,8 @@ export async function stopCommand(deps: { fsFactory: (baseDir: string) => FileSy
   const audit = extraDeps?.audit;
   loadGlobalConfig(deps);
 
-  if (!clawExists(deps, name)) {
+  const configPath = getClawConfigPath(name);
+  if (!clawExists(deps, configPath)) {
     throw new CliError(`Claw "${name}" does not exist`);
   }
 

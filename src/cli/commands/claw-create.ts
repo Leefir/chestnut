@@ -3,7 +3,7 @@
  */
 
 import {
-  loadGlobalConfig, saveClawConfig, clawExists, getClawDir,
+  loadGlobalConfig, saveClawConfig, clawExists, getClawDir, getClawConfigPath,
 } from '../../foundation/config/index.js';
 import { CLAW_SUBDIRS } from '../../assembly/claw-subdirs.js';
 // path module intentionally not used in this file after refactor
@@ -19,7 +19,8 @@ export async function createCommand(deps: { fsFactory: (baseDir: string) => File
   loadGlobalConfig(deps);
   
   // Check if claw already exists
-  if (clawExists(deps, name)) {
+  const configPath = getClawConfigPath(name);
+  if (clawExists(deps, configPath)) {
     throw new CliError(`Claw "${name}" already exists`);
   }
   
@@ -38,7 +39,7 @@ export async function createCommand(deps: { fsFactory: (baseDir: string) => File
     max_concurrent_tasks: 3,
   };
   
-  saveClawConfig(deps, name, config);
+  saveClawConfig(deps, configPath, config);
   
   // Create AGENTS.md template
   const agentsTemplate = buildAgentsMdTemplate(name);

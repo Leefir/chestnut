@@ -5,6 +5,7 @@ import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
 
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
+import { getClawConfigPath } from '../../../src/foundation/config/index.js';
 
 const { loadGlobalConfig, loadClawConfig, patchGlobalConfigPrimary } = await import('../../../src/foundation/config/crud.js');
 
@@ -77,7 +78,7 @@ llm:
     api_key: \${TEST_CLAW_KEY}
 `);
 
-    const config = loadClawConfig({ fsFactory }, 'testclaw');
+    const config = loadClawConfig({ fsFactory }, getClawConfigPath('testclaw'));
     expect(config.llm?.primary?.api_key).toBe('sk-claw-123');
   });
 
@@ -86,7 +87,7 @@ llm:
     fs.mkdirSync(clawDir, { recursive: true });
     fs.writeFileSync(path.join(clawDir, 'config.yaml'), '{ bad');
 
-    expect(() => loadClawConfig({ fsFactory }, 'badclaw')).toThrow('Invalid YAML in config');
+    expect(() => loadClawConfig({ fsFactory }, getClawConfigPath('badclaw'))).toThrow('Invalid YAML in config');
   });
 });
 

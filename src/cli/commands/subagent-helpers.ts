@@ -4,7 +4,7 @@
  */
 
 import * as path from 'path';
-import { getClawDir } from '../../foundation/paths.js';
+import { getClawDir } from '../../assembly/install-paths.js';
 import { getNamedSubrootDir } from '../../assembly/install-paths.js';
 import { type ClawDir, makeClawDir } from '../../foundation/paths.js';
 import {

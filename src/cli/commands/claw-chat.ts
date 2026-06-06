@@ -4,13 +4,13 @@
 
 import * as path from 'path';
 import {
-  loadGlobalConfig, clawExists, getClawDir,
+  loadGlobalConfig, clawExists, getClawDir, getClawConfigPath,
 } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import { runChatViewport } from './chat-viewport.js';
 import { createDirContext } from '../../foundation/audit/index.js';
 import { createProcessManagerForCLI } from '../../foundation/process-manager/index.js';
-import { getWorkspaceRoot } from '../../foundation/paths.js';
+import { getWorkspaceRoot } from '../../assembly/install-paths.js';
 import { resolveDaemonEntry } from '../../assembly/spawn-entry.js';
 import { DAEMON_LOG } from '../../daemon/constants.js';
 import { makeClawId } from '../../foundation/paths.js';
@@ -19,7 +19,8 @@ import type { FileSystem } from '../../foundation/fs/types.js';
 export async function chatCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, name: string): Promise<void> {
   loadGlobalConfig(deps);
 
-  if (!clawExists(deps, name)) {
+  const configPath = getClawConfigPath(name);
+  if (!clawExists(deps, configPath)) {
     throw new CliError(`Claw "${name}" does not exist. Try \`chestnut claw list\` to see existing claws.`);
   }
 

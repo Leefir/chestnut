@@ -8,7 +8,7 @@
  */
 
 import * as path from 'path';
-import { loadGlobalConfig, clawExists, getClawDir } from '../../foundation/config/index.js';
+import { loadGlobalConfig, clawExists, getClawDir, getClawConfigPath } from '../../foundation/config/index.js';
 import { CLAWSPACE_DIR } from '../../assembly/claw-dirs.js';
 import { CliError } from '../errors.js';
 import type { FileSystem, StatInfo } from '../../foundation/fs/types.js';
@@ -30,7 +30,8 @@ export async function importCommand(
 ): Promise<void> {
   loadGlobalConfig(deps);
 
-  if (!clawExists(deps, clawName)) {
+  const configPath = getClawConfigPath(clawName);
+  if (!clawExists(deps, configPath)) {
     throw new CliError(`Claw "${clawName}" does not exist`);
   }
 

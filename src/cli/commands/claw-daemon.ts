@@ -9,7 +9,7 @@
 
 import * as path from 'path';
 import {
-  loadGlobalConfig, clawExists, getClawDir, getGlobalConfigPath,
+  loadGlobalConfig, clawExists, getClawDir, getGlobalConfigPath, getClawConfigPath,
 } from '../../foundation/config/index.js';
 import { createSystemAudit } from '../../foundation/audit/index.js';
 import { createAgentProcessManager } from '../../foundation/process-manager/index.js';
@@ -17,7 +17,7 @@ import type { ProcessManager } from '../../foundation/process-manager/manager.js
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { CliError } from '../errors.js';
 import { makeClawId } from '../../foundation/paths.js';
-import { getWorkspaceRoot } from '../../foundation/paths.js';
+import { getWorkspaceRoot } from '../../assembly/install-paths.js';
 import { resolveDaemonEntry } from '../../assembly/spawn-entry.js';
 import { DAEMON_LOG } from '../../daemon/constants.js';
 
@@ -34,7 +34,8 @@ export async function clawDaemonCommand(
   name: string,
 ): Promise<void> {
   loadGlobalConfig({ fsFactory: deps.fsFactory });
-  if (!clawExists({ fsFactory: deps.fsFactory }, name)) {
+  const configPath = getClawConfigPath(name);
+  if (!clawExists({ fsFactory: deps.fsFactory }, configPath)) {
     throw new CliError(`Claw "${name}" does not exist. Try \`chestnut claw list\` to see existing claws.`);
   }
   const clawDir = getClawDir(name);

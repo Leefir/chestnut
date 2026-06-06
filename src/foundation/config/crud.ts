@@ -16,7 +16,8 @@ import {
   patchYamlConfig,
   configExists,
 } from './loader.js';
-import { getClawConfigPath } from '../paths.js';
+// phase 81: API reframe — crud.ts 0 知 chestnut path 约定、纯 yaml CRUD generic、ML#1 SRP 真守。
+// caller (L6) 自调 getClawConfigPath(name) 然后传 configPath、ML#5 守。
 import { getGlobalConfigPath } from './global-config-path.js';
 import type { FileSystem } from '../fs/types.js';
 
@@ -65,8 +66,7 @@ export function saveGlobalConfig(deps: { fsFactory: (baseDir: string) => FileSys
   );
 }
 
-export function loadClawConfig(deps: { fsFactory: (baseDir: string) => FileSystem }, name: string): ClawConfig | undefined {
-  const configPath = getClawConfigPath(name);
+export function loadClawConfig(deps: { fsFactory: (baseDir: string) => FileSystem }, configPath: string): ClawConfig | undefined {
   if (!configExists({ fsFactory: deps.fsFactory }, configPath)) {
     return undefined;
   }
@@ -116,8 +116,7 @@ export function patchGlobalConfigPrimary(deps: { fsFactory: (baseDir: string) =>
   );
 }
 
-export function saveClawConfig(deps: { fsFactory: (baseDir: string) => FileSystem }, name: string, config: ClawConfig): void {
-  const configPath = getClawConfigPath(name);
+export function saveClawConfig(deps: { fsFactory: (baseDir: string) => FileSystem }, configPath: string, config: ClawConfig): void {
   writeYamlConfig(
     { fsFactory: deps.fsFactory },
     configPath,
@@ -125,8 +124,7 @@ export function saveClawConfig(deps: { fsFactory: (baseDir: string) => FileSyste
   );
 }
 
-export function clawExists(deps: { fsFactory: (baseDir: string) => FileSystem }, name: string): boolean {
-  const configPath = getClawConfigPath(name);
+export function clawExists(deps: { fsFactory: (baseDir: string) => FileSystem }, configPath: string): boolean {
   const dir = path.dirname(configPath);
   const fs = deps.fsFactory(dir);
   return fs.existsSync(path.basename(configPath));

@@ -28,6 +28,7 @@ vi.mock('../../../src/foundation/config/index.js', () => ({
   loadGlobalConfig: vi.fn(),
   clawExists: vi.fn(),
   getClawDir: vi.fn(),
+  getClawConfigPath: vi.fn(),
 }));
 
 interface StreamEv {
@@ -72,12 +73,13 @@ describe('claw-trace numbering coherence (phase 1484)', () => {
     clawDir = path.join(tmpRoot, '.chestnut', 'claws', 'alice');
     fs.mkdirSync(clawDir, { recursive: true });
 
-    const { loadGlobalConfig, clawExists, getClawDir } = await import(
+    const { loadGlobalConfig, clawExists, getClawDir, getClawConfigPath } = await import(
       '../../../src/foundation/config/index.js'
     );
     vi.mocked(loadGlobalConfig).mockReturnValue({} as never);
     vi.mocked(clawExists).mockReturnValue(true);
     vi.mocked(getClawDir).mockReturnValue(clawDir as never);
+    vi.mocked(getClawConfigPath).mockImplementation((name: string) => path.join(clawDir, name, 'config.yaml'));
   });
 
   afterEach(() => {

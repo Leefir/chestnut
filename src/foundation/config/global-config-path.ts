@@ -10,7 +10,7 @@
  */
 
 import * as path from 'path';
-import { getWorkspaceRoot } from '../paths.js';
+import { getWorkspaceRoot } from '../../assembly/install-paths.js';
 
 export function getGlobalConfigPath(): string {
   return path.join(getWorkspaceRoot(), '.chestnut', 'config.yaml');

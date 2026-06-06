@@ -79,6 +79,7 @@ vi.mock('../../src/foundation/config/index.js', () => ({
   getChestnutRoot: vi.fn(() => '/tmp/test-root'),
   getClawDir: vi.fn((name: string) => `/tmp/test-root/claws/${name}`),
   getNamedSubrootDir: vi.fn((name: string) => `/tmp/test-root/${name}`),
+  getClawConfigPath: vi.fn((name: string) => `/tmp/test-root/claws/${name}/config.yaml`),
   resolveAgentDir: vi.fn((id: string) => id === 'motion' ? '/tmp/test-root/motion' : `/tmp/test-root/claws/${id}`),
 }));
 

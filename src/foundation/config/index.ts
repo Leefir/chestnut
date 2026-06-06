@@ -18,13 +18,11 @@ export type {
 // Note: LLMProviderConfig moved to llm-orchestrator/llm-provider-config-schema.ts (phase 10)
 // Note: FORMAT_MAP moved to llm-orchestrator/llm-provider-config-schema.ts (phase 10)
 
-// Path getters + shared constants (canonical owner: foundation/paths.ts)
+// Path getters + shared constants (canonical owner: L6 Assembly)
 export {
   getWorkspaceRoot,
   getClawDir,
   getClawConfigPath,
-} from '../paths.js';
-export {
   getChestnutRoot,
   getNamedSubrootDir,
 } from '../../assembly/install-paths.js';

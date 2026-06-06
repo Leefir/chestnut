@@ -11,7 +11,7 @@
 import * as path from 'path';
 import { createHash } from 'node:crypto';
 import { formatErr } from '../foundation/utils/index.js';
-import { loadGlobalConfig, loadClawConfig, getClawDir, getNamedSubrootDir } from '../foundation/config/index.js';
+import { loadGlobalConfig, loadClawConfig, getClawDir, getNamedSubrootDir, getClawConfigPath } from '../foundation/config/index.js';
 import { MOTION_CLAW_ID } from '../constants.js';
 
 import { startDaemonLoop } from './daemon-loop.js';
@@ -65,7 +65,7 @@ export function createDaemonCommand(deps: DaemonCommandDeps) {
     // 写 PID 文件（兜底：无论启动方式都确保 PID 可查）
     await processManager.selfWritePid(clawId);
 
-    const clawConfig = isMotion ? null : loadClawConfig({ fsFactory: deps.fsFactory }, name);
+    const clawConfig = isMotion ? null : loadClawConfig({ fsFactory: deps.fsFactory }, getClawConfigPath(name));
 
     // Assembly 装配
     let instances: DaemonInstances;

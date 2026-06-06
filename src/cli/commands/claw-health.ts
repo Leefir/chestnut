@@ -5,7 +5,7 @@
 
 import * as path from 'path';
 import {
-  loadGlobalConfig, clawExists, getClawDir, getGlobalConfigPath,
+  loadGlobalConfig, clawExists, getClawDir, getGlobalConfigPath, getClawConfigPath,
 } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import { createDirContext } from '../../foundation/audit/index.js';
@@ -21,7 +21,8 @@ import { formatRelativeTime, getLastActiveMs } from './claw-shared.js';
 export async function healthCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, name: string, opts?: { json?: boolean }): Promise<void> {
   loadGlobalConfig(deps);
 
-  if (!clawExists(deps, name)) {
+  const configPath = getClawConfigPath(name);
+  if (!clawExists(deps, configPath)) {
     throw new CliError(`Claw "${name}" does not exist`);
   }
 

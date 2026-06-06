@@ -9,7 +9,7 @@ import * as path from 'path';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import * as yaml from 'js-yaml';
 import {
-  loadGlobalConfig, clawExists, getClawDir,
+  loadGlobalConfig, clawExists, getClawDir, getClawConfigPath,
 } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import { CONTRACT_DIR } from '../../core/contract/index.js';
@@ -60,7 +60,8 @@ export async function clawTraceCommand(
 ): Promise<void> {
   loadGlobalConfig(deps);
 
-  if (!clawExists(deps, clawId)) {
+  const configPath = getClawConfigPath(clawId);
+  if (!clawExists(deps, configPath)) {
     throw new CliError(`Claw "${clawId}" does not exist`);
   }
 

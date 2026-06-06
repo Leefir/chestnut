@@ -155,7 +155,7 @@ describe('CLI Config', () => {
 
   describe('clawExists', () => {
     it('should return false for non-existent claw', () => {
-      expect(clawExists({ fsFactory }, 'nonexistent')).toBe(false);
+      expect(clawExists({ fsFactory }, path.join(getClawDir('nonexistent'), 'config.yaml'))).toBe(false);
     });
 
     it('should return true for existing claw', () => {
@@ -163,7 +163,7 @@ describe('CLI Config', () => {
       fs.mkdirSync(clawDir, { recursive: true });
       fs.writeFileSync(path.join(clawDir, 'config.yaml'), 'name: test-claw\n');
 
-      expect(clawExists({ fsFactory }, 'test-claw')).toBe(true);
+      expect(clawExists({ fsFactory }, path.join(getClawDir('test-claw'), 'config.yaml'))).toBe(true);
     });
   });
 

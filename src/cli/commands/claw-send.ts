@@ -6,7 +6,7 @@
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import {
-  loadGlobalConfig, clawExists, getGlobalConfigPath,
+  loadGlobalConfig, clawExists, getGlobalConfigPath, getClawConfigPath,
 } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
@@ -24,7 +24,8 @@ export async function sendCommand(
 ): Promise<void> {
   loadGlobalConfig(deps);
   
-  if (!clawExists(deps, name)) {
+  const configPath = getClawConfigPath(name);
+  if (!clawExists(deps, configPath)) {
     throw new CliError(`Claw "${name}" does not exist`);
   }
 

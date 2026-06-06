@@ -29,7 +29,7 @@ import { MOTION_CLAW_ID } from '../../constants.js';
 
 import { CliError } from '../errors.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
-import { getWorkspaceRoot } from '../../foundation/paths.js';
+import { getWorkspaceRoot } from '../../assembly/install-paths.js';
 import { resolveDaemonEntry } from '../../assembly/spawn-entry.js';
 import { readOnboardingStatus, type OnboardingStatus } from '../../core/contract/index.js';
 import { DAEMON_LOG } from '../../daemon/constants.js';
