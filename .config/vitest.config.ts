@@ -65,10 +65,12 @@ const VI_MOCK_FILES = [
   // phase 1351: contract_manager.test.ts moved out (LOCK tests extracted to contract_manager-locks.test.ts)
   // phase 1338 split: sister fire-and-forget extracted; fire-and-forget tests
   // drive async verification pipeline (completeSubtask → fire-and-forget chain
-  // → status update), waitFor polls async transitions; under fast project
-  // isolate:false + concurrent worker, transitions delayed beyond waitFor budget
-  // (e.g. retry_count test 3 sequential pipelines). Sister files already isolated.
-  'tests/core/contract_manager-fire-and-forget.test.ts',
+  // → status update), waitFor polls async transitions.
+  // phase 82 Op G: 移出 ISOLATED — phase 80 manager.getProgress ENOENT retry
+  // (87cb9844) 治 active→archive TOCTOU 后 race 减少；file header L5「fast
+  // project / no vi.mock」注释 + phase 1465 mutex instance-bound 共指本 file
+  // 可 fast。若再触 flake、回 ISOLATED。
+  // 'tests/core/contract_manager-fire-and-forget.test.ts',
   'tests/core/contract_manager-locks.test.ts',
   'tests/core/contract_manager_llm.test.ts',
   'tests/core/evolution-system.test.ts',
