@@ -13,7 +13,7 @@ export interface SpawnShadowSubagentOptions {
   systemPrompt: string;
   /** motion 完整工具列表（shadow 继承全工具集） */
   toolsForLLM: ToolDefinition[];
-  /** 默认 300_000 ms */
+  /** 默认值见 {@link SHADOW_DEFAULT_TIMEOUT_MS} */
   timeoutMs?: number;
   maxSteps?: number;
   idleTimeoutMs?: number;

@@ -15,7 +15,7 @@ import { runSubagent as defaultRunSubagent } from '../../subagent/index.js';
 import { SHADOW_AUDIT_EVENTS } from '../audit-events.js';
 import { spawnShadowSubagent } from '../spawn-shadow-subagent.js';
 import { stripIncompleteToolUse } from '../_helpers.js';
-import { SHADOW_TOOL_NAME, SHADOW_CALLER_LABEL } from '../constants.js';
+import { SHADOW_TOOL_NAME, SHADOW_CALLER_LABEL, SHADOW_DEFAULT_TIMEOUT_MS } from '../constants.js';
 
 export function createShadowTool(deps: {
   getTurnSnapshot: () => {
@@ -44,7 +44,7 @@ export function createShadowTool(deps: {
         },
         timeoutMs: {
           type: 'number',
-          description: 'Timeout in milliseconds (default: 300000).',
+          description: `Timeout in milliseconds (default: ${SHADOW_DEFAULT_TIMEOUT_MS}).`,
           minimum: 1,
         },
         maxSteps: {
@@ -61,7 +61,7 @@ export function createShadowTool(deps: {
     },
     readonly: false,
     idempotent: false,
-    defaultTimeoutMs: 300_000,
+    defaultTimeoutMs: SHADOW_DEFAULT_TIMEOUT_MS,
 
     async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
       // 防递归（D6 A ratify）
@@ -77,7 +77,7 @@ export function createShadowTool(deps: {
       const task = String(args.task ?? '');
       if (!task) return { success: false, content: 'shadow: task is required', error: 'missing_task' };
 
-      const timeoutMs = typeof args.timeoutMs === 'number' ? args.timeoutMs : 300_000;
+      const timeoutMs = typeof args.timeoutMs === 'number' ? args.timeoutMs : SHADOW_DEFAULT_TIMEOUT_MS;
       const maxSteps = typeof args.maxSteps === 'number' ? args.maxSteps : (ctx.subagentMaxSteps ?? ctx.maxSteps);
       const asyncMode = args.async === undefined ? true : Boolean(args.async);
 

@@ -11,7 +11,7 @@ import type { ToolResult } from '../../foundation/tool-protocol/index.js';
 import type { Message } from '../../foundation/llm-provider/types.js';
 
 import { UUID_SHORT_LEN } from '../../constants.js';
-import { TASKS_SYNC_SHADOW_DIR } from './constants.js';
+import { TASKS_SYNC_SHADOW_DIR, SHADOW_DEFAULT_TIMEOUT_MS } from './constants.js';
 import { runSubagent as defaultRunSubagent, createPerTaskRegistry, getDisplayResult } from '../subagent/index.js';
 import { AUDIT_PREVIEW_LEN } from '../../foundation/constants.js';
 import { SHADOW_AUDIT_EVENTS } from './audit-events.js';
@@ -139,7 +139,7 @@ export async function runShadow(opts: RunShadowOptions): Promise<ToolResult> {
       messages: synthesizedMessages,
       resultDir,
       maxSteps: opts.maxSteps ?? opts.ctx.subagentMaxSteps ?? opts.ctx.maxSteps,
-      timeoutMs: opts.timeoutMs ?? 300_000,
+      timeoutMs: opts.timeoutMs ?? SHADOW_DEFAULT_TIMEOUT_MS,
       resultTool: 'done',
       isShadow: true,
       // phase 1162 r128 D fork DD2: shadow 独立 lifecycle (phase 1084 ratify 维持)。
