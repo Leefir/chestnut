@@ -96,7 +96,10 @@ const VI_MOCK_FILES = [
   // 'tests/core/shadow-system/shadow-async.test.ts',
   // 'tests/core/shadow-system/shadow-signal-propagation.test.ts',
   // 'tests/core/shadow-system/shadow-tool.test.ts',
-  'tests/core/subagent-executor.test.ts',
+  // phase 93 (SHA 6dee52a4): subagent-executor ExecuteSubAgentTaskDeps
+  // 加 runSubagent? DI 替 vi.mock pattern、本测试不需 module registry isolation、
+  // 移 fast project。
+  // 'tests/core/subagent-executor.test.ts',
   'tests/core/subagent.test.ts',
   'tests/core/subagent/agent-audit-first.test.ts',
   'tests/core/subagent/agent-race-ghost.test.ts',
