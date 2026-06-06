@@ -14,7 +14,7 @@
  */
 
 import { NOTIFY_CLAW_TOOL_NAME } from '../../foundation/messaging/tools/notify-claw.js';
-import { SHADOW_TOOL_NAME } from '../../core/shadow-system/constants.js';
+import { SHADOW_TOOL_NAME } from '../../core/summon-system/internal/shadow/constants.js';
 
 export const TOOL_NAMES = {
   NOTIFY_CLAW: NOTIFY_CLAW_TOOL_NAME,

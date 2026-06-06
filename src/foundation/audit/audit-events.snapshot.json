@@ -306,7 +306,7 @@
       "turn_interrupted",
       "turn_start"
     ],
-    "core_shadow-system_audit-events": [
+    "core_summon-system_internal_shadow_audit-events": [
       "shadow_failed",
       "shadow_finished",
       "shadow_prefix_restored",

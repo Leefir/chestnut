@@ -16,7 +16,7 @@ import { runSubagent as defaultRunSubagent, createPerTaskRegistry, getDisplayRes
 import { AUDIT_PREVIEW_LEN } from '../../foundation/constants.js';
 import { SPAWN_AUDIT_EVENTS } from './audit-events.js';
 import { formatErr } from './_helpers.js';
-import { SHADOW_CALLER_LABEL } from '../shadow-system/index.js';
+import { SHADOW_CALLER_LABEL } from '../summon-system/internal/shadow/index.js';
 
 
 export interface RunSpawnSyncOptions {

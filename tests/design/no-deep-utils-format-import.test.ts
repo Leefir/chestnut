@@ -13,7 +13,7 @@ import path from 'node:path';
  *
  * allowlist (by-design):
  *   - src/index.ts: SDK 顶层 re-export (公共 SDK 表面边界)
- *   - src/core/{spawn-system,async-task-system,shadow-system}/_helpers.ts:
+ *   - src/core/{spawn-system,async-task-system,summon-system/internal/shadow}/_helpers.ts:
  *     模块内 helper file 直 re-export owner 给同模块用、是合法 re-export pattern
  *
  * cross-ref：depcruise `no-deep-into-utils-format` 同源 enforce。
