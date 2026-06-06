@@ -48,13 +48,13 @@ describe('cleanupExpiredTaskFiles', () => {
     const now = Date.now();
     const fs = mockFs({ exists: true });
     (fs.listSync as ReturnType<typeof vi.fn>).mockImplementation((dir: string): FileEntry[] => {
-      if (dir.includes('tasks/done')) {
+      if (dir.includes('tasks/queues/done')) {
         return [
           { name: 'old.json', path: `${dir}/old.json`, isDirectory: false, isFile: true, size: 10, mtime: new Date(now - 40 * 86400000) },
           { name: 'new.json', path: `${dir}/new.json`, isDirectory: false, isFile: true, size: 10, mtime: new Date(now - 1 * 86400000) },
         ];
       }
-      if (dir.includes('tasks/failed')) {
+      if (dir.includes('tasks/queues/failed')) {
         return [
           { name: 'old2.json', path: `${dir}/old2.json`, isDirectory: false, isFile: true, size: 10, mtime: new Date(now - 40 * 86400000) },
         ];
