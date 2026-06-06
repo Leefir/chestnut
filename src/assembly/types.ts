@@ -7,9 +7,13 @@ import type { CronRunner } from '../core/cron/index.js';
 import type { ClawGlobalConfig, ClawConfig } from './compose-config.js';
 import type { Gateway } from '../core/gateway/index.js';
 import type { EvolutionSystem } from '../core/evolution-system/index.js';
-
+import type { createSkillSystem as defaultCreateSkillSystem } from '../foundation/skill-system/index.js';
 
 export type Identity = 'motion' | 'claw';
+
+export interface AssembleDeps {
+  createSkillSystem?: typeof defaultCreateSkillSystem;
+}
 
 export interface AssembleConfig {
   readonly identity: Identity;

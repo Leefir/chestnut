@@ -24,7 +24,7 @@ import { ASSEMBLY_AUDIT_EVENTS } from './audit-events.js';
 
 import { cleanupOrphanedTemp } from './cleanup.js';
 
-import type { AssembleConfig, Instances } from './types.js';
+import type { AssembleConfig, AssembleDeps, Instances } from './types.js';
 import { createCoreInfrastructure } from './core-infrastructure.js';
 import { createBusinessSystems } from './business-systems.js';
 import { createRuntimeAssembly } from './runtime-assembly.js';
@@ -69,7 +69,7 @@ export function detectUncleanExit(_auditDir: string, auditWriter: AuditLog, fs: 
 // phase 1382 audit-trail B-2 REFRAMED note: detectUncleanExit (above) returns void early on no-op
 // (file 0/empty/clean-stop) — NOT error path. assemble (below) throws on validation failure (real error).
 // Two functions = two patterns by-design; audit B-2 framing「throw + return error model mix」reframe-out.
-export async function assemble(config: AssembleConfig): Promise<Instances> {
+export async function assemble(config: AssembleConfig, deps?: AssembleDeps): Promise<Instances> {
   const { identity, clawId, clawDir } = config;
   if (identity === 'claw' && !config.clawConfig) {
     throw new Error('clawConfig is required when identity=claw');
@@ -84,7 +84,7 @@ export async function assemble(config: AssembleConfig): Promise<Instances> {
   let disposeContractSystems: (() => Promise<void>) | undefined;
 
   try {
-    core = await createCoreInfrastructure({ config, lockState });
+    core = await createCoreInfrastructure({ config, lockState, createSkillSystem: deps?.createSkillSystem });
     const {
       systemFs,
       auditWriter, processManager,

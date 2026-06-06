@@ -1,4 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const { mockSkillFactory } = vi.hoisted(() => ({
+  mockSkillFactory: vi.fn(() => ({ loadAll: vi.fn().mockResolvedValue(undefined), getSkills: vi.fn(() => []) })),
+}));
 import { assemble } from '../../src/assembly/assemble.js';
 import { LockConflictError } from '../../src/assembly/index.js';
 import { buildTestGlobalConfig } from '../helpers/global-config.js';
@@ -152,10 +156,6 @@ vi.mock('../../src/foundation/tools/executor.js', () => ({
   createToolExecutor: vi.fn((...args: any[]) => new (vi.fn(() => ({ execute: vi.fn() })) as any)(...args)),
 }));
 
-vi.mock('../../src/foundation/skill-system/registry.js', () => ({
-  SkillSystem: vi.fn(() => ({ loadAll: vi.fn().mockResolvedValue(undefined), getSkills: vi.fn(() => []) })),
-}));
-
 vi.mock('../../src/core/contract/manager.js', () => ({
   ContractSystem: vi.fn(() => ({ setOnNotify: vi.fn(), loadPaused: vi.fn(), resume: vi.fn(), onContractCompleted: vi.fn(() => () => {}), init: vi.fn().mockResolvedValue(undefined), close: vi.fn().mockResolvedValue(undefined) })),
 }));
@@ -250,7 +250,7 @@ describe('Assembly — lockfile cleanup on throw (F-r72-asm-P0-1 / γ)', () => {
       throw new Error('simulated assembly failure');
     });
 
-    await expect(assemble(baseConfig)).rejects.toThrow('simulated assembly failure');
+    await expect(assemble(baseConfig, { createSkillSystem: mockSkillFactory })).rejects.toThrow('simulated assembly failure');
 
     expect(mockProcessManager.releaseLock).toHaveBeenCalledTimes(1);
     expect(mockProcessManager.releaseLock).toHaveBeenCalledWith('motion');
@@ -279,7 +279,7 @@ describe('Assembly — lockfile cleanup on throw (F-r72-asm-P0-1 / γ)', () => {
       throw new Error('release-fail');
     });
 
-    await expect(assemble(baseConfig)).rejects.toThrow('simulated assembly failure');
+    await expect(assemble(baseConfig, { createSkillSystem: mockSkillFactory })).rejects.toThrow('simulated assembly failure');
 
     expect(mockProcessManager.releaseLock).toHaveBeenCalledTimes(1);
     expect(mockProcessManager.releaseLock).toHaveBeenCalledWith('motion');
@@ -294,7 +294,7 @@ describe('Assembly — lockfile cleanup on throw (F-r72-asm-P0-1 / γ)', () => {
 
     // 错误消息应为原错误，而非 release-fail
     try {
-      await assemble(baseConfig);
+      await assemble(baseConfig, { createSkillSystem: mockSkillFactory });
     } catch (e: any) {
       expect(e.message).toBe('simulated assembly failure');
     }
@@ -305,7 +305,7 @@ describe('Assembly — lockfile cleanup on throw (F-r72-asm-P0-1 / γ)', () => {
       throw new LockConflictError('motion', 'already locked');
     });
 
-    await expect(assemble(baseConfig)).rejects.toBeInstanceOf(LockConflictError);
+    await expect(assemble(baseConfig, { createSkillSystem: mockSkillFactory })).rejects.toBeInstanceOf(LockConflictError);
 
     expect(mockProcessManager.releaseLock).not.toHaveBeenCalled();
     expect(mockAuditWrite).toHaveBeenCalledWith(

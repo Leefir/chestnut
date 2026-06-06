@@ -1,4 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const { mockSkillFactory } = vi.hoisted(() => ({
+  mockSkillFactory: vi.fn(() => ({ loadAll: vi.fn().mockResolvedValue(undefined), getSkills: vi.fn(() => []) })),
+}));
 import { assemble } from '../../src/assembly/assemble.js';
 import { buildTestGlobalConfig } from '../helpers/global-config.js';
 
@@ -156,10 +160,6 @@ vi.mock('../../src/foundation/tools/executor.js', () => ({
   createToolExecutor: vi.fn((...args: any[]) => new (vi.fn(() => ({ execute: vi.fn() })) as any)(...args)),
 }));
 
-vi.mock('../../src/foundation/skill-system/registry.js', () => ({
-  SkillSystem: vi.fn(() => ({ loadAll: vi.fn().mockResolvedValue(undefined), getSkills: vi.fn(() => []) })),
-}));
-
 vi.mock('../../src/core/evolution-system/index.js', () => ({
   EvolutionSystem: vi.fn(() => ({ runRetroForContract: vi.fn().mockResolvedValue(undefined), init: vi.fn().mockResolvedValue(undefined) })),
   createEvolutionSystem: vi.fn(() => ({
@@ -291,7 +291,7 @@ describe('assemble evolution clawContractManagerFactory toolRegistry (phase 951)
   });
 
   it('clawContractManagerFactory passes main toolRegistry to createContractSystem', async () => {
-    await assemble(baseConfig);
+    await assemble(baseConfig, { createSkillSystem: mockSkillFactory });
 
     expect(capturedContractCallback).toBeDefined();
     await capturedContractCallback!('test-contract-id');

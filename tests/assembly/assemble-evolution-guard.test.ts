@@ -1,4 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const { mockSkillFactory } = vi.hoisted(() => ({
+  mockSkillFactory: vi.fn(() => ({ loadAll: vi.fn().mockResolvedValue(undefined), getSkills: vi.fn(() => []) })),
+}));
 import { assemble } from '../../src/assembly/assemble.js';
 import { buildTestGlobalConfig } from '../helpers/global-config.js';
 
@@ -156,10 +160,6 @@ vi.mock('../../src/foundation/tools/executor.js', () => ({
   createToolExecutor: vi.fn((...args: any[]) => new (vi.fn(() => ({ execute: vi.fn() })) as any)(...args)),
 }));
 
-vi.mock('../../src/foundation/skill-system/registry.js', () => ({
-  SkillSystem: vi.fn(() => ({ loadAll: vi.fn().mockResolvedValue(undefined), getSkills: vi.fn(() => []) })),
-}));
-
 vi.mock('../../src/core/evolution-system/index.js', () => ({
   EvolutionSystem: vi.fn(() => ({ runRetroForContract: vi.fn().mockResolvedValue(undefined), init: vi.fn().mockResolvedValue(undefined) })),
   createEvolutionSystem: vi.fn(() => ({ runRetroForContract: vi.fn().mockResolvedValue(undefined), init: vi.fn().mockResolvedValue(undefined) })),
@@ -270,7 +270,7 @@ describe('contractManager onContractCompleted NPE guard (phase 620)', () => {
     const { createEvolutionSystem } = await import('../../src/core/evolution-system/index.js');
     (createEvolutionSystem as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(undefined);
 
-    await expect(assemble(baseConfig)).resolves.toBeDefined();
+    await expect(assemble(baseConfig, { createSkillSystem: mockSkillFactory })).resolves.toBeDefined();
   });
 
   it('still calls runRetroForContract when evolutionSystem present (regression)', async () => {
@@ -281,7 +281,7 @@ describe('contractManager onContractCompleted NPE guard (phase 620)', () => {
       init: vi.fn().mockResolvedValue(undefined),
     });
 
-    await assemble(baseConfig);
+    await assemble(baseConfig, { createSkillSystem: mockSkillFactory });
 
     expect(capturedContractCallback).toBeDefined();
     await capturedContractCallback!('test-contract-id');

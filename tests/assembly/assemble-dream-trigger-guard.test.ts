@@ -1,4 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const { mockSkillFactory } = vi.hoisted(() => ({
+  mockSkillFactory: vi.fn(() => ({ loadAll: vi.fn().mockResolvedValue(undefined), getSkills: vi.fn(() => []) })),
+}));
 import { assemble } from '../../src/assembly/assemble.js';
 import { buildTestGlobalConfig } from '../helpers/global-config.js';
 
@@ -156,10 +160,6 @@ vi.mock('../../src/foundation/tools/executor.js', () => ({
   createToolExecutor: vi.fn((...args: any[]) => new (vi.fn(() => ({ execute: vi.fn() })) as any)(...args)),
 }));
 
-vi.mock('../../src/foundation/skill-system/registry.js', () => ({
-  SkillSystem: vi.fn(() => ({ loadAll: vi.fn().mockResolvedValue(undefined), getSkills: vi.fn(() => []) })),
-}));
-
 vi.mock('../../src/core/contract/manager.js', () => ({
   ContractSystem: vi.fn(() => ({ setOnNotify: vi.fn(), loadPaused: vi.fn(), resume: vi.fn(), onContractCompleted: vi.fn(() => () => {}), init: vi.fn().mockResolvedValue(undefined), close: vi.fn().mockResolvedValue(undefined) })),
 }));
@@ -257,7 +257,7 @@ describe('Assembly — dream-trigger handler memorySystem guard (F-r72-asm-P0-2)
     const { createMemorySystem } = await import('../../src/core/memory/index.js');
     (createMemorySystem as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(undefined);
 
-    await assemble(baseConfig);
+    await assemble(baseConfig, { createSkillSystem: mockSkillFactory });
 
     const { CronRunner } = await import('../../src/core/cron/runner.js');
     const jobs = (CronRunner as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0];
@@ -272,7 +272,7 @@ describe('Assembly — dream-trigger handler memorySystem guard (F-r72-asm-P0-2)
   });
 
   it('handler invokes memorySystem methods when motion claw assembles', async () => {
-    await assemble(baseConfig);
+    await assemble(baseConfig, { createSkillSystem: mockSkillFactory });
 
     const { CronRunner } = await import('../../src/core/cron/runner.js');
     const jobs = (CronRunner as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0];

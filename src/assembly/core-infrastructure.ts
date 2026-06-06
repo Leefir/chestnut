@@ -17,7 +17,7 @@ import { createFileTools } from '../foundation/file-tool/index.js';
 import { createCommandTools } from '../foundation/command-tool/index.js';
 import { spawnTool } from '../core/spawn-system/index.js';
 import { SummonTool, createSummonStateStore } from '../core/summon-system/index.js';
-import { createSkillSystem, SkillSystem } from '../foundation/skill-system/index.js';
+import { createSkillSystem as defaultCreateSkillSystem, SkillSystem } from '../foundation/skill-system/index.js';
 import { SKILLS_DIR_DEFAULT } from '../foundation/skill-system/index.js';
 import { ContractSystem, createContractSystem } from '../core/contract/index.js';
 import { createOutboxWriter, type OutboxWriter, notifyClaw as notifyClawFn } from '../foundation/messaging/index.js';
@@ -28,6 +28,7 @@ import type { AssembleConfig } from './types.js';
 export interface CoreInfraInput {
   config: AssembleConfig;
   lockState: { acquired: boolean };
+  createSkillSystem?: typeof defaultCreateSkillSystem;
 }
 
 export interface CoreInfraOutput {
@@ -186,7 +187,8 @@ export async function createCoreInfrastructure(input: CoreInfraInput): Promise<C
     // --- L3-L5: skillRegistry (lazy init / phase 1053 α-6) ---
     let skillRegistry: SkillSystem;
     try {
-      skillRegistry = createSkillSystem(systemFs, SKILLS_DIR_DEFAULT, auditWriter);
+      const createSkillFn = input.createSkillSystem ?? defaultCreateSkillSystem;
+      skillRegistry = createSkillFn(systemFs, SKILLS_DIR_DEFAULT, auditWriter);
     } catch (e) {
       auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=skill_registry`, `phase=construct`, `reason=${formatErr(e)}`);
       throw new Error(`Assembly: SkillSystem construct failed: ${formatErr(e)}`, { cause: e });
