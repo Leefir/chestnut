@@ -8,7 +8,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
-import { spawnTool } from '../../../src/core/spawn-system/index.js';
+import { createSpawnTool } from '../../../src/core/spawn-system/tools/spawn.js';
 import { ExecContextImpl } from '../../../src/foundation/tools/context.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/index.js';
 import { makeAudit } from '../../helpers/audit.js';
@@ -20,18 +20,11 @@ const { mockRunSubagent } = vi.hoisted(() => ({
   mockRunSubagent: vi.fn(),
 }));
 
-vi.mock('../../../src/core/subagent/index.js', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('../../../src/core/subagent/index.js')>();
-  return {
-    ...mod,
-    runSubagent: mockRunSubagent,
-  };
-});
-
 describe('spawn signal propagation (phase 874)', () => {
   let tempDir: string;
   let fs: NodeFileSystem;
   let audit: ReturnType<typeof makeAudit>;
+  const testSpawnTool = createSpawnTool({ runSubagent: mockRunSubagent });
 
   function makeRegistry(): ToolRegistryImpl {
     const registry = new ToolRegistryImpl();
@@ -94,7 +87,7 @@ describe('spawn signal propagation (phase 874)', () => {
     mockRunSubagent.mockResolvedValue({ text: 'ok' });
 
     const ctxWithSignal = makeBaseCtx(outerController.signal);
-    const result = await spawnTool.execute({ intent: 'test signal', async: false }, ctxWithSignal);
+    const result = await testSpawnTool.execute({ intent: 'test signal', async: false }, ctxWithSignal);
 
     expect(result.success).toBe(true);
     expect(mockRunSubagent).toHaveBeenCalledOnce();
@@ -108,7 +101,7 @@ describe('spawn signal propagation (phase 874)', () => {
     mockRunSubagent.mockRejectedValue(new Error('aborted'));
 
     const ctxPreAborted = makeBaseCtx(outerController.signal);
-    const result = await spawnTool.execute({ intent: 'pre-aborted', async: false }, ctxPreAborted);
+    const result = await testSpawnTool.execute({ intent: 'pre-aborted', async: false }, ctxPreAborted);
 
     expect(result.success).toBe(false);
     expect(mockRunSubagent).toHaveBeenCalledOnce();

@@ -7,7 +7,7 @@
 
 import type { Tool, ExecContext } from '../../../foundation/tools/index.js';
 import type { ToolResult } from '../../../foundation/tool-protocol/index.js';
-import { runSpawnSync } from '../system.js';
+import { runSpawnSync, type RunSpawnSyncOptions } from '../system.js';
 import {
   resolveSpawnTemplate,
   DEFAULT_SPAWN_TEMPLATE,
@@ -28,118 +28,127 @@ import { formatErr } from '../_helpers.js';
 // phase 1490: tool description 字符串不再泄 DEFAULT_MAX_STEPS const 值到 LLM docs — agent-executor 自持默认值。
 export const SPAWN_TOOL_NAME = 'spawn' as const;
 
-export const spawnTool: Tool = {
-  name: SPAWN_TOOL_NAME,
-  profiles: ['full'],
-  group: 'spawn',
-  description: 'Create a subagent to handle a delegated task. ' +
-    'By default the subagent executes asynchronously and results arrive via inbox. ' +
-    'Set async=false for synchronous execution that blocks until the subagent completes and returns the result inline.',
-  schema: {
-    type: 'object',
-    properties: {
-      intent: {
-        type: 'string',
-        description: 'The user intent / task goal for the subagent',
+export interface SpawnToolDeps {
+  runSubagent?: RunSpawnSyncOptions['runSubagent'];
+}
+
+export function createSpawnTool(deps: SpawnToolDeps = {}): Tool {
+  return {
+    name: SPAWN_TOOL_NAME,
+    profiles: ['full'],
+    group: 'spawn',
+    description: 'Create a subagent to handle a delegated task. ' +
+      'By default the subagent executes asynchronously and results arrive via inbox. ' +
+      'Set async=false for synchronous execution that blocks until the subagent completes and returns the result inline.',
+    schema: {
+      type: 'object',
+      properties: {
+        intent: {
+          type: 'string',
+          description: 'The user intent / task goal for the subagent',
+        },
+        timeoutMs: {
+          type: 'number',
+          description: 'Timeout in milliseconds (default: 60000)',
+        },
+        maxSteps: {
+          type: 'number',
+          description: `Maximum number of ReAct steps the subagent can take (default: inherits caller's main loop maxSteps). Increase for complex multi-file tasks; decrease for simple lookups.`,
+        },
+        async: {
+          type: 'boolean',
+          description: 'true (default): async execution, returns immediately, result via inbox. false: sync execution, blocks until result is available inline.',
+        },
+        template: {
+          type: 'string',
+          description: "Named system prompt template for the subagent. 'default' (default) uses the standard subagent system prompt.",
+        },
       },
-      timeoutMs: {
-        type: 'number',
-        description: 'Timeout in milliseconds (default: 60000)',
-      },
-      maxSteps: {
-        type: 'number',
-        description: `Maximum number of ReAct steps the subagent can take (default: inherits caller's main loop maxSteps). Increase for complex multi-file tasks; decrease for simple lookups.`,
-      },
-      async: {
-        type: 'boolean',
-        description: 'true (default): async execution, returns immediately, result via inbox. false: sync execution, blocks until result is available inline.',
-      },
-      template: {
-        type: 'string',
-        description: "Named system prompt template for the subagent. 'default' (default) uses the standard subagent system prompt.",
-      },
+      required: ['intent'],
     },
-    required: ['intent'],
-  },
-  readonly: false,
-  idempotent: false,
-  defaultTimeoutMs: 60_000,
+    readonly: false,
+    idempotent: false,
+    defaultTimeoutMs: 60_000,
 
-  async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
-    const intent = String(args.intent);
-    const timeoutMs = typeof args.timeoutMs === 'number' ? args.timeoutMs : 60_000;
-    const maxSteps = typeof args.maxSteps === 'number'
-      ? args.maxSteps
-      : (ctx.subagentMaxSteps ?? ctx.maxSteps);
-    const asyncMode = args.async === undefined ? true : Boolean(args.async);
-    const templateName = typeof args.template === 'string' ? args.template : DEFAULT_SPAWN_TEMPLATE;
+    async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
+      const intent = String(args.intent);
+      const timeoutMs = typeof args.timeoutMs === 'number' ? args.timeoutMs : 60_000;
+      const maxSteps = typeof args.maxSteps === 'number'
+        ? args.maxSteps
+        : (ctx.subagentMaxSteps ?? ctx.maxSteps);
+      const asyncMode = args.async === undefined ? true : Boolean(args.async);
+      const templateName = typeof args.template === 'string' ? args.template : DEFAULT_SPAWN_TEMPLATE;
 
-    // shadow 防御（per shadow D6 A ratify）/ 先于 template resolve、保既有 reject 顺序
-    if (ctx.callerLabel === SHADOW_CALLER_LABEL && asyncMode) {
-      return {
-        success: false,
-        content: 'spawn from within shadow must use async=false. shadow has no async machinery — async-scheduled tasks would orphan to main inbox after shadow exits, unreachable from within shadow.',
-        error: 'shadow_async_spawn_rejected',
-      };
-    }
-
-    // template resolve（phase 11）/ 未知名 reject 不静默 fall back、留 audit
-    const systemPrompt = resolveSpawnTemplate(templateName);
-    if (systemPrompt === null) {
-      const available = listSpawnTemplateNames().join(', ');
-      ctx.auditWriter?.write(
-        SPAWN_AUDIT_EVENTS.TEMPLATE_UNKNOWN,
-        templateName.slice(0, AUDIT_PREVIEW_LEN),
-        available,
-      );
-      return {
-        success: false,
-        content: `[chestnut spawn] unknown template: '${templateName}'. Available: ${available}`,
-        error: 'spawn_template_unknown',
-      };
-    }
-
-    if (asyncMode) {
-      if (!ctx.taskSystem) {
+      // shadow 防御（per shadow D6 A ratify）/ 先于 template resolve、保既有 reject 顺序
+      if (ctx.callerLabel === SHADOW_CALLER_LABEL && asyncMode) {
         return {
           success: false,
-          content: '[chestnut spawn] task_system not available in execution context — async path requires AsyncTaskSystem injection',
-          error: 'task_system_unavailable',
+          content: 'spawn from within shadow must use async=false. shadow has no async machinery — async-scheduled tasks would orphan to main inbox after shadow exits, unreachable from within shadow.',
+          error: 'shadow_async_spawn_rejected',
         };
       }
-      const mainContextSnapshot = ctx.clawId && ctx.currentToolUseId
-        ? { clawId: ctx.clawId, toolUseId: ctx.currentToolUseId }
-        : undefined;
-      try {
-        const taskId = await ctx.taskSystem.schedule('subagent', {
-          kind: 'subagent',
-          mode: 'standard',
-          intent,
-          timeoutMs,
-          maxSteps,
-          systemPrompt,
-          parentClawId: ctx.clawId,
-          originClawId: ctx.originClawId ?? ctx.clawId,
-          callerType: 'subagent',
-          mainContextSnapshot,
-        });
 
-        return {
-          success: true,
-          content: `Subagent created. Task ID: ${taskId}. Results will be delivered to inbox when complete.`,
-          metadata: { taskId },
-        };
-      } catch (error) {
-        const errorMsg = formatErr(error);
+      // template resolve（phase 11）/ 未知名 reject 不静默 fall back、留 audit
+      const systemPrompt = resolveSpawnTemplate(templateName);
+      if (systemPrompt === null) {
+        const available = listSpawnTemplateNames().join(', ');
         ctx.auditWriter?.write(
-          SPAWN_AUDIT_EVENTS.ASYNC_SCHEDULE_FAILED,
-          intent.slice(0, AUDIT_PREVIEW_LEN),
-          errorMsg,
+          SPAWN_AUDIT_EVENTS.TEMPLATE_UNKNOWN,
+          templateName.slice(0, AUDIT_PREVIEW_LEN),
+          available,
         );
-        return { success: false, content: `Failed to create subagent: ${errorMsg}`, error: errorMsg };
+        return {
+          success: false,
+          content: `[chestnut spawn] unknown template: '${templateName}'. Available: ${available}`,
+          error: 'spawn_template_unknown',
+        };
       }
-    }
 
-    return runSpawnSync({ intent, timeoutMs, maxSteps, systemPrompt, ctx });
-  },
-};
+      if (asyncMode) {
+        if (!ctx.taskSystem) {
+          return {
+            success: false,
+            content: '[chestnut spawn] task_system not available in execution context — async path requires AsyncTaskSystem injection',
+            error: 'task_system_unavailable',
+          };
+        }
+        const mainContextSnapshot = ctx.clawId && ctx.currentToolUseId
+          ? { clawId: ctx.clawId, toolUseId: ctx.currentToolUseId }
+          : undefined;
+        try {
+          const taskId = await ctx.taskSystem.schedule('subagent', {
+            kind: 'subagent',
+            mode: 'standard',
+            intent,
+            timeoutMs,
+            maxSteps,
+            systemPrompt,
+            parentClawId: ctx.clawId,
+            originClawId: ctx.originClawId ?? ctx.clawId,
+            callerType: 'subagent',
+            mainContextSnapshot,
+          });
+
+          return {
+            success: true,
+            content: `Subagent created. Task ID: ${taskId}. Results will be delivered to inbox when complete.`,
+            metadata: { taskId },
+          };
+        } catch (error) {
+          const errorMsg = formatErr(error);
+          ctx.auditWriter?.write(
+            SPAWN_AUDIT_EVENTS.ASYNC_SCHEDULE_FAILED,
+            intent.slice(0, AUDIT_PREVIEW_LEN),
+            errorMsg,
+          );
+          return { success: false, content: `Failed to create subagent: ${errorMsg}`, error: errorMsg };
+        }
+      }
+
+      return runSpawnSync({ intent, timeoutMs, maxSteps, systemPrompt, ctx, runSubagent: deps.runSubagent });
+    },
+  };
+}
+
+// module-level default 实例向后兼容 assembly 注册
+export const spawnTool: Tool = createSpawnTool();

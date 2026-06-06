@@ -12,7 +12,7 @@ import type { ToolResult } from '../../foundation/tool-protocol/index.js';
 
 import { UUID_SHORT_LEN } from '../../constants.js';
 import { TASKS_SYNC_SPAWN_DIR } from './constants.js';
-import { runSubagent, createPerTaskRegistry, getDisplayResult } from '../subagent/index.js';
+import { runSubagent as defaultRunSubagent, createPerTaskRegistry, getDisplayResult } from '../subagent/index.js';
 import { AUDIT_PREVIEW_LEN } from '../../foundation/constants.js';
 import { SPAWN_AUDIT_EVENTS } from './audit-events.js';
 import { formatErr } from './_helpers.js';
@@ -25,6 +25,7 @@ export interface RunSpawnSyncOptions {
   maxSteps?: number;
   systemPrompt: string;
   ctx: ExecContext;
+  runSubagent?: typeof defaultRunSubagent;
 }
 
 /**
@@ -48,7 +49,8 @@ export async function runSpawnSync(opts: RunSpawnSyncOptions): Promise<ToolResul
     // mirror verifier-job 既有调用模板：从 caller registry 取 subagent profile 工具
     const subagentRegistry = createPerTaskRegistry(opts.ctx.registry, 'subagent');
 
-    const { text, capturedResult } = await runSubagent({
+    const subagentImpl = opts.runSubagent ?? defaultRunSubagent;
+    const { text, capturedResult } = await subagentImpl({
       agentId: id,
       callerType: 'subagent',
       clawDir: opts.ctx.clawDir,

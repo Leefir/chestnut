@@ -15,6 +15,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
 import { spawnTool } from '../../../src/core/spawn-system/index.js';
+import { createSpawnTool } from '../../../src/core/spawn-system/tools/spawn.js';
 import { ExecContextImpl } from '../../../src/foundation/tools/context.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/index.js';
 import { makeAudit } from '../../helpers/audit.js';
@@ -32,19 +33,12 @@ const { mockRunSubagent } = vi.hoisted(() => ({
   mockRunSubagent: vi.fn(),
 }));
 
-vi.mock('../../../src/core/subagent/index.js', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('../../../src/core/subagent/index.js')>();
-  return {
-    ...mod,
-    runSubagent: mockRunSubagent,
-  };
-});
-
 describe('spawn tool sync path (phase 766)', () => {
   let tempDir: string;
   let fs: NodeFileSystem;
   let baseCtx: ExecContextImpl;
   let audit: ReturnType<typeof makeAudit>;
+  const testSpawnTool = createSpawnTool({ runSubagent: mockRunSubagent });
 
   function makeRegistry(): ToolRegistryImpl {
     const registry = new ToolRegistryImpl();
@@ -133,7 +127,7 @@ describe('spawn tool sync path (phase 766)', () => {
     it('async=false takes sync path via runSpawnSync', async () => {
       mockRunSubagent.mockResolvedValue({ text: 'sync result' });
 
-      const result = await spawnTool.execute({ intent: 'test task', async: false }, baseCtx);
+      const result = await testSpawnTool.execute({ intent: 'test task', async: false }, baseCtx);
 
       expect(result.success).toBe(true);
       expect(mockSchedule).not.toHaveBeenCalled();
@@ -149,7 +143,7 @@ describe('spawn tool sync path (phase 766)', () => {
     it('sync path returns inline result', async () => {
       mockRunSubagent.mockResolvedValue({ text: 'inline result from subagent' });
 
-      const result = await spawnTool.execute({ intent: 'compute 1+1', async: false }, baseCtx);
+      const result = await testSpawnTool.execute({ intent: 'compute 1+1', async: false }, baseCtx);
 
       expect(result.success).toBe(true);
       expect(result.content).toBe('inline result from subagent');
@@ -160,7 +154,7 @@ describe('spawn tool sync path (phase 766)', () => {
     it('sync path audits SYNC_STARTED and SYNC_FINISHED', async () => {
       mockRunSubagent.mockResolvedValue({ text: 'ok' });
 
-      await spawnTool.execute({ intent: 'audit test', async: false }, baseCtx);
+      await testSpawnTool.execute({ intent: 'audit test', async: false }, baseCtx);
 
       const types = audit.events.map((e) => e[0]);
       expect(types).toContain('spawn_sync_started');
@@ -170,7 +164,7 @@ describe('spawn tool sync path (phase 766)', () => {
     it('sync path failure audits SYNC_FAILED', async () => {
       mockRunSubagent.mockRejectedValue(new Error('subagent crashed'));
 
-      const result = await spawnTool.execute({ intent: 'fail test', async: false }, baseCtx);
+      const result = await testSpawnTool.execute({ intent: 'fail test', async: false }, baseCtx);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('spawn_sync_failed');
@@ -191,7 +185,7 @@ describe('spawn tool sync path (phase 766)', () => {
         llm: makeLLM(),
       });
 
-      const result = await spawnTool.execute({ intent: 'no registry', async: false }, ctxNoRegistry);
+      const result = await testSpawnTool.execute({ intent: 'no registry', async: false }, ctxNoRegistry);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('spawn_sync_failed');
@@ -209,7 +203,7 @@ describe('spawn tool sync path (phase 766)', () => {
         registry: makeRegistry(),
       });
 
-      const result = await spawnTool.execute({ intent: 'no llm', async: false }, ctxNoLlm);
+      const result = await testSpawnTool.execute({ intent: 'no llm', async: false }, ctxNoLlm);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('spawn_sync_failed');
@@ -255,7 +249,7 @@ describe('spawn tool sync path (phase 766)', () => {
         taskSystem: createMockTaskSystem(fs, audit.audit),
       });
 
-      const result = await spawnTool.execute({ intent: 'test', async: false }, shadowCtx);
+      const result = await testSpawnTool.execute({ intent: 'test', async: false }, shadowCtx);
 
       expect(result.success).toBe(true);
       expect(result.content).toBe('shadow sync result');
@@ -284,7 +278,7 @@ describe('spawn tool sync path (phase 766)', () => {
       mockRunSubagent.mockResolvedValue({ text: 'fresh spawn text result' });
 
       // 3. run spawn sync; internal subagentRegistry should have fresh done, not main stale
-      const result = await spawnTool.execute({ intent: 'isolation test', async: false }, baseCtx);
+      const result = await testSpawnTool.execute({ intent: 'isolation test', async: false }, baseCtx);
 
       // 4. assert text fallback, not stale result
       expect(result.success).toBe(true);

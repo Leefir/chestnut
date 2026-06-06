@@ -11,6 +11,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
 import { spawnTool } from '../../../src/core/spawn-system/index.js';
+import { createSpawnTool } from '../../../src/core/spawn-system/tools/spawn.js';
 import { SPAWN_AUDIT_EVENTS } from '../../../src/core/spawn-system/audit-events.js';
 import { DEFAULT_SUBAGENT_SYSTEM_PROMPT } from '../../../src/prompts/index.js';
 import { ExecContextImpl } from '../../../src/foundation/tools/context.js';
@@ -29,19 +30,12 @@ const { mockRunSubagent } = vi.hoisted(() => ({
   mockRunSubagent: vi.fn(),
 }));
 
-vi.mock('../../../src/core/subagent/index.js', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('../../../src/core/subagent/index.js')>();
-  return {
-    ...mod,
-    runSubagent: mockRunSubagent,
-  };
-});
-
 describe('spawn tool template param (phase 11)', () => {
   let tempDir: string;
   let fs: NodeFileSystem;
   let baseCtx: ExecContextImpl;
   let audit: ReturnType<typeof makeAudit>;
+  const testSpawnTool = createSpawnTool({ runSubagent: mockRunSubagent });
 
   function makeRegistry(): ToolRegistryImpl {
     const registry = new ToolRegistryImpl();
@@ -128,7 +122,7 @@ describe('spawn tool template param (phase 11)', () => {
     it("sync 路径 default template 透传 systemPrompt 进 runSubagent", async () => {
       mockRunSubagent.mockResolvedValue({ text: 'sync ok' });
 
-      const result = await spawnTool.execute(
+      const result = await testSpawnTool.execute(
         { intent: 'test', async: false, template: 'default' },
         baseCtx,
       );
@@ -164,7 +158,7 @@ describe('spawn tool template param (phase 11)', () => {
     });
 
     it("sync 模式 unknown template → reject + 不调 runSubagent", async () => {
-      const result = await spawnTool.execute(
+      const result = await testSpawnTool.execute(
         { intent: 'test', template: 'nonexistent', async: false },
         baseCtx,
       );
