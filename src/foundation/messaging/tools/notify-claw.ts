@@ -1,4 +1,3 @@
-import { type ChestnutRoot } from '../../../assembly/install-paths.js';
 import { formatErr } from "../../utils/index.js";
 /**
  * @module L2.Messaging
@@ -21,7 +20,7 @@ export const NOTIFY_CLAW_TOOL_NAME = 'notify_claw' as const;
 
 export interface NotifyClawDeps {
   fs: FileSystem;
-  chestnutRoot: ChestnutRoot;  // motion dir 的父 dir、用于 resolve target claw dir
+  chestnutRoot: string;  // phase 90: 去 brand type-only import；motion dir 的父 dir、用于 resolve target claw dir
   audit: AuditLog;        // motion audit（NOTIFY_CLAW_SENT/FAILED emit）
 }
 
