@@ -42,3 +42,17 @@ export function createAuditWriter(
 ): AuditLog {
   return new AuditWriter(fs, filePath, maxSizeMb);
 }
+
+// Reader API (phase 126)
+export {
+  createAuditReader,
+  listAuditFiles,
+  listPendingFallbackDumps,
+} from './reader.js';
+export type {
+  AuditReader,
+  AuditRecord,
+  ReadOptions,
+  AuditFileInfo,
+  PendingFallbackDump,
+} from './reader.js';
