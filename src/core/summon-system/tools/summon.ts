@@ -57,7 +57,7 @@ export class SummonTool implements Tool {
       maxSteps: { type: 'number', description: '子代理最大步数（默认继承主循环 max_steps）' },
       idleTimeoutMs: {
         type: 'number',
-        description: 'LLM 静默超时阈值（ms）。超过此时间无 LLM 输出则终止子代理。默认 60000ms。',
+        description: `LLM 静默超时阈值（ms）。超过此时间无 LLM 输出则终止子代理。默认 ${DEFAULT_LLM_IDLE_TIMEOUT_MS}ms。`,
       },
       targetClaw: {
         type: 'string',
