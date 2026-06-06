@@ -13,6 +13,9 @@ import type { FileSystem } from '../../foundation/fs/types.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { TurnTracker } from './chat-viewport-types.js';
 
+/** chat-viewport crash audit 写入时 stack trace top-N 行截取（防 audit row 过长）*/
+const CHAT_CRASH_STACK_TOP_N = 5;
+
 export interface UncaughtHandlerDeps {
   agentDir: string;
   fs: FileSystem;
@@ -30,7 +33,7 @@ export function createUncaughtHandler(deps: UncaughtHandlerDeps) {
       const shimFs = deps.fsFactory ? deps.fsFactory(deps.agentDir) : deps.fs;
       const shim = createSystemAudit(shimFs, deps.agentDir);
       const errMsg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
-      const stack = err instanceof Error && err.stack ? err.stack.split('\n').slice(0, 5).join(' | ') : '';
+      const stack = err instanceof Error && err.stack ? err.stack.split('\n').slice(0, CHAT_CRASH_STACK_TOP_N).join(' | ') : '';
       shim?.write(
         CLI_AUDIT_EVENTS.CHAT_CRASH_UNCAUGHT,
         `pid=${process.pid}`,
