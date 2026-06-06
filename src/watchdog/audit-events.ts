@@ -11,6 +11,7 @@ export const WATCHDOG_AUDIT_EVENTS = {
   CLAW_SCAN: 'watchdog_claw_scan',
   CLAW_CRASH_DETECTED: 'claw_crash_detected',
   CLAW_CRASH_NOTIFY_DEDUPED: 'watchdog_claw_crash_notify_deduped',
+  CLAW_CRASH_SKIPPED_NO_CONTRACT: 'watchdog_claw_crash_skipped_no_contract',
   CLAW_CRASH_NOTIFY_DROPPED: 'claw_crash_notify_dropped',
   CLAW_CRASH_NOTIFY_RESET: 'watchdog_claw_crash_notify_reset',
   STATE_LOAD_FAILED: 'watchdog_state_load_failed',

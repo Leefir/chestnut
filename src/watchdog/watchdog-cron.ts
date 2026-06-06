@@ -169,7 +169,12 @@ export function maybeCronClawCrash(pm: ProcessManager, audit: AuditLog, fsFactor
       // phase 2 γ4: 触发条件 = dead + activeContract + !notified（不再要求 transition / 覆盖 S7）
       // paused contract 永不通知 (clawHasActiveContract 内部已 active-only)
       if (!clawHasActiveContract(clawDir, fsFactory, audit)) {
-        // 不发通知（contract 不 active 或不存在）
+        // phase 133: B1 silent skip 加 audit emit（DP「不丢弃静默」+ 三分判定每分支必 audit）
+        audit.write(
+          WATCHDOG_AUDIT_EVENTS.CLAW_CRASH_SKIPPED_NO_CONTRACT,
+          `claw=${rawClawId}`,
+          `reason=no_active_contract`,
+        );
         clawStateAPI.clawPreviouslyAlive.set(rawClawId, currentlyAlive);
         continue;
       }
