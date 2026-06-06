@@ -13,7 +13,7 @@ import { readPid, removePid } from './pid.js';
 import type { PidFileContent } from './pid.js';
 import { findProcesses } from './find.js';
 import { AUDIT_MESSAGE_MAX_CHARS } from '../audit/index.js';
-import { isAlive as l1IsAlive, getProcessStartTime } from '../process-exec/index.js';
+import { isAlive as defaultL1IsAlive, getProcessStartTime } from '../process-exec/index.js';
 import { LockConflictError, type ProcessManagerContext } from './types.js';
 import type { SpawnOptions } from './types.js';
 import { makeClawId, type ClawId } from '../paths.js';
@@ -132,7 +132,7 @@ async function cleanupLock(
     const lockHolder = readLockPid(ctx, clawId);
     if (lockHolder !== null) {
       const lockStartTime = lockHolder.startTime;
-      if (l1IsAlive(lockHolder.pid, lockStartTime)) {
+      if ((ctx.l1IsAlive ?? defaultL1IsAlive)(lockHolder.pid, lockStartTime)) {
         try {
           kill(lockHolder.pid, 'TERM');
           await sleep(DAEMON_SHUTDOWN_GRACE_MS);
@@ -210,7 +210,7 @@ async function handlePidFileConflict(
   const stored = await readPid(ctx, clawId);
   if (stored !== null) {
     const startTimeForVerify = stored.startTime ?? getProcessStartTime(stored.pid);
-    if (l1IsAlive(stored.pid, startTimeForVerify)) {
+    if ((ctx.l1IsAlive ?? defaultL1IsAlive)(stored.pid, startTimeForVerify)) {
       throw new LockConflictError(
         clawId,
         `Claw "${clawId}" is already running (PID file exists)`,

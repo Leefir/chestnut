@@ -31,7 +31,6 @@ vi.mock('../../../src/foundation/process-exec/index.js', async (importOriginal) 
   return {
     ...actual,
     spawnDetached: vi.fn().mockReturnValue({ pid: FAKE_LIVE_PID }),
-    isAlive: vi.fn().mockReturnValue(true),
   };
 });
 
@@ -41,10 +40,8 @@ describe('spawn EEXIST race audit 归类（phase 591 / A.spawn-eexist-race-miscl
 
   beforeEach(async () => {
     vi.restoreAllMocks();
-
-    const { spawnDetached, isAlive } = await import('../../../src/foundation/process-exec/index.js');
+    const { spawnDetached } = await import('../../../src/foundation/process-exec/index.js');
     vi.mocked(spawnDetached).mockReturnValue({ pid: FAKE_LIVE_PID } as any);
-    vi.mocked(isAlive).mockReturnValue(true);
 
     tempDir = path.join(tmpdir(), `spawn-race-${randomUUID()}`);
     await fs.mkdir(tempDir, { recursive: true });
@@ -78,6 +75,7 @@ describe('spawn EEXIST race audit 归类（phase 591 / A.spawn-eexist-race-miscl
       audit,
       resolveDir: (id: string) => path.join(tempDir, 'claws', id),
       isReady: () => true,
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     mockWriteExclusiveOnceEEXIST();
@@ -119,6 +117,7 @@ describe('spawn EEXIST race audit 归类（phase 591 / A.spawn-eexist-race-miscl
       audit,
       resolveDir: (id: string) => path.join(tempDir, 'claws', id),
       isReady: () => true,
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     // Pre-create empty PID file so readSync succeeds in the EEXIST branch
@@ -157,6 +156,7 @@ describe('spawn EEXIST race audit 归类（phase 591 / A.spawn-eexist-race-miscl
       audit,
       resolveDir: (id: string) => path.join(tempDir, 'claws', id),
       isReady: () => true,
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     mockWriteExclusiveOnceEEXIST();

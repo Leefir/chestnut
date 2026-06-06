@@ -26,12 +26,11 @@ vi.mock('../../../src/foundation/process-manager/constants.js', async (importOri
   return { ...actual, DAEMON_SHUTDOWN_GRACE_MS: 0 };
 });
 
-// Mock process-exec so no real signal is sent and isAlive is controllable
+// Mock process-exec so no real signal is sent
 vi.mock('../../../src/foundation/process-exec/index.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../src/foundation/process-exec/index.js')>();
   return {
     ...actual,
-    isAlive: vi.fn().mockReturnValue(false),
     kill: vi.fn(),
   };
 });
@@ -57,6 +56,7 @@ describe('stop.ts race + getAliveStatus probe single responsibility (phase 879)'
       fs: nodeFs,
       audit,
       resolveDir: (id: string) => path.join(tempDir, 'claws', id),
+      l1IsAlive: vi.fn().mockReturnValue(false),
     };
   }
 
@@ -78,12 +78,6 @@ describe('stop.ts race + getAliveStatus probe single responsibility (phase 879)'
   });
 
   it('stop 直读 l1IsAlive、不走 isAliveByPidFile race window (new4.P1.1)', async () => {
-    const { isAlive } = await import('../../../src/foundation/process-exec/index.js');
-    const mockedIsAlive = vi.mocked(isAlive);
-    // 第 1 次 l1IsAlive 检（STALE 分支前）→ true（进程 alive）
-    // 第 2 次 l1IsAlive 检（SIGTERM grace 后）→ true（进程仍 alive）→ 触发 SIGKILL escalation
-    mockedIsAlive.mockReturnValueOnce(true).mockReturnValueOnce(true);
-
     const { audit, events } = makeAudit();
     const clawId = 'stop-l1-direct';
     const statusDir = path.join(tempDir, 'claws', clawId, 'status');
@@ -93,6 +87,9 @@ describe('stop.ts race + getAliveStatus probe single responsibility (phase 879)'
     await fs.writeFile(pidFile, String(fakeLivePid), 'utf-8');
 
     const ctx = makeCtx(audit);
+    // 第 1 次 l1IsAlive 检（STALE 分支前）→ true（进程 alive）
+    // 第 2 次 l1IsAlive 检（SIGTERM grace 后）→ true（进程仍 alive）→ 触发 SIGKILL escalation
+    vi.mocked(ctx.l1IsAlive!).mockReturnValueOnce(true).mockReturnValueOnce(true);
     const result = await stopProcess(ctx, clawId);
 
     expect(result).toBe(true);
@@ -113,10 +110,6 @@ describe('stop.ts race + getAliveStatus probe single responsibility (phase 879)'
   });
 
   it('l1IsAlive(pid) 直读不受并发 pidfile 删除影响 (race window 消除)', async () => {
-    const { isAlive } = await import('../../../src/foundation/process-exec/index.js');
-    const mockedIsAlive = vi.mocked(isAlive);
-    mockedIsAlive.mockReturnValue(false);
-
     const { audit, events } = makeAudit();
     const clawId = 'stop-race-immune';
     const statusDir = path.join(tempDir, 'claws', clawId, 'status');

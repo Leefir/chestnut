@@ -2,6 +2,7 @@ import type { FileSystem } from '../fs/types.js';
 import type { AuditLog } from '../audit/index.js';
 import type { ClawId } from '../paths.js';
 import type { ProcessStartTime } from '../process-exec/index.js';
+import type { isAlive as defaultL1IsAlive } from '../process-exec/index.js';
 
 
 export class LockConflictError extends Error {
@@ -40,4 +41,6 @@ export interface ProcessManagerContext {
   isReady?: (clawId: ClawId) => boolean;
   /** Optional readLockPid override (used by tests spying on ProcessManager.prototype.readLockPid) */
   readLockPid?: (clawId: ClawId) => { pid: number; startTime?: ProcessStartTime } | null;
+  /** Optional l1IsAlive override (used by tests injecting process-exec level liveness probe) */
+  l1IsAlive?: typeof defaultL1IsAlive;
 }

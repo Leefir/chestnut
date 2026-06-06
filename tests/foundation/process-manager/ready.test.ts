@@ -20,22 +20,12 @@ import { PROCESS_MANAGER_AUDIT_EVENTS } from '../../../src/foundation/process-ma
 import { FAKE_LIVE_PID, FAKE_LIVE_PID_STRING } from '../../helpers/test-pids.js';
 import type { ProcessManagerContext } from '../../../src/foundation/process-manager/types.js';
 
-vi.mock('../../../src/foundation/process-exec/index.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../src/foundation/process-exec/index.js')>();
-  return {
-    ...actual,
-    isAlive: vi.fn().mockReturnValue(true),
-  };
-});
-
 describe('isReady / markReady / markNotReady', () => {
   let tempDir: string;
   let nodeFs: NodeFileSystem;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
-    const { isAlive } = await import('../../../src/foundation/process-exec/index.js');
-    vi.mocked(isAlive).mockReturnValue(true);
 
     tempDir = path.join(tmpdir(), `ready-test-${randomUUID()}`);
     await fs.mkdir(tempDir, { recursive: true });
@@ -52,6 +42,7 @@ describe('isReady / markReady / markNotReady', () => {
       fs: nodeFs,
       audit,
       resolveDir: (id: string) => path.join(tempDir, 'claws', id),
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
   }
 
@@ -107,6 +98,7 @@ describe('isReady / markReady / markNotReady', () => {
       fs: nodeFsLocal,
       audit,
       resolveDir: (id: string) => path.join(tempDir, 'claws', id),
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     // pidFile 写当前进程 PID

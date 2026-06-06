@@ -36,7 +36,6 @@ vi.mock('../../../src/foundation/process-exec/index.js', async (importOriginal) 
   return {
     ...actual,
     spawnDetached: vi.fn().mockReturnValue({ pid: FAKE_LIVE_PID }),
-    isAlive: vi.fn().mockReturnValue(true),
   };
 });
 
@@ -82,6 +81,7 @@ describe('phase 1317 spawn event-driven readiness', () => {
         // Simulate a slow boot that takes many poll cycles (> old 3000ms deadline would have expired)
         return readyCallCount >= 100;
       },
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     const result = await spawnProcess(ctx, clawId, {
@@ -109,6 +109,7 @@ describe('phase 1317 spawn event-driven readiness', () => {
         return false;
       },
       isReady: () => false,
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     await expect(

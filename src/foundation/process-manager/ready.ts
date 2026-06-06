@@ -1,6 +1,6 @@
 import { getReadyFile, getPidFile, ensureStatusDir } from './paths.js';
 import { formatErr } from "../utils/index.js";
-import { isAlive as l1IsAlive, getProcessStartTime, makeProcessStartTime, type ProcessStartTime } from '../process-exec/index.js';
+import { isAlive as defaultL1IsAlive, getProcessStartTime, makeProcessStartTime, type ProcessStartTime } from '../process-exec/index.js';
 import { PROCESS_MANAGER_AUDIT_EVENTS } from './audit-events.js';
 import type { ProcessManagerContext } from './types.js';
 import type { PidFileContent } from './pid.js';
@@ -123,7 +123,7 @@ export function isReady(ctx: ProcessManagerContext, clawId: ClawId): boolean {
     return false;
   }
   try {
-    return l1IsAlive(readyPid, readyStartTime);
+    return (ctx.l1IsAlive ?? defaultL1IsAlive)(readyPid, readyStartTime);
   } catch (err: any) {
     ctx.audit.write(
       PROCESS_MANAGER_AUDIT_EVENTS.READY_CHECK_ISALIVE_THROW,

@@ -1,4 +1,4 @@
-import { isAlive as l1IsAlive, makeProcessStartTime, type ProcessStartTime } from '../process-exec/index.js';
+import { isAlive as defaultL1IsAlive, makeProcessStartTime, type ProcessStartTime } from '../process-exec/index.js';
 import { formatErr } from "../utils/index.js";
 import { getPidFile } from './paths.js';
 import type { ProcessManagerContext } from './types.js';
@@ -48,7 +48,7 @@ export function getAliveStatus(
     }
 
     try {
-      if (l1IsAlive(pid, startTime)) {
+      if ((ctx.l1IsAlive ?? defaultL1IsAlive)(pid, startTime)) {
         return { alive: true, reason: `PID ${pid}`, pid };
       }
       // M#1 probe ≠ delete：probe 不 mutate state、stale pidfile 清理归 stop/recovery 显式路径

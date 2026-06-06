@@ -19,22 +19,12 @@ import { PROCESS_MANAGER_AUDIT_EVENTS } from '../../../src/foundation/process-ma
 import { FAKE_LIVE_PID } from '../../helpers/test-pids.js';
 import type { ProcessManagerContext } from '../../../src/foundation/process-manager/types.js';
 
-vi.mock('../../../src/foundation/process-exec/index.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../src/foundation/process-exec/index.js')>();
-  return {
-    ...actual,
-    isAlive: vi.fn().mockReturnValue(true),
-  };
-});
-
 describe('isReady stale marker self-cleanup（phase 1148 / C.1）', () => {
   let tempDir: string;
   let nodeFs: NodeFileSystem;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
-    const { isAlive } = await import('../../../src/foundation/process-exec/index.js');
-    vi.mocked(isAlive).mockReturnValue(true);
 
     tempDir = path.join(tmpdir(), `ready-self-cleanup-${randomUUID()}`);
     await fs.mkdir(tempDir, { recursive: true });
@@ -51,6 +41,7 @@ describe('isReady stale marker self-cleanup（phase 1148 / C.1）', () => {
       fs: nodeFs,
       audit,
       resolveDir: (id: string) => path.join(tempDir, 'claws', id),
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
   }
 
@@ -68,6 +59,7 @@ describe('isReady stale marker self-cleanup（phase 1148 / C.1）', () => {
       fs: nodeFsLocal,
       audit,
       resolveDir: (id: string) => path.join(tempDir, 'claws', id),
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     await writePidFile(clawId, process.pid);
@@ -135,6 +127,7 @@ describe('isReady stale marker self-cleanup（phase 1148 / C.1）', () => {
       fs: nodeFsLocal,
       audit,
       resolveDir: (id: string) => path.join(tempDir, 'claws', id),
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     await writePidFile(clawId, process.pid);

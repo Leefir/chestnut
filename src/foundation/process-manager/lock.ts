@@ -1,6 +1,6 @@
 import * as path from 'path';
 import { formatErr } from "../utils/index.js";
-import { isAlive as l1IsAlive, getProcessStartTime, makeProcessStartTime, type ProcessStartTime } from '../process-exec/index.js';
+import { isAlive as defaultL1IsAlive, getProcessStartTime, makeProcessStartTime, type ProcessStartTime } from '../process-exec/index.js';
 import { PROCESS_MANAGER_AUDIT_EVENTS } from './audit-events.js';
 import { getLockFile } from './paths.js';
 import { LockConflictError, type ProcessManagerContext } from './types.js';
@@ -67,7 +67,7 @@ export function acquireLock(ctx: ProcessManagerContext, clawId: ClawId): void {
   const holder = readLockPidFn(clawId);
   if (holder !== null) {
     const holderStartTime = holder.startTime ?? getProcessStartTime(holder.pid);
-    if (l1IsAlive(holder.pid, holderStartTime)) {
+    if ((ctx.l1IsAlive ?? defaultL1IsAlive)(holder.pid, holderStartTime)) {
       throw new LockConflictError(
         clawId,
         `Another "${clawId}" daemon is running (PID: ${holder.pid})`,

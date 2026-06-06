@@ -15,13 +15,6 @@ import { PROCESS_MANAGER_AUDIT_EVENTS } from '../../../src/foundation/process-ma
 import type { ProcessManagerContext } from '../../../src/foundation/process-manager/types.js';
 import type { FileSystem } from '../../../src/foundation/fs/types.js';
 
-vi.mock('../../../src/foundation/process-exec/index.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../src/foundation/process-exec/index.js')>();
-  return {
-    ...actual,
-    isAlive: vi.fn().mockReturnValue(true),
-  };
-});
 
 function makeMockFs(overrides?: {
   readSync?: (p: string) => string;
@@ -66,6 +59,7 @@ describe('phase 1132 D.1: isReady narrow catch', () => {
       fs: mockFs,
       audit,
       resolveDir: (id: string) => path.join('/tmp', id),
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     expect(isReady(ctx, 'test-claw')).toBe(false);
@@ -94,6 +88,7 @@ describe('phase 1132 D.1: isReady narrow catch', () => {
       fs: mockFs,
       audit,
       resolveDir: (id: string) => path.join('/tmp', id),
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     expect(isReady(ctx, 'test-claw')).toBe(false);
@@ -114,6 +109,7 @@ describe('phase 1132 D.1: isReady narrow catch', () => {
       fs: mockFs,
       audit,
       resolveDir: (id: string) => path.join('/tmp', id),
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     expect(isReady(ctx, 'test-claw')).toBe(false);
@@ -132,11 +128,6 @@ describe('phase 1132 D.1: isReady narrow catch', () => {
   });
 
   it('反向 4: l1IsAlive throw → READY_CHECK_ISALIVE_THROW audit + return false', async () => {
-    const { isAlive } = await import('../../../src/foundation/process-exec/index.js');
-    vi.mocked(isAlive).mockImplementation(() => {
-      throw new Error('ps exec failed');
-    });
-
     const { audit, events } = makeAudit();
     const mockFs = makeMockFs({
       readSync: vi.fn().mockImplementation((p: string) => {
@@ -148,7 +139,11 @@ describe('phase 1132 D.1: isReady narrow catch', () => {
       fs: mockFs,
       audit,
       resolveDir: (id: string) => path.join('/tmp', id),
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
+    vi.mocked(ctx.l1IsAlive!).mockImplementation(() => {
+      throw new Error('ps exec failed');
+    });
 
     expect(isReady(ctx, 'test-claw')).toBe(false);
 

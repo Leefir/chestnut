@@ -13,14 +13,6 @@ import { VIEWPORT_AUDIT_EVENTS } from '../../src/cli/commands/viewport-audit-eve
 import type { FileSystem } from '../../src/foundation/fs/types.js';
 import type { AuditLog } from '../../src/foundation/audit/index.js';
 
-vi.mock('../../src/foundation/process-exec/index.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/foundation/process-exec/index.js')>();
-  return {
-    ...actual,
-    isAlive: vi.fn().mockReturnValue(true),
-  };
-});
-
 function makeMockFs(overrides?: {
   listSync?: () => ReturnType<FileSystem['listSync']>;
 }): FileSystem {

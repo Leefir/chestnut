@@ -40,7 +40,6 @@ vi.mock('../../../src/foundation/process-exec/index.js', async (importOriginal) 
   return {
     ...actual,
     spawnDetached: vi.fn().mockReturnValue({ pid: FAKE_LIVE_PID }),
-    isAlive: vi.fn().mockReturnValue(true),
   };
 });
 
@@ -50,10 +49,8 @@ describe('spawn — removePid silent → audit (P1.1)', () => {
 
   beforeEach(async () => {
     vi.restoreAllMocks();
-
-    const { spawnDetached, isAlive } = await import('../../../src/foundation/process-exec/index.js');
+    const { spawnDetached } = await import('../../../src/foundation/process-exec/index.js');
     vi.mocked(spawnDetached).mockReturnValue({ pid: FAKE_LIVE_PID } as any);
-    vi.mocked(isAlive).mockReturnValue(true);
 
     const { removePid } = await import('../../../src/foundation/process-manager/pid.js');
     vi.mocked(removePid).mockImplementation(async () => {
@@ -81,6 +78,7 @@ describe('spawn — removePid silent → audit (P1.1)', () => {
       audit,
       resolveDir: (id: string) => path.join(tempDir, 'claws', id),
       isReady: () => true,
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     let writeExclusiveCallCount = 0;

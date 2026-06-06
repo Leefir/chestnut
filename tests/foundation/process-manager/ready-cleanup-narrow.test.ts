@@ -15,13 +15,6 @@ import type { ProcessManagerContext } from '../../../src/foundation/process-mana
 import type { FileSystem } from '../../../src/foundation/fs/types.js';
 import { FileNotFoundError } from '../../../src/foundation/fs/types.js';
 
-vi.mock('../../../src/foundation/process-exec/index.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../src/foundation/process-exec/index.js')>();
-  return {
-    ...actual,
-    isAlive: vi.fn().mockReturnValue(true),
-  };
-});
 
 function makeMockFs(overrides?: {
   delete?: () => Promise<void>;
@@ -66,6 +59,7 @@ describe('phase 1215: ready.ts:98 fire-and-forget delete isFileNotFound narrow',
       fs: mockFs,
       audit,
       resolveDir: (id: string) => path.join('/tmp', id),
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     expect(isReady(ctx, 'test-claw')).toBe(false);
@@ -87,6 +81,7 @@ describe('phase 1215: ready.ts:98 fire-and-forget delete isFileNotFound narrow',
       fs: mockFs,
       audit,
       resolveDir: (id: string) => path.join('/tmp', id),
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     expect(isReady(ctx, 'test-claw')).toBe(false);
@@ -108,6 +103,7 @@ describe('phase 1215: ready.ts:98 fire-and-forget delete isFileNotFound narrow',
       fs: mockFs,
       audit,
       resolveDir: (id: string) => path.join('/tmp', id),
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     expect(isReady(ctx, 'test-claw')).toBe(false);

@@ -34,7 +34,6 @@ vi.mock('../../../src/foundation/process-exec/index.js', async (importOriginal) 
   return {
     ...actual,
     spawnDetached: vi.fn().mockReturnValue({ pid: FAKE_LIVE_PID }),
-    isAlive: vi.fn().mockReturnValue(true),
   };
 });
 
@@ -74,6 +73,7 @@ describe('spawn poll child-died fast-fail（phase 1136 / F.1，phase 1317 升级
         return false;
       },
       isReady: () => false,
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     await expect(
@@ -116,6 +116,7 @@ describe('spawn poll child-died fast-fail（phase 1136 / F.1，phase 1317 升级
         // initial call (ready = isReady(clawId)) counts as 1
         return readyCallCount >= 3;
       },
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     const result = await spawnProcess(ctx, clawId, {

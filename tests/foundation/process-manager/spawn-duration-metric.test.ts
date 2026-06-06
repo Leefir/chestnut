@@ -25,13 +25,12 @@ vi.mock('../../../src/foundation/process-manager/constants.js', async (importOri
   return { ...actual, DAEMON_SHUTDOWN_GRACE_MS: 0, SPAWN_POLL_INTERVAL_MS: 10 };
 });
 
-// Mock spawnDetached so no real process starts; mock isAlive so poll passes
+// Mock spawnDetached so no real process starts
 vi.mock('../../../src/foundation/process-exec/index.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../src/foundation/process-exec/index.js')>();
   return {
     ...actual,
     spawnDetached: vi.fn().mockReturnValue({ pid: FAKE_LIVE_PID }),
-    isAlive: vi.fn().mockReturnValue(true),
   };
 });
 
@@ -42,9 +41,8 @@ describe('spawn duration metric（phase 1148 / C.3）', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
 
-    const { spawnDetached, isAlive } = await import('../../../src/foundation/process-exec/index.js');
+    const { spawnDetached } = await import('../../../src/foundation/process-exec/index.js');
     vi.mocked(spawnDetached).mockReturnValue({ pid: FAKE_LIVE_PID } as any);
-    vi.mocked(isAlive).mockReturnValue(true);
 
     tempDir = path.join(tmpdir(), `spawn-duration-${randomUUID()}`);
     await fs.mkdir(tempDir, { recursive: true });
@@ -65,6 +63,7 @@ describe('spawn duration metric（phase 1148 / C.3）', () => {
       audit,
       resolveDir: (id: string) => path.join(tempDir, 'claws', id),
       isReady: () => true,
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     await spawnProcess(ctx, clawId, {
@@ -99,6 +98,7 @@ describe('spawn duration metric（phase 1148 / C.3）', () => {
         return false;
       },
       isReady: () => false,
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     const start = Date.now();
@@ -142,6 +142,7 @@ describe('spawn duration metric（phase 1148 / C.3）', () => {
         readyCallCount++;
         return readyCallCount >= 22; // enough polls to accumulate ~200ms with 10ms interval
       },
+      l1IsAlive: vi.fn().mockReturnValue(true),
     };
 
     await spawnProcess(ctx, clawId, {
