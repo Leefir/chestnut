@@ -84,6 +84,9 @@ export async function createBusinessSystems(input: BusinessSysInput): Promise<Bu
     toolTimeoutMs, maxConcurrent, outboxWriter,
   } = core;
 
+  const chestnutRoot = resolveChestnutRoot(clawDir, isMotion);
+  const clawsDir = path.join(chestnutRoot, 'claws');
+
   // A.6 selfInboxDir 提前到 taskSystem / callback 定义前（双链路保险 / cron job 注册块同步引用）
   const permissionChecker = createClawPermissionChecker({
     clawDir,
@@ -115,7 +118,7 @@ export async function createBusinessSystems(input: BusinessSysInput): Promise<Bu
       permissionChecker,
       selfInbox,
       fsFactory,
-      chestnutRoot: resolveChestnutRoot(clawDir, isMotion),
+      clawsDir,
       askMotionToolFactory: (llmArg, motionDialogStore) => new AskMotionTool(llmArg, motionDialogStore),
     });
   } catch (e) {
@@ -156,7 +159,10 @@ export async function createBusinessSystems(input: BusinessSysInput): Promise<Bu
           CLAWS_DIR
         ),
         clawFsFactory: fsFactory,
-        clawContractManagerFactory: (d: ClawDir, id: string, fs: typeof systemFs) => createContractSystem({ clawDir: d, clawId: makeClawId(id), fs, audit: createSystemAudit(fs, d), toolRegistry, toolTimeoutMs, fsFactory, chestnutRoot: resolveChestnutRoot(d, false) }),
+        clawContractManagerFactory: (d: ClawDir, id: string, fs: typeof systemFs) => {
+          const cr = resolveChestnutRoot(d, false);
+          return createContractSystem({ clawDir: d, clawId: makeClawId(id), fs, audit: createSystemAudit(fs, d), toolRegistry, toolTimeoutMs, fsFactory, chestnutRoot: cr, clawsDir: path.join(cr, 'claws') });
+        },
       };
       contractManager.onContractCompleted(async (contractId) => {
         if (!evolutionSystem) return;

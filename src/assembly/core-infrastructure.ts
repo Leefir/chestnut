@@ -193,6 +193,7 @@ export async function createCoreInfrastructure(input: CoreInfraInput): Promise<C
 
     // --- L3-L5: contractManager ---
     const chestnutRoot = resolveChestnutRoot(clawDir, isMotion);  // phase 1406: 单一 truth source
+    const clawsDir = path.join(chestnutRoot, 'claws');  // phase 98
 
     let contractManager: ContractSystem;
     try {
@@ -202,6 +203,7 @@ export async function createCoreInfrastructure(input: CoreInfraInput): Promise<C
         toolTimeoutMs,  // phase 1029 / F-2
         fsFactory,
         chestnutRoot,
+        clawsDir,
       });
     } catch (e) {
       auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=contract_manager`, `phase=construct`, `reason=${formatErr(e)}`);

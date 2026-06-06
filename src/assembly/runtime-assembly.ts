@@ -150,7 +150,7 @@ export async function createRuntimeAssembly(
         identity: isMotion ? 'motion' : 'claw',
         clawId: isMotion ? MOTION_CLAW_ID : clawId,
         clawDir,
-        chestnutRoot: resolveChestnutRoot(clawDir, isMotion),  // phase 1406: 单一 truth source
+        clawsDir: path.join(resolveChestnutRoot(clawDir, isMotion), 'claws'),  // phase 98: assembly compute
         llmConfig,
         maxSteps,
         toolProfile,

@@ -33,7 +33,7 @@ import {
   type ToolExecutorOptions,
 } from './types.js';
 import { safeNumber } from '../utils/index.js';
-import type { ChestnutRoot } from '../../assembly/install-paths.js';
+
 import type { ClawId } from '../paths.js';
 import { type ClawDir } from '../paths.js';
 
@@ -415,7 +415,7 @@ export class ToolExecutorImpl implements IToolExecutor {
  */
 export class ToolExecutor extends ToolExecutorImpl {
   private clawDir: ClawDir;
-  private chestnutRoot: ChestnutRoot;
+  private clawsDir: string;
   private syncDir: string;
   private workspaceDir: string;
   private fs: FileSystem;
@@ -426,7 +426,7 @@ export class ToolExecutor extends ToolExecutorImpl {
   constructor(options: ToolExecutorOptions) {
     super(options.registry, options.defaultTimeoutMs, options.scheduleAsyncTool);
     this.clawDir = options.clawDir;
-    this.chestnutRoot = options.chestnutRoot;
+    this.clawsDir = options.clawsDir;
     this.syncDir = options.syncDir;
     this.workspaceDir = options.workspaceDir ?? path.join(options.clawDir, CLAWSPACE_DIR);
     this.fs = options.fs;
@@ -446,7 +446,7 @@ export class ToolExecutor extends ToolExecutorImpl {
     return new ExecContextImpl({
       clawId: options.clawId,
       clawDir: this.clawDir,
-      chestnutRoot: this.chestnutRoot,
+      clawsDir: this.clawsDir,
       workspaceDir: this.workspaceDir,
       syncDir: this.syncDir,
       profile,

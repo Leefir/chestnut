@@ -16,7 +16,7 @@ import type { FileSystem } from '../../foundation/fs/types.js';
 import type { PermissionChecker } from '../../foundation/tool-protocol/permission.js';
 import type { WatcherFactory } from '../../foundation/file-watcher/index.js';
 import type { CallerType } from '../caller-types.js';
-import type { ChestnutRoot } from '../../assembly/install-paths.js';
+
 import type { ClawId } from '../../foundation/paths.js';
 import type { ToolUseId } from '../../foundation/tool-protocol/index.js';
 
@@ -52,8 +52,8 @@ export interface AsyncTaskSystemOptions {
   toolTimeoutMs?: number;
   permissionChecker?: PermissionChecker;
   fsFactory: (baseDir: string) => FileSystem;
-  /** phase 1387: Assembly 装配期注入的 chestnut 根目录 */
-  chestnutRoot: ChestnutRoot;
+  /** phase 98: caller (装配期) 算好的 claws dir */
+  clawsDir: string;
   // NEW phase 1369: AskMotionTool factory inject (per phase 619 caller DIP enforce template / cut async-task→summon reverse)
   askMotionToolFactory: (llm: LLMOrchestrator, motionDialogStore: DialogStore) => import('../../foundation/tools/index.js').Tool;
   /** phase 86: optional WatcherFactory for DI (test mock injection) */

@@ -60,6 +60,7 @@ export async function clawStatusCommand(
     toolRegistry: createToolRegistry(),
     fsFactory: deps.fsFactory,
     chestnutRoot,
+    clawsDir: path.join(chestnutRoot, 'claws'),
   });
 
   const [contractView, taskView, storageView] = await Promise.all([

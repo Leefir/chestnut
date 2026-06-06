@@ -15,7 +15,7 @@ export function makeContractId(s: string): ContractId { return s as ContractId; 
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { ToolRegistry } from '../../foundation/tools/index.js';
 import type { Priority } from '../../foundation/messaging/types.js';
-import type { ChestnutRoot } from '../../assembly/install-paths.js';
+
 import type { ClawId } from '../../foundation/paths.js';
 import { type ClawDir } from '../../foundation/paths.js';
 
@@ -136,8 +136,8 @@ export interface VerifierIdentityConfig {
   agentId: string;
   prompt: string;
   clawDir: ClawDir;
-  /** phase 1387: Assembly 装配期注入的 chestnut 根目录 */
-  chestnutRoot: ChestnutRoot;
+  /** phase 98: caller (装配期) 算好的 claws dir */
+  clawsDir: string;
   clawId: ClawId;               // phase 514 / caller's clawId for subagent context
   /** phase 1080: contractId for crash-recovery status check / phase 1151: made required for audit emit contractId col */
   contractId: ContractId;

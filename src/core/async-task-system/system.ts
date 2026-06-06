@@ -58,7 +58,7 @@ import {
 import type { PostProcessor } from './post-processors/types.js';
 import type { AsyncTaskSystemOptions, SubAgentTask, ToolTask, TaskKind, TaskExecutor } from './types.js';
 import { type TaskId, makeTaskId } from './types.js';
-import { type ChestnutRoot } from '../../assembly/install-paths.js';
+
 import { type ClawDir, makeClawDir } from '../../foundation/paths.js';
 
 
@@ -86,7 +86,7 @@ export class AsyncTaskSystem {
   private readonly toolTimeoutMs?: number;
   private permissionChecker?: PermissionChecker;
   private fsFactory: (baseDir: string) => FileSystem;
-  private chestnutRoot: ChestnutRoot;
+  private clawsDir: string;
   private readonly askMotionToolFactory: (llm: LLMOrchestrator, motionDialogStore: DialogStore) => Tool;
   private _shuttingDown = false;
 
@@ -131,7 +131,7 @@ export class AsyncTaskSystem {
     this.toolTimeoutMs = options.toolTimeoutMs;
     this.permissionChecker = options.permissionChecker;
     this.fsFactory = options.fsFactory;
-    this.chestnutRoot = options.chestnutRoot;
+    this.clawsDir = options.clawsDir;
     this.askMotionToolFactory = options.askMotionToolFactory;
 
     // Strategy table: dispatches task body by kind. Adding a new kind
@@ -178,7 +178,7 @@ export class AsyncTaskSystem {
           llm: this.llm,
           registry: this.registry,
           clawDir: this.clawDir,
-          chestnutRoot: this.chestnutRoot,
+          clawsDir: this.clawsDir,
           parentStreamLog: this.parentStreamLog,
           postProcessors: this.postProcessors,
           mainDialogStore: this.mainDialogStore,
@@ -670,7 +670,7 @@ export class AsyncTaskSystem {
     return {
       clawId: makeClawId(task.parentClawId),
       clawDir: makeClawDir(task.parentClawDir),
-      chestnutRoot: this.chestnutRoot,
+      clawsDir: this.clawsDir,
       workspaceDir: path.join(task.parentClawDir, CLAWSPACE_DIR),
       syncDir: path.join(task.parentClawDir, TASKS_SYNC_DIR),
       allowedGroups: CALLER_TYPE_TO_GROUPS[task.callerType ?? 'claw'],

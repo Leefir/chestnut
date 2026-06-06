@@ -46,6 +46,7 @@ export function createClawContractBridge(deps: ClawContractBridgeDeps): ClawCont
           toolTimeoutMs: deps.toolTimeoutMs,
           fsFactory: deps.fsFactory,
           chestnutRoot: deps.chestnutRoot,
+          clawsDir: deps.clawsDir,
         });
         cache.set(clawId, cs);
       }

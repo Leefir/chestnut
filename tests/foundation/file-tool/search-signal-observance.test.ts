@@ -12,7 +12,6 @@ import { searchTool } from '../../../src/foundation/file-tool/index.js';
 import { ExecContextImpl } from '../../../src/foundation/tools/context.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/index.js';
 import { createClawPermissionChecker } from '../../../src/core/permissions/claw-permissions.js';
-import { makeChestnutRoot } from '../../../src/assembly/install-paths.js';
 import { createTempDir, cleanupTempDir } from '../../utils/temp.js';
 
 describe('phase 1036: search.ts walkNative signal observance (F-4)', () => {
@@ -36,7 +35,7 @@ describe('phase 1036: search.ts walkNative signal observance (F-4)', () => {
     const ctx = new ExecContextImpl({
       clawId: 'main-claw',
       clawDir: mainClawDir,
-      chestnutRoot: makeChestnutRoot(tempDir),
+      clawsDir: path.join(tempDir, 'claws'),
       syncDir: path.join(mainClawDir, 'tasks/sync'),
       profile: 'full',
       fs: mockFs,
@@ -66,7 +65,7 @@ describe('phase 1036: search.ts walkNative signal observance (F-4)', () => {
     const ctx = new ExecContextImpl({
       clawId: 'main-claw',
       clawDir: mainClawDir,
-      chestnutRoot: makeChestnutRoot(tempDir),
+      clawsDir: path.join(tempDir, 'claws'),
       syncDir: path.join(mainClawDir, 'tasks/sync'),
       profile: 'full',
       fs: mockFs,

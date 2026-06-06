@@ -29,7 +29,7 @@ import { safeNumber, formatErr } from '../utils/index.js';
 import { recordReadResult } from './file-state-manager.js';
 import { FILE_TOOL_AUDIT_EVENTS } from './audit-events.js';
 
-import { CLAWS_DIR, CLAWSPACE_DIR } from '../../assembly/claw-dirs.js';
+import { CLAWSPACE_DIR } from '../../assembly/claw-dirs.js';
 import { UUID_SHORT_LEN } from '../../constants.js';
 
 export const READ_TOOL_NAME = 'read' as const;
@@ -145,7 +145,7 @@ export const readTool: Tool = {
       }
       // Resolve path relative to target claw's workspaceDir (clawspace), same contract as local read.
       // "../" escapes clawspace to claw root, blocked from going beyond.
-      const clawsDir = nodePath.join(ctx.chestnutRoot, CLAWS_DIR);
+      const clawsDir = ctx.clawsDir;
       const targetClawDir = nodePath.join(clawsDir, clawParam);
       const targetWorkspaceDir = nodePath.join(targetClawDir, CLAWSPACE_DIR);
       const normalizedPath = nodePath.normalize(filePath);

@@ -208,7 +208,7 @@ async function _start(deps: { fsFactory: (baseDir: string) => FileSystem }, audi
     const { ensureWatchdog } = await import('../../watchdog/ensure.js');
     await ensureWatchdog(deps.fsFactory);
 
-    const manager = new ContractSystem({ clawDir: motionDir, clawId: MOTION_CLAW_ID, fs: notifyFs, audit: notifyAudit, toolRegistry: createToolRegistry(), fsFactory: deps.fsFactory, chestnutRoot: makeChestnutRoot(path.dirname(motionDir)) });
+    const manager = new ContractSystem({ clawDir: motionDir, clawId: MOTION_CLAW_ID, fs: notifyFs, audit: notifyAudit, toolRegistry: createToolRegistry(), fsFactory: deps.fsFactory, chestnutRoot: makeChestnutRoot(path.dirname(motionDir)), clawsDir: path.join(path.dirname(motionDir), 'claws') });
     const contractId = await manager.create({
       title: 'Onboarding',
       goal: 'Get to know the user and establish your identity before anything else. No interrogation — just talk.',
@@ -237,7 +237,7 @@ async function _start(deps: { fsFactory: (baseDir: string) => FileSystem }, audi
 
     
     if (onboarding.state === 'not_found') {
-      const manager = new ContractSystem({ clawDir: motionDir, clawId: MOTION_CLAW_ID, fs: notifyFs, audit: notifyAudit, toolRegistry: createToolRegistry(), fsFactory: deps.fsFactory, chestnutRoot: makeChestnutRoot(path.dirname(motionDir)) });
+      const manager = new ContractSystem({ clawDir: motionDir, clawId: MOTION_CLAW_ID, fs: notifyFs, audit: notifyAudit, toolRegistry: createToolRegistry(), fsFactory: deps.fsFactory, chestnutRoot: makeChestnutRoot(path.dirname(motionDir)), clawsDir: path.join(path.dirname(motionDir), 'claws') });
       const contractId = await manager.create({
         title: 'Onboarding',
         goal: 'Get to know the user and establish your identity before anything else.',

@@ -65,7 +65,7 @@ async function setup(opts: { withProvider: boolean; snapshotData?: CallerSnapsho
   const ctx = new ExecContextImpl({
     clawId: 'test-claw',
     clawDir: tempDir,
-    chestnutRoot: tempDir,
+    clawsDir: path.join(tempDir, 'claws'),
     syncDir: tempDir,
     profile: 'full',
     allowedGroups: ALL_GROUPS,
@@ -174,7 +174,7 @@ describe('phase 1406 caller-snapshot access gate', () => {
     const ctx = new ExecContextImpl({
       clawId: 'test-claw',
       clawDir: tempDir,
-      chestnutRoot: tempDir,
+      clawsDir: path.join(tempDir, 'claws'),
       syncDir: tempDir,
       profile: 'full',
       allowedGroups: ALL_GROUPS,

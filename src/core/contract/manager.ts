@@ -21,6 +21,7 @@
  */
 
 import * as yaml from 'js-yaml';
+import * as path from 'path';
 import { formatErr } from "../../foundation/utils/index.js";
 import { randomUUID } from 'crypto';
 
@@ -109,6 +110,8 @@ export interface ContractSystemDeps {
   clawId: ClawId;
   /** phase 1387: Assembly 装配期注入的 chestnut 根目录 */
   chestnutRoot: ChestnutRoot;
+  /** phase 98: caller (装配期) 算好的 claws dir */
+  clawsDir: string;
   fs: FileSystem;
   audit: AuditLog;
   llm?: LLMOrchestrator;
@@ -126,6 +129,7 @@ export class ContractSystem {
   private readonly audit: AuditLog;
   private llm?: LLMOrchestrator;
   private chestnutRoot: ChestnutRoot;
+  private clawsDir: string;
   private toolRegistry: ToolRegistry;
   private toolTimeoutMs?: number;
   private fsFactory: (baseDir: string) => FileSystem;
@@ -222,6 +226,7 @@ export class ContractSystem {
     this.audit = deps.audit;
     this.llm = deps.llm;
     this.chestnutRoot = deps.chestnutRoot ?? resolveChestnutRoot(deps.clawDir, /* isMotion */ false);
+    this.clawsDir = deps.clawsDir ?? path.join(String(this.chestnutRoot), 'claws');
     this.toolRegistry = deps.toolRegistry;
     this.toolTimeoutMs = deps.toolTimeoutMs;
     this.fsFactory = deps.fsFactory;
@@ -393,7 +398,7 @@ export class ContractSystem {
       verificationMutex: this.verificationMutex,
       runVerifierWithCancel: async (contractId, config) => {
         const controller = new AbortController();
-        const promise = this.runContractVerifier({ ...config, signal: controller.signal, contractId, fsFactory: this.fsFactory, chestnutRoot: this.chestnutRoot, runSubagent: this.runSubagent });
+        const promise = this.runContractVerifier({ ...config, signal: controller.signal, contractId, fsFactory: this.fsFactory, clawsDir: this.clawsDir, runSubagent: this.runSubagent });
         this._registerVerifierController(contractId, controller, promise);
         try {
           return await promise;

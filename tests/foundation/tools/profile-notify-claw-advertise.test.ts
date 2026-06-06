@@ -16,7 +16,7 @@ describe('phase 894 NEW.P0.1 — notify_claw profile advertise pipeline', () => 
     const fakeAudit = { write: () => {} } as any;
     registry.register(createNotifyClawTool({
       fs: fakeFs,
-      chestnutRoot: '/tmp/forum',
+      clawsDir: '/tmp/forum/claws',
       audit: fakeAudit,
     }));
 
@@ -33,7 +33,7 @@ describe('phase 894 NEW.P0.1 — notify_claw profile advertise pipeline', () => 
     const fakeAudit = { write: () => {} } as any;
     registry.register(createNotifyClawTool({
       fs: fakeFs,
-      chestnutRoot: '/tmp/forum',
+      clawsDir: '/tmp/forum/claws',
       audit: fakeAudit,
     }));
 

@@ -15,7 +15,7 @@ import type { Tool, ExecContext } from '../tools/index.js';
 import type { ToolResult } from '../tool-protocol/index.js';
 
 import { resolveWorkspacePath } from './resolve-path.js';
-import { CLAWS_DIR } from '../../assembly/claw-dirs.js';
+
 import { formatErr } from '../utils/index.js';
 import { UUID_SHORT_LEN } from '../../constants.js';
 import {
@@ -388,7 +388,7 @@ export const searchTool: Tool = {
         if (!ctx.isMotionChain) {
           return { success: false, content: 'Error: claw: "*" broadcast is Motion-only. Use claw: "<id>" for specific claw access.' };
         }
-        const clawsDir = nodePath.join(ctx.chestnutRoot, CLAWS_DIR);
+        const clawsDir = ctx.clawsDir;
         const chestnutFs = ctx.fsFactory(clawsDir);
         let clawIds: string[];
         try {
@@ -433,7 +433,7 @@ export const searchTool: Tool = {
         return { success: false, content: `Error: Invalid claw ID: "${clawParam}"` };
       }
       const rawSearchPath = nodePath.normalize(pathArg);
-      const clawsDir = nodePath.join(ctx.chestnutRoot, CLAWS_DIR);
+      const clawsDir = ctx.clawsDir;
       const clawRoot = nodePath.join(clawsDir, clawParam);
       const baseDir = nodePath.resolve(clawRoot, rawSearchPath);
       if (baseDir !== clawRoot && !baseDir.startsWith(clawRoot + nodePath.sep)) {

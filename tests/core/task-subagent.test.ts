@@ -20,7 +20,6 @@ import { SUBAGENT_AUDIT_EVENTS } from '../../src/core/subagent/audit-events.js';
 import { SUBAGENT_WAIT_TIMEOUT_MS, SUBAGENT_LONG_TIMEOUT_MS } from '../helpers/test-timeouts.js';
 import { makeAudit, makeMockAudit } from '../helpers/audit.js';
 import { ToolExecutor } from '../../src/foundation/tools/index.js';
-import { makeChestnutRoot } from '../../src/assembly/install-paths.js';
 import type { FileSystem } from '../../src/foundation/fs/types.js';
 import type { ToolRegistryImpl } from '../../src/foundation/tools/registry.js';
 import type { AuditLog } from '../../src/foundation/audit/index.js';
@@ -39,7 +38,7 @@ function makeSubAgentToolExecutor(opts: {
     registry: opts.registry,
     defaultTimeoutMs: opts.toolTimeoutMs,
     clawDir: opts.clawDir as any,
-    chestnutRoot: makeChestnutRoot(opts.clawDir),
+    clawsDir: path.join(opts.clawDir, 'claws'),
     syncDir: path.join(opts.clawDir, 'tasks/sync'),
     workspaceDir: path.join(opts.clawDir, 'clawspace'),
     fs: opts.fs,

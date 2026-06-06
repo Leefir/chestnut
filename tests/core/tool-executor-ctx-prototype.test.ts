@@ -15,7 +15,6 @@ import { ToolRegistryImpl } from '../../src/foundation/tools/registry.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { makeAudit } from '../helpers/audit.js';
 import { MOTION_CLAW_ID } from '../../src/constants.js';
-import { makeChestnutRoot } from '../../src/assembly/install-paths.js';
 import * as fsp from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
@@ -34,7 +33,7 @@ describe('ToolExecutor: ctx prototype preservation across spread', () => {
     registry.register(readTool);
     registry.register(lsTool);
     registry.register(searchTool);
-    executor = new ToolExecutor({ registry, clawDir: tmpDir, chestnutRoot: makeChestnutRoot(path.join(tmpDir, '..')), fs, fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir }) });
+    executor = new ToolExecutor({ registry, clawDir: tmpDir, clawsDir: path.join(path.join(tmpDir, '..'), 'claws'), fs, fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir }) });
 
   });
 
@@ -46,7 +45,7 @@ describe('ToolExecutor: ctx prototype preservation across spread', () => {
     return new ExecContextImpl({
       clawId: MOTION_CLAW_ID,
       clawDir: tmpDir,
-      chestnutRoot: makeChestnutRoot(path.join(tmpDir, '..')),
+      clawsDir: path.join(path.join(tmpDir, '..'), 'claws'),
       profile: 'full',
       fs,
       fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir }),
@@ -115,7 +114,7 @@ describe('ToolExecutor: ctx prototype preservation across spread', () => {
     const ctx = new ExecContextImpl({
       clawId: 'normal-claw',
       clawDir: tmpDir,
-      chestnutRoot: makeChestnutRoot(path.join(tmpDir, '..')),
+      clawsDir: path.join(path.join(tmpDir, '..'), 'claws'),
       profile: 'full',
       fs,
       fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir }),

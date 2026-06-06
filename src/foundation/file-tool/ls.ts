@@ -13,7 +13,7 @@ import { LS_MAX_ENTRIES } from './constants.js';
 
 import { resolveWorkspacePath } from './resolve-path.js';
 
-import { CLAWS_DIR } from '../../assembly/claw-dirs.js';
+
 export const LS_TOOL_NAME = 'ls' as const;
 
 export const lsTool: Tool = {
@@ -87,9 +87,9 @@ export const lsTool: Tool = {
         };
       }
       // Resolve path to target claw's directory
-      targetPath = nodePath.resolve(ctx.chestnutRoot, CLAWS_DIR, clawParam, nodePath.normalize(pathArg));
+      targetPath = nodePath.resolve(ctx.clawsDir, clawParam, nodePath.normalize(pathArg));
       // Escape check: must be within the target claw's directory
-      const clawsDir = nodePath.join(ctx.chestnutRoot, CLAWS_DIR);
+      const clawsDir = ctx.clawsDir;
       const clawRoot = nodePath.join(clawsDir, clawParam);
       if (targetPath !== clawRoot && !targetPath.startsWith(clawRoot + nodePath.sep)) {
         return {

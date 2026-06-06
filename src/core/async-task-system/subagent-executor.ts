@@ -25,7 +25,7 @@ import type { PostProcessor } from './post-processors/types.js';
 import type { SubAgentTask } from './types.js';
 import type { DialogStore } from '../../foundation/dialog-store/index.js';
 import type { TaskId } from './types.js';
-import { type ChestnutRoot } from '../../assembly/install-paths.js';
+
 import { type ClawDir } from '../../foundation/paths.js';
 
 
@@ -39,8 +39,8 @@ export interface ExecuteSubAgentTaskDeps {
   llm: LLMOrchestrator;
   registry: ToolRegistry;
   clawDir: ClawDir;
-  /** phase 1387: Assembly 装配期注入的 chestnut 根目录 */
-  chestnutRoot: ChestnutRoot;
+  /** phase 98: caller (装配期) 算好的 claws dir */
+  clawsDir: string;
   parentStreamLog?: StreamLog;
   postProcessors: Map<string, PostProcessor>;
   mainDialogStore?: DialogStore;
@@ -157,7 +157,7 @@ export async function executeSubAgentTask(
       agentId: task.id,
       callerType: task.callerType,
       clawDir,
-      chestnutRoot: deps.chestnutRoot,
+      clawsDir: deps.clawsDir,
       fs,
       fsFactory,
       llm,

@@ -21,7 +21,7 @@ import type { PermissionChecker } from '../../foundation/tool-protocol/permissio
 
 import type { InboxMessage } from '../../foundation/messaging/types.js';
 import type { ToolProfile } from '../../foundation/tool-protocol/index.js';
-import type { ChestnutRoot } from '../../assembly/install-paths.js';
+
 import type { ClawId } from '../../foundation/paths.js';
 import type { ToolUseId } from '../../foundation/tool-protocol/index.js';
 import { type ClawDir } from '../../foundation/paths.js';
@@ -84,8 +84,8 @@ export interface RuntimeDependencies {
 export interface RuntimeOptions {
   clawId: ClawId;
   clawDir: ClawDir;
-  /** phase 1387: Assembly 装配期注入的 chestnut 根目录 */
-  chestnutRoot: ChestnutRoot;
+  /** phase 98: caller (装配期) 算好的 claws dir */
+  clawsDir: string;
   llmConfig: LLMOrchestratorConfig;
   maxSteps?: number;
   toolProfile?: ToolProfile;

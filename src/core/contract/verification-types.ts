@@ -64,7 +64,7 @@ export interface VerificationExecutionContext {
     evidence: string,
     artifacts: string[],
   ) => Promise<VerificationResult>;
-  runVerifierWithCancel: (contractId: ContractId, config: Omit<VerifierConfig, 'signal' | 'chestnutRoot'>) => Promise<VerifierResult>;
+  runVerifierWithCancel: (contractId: ContractId, config: Omit<VerifierConfig, 'signal' | 'clawsDir'>) => Promise<VerifierResult>;
   onNotify?: (type: string, data: Record<string, unknown>) => void;
 }
 
