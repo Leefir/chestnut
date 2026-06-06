@@ -117,7 +117,7 @@ export class AsyncTaskSystem {
   constructor(
     private readonly clawDir: ClawDir,
     private readonly fs: FileSystem,
-    options: AsyncTaskSystemOptions,
+    private readonly options: AsyncTaskSystemOptions,
   ) {
     this.maxConcurrent = options.maxConcurrent ?? DEFAULT_MAX_CONCURRENT_TASKS;
     this.auditWriter = options.auditWriter;
@@ -215,6 +215,7 @@ export class AsyncTaskSystem {
         auditWriter: this.auditWriter,
         pendingDir: TASKS_QUEUES_PENDING_DIR,
         ingest: (filePath) => this._ingestPendingFile(filePath),
+        createWatcher: this.options.createWatcher,
       });
     }
     void this.pendingWatcherHandle.start();

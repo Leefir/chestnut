@@ -10,13 +10,15 @@ import { ToolRegistryImpl } from '../../src/foundation/tools/registry.js';
 import { AsyncTaskSystem } from '../../src/core/async-task-system/system.js';
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 import { makeAudit } from './audit.js';
-import { createTestTaskSystem } from './task-system.js';
+import { createTestTaskSystem, createMockWatcherFactory } from './task-system.js';
+import type { WatcherFactory } from '../../src/foundation/file-watcher/index.js';
 
 export interface TaskTestCtx {
   readonly tempDir: string;
   readonly mockFs: NodeFileSystem;
   readonly registry: ToolRegistryImpl;
   readonly taskSystem: AsyncTaskSystem;
+  readonly createWatcher: WatcherFactory;
   replaceTaskSystem(newSys: AsyncTaskSystem): void;
 }
 
@@ -24,8 +26,9 @@ export const test = base.extend<{ ctx: TaskTestCtx }>({
   ctx: async ({}, use) => {
     const tempDir = await createTempDir();
     const mockFs = new NodeFileSystem({ baseDir: tempDir });
+    const { factory: createWatcher } = createMockWatcherFactory(mockFs);
     await mockFs.ensureDir('tasks');
-    let currentSystem = createTestTaskSystem(tempDir, mockFs, makeAudit().audit);
+    let currentSystem = createTestTaskSystem(tempDir, mockFs, makeAudit().audit, undefined, { createWatcher });
     await currentSystem.initialize();
     currentSystem.startDispatch();
     const registry = new ToolRegistryImpl();
@@ -34,6 +37,7 @@ export const test = base.extend<{ ctx: TaskTestCtx }>({
       tempDir,
       mockFs,
       registry,
+      createWatcher,
       get taskSystem() { return currentSystem; },
       replaceTaskSystem(newSys: AsyncTaskSystem) { currentSystem = newSys; },
     };

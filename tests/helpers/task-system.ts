@@ -9,6 +9,7 @@ import { AsyncTaskSystem, type AsyncTaskSystemOptions } from '../../src/core/asy
 import { ToolRegistryImpl } from '../../src/foundation/tools/registry.js';
 import { TASKS_QUEUES_PENDING_DIR } from '../../src/core/async-task-system/index.js';
 import type { AuditLog } from '../../src/foundation/audit/index.js';
+import type { Watcher, WatcherFactory, WatchEvent } from '../../src/foundation/file-watcher/index.js';
 
 export function makeTestRegistry(): ToolRegistryImpl {
   return new ToolRegistryImpl();
@@ -45,6 +46,53 @@ export function createTestTaskSystem(
     ...deps,
     ...overrides,
   });
+}
+
+/**
+ * phase 86: mock watcher factory that auto-fires 'add' events by intercepting
+ * fs.writeAtomic calls. Eliminates chokidar OS-bound timing for fast project tests.
+ *
+ * Wraps fs.writeAtomic on first watcher creation and restores on last close().
+ */
+export function createMockWatcherFactory(fs: FileSystem): { factory: WatcherFactory } {
+  let originalWriteAtomic: FileSystem['writeAtomic'] | null = null;
+  const activeWatchers: Array<{
+    watchPath: string;
+    callback: (e: WatchEvent) => void;
+    active: boolean;
+  }> = [];
+
+  const factory: WatcherFactory = (watchPath, callback, _opts) => {
+    if (!originalWriteAtomic) {
+      originalWriteAtomic = fs.writeAtomic.bind(fs);
+      fs.writeAtomic = (async (p: string, content: string) => {
+        await originalWriteAtomic!(p, content);
+        const resolved = fs.resolve(p);
+        for (const w of activeWatchers) {
+          if (!w.active) continue;
+          if (resolved.startsWith(w.watchPath) && resolved.endsWith('.json')) {
+            queueMicrotask(() => w.callback({ type: 'add', path: resolved }));
+          }
+        }
+      }) as FileSystem['writeAtomic'];
+    }
+    const entry = { watchPath, callback, active: true };
+    activeWatchers.push(entry);
+
+    return {
+      close: async () => {
+        entry.active = false;
+        if (activeWatchers.every(w => !w.active) && originalWriteAtomic) {
+          fs.writeAtomic = originalWriteAtomic;
+          originalWriteAtomic = null;
+        }
+      },
+      isActive: () => entry.active,
+      getPath: () => watchPath,
+    };
+  };
+
+  return { factory };
 }
 
 /**

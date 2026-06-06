@@ -1,6 +1,10 @@
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
-import { createWatcher, type Watcher } from '../../foundation/file-watcher/index.js';
+import {
+  createWatcher as defaultCreateWatcher,
+  type Watcher,
+  type WatcherFactory,
+} from '../../foundation/file-watcher/index.js';
 import { TASK_AUDIT_EVENTS } from './audit-events.js';
 import {
   emitPendingIngestFailed,
@@ -14,6 +18,7 @@ export interface PendingWatcherDeps {
   auditWriter: AuditLog;
   pendingDir: string;
   ingest: (filePath: string) => Promise<void>;
+  createWatcher?: WatcherFactory;
 }
 
 export interface PendingWatcherHandle {
@@ -23,11 +28,12 @@ export interface PendingWatcherHandle {
 
 export function createPendingWatcher(deps: PendingWatcherDeps): PendingWatcherHandle {
   let watcher: Watcher | undefined;
+  const watcherFactory = deps.createWatcher ?? defaultCreateWatcher;
 
   return {
     async start() {
       if (!watcher && typeof deps.fs.resolve === 'function') {
-        watcher = createWatcher(
+        watcher = watcherFactory(
           deps.fs.resolve(deps.pendingDir),
           (event) => {
             if (event.type !== 'add') return;

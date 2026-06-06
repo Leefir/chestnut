@@ -28,3 +28,17 @@ export interface Watcher {
 }
 
 export type WatcherErrorContext = 'watch' | 'callback' | 'ready' | 'fallback_limit_reset';
+
+export type WatcherFactory = (
+  absolutePath: string,
+  callback: (event: WatchEvent) => void,
+  options?: {
+    recursive?: boolean;
+    ignored?: (string | RegExp)[];
+    onReady?: () => void;
+    onError?: (err: Error, context: WatcherErrorContext) => void;
+    stability?: 'stable' | 'immediate';
+    persistent?: boolean;
+    fallbackPollMs?: number;
+  },
+) => Watcher;

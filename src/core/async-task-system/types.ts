@@ -14,6 +14,7 @@ import type { StreamLog } from '../../foundation/stream/index.js';
 import type { DialogStore } from '../../foundation/dialog-store/index.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { PermissionChecker } from '../../foundation/tool-protocol/permission.js';
+import type { WatcherFactory } from '../../foundation/file-watcher/index.js';
 import type { CallerType } from '../caller-types.js';
 import type { ClawId, ChestnutRoot } from '../../foundation/paths.js';
 import type { ToolUseId } from '../../foundation/tool-protocol/index.js';
@@ -54,6 +55,8 @@ export interface AsyncTaskSystemOptions {
   chestnutRoot: ChestnutRoot;
   // NEW phase 1369: AskMotionTool factory inject (per phase 619 caller DIP enforce template / cut async-task→summon reverse)
   askMotionToolFactory: (llm: LLMOrchestrator, motionDialogStore: DialogStore) => import('../../foundation/tools/index.js').Tool;
+  /** phase 86: optional WatcherFactory for DI (test mock injection) */
+  createWatcher?: WatcherFactory;
 }
 
 

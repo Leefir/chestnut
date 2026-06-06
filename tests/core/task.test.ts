@@ -23,7 +23,7 @@ import { SUBAGENT_AUDIT_EVENTS } from '../../src/core/subagent/audit-events.js';
 import { TEST_LLM_TIMEOUT_MS, SUBAGENT_DEFAULT_TIMEOUT_MS, SUBAGENT_WAIT_TIMEOUT_MS, SUBAGENT_LONG_TIMEOUT_MS } from '../helpers/test-timeouts.js';
 import { SUBAGENT_TIMEOUT_MS } from '../../src/core/subagent/constants.js';
 import { makeAudit, makeMockAudit, waitForAuditEvent } from '../helpers/audit.js';
-import { createTestTaskSystem } from '../helpers/task-system.js';
+import { createTestTaskSystem, createMockWatcherFactory } from '../helpers/task-system.js';
 import { waitFor } from '../helpers/wait-for.js';
 
 /**
@@ -130,7 +130,7 @@ describe('Task System + SubAgent', () => {
     test('should schedule subagent and return taskId', async ({ ctx }) => {
       // Recreate with hanging LLM so task stays in running state for verification
       await ctx.taskSystem.shutdown(100);
-      ctx.replaceTaskSystem(createTestTaskSystem(ctx.tempDir, ctx.mockFs, makeAudit().audit, createHangingMockLLM()));
+      ctx.replaceTaskSystem(createTestTaskSystem(ctx.tempDir, ctx.mockFs, makeAudit().audit, createHangingMockLLM(), { createWatcher: ctx.createWatcher }));
       await ctx.taskSystem.initialize();
       ctx.taskSystem.startDispatch();
       
@@ -154,7 +154,7 @@ describe('Task System + SubAgent', () => {
 
     test('should pass subagent task through watcher → ingest → dispatch chain (phase163)', async ({ ctx }) => {
       await ctx.taskSystem.shutdown(100);
-      ctx.replaceTaskSystem(createTestTaskSystem(ctx.tempDir, ctx.mockFs, makeAudit().audit, createHangingMockLLM()));
+      ctx.replaceTaskSystem(createTestTaskSystem(ctx.tempDir, ctx.mockFs, makeAudit().audit, createHangingMockLLM(), { createWatcher: ctx.createWatcher }));
       await ctx.taskSystem.initialize();
       ctx.taskSystem.startDispatch();
 
@@ -189,7 +189,7 @@ describe('Task System + SubAgent', () => {
       ctx.replaceTaskSystem(createTestTaskSystem(ctx.tempDir, ctx.mockFs, audit, createMockLLM([{
         content: [{ type: 'text', text: 'Task result' }],
         stop_reason: 'end_turn',
-      }])));
+      }]), { createWatcher: ctx.createWatcher }));
       await ctx.taskSystem.initialize();
       ctx.taskSystem.startDispatch();
 
@@ -228,7 +228,7 @@ describe('Task System + SubAgent', () => {
       ctx.replaceTaskSystem(createTestTaskSystem(ctx.tempDir, ctx.mockFs, audit, createMockLLM([{
         content: [{ type: 'text', text: 'Subagent output' }],
         stop_reason: 'end_turn',
-      }])));
+      }]), { createWatcher: ctx.createWatcher }));
       await ctx.taskSystem.initialize();
       ctx.taskSystem.startDispatch();
 
@@ -282,7 +282,7 @@ describe('Task System + SubAgent', () => {
         close: vi.fn(),
         healthCheck: vi.fn().mockResolvedValue(true),
         getProviderInfo: vi.fn().mockReturnValue({ name: 'mock', model: 'test', isFallback: false }),
-      } as unknown as LLMOrchestrator));
+      } as unknown as LLMOrchestrator, { createWatcher: ctx.createWatcher }));
       await ctx.taskSystem.initialize();
       ctx.taskSystem.startDispatch();
       
@@ -314,7 +314,7 @@ describe('Task System + SubAgent', () => {
       ctx.replaceTaskSystem(createTestTaskSystem(ctx.tempDir, ctx.mockFs, audit, createMockLLM([{
         content: [{ type: 'text', text: 'task done' }],
         stop_reason: 'end_turn',
-      }])));
+      }]), { createWatcher: ctx.createWatcher }));
       await ctx.taskSystem.initialize();
       ctx.taskSystem.startDispatch();
 
@@ -343,7 +343,7 @@ describe('Task System + SubAgent', () => {
     test('should write task_completed err to audit when subagent times out', async ({ ctx }) => {
       await ctx.taskSystem.shutdown(100);
       const { audit, events, emitter } = makeAudit();
-      ctx.replaceTaskSystem(createTestTaskSystem(ctx.tempDir, ctx.mockFs, audit, createAbortableHangingMockLLM()));
+      ctx.replaceTaskSystem(createTestTaskSystem(ctx.tempDir, ctx.mockFs, audit, createAbortableHangingMockLLM(), { createWatcher: ctx.createWatcher }));
       await ctx.taskSystem.initialize();
       ctx.taskSystem.startDispatch();
 
@@ -400,10 +400,11 @@ describe('Task System + SubAgent', () => {
         return originalWriteAtomic(filePath, content);
       };
 
+      const { factory: patchedWatcher } = createMockWatcherFactory(patchedFs);
       const failSystem = createTestTaskSystem(ctx.tempDir, patchedFs, makeAudit().audit, createMockLLM([{
         content: [{ type: 'text', text: 'done' }],
         stop_reason: 'end_turn',
-      }]));
+      }]), { createWatcher: patchedWatcher });
       await failSystem.initialize();
       failSystem.startDispatch();
 
@@ -444,10 +445,11 @@ describe('Task System + SubAgent', () => {
       };
 
       const { audit } = makeAudit();
+      const { factory: patchedWatcher } = createMockWatcherFactory(patchedFs);
       const failSystem = createTestTaskSystem(ctx.tempDir, patchedFs, audit, createMockLLM([{
         content: [{ type: 'text', text: 'done' }],
         stop_reason: 'end_turn',
-      }]));
+      }]), { createWatcher: patchedWatcher });
       await failSystem.initialize();
       failSystem.startDispatch();
 
@@ -488,7 +490,7 @@ describe('Task System + SubAgent', () => {
     test('should write TASK_SHUTDOWN_TIMEOUT audit event when shutdown times out', async ({ ctx }) => {
       await ctx.taskSystem.shutdown(100);
       const { audit, events, emitter } = makeAudit();
-      ctx.replaceTaskSystem(createTestTaskSystem(ctx.tempDir, ctx.mockFs, audit, createHangingMockLLM()));
+      ctx.replaceTaskSystem(createTestTaskSystem(ctx.tempDir, ctx.mockFs, audit, createHangingMockLLM(), { createWatcher: ctx.createWatcher }));
       await ctx.taskSystem.initialize();
       ctx.taskSystem.startDispatch();
 
@@ -518,7 +520,7 @@ describe('Task System + SubAgent', () => {
 
     test('should not throw when shutdown times out with null auditWriter', async ({ ctx }) => {
       await ctx.taskSystem.shutdown(100);
-      ctx.replaceTaskSystem(createTestTaskSystem(ctx.tempDir, ctx.mockFs, { write: () => {} } as any, createHangingMockLLM()));
+      ctx.replaceTaskSystem(createTestTaskSystem(ctx.tempDir, ctx.mockFs, { write: () => {} } as any, createHangingMockLLM(), { createWatcher: ctx.createWatcher }));
       await ctx.taskSystem.initialize();
       ctx.taskSystem.startDispatch();
 
@@ -553,7 +555,7 @@ describe('Task System + SubAgent', () => {
         ctx.replaceTaskSystem(createTestTaskSystem(ctx.tempDir, ctx.mockFs, audit, createMockLLM([{
           content: [{ type: 'text', text: 'raw result' }],
           stop_reason: 'end_turn',
-        }])));
+        }]), { createWatcher: ctx.createWatcher }));
         ctx.taskSystem.addPostProcessor('test-proc', mockProcessor as any);
         await ctx.taskSystem.initialize();
         ctx.taskSystem.startDispatch();
@@ -602,7 +604,7 @@ describe('Task System + SubAgent', () => {
         });
 
         // Use empty-object LLM so subagent.run() throws immediately (call is undefined)
-        ctx.replaceTaskSystem(createTestTaskSystem(ctx.tempDir, ctx.mockFs, audit));
+        ctx.replaceTaskSystem(createTestTaskSystem(ctx.tempDir, ctx.mockFs, audit, undefined, { createWatcher: ctx.createWatcher }));
         ctx.taskSystem.addPostProcessor('test-proc-err', capturingProcessor as any);
         await ctx.taskSystem.initialize();
         ctx.taskSystem.startDispatch();
@@ -631,7 +633,7 @@ describe('Task System + SubAgent', () => {
         ctx.replaceTaskSystem(createTestTaskSystem(ctx.tempDir, ctx.mockFs, audit, createMockLLM([{
           content: [{ type: 'text', text: 'raw result' }],
           stop_reason: 'end_turn',
-        }])));
+        }]), { createWatcher: ctx.createWatcher }));
         await ctx.taskSystem.initialize();
         ctx.taskSystem.startDispatch();
 
