@@ -3,12 +3,12 @@
  * Summon system exports
  */
 
-export { SummonTool, SUMMON_TOOL_NAME } from './tools/summon.js';
+export { SummonTool } from './tools/summon.js';
 export { createSummonStateStore, type SummonStateStore, type SummonDecision } from './summon-state-store.js';
 export { createSummonContractCreateGate, type SummonContractCreateGate } from './contract-create-gate.js';
-export { SUMMON_CALLER_TYPES, type SummonCallerType } from './caller-types.js';
-export { AskMotionTool, ASK_MOTION_TOOL_NAME, ASK_MOTION_TOOL_DESCRIPTION, ASK_MOTION_TOOL_SCHEMA } from './tools/ask-motion.js';
-export { SUMMON_AUDIT_EVENTS, emitSummonDispatched, emitSummonRejectedShadow } from './audit-events.js';
+export { SUMMON_CALLER_TYPES } from './caller-types.js';
+export { AskMotionTool } from './tools/ask-motion.js';
+
 export {
   summonContractExtractPostProcessor,
   SUMMON_CONTRACT_EXTRACT_POSTPROCESSOR_NAME,
@@ -55,6 +55,32 @@ export class UnexpectedFormatError extends Error {
   }
 }
 
+// bulk API: per-file silent skip + audit emit (DP「不丢弃静默」修复)
+export async function listPendingRetrospectives(opts: {
+  fs: FileSystem;
+  audit?: AuditLog;
+  filter?: { contractId?: string };
+}): Promise<PendingRetroRef[]> {
+  const results: PendingRetroRef[] = [];
+  const dir = `${CLAWSPACE_DIR}/pending-retrospective/by-contract`;
+  if (!opts.fs.existsSync(dir)) return results;
+
+  for (const e of opts.fs.listSync(dir, { includeDirs: false })) {
+    if (!e.name.endsWith('.json')) continue;
+    const contractId = makeContractId(e.name.replace(/\.json$/, ''));
+    if (opts.filter?.contractId !== undefined && contractId !== opts.filter.contractId) continue;
+    try {
+      const ref = await readPendingRetrospective({ fs: opts.fs, contractId });
+      results.push(ref);
+    } catch (e) {
+      // silent: bulk listing per-file parse-fail audit-emitted + skip
+      opts.audit?.write(SUMMON_AUDIT_EVENTS.RETRO_INDEX_PARSE_FAILED, `contractId=${contractId}`, `reason=${formatErr(e)}`);
+    }
+  }
+
+  return results;
+}
+
 // NEW single-file precise API
 export async function readPendingRetrospective(opts: {
   fs: FileSystem;
@@ -86,28 +112,3 @@ export async function readPendingRetrospective(opts: {
   };
 }
 
-// bulk API: per-file silent skip + audit emit (DP「不丢弃静默」修复)
-export async function listPendingRetrospectives(opts: {
-  fs: FileSystem;
-  audit?: AuditLog;
-  filter?: { contractId?: string };
-}): Promise<PendingRetroRef[]> {
-  const results: PendingRetroRef[] = [];
-  const dir = `${CLAWSPACE_DIR}/pending-retrospective/by-contract`;
-  if (!opts.fs.existsSync(dir)) return results;
-
-  for (const e of opts.fs.listSync(dir, { includeDirs: false })) {
-    if (!e.name.endsWith('.json')) continue;
-    const contractId = makeContractId(e.name.replace(/\.json$/, ''));
-    if (opts.filter?.contractId !== undefined && contractId !== opts.filter.contractId) continue;
-    try {
-      const ref = await readPendingRetrospective({ fs: opts.fs, contractId });
-      results.push(ref);
-    } catch (e) {
-      // silent: bulk listing per-file parse-fail audit-emitted + skip
-      opts.audit?.write(SUMMON_AUDIT_EVENTS.RETRO_INDEX_PARSE_FAILED, `contractId=${contractId}`, `reason=${formatErr(e)}`);
-    }
-  }
-
-  return results;
-}

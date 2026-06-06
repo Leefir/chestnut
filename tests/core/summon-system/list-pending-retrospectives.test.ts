@@ -8,7 +8,8 @@ import { makeMockAudit } from '../../helpers/audit.js';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
-import { listPendingRetrospectives, SUMMON_AUDIT_EVENTS } from '../../../src/core/summon-system/index.js';
+import { listPendingRetrospectives } from '../../../src/core/summon-system/index.js';
+import { SUMMON_AUDIT_EVENTS } from '../../../src/core/summon-system/audit-events.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
 
 describe('listPendingRetrospectives', () => {
