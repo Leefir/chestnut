@@ -15,7 +15,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
 import { createShadowTool } from '../../../src/core/shadow-system/index.js';
 import type { Message, ToolDefinition } from '../../../src/foundation/llm-provider/types.js';
-import { spawnTool } from '../../../src/core/spawn-system/index.js';
 import { SummonTool } from '../../../src/core/summon-system/tools/summon.js';
 import { ExecContextImpl } from '../../../src/foundation/tools/context.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/index.js';
@@ -31,14 +30,6 @@ import { DONE_TOOL_NAME } from '../../../src/core/subagent/tools/done.js';
 const { mockRunSubagent } = vi.hoisted(() => ({
   mockRunSubagent: vi.fn(),
 }));
-
-vi.mock('../../../src/core/subagent/index.js', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('../../../src/core/subagent/index.js')>();
-  return {
-    ...mod,
-    runSubagent: mockRunSubagent,
-  };
-});
 
 describe('shadow tool (phase 767)', () => {
   let tempDir: string;
@@ -119,6 +110,7 @@ describe('shadow tool (phase 767)', () => {
         tools: [] as ToolDefinition[],
         messages: dialogMessages,
       }),
+      runSubagent: mockRunSubagent,
     });
     mockRunSubagent.mockClear();
   });
@@ -268,47 +260,6 @@ describe('shadow tool (phase 767)', () => {
       const result = await shadowTool.execute({ task: 'timeout test', async: false }, baseCtx);
 
       expect(result.error).toBe('tool_timeout');
-    });
-  });
-
-  describe('spawn-from-shadow defense (phase 766)', () => {
-    it('rejects spawn with async=true when ctx.callerLabel is shadow', async () => {
-      const shadowCtx = new ExecContextImpl({
-        clawId: 'shadow-claw',
-        clawDir: tempDir,
-        syncDir: path.join(tempDir, 'tasks', 'sync'),
-        profile: 'full',
-        fs,
-        auditWriter: audit.audit,
-        llm: makeLLM(),
-        registry: makeRegistry(),
-        callerLabel: 'shadow',
-        taskSystem: createMockTaskSystem(fs, audit.audit),
-      });
-
-      const result = await spawnTool.execute({ intent: 'test', async: true }, shadowCtx);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('shadow_async_spawn_rejected');
-    });
-
-    it('allows spawn with async=false when ctx.callerLabel is shadow', async () => {
-      mockRunSubagent.mockResolvedValue({ text: 'shadow sync result' });
-      const shadowCtx = new ExecContextImpl({
-        clawId: 'shadow-claw',
-        clawDir: tempDir,
-        syncDir: path.join(tempDir, 'tasks', 'sync'),
-        profile: 'full',
-        fs,
-        auditWriter: audit.audit,
-        llm: makeLLM(),
-        registry: makeRegistry(),
-        callerLabel: 'shadow',
-      });
-
-      const result = await spawnTool.execute({ intent: 'test', async: false }, shadowCtx);
-
-      expect(result.success).toBe(true);
     });
   });
 

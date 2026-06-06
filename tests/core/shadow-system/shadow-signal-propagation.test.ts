@@ -22,14 +22,6 @@ const { mockRunSubagent } = vi.hoisted(() => ({
   mockRunSubagent: vi.fn(),
 }));
 
-vi.mock('../../../src/core/subagent/index.js', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('../../../src/core/subagent/index.js')>();
-  return {
-    ...mod,
-    runSubagent: mockRunSubagent,
-  };
-});
-
 describe('shadow signal propagation (phase 874)', () => {
   let tempDir: string;
   let fs: NodeFileSystem;
@@ -110,6 +102,7 @@ describe('shadow signal propagation (phase 874)', () => {
           { role: 'assistant', content: [{ type: 'tool_use', id: 'tu-1', name: 'shadow', input: {} }] },
         ],
       }),
+      runSubagent: mockRunSubagent,
     });
     mockRunSubagent.mockClear();
   });

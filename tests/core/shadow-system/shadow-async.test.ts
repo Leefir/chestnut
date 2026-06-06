@@ -28,14 +28,6 @@ const { mockRunSubagent } = vi.hoisted(() => ({
   mockRunSubagent: vi.fn(),
 }));
 
-vi.mock('../../../src/core/subagent/index.js', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('../../../src/core/subagent/index.js')>();
-  return {
-    ...mod,
-    runSubagent: mockRunSubagent,
-  };
-});
-
 describe('shadow tool async (phase 1087)', () => {
   let tempDir: string;
   let fs: NodeFileSystem;
@@ -115,6 +107,7 @@ describe('shadow tool async (phase 1087)', () => {
         tools: [{ type: 'function', function: { name: 'read', description: 'read' } }] as ToolDefinition[],
         messages: dialogMessages,
       }),
+      runSubagent: mockRunSubagent,
     });
     baseCtx.taskSystem = createMockTaskSystem(fs, audit.audit);
     (baseCtx.taskSystem as any).schedule = mockSchedule;

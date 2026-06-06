@@ -11,6 +11,7 @@ import type { Tool, ExecContext } from '../../../foundation/tools/index.js';
 import type { ToolResult } from '../../../foundation/tool-protocol/index.js';
 import type { Message, ToolDefinition } from '../../../foundation/llm-provider/types.js';
 import { runShadow } from '../system.js';
+import { runSubagent as defaultRunSubagent } from '../../subagent/index.js';
 import { SHADOW_AUDIT_EVENTS } from '../audit-events.js';
 import { spawnShadowSubagent } from '../spawn-shadow-subagent.js';
 import { stripIncompleteToolUse } from '../_helpers.js';
@@ -22,6 +23,8 @@ export function createShadowTool(deps: {
     tools?: ToolDefinition[];
     messages?: Message[];
   };
+  /** DI seam: optional runSubagent override (replaces vi.mock pattern) */
+  runSubagent?: typeof defaultRunSubagent;
 }): Tool {
   return {
     name: SHADOW_TOOL_NAME,
@@ -109,6 +112,7 @@ export function createShadowTool(deps: {
         ctx,
         mainMessages,
         turnSnapshot: { systemPrompt, tools, messages },
+        runSubagent: deps.runSubagent,
       });
     },
   };

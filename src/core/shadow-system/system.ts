@@ -12,7 +12,7 @@ import type { Message } from '../../foundation/llm-provider/types.js';
 
 import { UUID_SHORT_LEN } from '../../constants.js';
 import { TASKS_SYNC_SHADOW_DIR } from './constants.js';
-import { runSubagent, createPerTaskRegistry, getDisplayResult } from '../subagent/index.js';
+import { runSubagent as defaultRunSubagent, createPerTaskRegistry, getDisplayResult } from '../subagent/index.js';
 import { AUDIT_PREVIEW_LEN } from '../../foundation/constants.js';
 import { SHADOW_AUDIT_EVENTS } from './audit-events.js';
 import { synthesizeFormB, formatErr } from './_helpers.js';
@@ -36,6 +36,8 @@ export interface RunShadowOptions {
     tools?: import('../../foundation/llm-provider/types.js').ToolDefinition[];
     messages?: Message[];
   };
+  /** DI seam: optional runSubagent override (replaces vi.mock pattern) */
+  runSubagent?: typeof defaultRunSubagent;
 }
 
 function findLastAssistantWithToolUse(messages: Message[], toolUseId: ToolUseId): number {
@@ -123,7 +125,7 @@ export async function runShadow(opts: RunShadowOptions): Promise<ToolResult> {
 
     const shadowRegistry = createPerTaskRegistry(opts.ctx.registry, 'full');
 
-    const { text, capturedResult } = await runSubagent({
+    const { text, capturedResult } = await (opts.runSubagent ?? defaultRunSubagent)({
       agentId: shadowId,
       callerType: 'shadow',
       clawDir: opts.ctx.clawDir,
