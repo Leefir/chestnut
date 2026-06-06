@@ -8,10 +8,10 @@
 
 export { DialogStore } from './store.js';
 export { MarkerNotFoundError, migrateAndValidateSession, validateSessionData } from './validate.js';
-export type { SessionData, LoadResult, DialogMarker, RestoreResult } from './types.js';
+export type { SessionData } from './types.js';
 // phase 1406: regime switch 业务（dialog 资源重组）从 Runtime 迁入 DialogStore module
 export { performRegimeSwitch } from './regime-switch.js';
-export type { RegimeStrategy, RegimeSwitchAuditEvents, PerformRegimeSwitchOpts, PerformRegimeSwitchResult } from './regime-switch.js';
+export type { PerformRegimeSwitchOpts } from './regime-switch.js';
 
 // phase 1432 F6: dirs path const re-export — 跨模块 (cli) 路径合成走 barrel。
 // allowlist: assembly/assemble.ts (装配根 bootstrap by-design)。
