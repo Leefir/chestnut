@@ -9,7 +9,7 @@ import { TASKS_SYNC_WRITE_DIR } from '../foundation/file-tool/index.js';
 import { TASKS_SYNC_SUBAGENT_DIR } from '../core/subagent/index.js';
 import { TASKS_SYNC_SPAWN_DIR } from '../core/spawn-system/index.js';
 import { TASKS_SYNC_SHADOW_DIR } from '../core/shadow-system/index.js';
-import { InboxWriter, makeInboxPath } from '../foundation/messaging/index.js';
+import { InboxWriter, makeInboxPath, INBOX_PENDING_DIR } from '../foundation/messaging/index.js';
 import { createAsyncTaskSystem } from '../core/async-task-system/index.js';
 import type { AsyncTaskSystem } from '../core/async-task-system/system.js';
 import { summonContractExtractPostProcessor, SUMMON_CONTRACT_EXTRACT_POSTPROCESSOR_NAME, AskMotionTool } from '../core/summon-system/index.js';
@@ -237,7 +237,7 @@ export async function createBusinessSystems(input: BusinessSysInput): Promise<Bu
         fs: systemFs,
         inbox: clawInbox,
         llm,
-        inboxPendingDir: 'inbox/pending',
+        inboxPendingDir: INBOX_PENDING_DIR,
       });
       contractManager.attachAuditor(auditor);
     } catch (e) {
