@@ -6,20 +6,20 @@
  * Dependencies: FileSystem
  */
 
+// phase 128 ML#8 ratify: makeOutboxPath production cross-module 0 caller、tests/assembly/ 5 file use only
+// 保留 export 维持 test reachability、若未来 src 无 caller 浮出 0 增加可降为 deep import
 export { OutboxWriter, makeOutboxPath } from './outbox-writer.js';
-export type { OutboxWriteOptions, OutboxPath } from './outbox-writer.js';
 
 // phase 42: outbox 读侧（业主入口、用于聚合查询如 outbox-summary 未读计数）
 export { OutboxReader } from './outbox-reader.js';
 
 export { InboxWriter, makeInboxPath } from './inbox-writer.js';
-export type { InboxMessageOptionsBase, InboxMessageMeta, InboxPath } from './inbox-writer.js';
+export type { InboxMessageOptionsBase } from './inbox-writer.js';
 
 export { InboxReader } from './inbox-reader.js';
 export type { InboxEntry } from './inbox-reader.js';
 export type { InboxHandle, OutboxMessage } from './types.js';
 export { InboxListFailed, InboxMoveFailed } from './errors.js';
-export type { InboxMoveOp, InboxMetaError } from './errors.js';
 
 // phase 1423 F4: dirs path const re-export — 跨模块 (daemon / core) 路径合成走 barrel。
 // sister L2 foundation/paths.ts 内部 sister 保留 deep import (depcruise rule allowlist)。
@@ -42,8 +42,8 @@ export { createMessageFormatterRegistry } from './formatter-registry.js';
 export type {
   MessageFormatter,
   MessageFormatterRegistry,
-  MessageFormatterContext,
 } from './formatter-registry.js';
+// phase 128 ML#8 ratify: formatUserInboxMessage production cross-module 0 caller、tests/assembly/ 5 file use only
 export {
   formatUserInboxMessage,
   registerMessagingFormatters,
@@ -80,7 +80,6 @@ export function createOutboxWriter(
   return OutboxWriter.__internal_create(clawId, makeOutboxPath(clawId, clawDir), fs, audit);
 }
 
-export { emitOutboxSent, emitOutboxSendFailed } from './audit-emit.js';
 
 export { notifyInbox, notifySystem, notifyClaw, writeInboxAsync } from './notify.js';
 
