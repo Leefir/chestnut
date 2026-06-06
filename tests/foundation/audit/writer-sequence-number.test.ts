@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
-import { AuditWriter, BatchedAuditWriter } from '../../../src/foundation/audit/index.js';
+import { AuditWriter } from '../../../src/foundation/audit/index.js';
+import { BatchedAuditWriter } from '../../../src/foundation/audit/batched-writer.js';
 import { NoopAuditWriter } from '../../../src/core/subagent/noop-writers.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
 

@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-import { PROCESS_EXEC_TIMEOUT_MAX_MS } from '../../../src/foundation/process-exec/index.js';
+import { PROCESS_EXEC_TIMEOUT_MAX_MS } from '../../../src/foundation/process-exec/constants.js';
 
 describe('phase 1033: L1 PROCESS_EXEC_TIMEOUT_MAX_MS align L4 config max', () => {
   it('MAX = 600_000 (align L4 tool_timeout_ms schema max) (反向 1)', () => {
