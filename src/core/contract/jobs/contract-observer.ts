@@ -8,7 +8,7 @@ import { CONTRACT_AUDIT_EVENTS } from '../audit-events.js';
 import { CLAWS_DIR } from '../../../assembly/claw-dirs.js';
 import { MOTION_CLAW_ID } from '../../../constants.js';
 import { makeClawId } from '../../../foundation/paths.js'
-import { type ChestnutRoot } from '../../../foundation/paths.js';
+import { type ChestnutRoot } from '../../../assembly/install-paths.js';
 import { makeClawDir } from '../../../foundation/paths.js';
 import type { CronJob } from '../../cron/runner.js';
 import { parseSchedule } from '../../cron/runner.js';

@@ -1,4 +1,5 @@
-import { type ChestnutRoot } from '../../foundation/paths.js';/**
+import { type ChestnutRoot } from '../../assembly/install-paths.js';
+/**
  * Notification utilities - Unified notification helpers
  *
  * Standardizes error handling and formatting for inbox notifications.

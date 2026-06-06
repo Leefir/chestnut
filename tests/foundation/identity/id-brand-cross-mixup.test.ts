@@ -9,8 +9,10 @@ import type { ToolUseId } from '../../../src/foundation/tool-protocol/index.js';
 import { makeToolUseId } from '../../../src/foundation/tool-protocol/index.js';
 import type { SubtaskId, ArchiveDir } from '../../../src/core/contract/types.js';
 import { makeSubtaskId, makeArchiveDir } from '../../../src/core/contract/types.js';
-import type { ClawDir, ChestnutRoot } from '../../../src/foundation/paths.js';
-import { makeClawDir, makeChestnutRoot } from '../../../src/foundation/paths.js';
+import type { ChestnutRoot } from '../../../src/assembly/install-paths.js';
+import type { ClawDir } from '../../../src/foundation/paths.js';
+import { makeChestnutRoot } from '../../../src/assembly/install-paths.js';
+import { makeClawDir } from '../../../src/foundation/paths.js';
 
 describe('ID brand cross-mixup forbidden (32 combinations)', () => {
   const clawId: ClawId = makeClawId('claw');

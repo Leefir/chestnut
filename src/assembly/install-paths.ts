@@ -62,3 +62,31 @@ export function getClawDir(name: string): ClawDir {
 export function getClawConfigPath(name: string): string {
   return path.join(getClawDir(name), 'config.yaml');
 }
+
+// ============================================================================
+// phase 84: ChestnutRoot brand + factory + resolveChestnutRoot
+// 自 foundation/paths.ts 整迁、chestnut 根 = 装配根本身的类型表达 + 拓扑推算 = L6 own
+// ============================================================================
+
+declare const ChestnutRootBrand: unique symbol;
+export type ChestnutRoot = string & { readonly [ChestnutRootBrand]: true };
+export function makeChestnutRoot(s: string): ChestnutRoot { return s as ChestnutRoot; }
+
+/**
+ * 从 clawDir 推算 chestnutRoot 的单一权威函数。
+ *
+ * 目录拓扑（design/architecture.md 系统拓扑节）：
+ *   motion claw：`<root>/motion/`         → motion claw clawDir 的父 = root
+ *   普通 claw： `<root>/claws/<id>/`     → 普通 claw clawDir 的祖父 = root
+ *
+ * 调用方需告知是否 motion（来自 Assembly 装配期 isMotion guard）。
+ *
+ * @param clawDir 此 claw 的实例目录（branded ClawDir）
+ * @param isMotion 是否 motion claw（拓扑差异由配置决定）
+ * @returns branded ChestnutRoot
+ */
+export function resolveChestnutRoot(clawDir: ClawDir, isMotion: boolean): ChestnutRoot {
+  return isMotion
+    ? makeChestnutRoot(path.join(clawDir, '..')) // Motion-only callsite: motion clawDir = <root>/motion → root
+    : makeChestnutRoot(path.join(clawDir, '..', '..'));
+}

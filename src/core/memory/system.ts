@@ -6,7 +6,8 @@ import type { ProgressData } from '../contract/index.js';
 import { runDeepDream } from './deep-dream.js';
 import { runRandomDream } from './random-dream.js';
 import type { ContractId } from '../contract/types.js';
-import type { ClawId, ChestnutRoot, ClawDir } from '../../foundation/paths.js';
+import type { ChestnutRoot } from '../../assembly/install-paths.js';
+import type { ClawId, ClawDir } from '../../foundation/paths.js';
 
 
 

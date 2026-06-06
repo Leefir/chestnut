@@ -42,7 +42,8 @@ import type { MotionGuidanceRegistry, GuidanceEntry } from './guidance/index.js'
 import type { MessageFormatterRegistry } from '../foundation/messaging/index.js';
 import { createContractSystem } from '../core/contract/index.js';
 import { createSystemAudit } from '../foundation/audit/index.js';
-import { makeClawId, resolveChestnutRoot } from '../foundation/paths.js';
+import { makeClawId } from '../foundation/paths.js';
+import { resolveChestnutRoot } from './install-paths.js';
 import type { ClawDir } from '../foundation/paths.js';
 import { ASSEMBLY_AUDIT_EVENTS } from './audit-events.js';
 import type { CoreInfraOutput } from './core-infrastructure.js';

@@ -14,7 +14,7 @@ import { CliError } from '../errors.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { ClawId } from '../../foundation/paths.js';
 import { makeContractId } from '../../core/contract/types.js';
-import { resolveChestnutRoot } from '../../foundation/paths.js';
+import { resolveChestnutRoot } from '../../assembly/install-paths.js';
 
 export async function contractCancelCommand(
   deps: { fsFactory: (baseDir: string) => FileSystem },

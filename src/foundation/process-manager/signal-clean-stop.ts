@@ -1,4 +1,4 @@
-import { type ChestnutRoot } from '../../foundation/paths.js';
+import { type ChestnutRoot } from '../../assembly/install-paths.js';
 
 /**
  * @module L2.ProcessManager.SignalCleanStop

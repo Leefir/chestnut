@@ -1,6 +1,7 @@
 import * as path from 'path';
 import type { ContractId } from '../contract/types.js';
-import type { ClawId, ChestnutRoot } from '../../foundation/paths.js';
+import type { ChestnutRoot } from '../../assembly/install-paths.js';
+import type { ClawId } from '../../foundation/paths.js';
 import { makeClawDir } from '../../foundation/paths.js';
 import { CLAWS_DIR } from '../../assembly/claw-dirs.js';
 import type { FileSystem } from '../../foundation/fs/types.js';

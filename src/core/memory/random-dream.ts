@@ -12,7 +12,7 @@ import type { ProgressData } from '../contract/index.js';
 import type { ClawId } from '../../foundation/paths.js';
 import type { ContractId } from '../contract/types.js';
 import { type TaskId, makeTaskId } from '../async-task-system/types.js';
-import { type ChestnutRoot, makeChestnutRoot } from '../../foundation/paths.js';
+import { type ChestnutRoot, makeChestnutRoot } from '../../assembly/install-paths.js';
 import { listArchiveContracts } from '../contract/index.js';
 import { type ClawDir } from '../../foundation/paths.js';
 import {

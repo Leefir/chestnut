@@ -33,7 +33,8 @@ import {
   type ToolExecutorOptions,
 } from './types.js';
 import { safeNumber } from '../utils/index.js';
-import type { ClawId, ChestnutRoot } from '../paths.js';
+import type { ChestnutRoot } from '../../assembly/install-paths.js';
+import type { ClawId } from '../paths.js';
 import { type ClawDir } from '../paths.js';
 
 

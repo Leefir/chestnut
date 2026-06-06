@@ -11,7 +11,7 @@ import { createToolRegistry } from '../../foundation/tools/index.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import type { ClawId } from '../../foundation/paths.js';
 import { makeContractId } from '../../core/contract/types.js';
-import { resolveChestnutRoot } from '../../foundation/paths.js';
+import { resolveChestnutRoot } from '../../assembly/install-paths.js';
 import { parseAndValidateContractYaml, notifyContractCreated } from './contract-helpers.js';
 
 export async function contractCreateFromDirCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, clawId: ClawId, dirPath: string, extraDeps?: { audit?: AuditLog }): Promise<void> {

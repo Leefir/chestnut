@@ -12,7 +12,7 @@ import * as path from 'path';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { isFileNotFound } from '../../foundation/fs/types.js';
 import type { OutboxReader } from '../../foundation/messaging/index.js';
-import type { ChestnutRoot } from '../../foundation/paths.js';
+import type { ChestnutRoot } from '../../assembly/install-paths.js';
 import { CLAWS_DIR } from '../../assembly/claw-dirs.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
 import { computeHash } from './hash.js';

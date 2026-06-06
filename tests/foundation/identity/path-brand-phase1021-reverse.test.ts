@@ -9,7 +9,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { type ClawDir, type ChestnutRoot, makeClawDir, makeChestnutRoot } from '../../../src/foundation/paths.js';
+import { type ChestnutRoot, makeChestnutRoot } from '../../../src/assembly/install-paths.js';
+import { type ClawDir, makeClawDir } from '../../../src/foundation/paths.js';
 import * as path from 'path';
 
 describe('phase 1021 path-mixup compile-time defense', () => {

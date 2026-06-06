@@ -9,7 +9,7 @@ import { notifyClaw } from '../../foundation/messaging/index.js';
 import type { InboxReader } from '../../foundation/messaging/index.js';
 import { HEARTBEAT_AUDIT_EVENTS } from './audit-events.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
-import { type ChestnutRoot } from '../../foundation/paths.js';
+import { type ChestnutRoot } from '../../assembly/install-paths.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 
 export interface HeartbeatOptions {

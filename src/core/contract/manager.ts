@@ -66,12 +66,11 @@ import {
 } from './persistence.js';
 import { type ContractId, makeContractId } from './types.js';
 import { ContractValidationError } from './errors.js';
-import { resolveChestnutRoot } from '../../foundation/paths.js';
+import { resolveChestnutRoot } from '../../assembly/install-paths.js';
 import { type SubtaskId, type ArchiveDir, makeArchiveDir } from './types.js';
-import type { ClawId, ChestnutRoot } from '../../foundation/paths.js';
-import { runContractVerifier as defaultRunContractVerifier } from './verifier-job.js';
-import {
-  pauseContract, resumeContract, cancelContract, markCrashed,
+import type { ChestnutRoot } from '../../assembly/install-paths.js';
+import type { ClawId } from '../../foundation/paths.js';
+import { runContractVerifier as defaultRunContractVerifier } from './verifier-job.js';  pauseContract, resumeContract, cancelContract, markCrashed,
   isContractComplete, moveContractToArchive,
   type LifecycleContext,
 } from './lifecycle.js';

@@ -58,7 +58,8 @@ import {
 import type { PostProcessor } from './post-processors/types.js';
 import type { AsyncTaskSystemOptions, SubAgentTask, ToolTask, TaskKind, TaskExecutor } from './types.js';
 import { type TaskId, makeTaskId } from './types.js';
-import { type ClawDir, makeClawDir, type ChestnutRoot } from '../../foundation/paths.js';
+import { type ChestnutRoot } from '../../assembly/install-paths.js';
+import { type ClawDir, makeClawDir } from '../../foundation/paths.js';
 
 
 

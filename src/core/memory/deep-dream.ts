@@ -9,7 +9,7 @@ import type { Message, ContentBlock, TextBlock, LLMResponse } from '../../founda
 import { notifyInbox } from '../../foundation/messaging/index.js';
 import { createSystemAudit } from '../../foundation/audit/index.js';
 import { type ClawId, makeClawId } from '../../foundation/paths.js'
-import { type ChestnutRoot } from '../../foundation/paths.js';
+import { type ChestnutRoot } from '../../assembly/install-paths.js';
 import { DialogStore } from '../../foundation/dialog-store/index.js';
 import type { SessionData } from '../../foundation/dialog-store/types.js';
 import { CLAWS_DIR } from '../../assembly/claw-dirs.js';

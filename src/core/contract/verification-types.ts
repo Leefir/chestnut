@@ -10,7 +10,7 @@ import type { ContractYaml, ProgressData, VerificationResult, VerifierConfig, Ve
 import { type LockContext } from './lock.js';
 import type { ClawId } from '../../foundation/paths.js';
 import type { ContractId } from './types.js';
-import type { ChestnutRoot } from '../../foundation/paths.js';
+import type { ChestnutRoot } from '../../assembly/install-paths.js';
 import { type ClawDir } from '../../foundation/paths.js';
 import type { VerificationMutex } from './verification-mutex.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
