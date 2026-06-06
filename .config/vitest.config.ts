@@ -84,11 +84,12 @@ const VI_MOCK_FILES = [
   // VerifierConfig（与 phase 87 + 91 形成 3 层 carrier 链）、本测试不需 module
   // registry isolation、移 fast project。subagent vi.mock 9× cluster 收官。
   // 'tests/core/contract_manager_llm.test.ts',
-  'tests/core/evolution-system.test.ts',
+  // phase 116: EvolutionSystemDeps createSkillSystem? DI
+  // 'tests/core/evolution-system.test.ts',
   // phase 114: RetroConfig DI 替 vi.mock skill-system pattern。
   // 'tests/core/evolution-system/retro-scheduler.test.ts',
-  'tests/core/evolution-system/state-corrupt.test.ts',
-  'tests/core/evolution-system/state-file.test.ts',
+  // 'tests/core/evolution-system/state-corrupt.test.ts',
+  // 'tests/core/evolution-system/state-file.test.ts',
   // phase 82 Op H: 移出 ISOLATED — 仅用 vi.hoisted + vi.fn instance injection、
   // 无 module-level vi.mock、不引 cross-file 模块串扰
   // 'tests/core/evolution-system/system-clawfs-factory.test.ts',
