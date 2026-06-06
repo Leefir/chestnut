@@ -18,6 +18,7 @@ import type { Message, ToolDefinition } from '../../foundation/llm-provider/type
 import type { CallerType } from '../caller-types.js';
 import { createDialogStore } from '../../foundation/dialog-store/index.js';
 import { CLAWSPACE_DIR } from '../../assembly/claw-dirs.js';
+import { TASKS_SYNC_DIR } from '../async-task-system/dirs.js';
 import type { PermissionChecker } from '../../foundation/tool-protocol/permission.js';
 
 import { SubAgent } from './agent.js';
@@ -113,7 +114,7 @@ export async function runSubagent(opts: RunSubagentOptions): Promise<RunSubagent
     defaultTimeoutMs: opts.toolTimeoutMs,
     clawDir: opts.clawDir,
     clawsDir: opts.clawsDir,
-    syncDir: path.join(opts.clawDir, 'tasks/sync'),  // TASKS_SYNC_DIR
+    syncDir: path.join(opts.clawDir, TASKS_SYNC_DIR),
     workspaceDir: sharedWorkspaceDir,
     fs: opts.fs,
     fsFactory: opts.fsFactory,
