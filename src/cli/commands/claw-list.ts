@@ -16,6 +16,9 @@ import { getLastActiveMs } from './claw-shared.js';
 import { makeClawId } from '../../foundation/paths.js';
 import { handleCliError } from '../errors.js';
 
+/** claw-list title console 显示截断 cap（防 list 行过长）*/
+const CLAW_TITLE_DISPLAY_CHARS = 28;
+
 /**
  * List all Claws and their status
  */
@@ -61,7 +64,7 @@ export async function listCommand(deps: { fsFactory: (baseDir: string) => FileSy
           if (clawFs.existsSync(relYamlPath)) {
             const content = clawFs.readSync(relYamlPath);
             const match = content.match(/^title:\s*["']?(.+?)["']?\s*$/m);
-            if (match) return match[1].slice(0, 28);
+            if (match) return match[1].slice(0, CLAW_TITLE_DISPLAY_CHARS);
           }
         }
       } catch { /* silent: skip */ }
@@ -76,7 +79,7 @@ export async function listCommand(deps: { fsFactory: (baseDir: string) => FileSy
           if (stat.mtime.getTime() > latest.mtime) {
             const content = clawFs.readSync(relYamlPath);
             const match = content.match(/^title:\s*["']?(.+?)["']?\s*$/m);
-            if (match) latest = { mtime: stat.mtime.getTime(), title: match[1].slice(0, 28) };
+            if (match) latest = { mtime: stat.mtime.getTime(), title: match[1].slice(0, CLAW_TITLE_DISPLAY_CHARS) };
           }
         }
       }
