@@ -14,7 +14,7 @@ import config from '../../../.config/dependency-cruiser.cjs';
  *   3. .dependency-cruiser.cjs 配置
  */
 describe('dependency-cruiser config: allowlist sync (phase 1298)', () => {
-  it('fs-only-via-foundation-filesystem allowlist matches 3 design intent file', () => {
+  it('fs-only-via-foundation-filesystem allowlist matches 4 design intent file', () => {
     const rule = config.forbidden.find(
       (r: { name: string }) => r.name === 'fs-only-via-foundation-filesystem',
     );
@@ -23,6 +23,7 @@ describe('dependency-cruiser config: allowlist sync (phase 1298)', () => {
     expect(rule.from.pathNot).toEqual([
       '^src/foundation/fs/',
       '^src/foundation/audit/writer\\.ts$',
+      '^src/foundation/audit/reader\\.ts$',
       '^src/foundation/process-exec/spawn-detached\\.ts$',
     ]);
   });

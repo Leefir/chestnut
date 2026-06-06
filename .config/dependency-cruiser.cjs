@@ -23,9 +23,10 @@ module.exports = {
       name: 'fs-only-via-foundation-filesystem',
       comment: [
         'ML#3 资源唯一归属：file I/O 必经 L1 FileSystem 接口。',
-        'allowlist 3 design intent file:',
+        'allowlist 4 design intent file:',
         '  - foundation/fs/* impl 自身 (唯一 owner)',
         '  - foundation/audit/writer.ts: phase 1214 ratify dumpFallback boundary 防 audit-of-audit 递归',
+        '  - foundation/audit/reader.ts: tail/follow direct fs read (reader API single source)',
         '  - foundation/process-exec/spawn-detached.ts: fd-level openSync(/dev/null) 非 path-level',
         '其他 src 必经 fsFactory inject (phase 1283 α-1)',
       ].join(' '),

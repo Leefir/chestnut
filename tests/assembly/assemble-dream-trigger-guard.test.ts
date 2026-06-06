@@ -126,6 +126,7 @@ const mockMemorySystem = {
 vi.mock('../../src/core/memory/index.js', () => ({
   createMemorySystem: vi.fn(() => mockMemorySystem),
   memorySearchTool: { name: 'memory_search' },
+  MEMORY_DIR: 'memory',
 }));
 
 vi.mock('../../src/core/contract/jobs/contract-observer.js', () => {
@@ -211,6 +212,8 @@ vi.mock('../../src/foundation/messaging/index.js', async (importOriginal) => {
 vi.mock('../../src/foundation/dialog-store/index.js', () => ({
   DialogStore: vi.fn(() => ({ load: vi.fn(), save: vi.fn(), archive: vi.fn(), systemPrompt: '' })),
   createDialogStore: vi.fn(() => ({ load: vi.fn(), save: vi.fn(), archive: vi.fn(), restorePrefix: vi.fn() })),
+  DIALOG_DIR: 'dialog',
+  DIALOG_ARCHIVE_DIR: 'dialog/archive',
 }));
 
 vi.mock('../../src/foundation/llm-orchestrator/config-adapter.js', () => ({

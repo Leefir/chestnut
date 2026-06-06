@@ -86,7 +86,7 @@ export async function auditQueryCommand(
   // 5. dispatch read or follow
   if (opts.follow) {
     const reader = createAuditReader(fs, files[0].path);
-    const sigintHandler = () => { reader.close(); process.exit(0); };
+    const sigintHandler = () => { reader.close(); };
     process.on('SIGINT', sigintHandler);
     try {
       for await (const rec of reader.follow(readOpts)) {
