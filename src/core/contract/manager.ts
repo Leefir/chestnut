@@ -69,7 +69,7 @@ import { ContractValidationError } from './errors.js';
 import { resolveChestnutRoot } from '../../foundation/paths.js';
 import { type SubtaskId, type ArchiveDir, makeArchiveDir } from './types.js';
 import type { ClawId, ChestnutRoot } from '../../foundation/paths.js';
-import { runContractVerifier } from './verifier-job.js';
+import { runContractVerifier as defaultRunContractVerifier } from './verifier-job.js';
 import {
   pauseContract, resumeContract, cancelContract, markCrashed,
   isContractComplete, moveContractToArchive,
@@ -113,6 +113,7 @@ export interface ContractSystemDeps {
   toolRegistry: ToolRegistry;
   toolTimeoutMs?: number;
   fsFactory: (baseDir: string) => FileSystem;
+  runContractVerifier?: typeof defaultRunContractVerifier;
 }
 
 export class ContractSystem {
@@ -125,6 +126,7 @@ export class ContractSystem {
   private toolRegistry: ToolRegistry;
   private toolTimeoutMs?: number;
   private fsFactory: (baseDir: string) => FileSystem;
+  private runContractVerifier: typeof defaultRunContractVerifier;
 
   private activeDir = CONTRACT_ACTIVE_DIR;
   private pausedDir = CONTRACT_PAUSED_DIR;
@@ -219,6 +221,7 @@ export class ContractSystem {
     this.toolRegistry = deps.toolRegistry;
     this.toolTimeoutMs = deps.toolTimeoutMs;
     this.fsFactory = deps.fsFactory;
+    this.runContractVerifier = deps.runContractVerifier ?? defaultRunContractVerifier;
   }
 
   setOnNotify(cb: (type: string, data: Record<string, unknown>) => void): void {
@@ -383,7 +386,7 @@ export class ContractSystem {
       verificationMutex: this.verificationMutex,
       runVerifierWithCancel: async (contractId, config) => {
         const controller = new AbortController();
-        const promise = runContractVerifier({ ...config, signal: controller.signal, contractId, fsFactory: this.fsFactory, chestnutRoot: this.chestnutRoot });
+        const promise = this.runContractVerifier({ ...config, signal: controller.signal, contractId, fsFactory: this.fsFactory, chestnutRoot: this.chestnutRoot });
         this._registerVerifierController(contractId, controller, promise);
         try {
           return await promise;

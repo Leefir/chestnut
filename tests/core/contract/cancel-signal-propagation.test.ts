@@ -20,14 +20,6 @@ const { mockRunContractVerifier } = vi.hoisted(() => ({
   mockRunContractVerifier: vi.fn(),
 }));
 
-vi.mock('../../../src/core/contract/verifier-job.js', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('../../../src/core/contract/verifier-job.js')>();
-  return {
-    ...mod,
-    runContractVerifier: mockRunContractVerifier,
-  };
-});
-
 describe('phase 1020 / r124 C fork — cancel propagation 装配端真实施', () => {
   let testDir: string;
   let clawDir: string;
@@ -53,7 +45,8 @@ describe('phase 1020 / r124 C fork — cancel propagation 装配端真实施', (
       audit: mockAudit as any,
       llm: mockLlm,
       toolRegistry: createToolRegistry(),
-      fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir })
+      fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir }),
+      runContractVerifier: mockRunContractVerifier,
     });
     mockRunContractVerifier.mockReset();
   });
