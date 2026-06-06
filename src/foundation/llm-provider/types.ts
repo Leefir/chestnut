@@ -6,6 +6,7 @@
  */
 
 import type { ApiFormat } from './presets.js';
+import type { ToolUseId } from '../tool-protocol/tool-use-id.js';
 
 /** Minimal audit sink interface — L1 owns this duck-typed interface, L2b implements */
 export interface AuditSink {
@@ -25,14 +26,14 @@ export interface TextBlock {
 
 export interface ToolUseBlock {
   type: 'tool_use';
-  id: string;
+  id: ToolUseId;
   name: string;
   input: Record<string, unknown>;
 }
 
 export interface ToolResultBlock {
   type: 'tool_result';
-  tool_use_id: string;
+  tool_use_id: ToolUseId;
   content: string;
   is_error?: boolean;
 }

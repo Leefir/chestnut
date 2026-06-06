@@ -16,6 +16,7 @@ import { TOOL_LOG_ESCAPE_CHARS } from './constants.js';
 import type { ScheduleAsyncTool } from './async-dispatch.js';
 import type { PermissionChecker } from '../tool-protocol/permission.js';
 import type { ToolUseId } from '../tool-protocol/index.js';
+import type { TraceId } from '../audit/types.js';
 
 
 
@@ -162,7 +163,7 @@ export interface ExecutionAudit {
   /** Current tool_use block id (set by ToolExecutor before tool.execute) */
   currentToolUseId?: string;
   /** phase 1343 α-6: turn-level trace id for cross-module audit correlation */
-  trace_id?: string;
+  trace_id?: TraceId;
   /**
    * Per-claw read state for overwrite gate (phase 1430、formerly `fullyReadPaths: Set<string>`).
    * Map<resolvedPath, FileState{hash, timestamp, isFullRead}>.

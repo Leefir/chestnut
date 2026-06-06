@@ -58,6 +58,8 @@ import { TASKS_SYNC_DIR } from '../async-task-system/index.js';
 
 import { formatTimeAgo } from './utils.js';
 import type { ToolUseId } from '../../foundation/tool-protocol/index.js';
+import type { TraceId } from './types/trace-id.js';
+import { makeTraceId } from './types/trace-id.js';
 
 
 
@@ -82,7 +84,7 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon, IRuntimeChat 
   private turnCount = 0;
   protected auditWriter!: AuditLog;
   /** phase 1343 α-6: current turn-level trace id for cross-module audit correlation */
-  private currentTraceId?: string;
+  private currentTraceId?: TraceId;
 
   // Turn state — stored on Runtime (not ExecContext) so L4 modules can
   // access current turn snapshot via getter callback without L2 knowing L4 semantics.
@@ -91,7 +93,7 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon, IRuntimeChat 
   private _currentMessages?: import('../../foundation/llm-provider/types.js').Message[];
 
   /** phase 1343 α-6: expose current trace id for daemon-loop stream callbacks */
-  getCurrentTraceId(): string | undefined { return this.currentTraceId; }
+  getCurrentTraceId(): TraceId | undefined { return this.currentTraceId; }
   /** Current turn system prompt (set by _runReact, cleared after turn) */
   getCurrentSystemPrompt(): string | undefined { return this._currentSystemPrompt; }
   /** Current turn tool definitions (set by _runReact) */
@@ -156,9 +158,9 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon, IRuntimeChat 
   }
 
   /** phase 1343 α-6: set/clear turn-level trace id on audit writer */
-  private setTraceId(traceId: string | undefined): void {
+  private setTraceId(traceId: TraceId | undefined): void {
     this.currentTraceId = traceId;
-    const aw = this.auditWriter as unknown as { traceId?: string };
+    const aw = this.auditWriter as unknown as { traceId?: TraceId };
     if (aw) aw.traceId = traceId;
   }
 
@@ -710,7 +712,7 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon, IRuntimeChat 
       await this.initialize();
     }
 
-    const traceId = crypto.randomBytes(8).toString('hex');
+    const traceId = makeTraceId(crypto.randomBytes(8).toString('hex'));
     this.setTraceId(traceId);
     this.execContext.trace_id = traceId;
     try {
@@ -875,7 +877,7 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon, IRuntimeChat 
     if (!this.initialized) {
       await this.initialize();
     }
-    const traceId = crypto.randomBytes(8).toString('hex');
+    const traceId = makeTraceId(crypto.randomBytes(8).toString('hex'));
     this.setTraceId(traceId);
     this.execContext.trace_id = traceId;
     try {
@@ -921,7 +923,7 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon, IRuntimeChat 
     if (!this.initialized) {
       await this.initialize();
     }
-    const traceId = crypto.randomBytes(8).toString('hex');
+    const traceId = makeTraceId(crypto.randomBytes(8).toString('hex'));
     this.setTraceId(traceId);
     this.execContext.trace_id = traceId;
     try {
@@ -994,7 +996,7 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon, IRuntimeChat 
       await this.initialize();
     }
 
-    const traceId = crypto.randomBytes(8).toString('hex');
+    const traceId = makeTraceId(crypto.randomBytes(8).toString('hex'));
     this.setTraceId(traceId);
     this.execContext.trace_id = traceId;
     try {

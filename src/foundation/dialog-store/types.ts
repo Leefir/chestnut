@@ -6,6 +6,7 @@
 
 import type { Message, ToolDefinition } from '../llm-provider/types.js';
 import type { ToolUseId } from '../tool-protocol/index.js';
+import type { TraceId } from '../audit/types.js';
 
 
 
@@ -18,7 +19,7 @@ export interface SessionData {
   messages: Message[];
   toolsForLLM: ToolDefinition[];  // phase 713 NEW
   /** phase 1343 α-6: turn-level trace id for cross-module audit correlation */
-  trace_id?: string;
+  trace_id?: TraceId;
 }
 
 export interface LoadResult {

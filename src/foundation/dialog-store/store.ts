@@ -13,6 +13,7 @@ import type { FileSystem } from '../fs/types.js';
 
 import type { Message, ToolUseBlock, ToolResultBlock, ToolDefinition } from '../llm-provider/types.js';
 import type { SessionData, LoadResult, DialogMarker, RestoreResult } from './types.js';
+import type { TraceId } from '../audit/types.js';
 import type { AuditLog } from '../audit/index.js';
 import { DIALOG_AUDIT_EVENTS } from './audit-events.js';
 import { randomUUID } from 'crypto';
@@ -302,7 +303,7 @@ export class DialogStore {
     systemPrompt: string;
     messages: Message[];
     toolsForLLM: ToolDefinition[];
-    trace_id?: string;
+    trace_id?: TraceId;
   }): Promise<void> {
     const doSave = async (): Promise<void> => {
       const now = new Date().toISOString();

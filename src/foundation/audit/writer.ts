@@ -30,6 +30,7 @@
 
 import { randomUUID } from 'crypto';
 import { formatErr } from "../utils/index.js";
+import type { TraceId } from './types.js';
 import * as nodeFs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { UUID_SHORT_LEN } from '../../constants.js';
@@ -225,7 +226,7 @@ export class AuditWriter implements AuditLog {
   private readonly maxBytes: number | null;
   private seq = 0; // NEW phase 1125
   /** phase 1343 α-6: turn-level trace id for cross-module audit correlation */
-  traceId?: string;
+  traceId?: TraceId;
 
   constructor(
     private readonly fs: FileSystem,

@@ -48,9 +48,7 @@ export interface ToolResult {
 // phase 1358: ToolUseId branded type (compile-time ID discrimination)
 // ============================================================================
 
-declare const ToolUseIdBrand: unique symbol;
-export type ToolUseId = string & { readonly [ToolUseIdBrand]: true };
-export function makeToolUseId(s: string): ToolUseId { return s as ToolUseId; }
+export { ToolUseId, makeToolUseId } from './tool-use-id.js';
 
 // ============================================================================
 // phase 1406: CallerSnapshot — caller deep context shape (lazy / declared opt-in)

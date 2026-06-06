@@ -12,6 +12,7 @@ import type { FileSystem } from '../fs/types.js';
 import type { LLMOrchestrator } from '../llm-orchestrator/index.js';
 import type { ToolProfile } from '../tool-protocol/index.js';
 import type { ExecContext, ToolGroup, FileState } from './types.js';
+import type { TraceId } from '../audit/types.js';
 import path from 'path';
 import { MOTION_CLAW_ID } from '../../constants.js';
 import { CLAWSPACE_DIR } from '../../assembly/claw-dirs.js';
@@ -94,7 +95,7 @@ export interface ExecContextImplOptions {
   /** phase 1332: injected task scheduler for subagent scheduling (N2 cross-L4 leak fix) */
   taskSystem?: import('./types.js').TaskScheduler;
   /** phase 1343 α-6: turn-level trace id for cross-module audit correlation */
-  trace_id?: string;
+  trace_id?: TraceId;
   /**
    * phase 1406: lazy caller deep context provider (systemPrompt + tools + messages).
    * Bound by Claw/Assembly at construction. Only tools declaring
@@ -175,7 +176,7 @@ export class ExecContextImpl implements ExecContext {
   permissionChecker?: PermissionChecker;
   toolTimeoutMs?: number;
   taskSystem?: import('./types.js').TaskScheduler;
-  trace_id?: string;
+  trace_id?: TraceId;
   getCallerSnapshot?: import('./types.js').ExecContext['getCallerSnapshot'];
   subagentTaskId?: string;
   stopRequested: boolean = false;
