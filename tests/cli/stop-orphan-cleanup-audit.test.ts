@@ -49,14 +49,6 @@ vi.mock('../../src/cli/commands/motion.js', () => ({
   stopCommand: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../../src/foundation/process-exec/index.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/foundation/process-exec/index.js')>();
-  return {
-    ...actual,
-    kill: mockKill,
-  };
-});
-
 vi.mock('../../src/foundation/process-manager/factories.js', () => ({
   createProcessManagerForCLI: vi.fn(() => ({
     isAlive: vi.fn().mockReturnValue(false),
@@ -106,7 +98,7 @@ describe('stop — orphan cleanup silent → audit (P1.4)', () => {
     mockFindProcesses.mockReturnValue([1111, 2222]);
     mockCreateSystemAudit.mockReturnValue({ write: mockAuditState.write });
 
-    await stopAllCommand({ fsFactory });
+    await stopAllCommand({ fsFactory }, { kill: mockKill });
 
     const sigtermEvents = mockAuditState.events.filter(e => e[0] === 'orphan_sigterm_failed');
     expect(sigtermEvents).toHaveLength(2);
@@ -135,7 +127,7 @@ describe('stop — orphan cleanup silent → audit (P1.4)', () => {
     });
     mockCreateSystemAudit.mockReturnValue({ write: mockAuditState.write });
 
-    await stopAllCommand({ fsFactory });
+    await stopAllCommand({ fsFactory }, { kill: mockKill });
 
     const listFailedEvents = mockAuditState.events.filter(e => e[0] === 'process_list_failed');
     expect(listFailedEvents).toHaveLength(1);

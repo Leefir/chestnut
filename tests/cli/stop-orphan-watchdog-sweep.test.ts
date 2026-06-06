@@ -40,14 +40,6 @@ vi.mock('../../src/cli/commands/motion.js', () => ({
   stopCommand: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../../src/foundation/process-exec/index.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/foundation/process-exec/index.js')>();
-  return {
-    ...actual,
-    kill: vi.fn(),
-  };
-});
-
 vi.mock('../../src/foundation/process-manager/factories.js', () => ({
   createProcessManagerForCLI: vi.fn(() => ({
     isAlive: vi.fn().mockReturnValue(false),

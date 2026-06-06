@@ -21,7 +21,10 @@ import { CLI_AUDIT_EVENTS } from '../audit-events.js';
 import { makeClawId } from '../../foundation/paths.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 
-export async function stopAllCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, extraDeps?: { audit?: AuditLog }): Promise<void> {
+export async function stopAllCommand(
+  deps: { fsFactory: (baseDir: string) => FileSystem },
+  extraDeps?: { audit?: AuditLog; kill?: typeof kill },
+): Promise<void> {
   loadGlobalConfig(deps);
 
   // motion-level audit（α 模板复用 / 同 daemon-entry shim / fail-soft）
@@ -132,9 +135,10 @@ export async function stopAllCommand(deps: { fsFactory: (baseDir: string) => Fil
     }
     if (pids.length > 0) {
       console.log(`Cleaning up ${pids.length} orphan daemon process(es)...`);
-      for (const p of pids) {
+      const killFn = extraDeps?.kill ?? kill;
+    for (const p of pids) {
         try {
-          kill(p, 'TERM');
+          killFn(p, 'TERM');
         } catch (err) {
           audit?.write(
             PROCESS_MANAGER_AUDIT_EVENTS.ORPHAN_SIGTERM_FAILED,

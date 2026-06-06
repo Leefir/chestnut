@@ -30,14 +30,6 @@ vi.mock('../../src/foundation/process-manager/factories.js', () => ({
   })),
 }));
 
-vi.mock('../../src/foundation/process-exec/index.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/foundation/process-exec/index.js')>();
-  return {
-    ...actual,
-    kill: mockKill,
-  };
-});
-
 describe('audit wired in CLI', () => {
   let tmpDir: string;
   let chestnutDir: string;
@@ -71,7 +63,7 @@ describe('audit wired in CLI', () => {
 
     mockFindProcesses.mockReturnValue([2000]);
 
-    const killed = await sweepOrphanWatchdogs(fsFactory, { excludePid: null });
+    const killed = await sweepOrphanWatchdogs(fsFactory, { excludePid: null }, { kill: mockKill });
 
     expect(killed).toEqual([2000]);
     expect(getAuditWriter()).not.toBeNull();

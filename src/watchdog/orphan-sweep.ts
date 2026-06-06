@@ -5,7 +5,8 @@
  */
 import type { FileSystem } from '../foundation/fs/types.js';
 import { formatErr } from "../foundation/utils/index.js";
-import { kill, isAlive } from '../foundation/process-exec/index.js';
+import { kill as defaultKill, isAlive as defaultIsAlive } from '../foundation/process-exec/index.js';
+import type { WatchdogProcessDeps } from './types.js';
 import { createProcessManagerForCLI } from '../foundation/process-manager/index.js';
 import { getWatchdogEntryPath } from './watchdog-context.js';
 import { getWatchdogPid } from './watchdog-pid.js';
@@ -23,6 +24,7 @@ const SWEEP_GRACE_MS = 1000;
 export async function sweepOrphanWatchdogs(
   fsFactory: (baseDir: string) => FileSystem,
   opts: { excludePid?: number | null } = {},
+  deps?: WatchdogProcessDeps,
 ): Promise<number[]> {
   ensureAuditWired(fsFactory);
   const pm = createProcessManagerForCLI({ fsFactory });
@@ -48,7 +50,7 @@ export async function sweepOrphanWatchdogs(
   const killed: number[] = [];
   for (const pid of orphans) {
     try {
-      kill(pid, 'TERM');
+      (deps?.kill ?? defaultKill)(pid, 'TERM');
       killed.push(pid);
     } catch (err) {
       const auditWriter = getAuditWriter();
@@ -65,8 +67,8 @@ export async function sweepOrphanWatchdogs(
     await new Promise(r => setTimeout(r, SWEEP_GRACE_MS));
     // SIGKILL 兜底
     for (const pid of killed) {
-      if (isAlive(pid)) {
-        try { kill(pid, 'KILL'); } catch { /* silent: isAlive→SIGKILL race / 目标进程已死 ESRCH = 已达成目标态 */ }
+      if ((deps?.isAlive ?? defaultIsAlive)(pid)) {
+        try { (deps?.kill ?? defaultKill)(pid, 'KILL'); } catch { /* silent: isAlive→SIGKILL race / 目标进程已死 ESRCH = 已达成目标态 */ }
       }
     }
     const auditWriter = getAuditWriter();

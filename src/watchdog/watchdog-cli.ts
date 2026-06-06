@@ -3,7 +3,8 @@
  * Watchdog CLI subcommands — start + stop
  */
 
-import { spawnDetached, kill } from '../foundation/process-exec/index.js';
+import { spawnDetached, kill as defaultKill } from '../foundation/process-exec/index.js';
+import type { WatchdogProcessDeps } from './types.js';
 import { setTimeout } from 'timers/promises';
 import type { FileSystem } from '../foundation/fs/types.js';
 import {
@@ -35,7 +36,10 @@ const WATCHDOG_STOP_MAX_ATTEMPTS = 50;
 const WATCHDOG_SIGKILL_GRACE_MS = 500;
 
 /** 1:1 保 watchdog.ts:514-543 / startCommand */
-export async function startCommand(fsFactory: (baseDir: string) => FileSystem): Promise<void> {
+export async function startCommand(
+  fsFactory: (baseDir: string) => FileSystem,
+  _deps?: WatchdogProcessDeps,
+): Promise<void> {
   const watchdogEntryPath = getWatchdogEntryPath(fsFactory);
 
   // 幂等：本 workspace 的 watchdog 已在运行则直接返回
@@ -78,7 +82,10 @@ export async function startCommand(fsFactory: (baseDir: string) => FileSystem): 
 }
 
 /** 1:1 保 watchdog.ts:545-580 / stopCommand */
-export async function stopCommand(fsFactory: (baseDir: string) => FileSystem): Promise<void> {
+export async function stopCommand(
+  fsFactory: (baseDir: string) => FileSystem,
+  deps?: WatchdogProcessDeps,
+): Promise<void> {
   const pid = getWatchdogPid(fsFactory);
   
   if (!pid || !isWatchdogAlive(fsFactory)) {
@@ -90,7 +97,7 @@ export async function stopCommand(fsFactory: (baseDir: string) => FileSystem): P
   console.log(`Stopping watchdog (PID: ${pid})...`);
   
   try {
-    kill(pid, 'TERM');
+    (deps?.kill ?? defaultKill)(pid, 'TERM');
   } catch (err) {
     console.log('Failed to send SIGTERM:', err);
   }
@@ -105,7 +112,7 @@ export async function stopCommand(fsFactory: (baseDir: string) => FileSystem): P
   if (isWatchdogAlive(fsFactory)) {
     console.log('Watchdog still alive, sending SIGKILL...');
     try {
-      kill(pid, 'KILL');
+      (deps?.kill ?? defaultKill)(pid, 'KILL');
     } catch (err) {
       console.log('Failed to send SIGKILL:', err);
     }

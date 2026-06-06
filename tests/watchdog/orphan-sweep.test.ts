@@ -29,14 +29,6 @@ vi.mock('../../src/foundation/process-manager/factories.js', () => ({
   })),
 }));
 
-vi.mock('../../src/foundation/process-exec/index.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/foundation/process-exec/index.js')>();
-  return {
-    ...actual,
-    kill: mockKill,
-  };
-});
-
 describe('watchdog orphan sweep', () => {
   let tmpDir: string;
   let chestnutDir: string;
@@ -79,7 +71,7 @@ describe('watchdog orphan sweep', () => {
 
       mockFindProcesses.mockReturnValue([1000, 2000, 3000]);
 
-      const sweepPromise = sweepOrphanWatchdogs(fsFactory);
+      const sweepPromise = sweepOrphanWatchdogs(fsFactory, {}, { kill: mockKill });
       await vi.advanceTimersByTimeAsync(1001);
       const killed = await sweepPromise;
 
@@ -105,7 +97,7 @@ describe('watchdog orphan sweep', () => {
 
       mockFindProcesses.mockReturnValue([1000, 2000]);
 
-      const sweepPromise = sweepOrphanWatchdogs(fsFactory, { excludePid: null });
+      const sweepPromise = sweepOrphanWatchdogs(fsFactory, { excludePid: null }, { kill: mockKill });
       await vi.advanceTimersByTimeAsync(1001);
       const killed = await sweepPromise;
 
@@ -124,7 +116,7 @@ describe('watchdog orphan sweep', () => {
       throw new Error('pgrep failed');
     });
 
-    const killed = await sweepOrphanWatchdogs(fsFactory);
+    const killed = await sweepOrphanWatchdogs(fsFactory, {}, { kill: mockKill });
 
     expect(killed).toEqual([]);
     expect(auditSpy).toHaveBeenCalledWith(
@@ -144,7 +136,7 @@ describe('watchdog orphan sweep', () => {
         if (pid === 2000) throw new Error('EPERM');
       });
 
-      const sweepPromise = sweepOrphanWatchdogs(fsFactory, { excludePid: null });
+      const sweepPromise = sweepOrphanWatchdogs(fsFactory, { excludePid: null }, { kill: mockKill });
       await vi.advanceTimersByTimeAsync(1001);
       const killed = await sweepPromise;
 
