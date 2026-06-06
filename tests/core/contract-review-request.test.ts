@@ -14,18 +14,21 @@ import { createToolRegistry } from '../../src/foundation/tools/index.js';
 
 // ============================================================================
 // Mock: SkillSystem（D4 C 方案：窄 mock 避免建真 skills/ 目录）
+// phase 118: EvolutionSystemDeps.createSkillSystem? DI 替 vi.mock
 // ============================================================================
-const { mockSkillRegistryLoadAll, mockSkillRegistryFormatForContext } = vi.hoisted(() => ({
-  mockSkillRegistryLoadAll: vi.fn().mockResolvedValue(undefined),
-  mockSkillRegistryFormatForContext: vi.fn().mockReturnValue('No skills loaded'),
-}));
-
-vi.mock('../../src/foundation/skill-system/registry.js', () => ({
-  SkillSystem: vi.fn().mockImplementation(() => ({
-    loadAll: mockSkillRegistryLoadAll,
-    formatForContext: mockSkillRegistryFormatForContext,
-  })),
-}));
+const {
+  mockSkillRegistryLoadAll,
+  mockSkillRegistryFormatForContext,
+  mockSkillFactory,
+} = vi.hoisted(() => {
+  const loadAll = vi.fn().mockResolvedValue(undefined);
+  const format = vi.fn().mockReturnValue('No skills loaded');
+  return {
+    mockSkillRegistryLoadAll: loadAll,
+    mockSkillRegistryFormatForContext: format,
+    mockSkillFactory: vi.fn(() => ({ loadAll, formatForContext: format })),
+  };
+});
 
 // ============================================================================
 // Mock: AsyncTaskSystem.schedule（窄 mock 避免真写 tasks/queues/pending）
@@ -81,6 +84,7 @@ async function setupFixtures(): Promise<TestFixtures> {
     audit: mockAudit as any,
     taskSystem: { schedule: mockSchedule } as any,
     contractManager: mockContractManager,
+    createSkillSystem: mockSkillFactory as any,
   });
   const ctx: MotionReviewContext = {
     motionFs,
@@ -325,6 +329,7 @@ describe('EvolutionSystem.runRetroForContract - best-effort branches', () => {
       audit: fixtures.mockAudit as any,
       taskSystem: { schedule: mockSchedule } as any,
       contractManager: {} as ContractSystem,
+      createSkillSystem: mockSkillFactory as any,
     });
     await fs.writeFile(byContractPath, JSON.stringify({
       targetClaw: 'claw-a', mode: 'mining', miningTaskId: 'mining-123',
