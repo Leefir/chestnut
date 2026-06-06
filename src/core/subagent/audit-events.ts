@@ -6,8 +6,11 @@
  */
 
 import type { AuditLog } from '../../foundation/audit/index.js';
+import type { ToolUseId } from '../../foundation/tool-protocol/index.js';
 
 export const SUBAGENT_AUDIT_EVENTS = {
+  // phase 140: tool_result emitted by stream-callbacks (owner: subagent module)
+  TOOL_RESULT: 'tool_result',
   STEP_COMPLETE_FAILED: 'subagent_step_complete_failed',
   PERSIST_FAILED: 'subagent_persist_failed',
   LOG_APPEND_FAILED: 'subagent_log_append_failed',
@@ -25,13 +28,17 @@ export const SUBAGENT_AUDIT_EVENTS = {
 
 export function emitToolCallInput(audit: AuditLog, opts: {
   name: string;
-  toolUseId: string;
+  toolUseId: ToolUseId;
   argsSize: number;
+  step?: number;
 }): void {
   audit.write(
     SUBAGENT_AUDIT_EVENTS.TOOL_CALL_INPUT,
     opts.name,
-    opts.toolUseId,
+    `tool_use_id=${String(opts.toolUseId)}`,
+    `step=${opts.step ?? 0}`,
+    `contract_id=`,
+    `trace_id=`,
     `args_size=${opts.argsSize}`,
   );
 }

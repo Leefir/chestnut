@@ -48,9 +48,9 @@ describe('async-task-system typed audit emit (phase 1130)', () => {
     });
     expect(audit.write).toHaveBeenCalledWith(
       TASK_AUDIT_EVENTS.TOOL_ASYNC_RESULT,
-      'toolName=read_file',
-      'toolUseId=tu_xyz',
-      'taskId=tk_abc',
+      'tool_name=read_file',
+      'tool_use_id=tu_xyz',
+      'task_id=tk_abc',
     );
     // 确认: 无 `task=tk_abc` 重复 col、无 positional task.toolName / task.toolUseId
     const callArgs = audit.write.mock.calls[0] as unknown as unknown[];

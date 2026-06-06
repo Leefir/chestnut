@@ -197,12 +197,15 @@ describe('subagent onToolResult emit ordering (phase 1122 audit-first)', () => {
     );
 
     expect(auditCall).toBeDefined();
-    // positional cols: ['tool_result', name, toolUseId, 'ok'|'err', `summary=${...}`]
+    // phase 140: named cols for tool_result (tool_use_id, step, contract_id, trace_id, status, summary, content_size)
     expect(auditCall![0]).toBe('tool_result');
     expect(auditCall![1]).toBe('my_tool');
-    expect(auditCall![2]).toBe('mid42');
-    expect(auditCall![3]).toBe('err');
-    expect(auditCall![4]).toBe('summary=error detail');
+    const auditCols = auditCall!.slice(2) as string[];
+    expect(auditCols.some((c: string) => c === 'tool_use_id=mid42')).toBe(true);
+    expect(auditCols.some((c: string) => c === 'step=2')).toBe(true);
+    expect(auditCols.some((c: string) => c === 'status=err')).toBe(true);
+    expect(auditCols.some((c: string) => c === 'summary=error detail')).toBe(true);
+    expect(auditCols.some((c: string) => c.startsWith('content_size='))).toBe(true);
   });
 
   it('反向 3 (边界路径反向)：swClosed 状态下 audit 仍 emit', async () => {

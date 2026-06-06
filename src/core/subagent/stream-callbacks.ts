@@ -16,6 +16,7 @@ import type { AuditLog } from '../../foundation/audit/index.js';
 import type { ToolUseId } from '../../foundation/tool-protocol/index.js';
 import { AGENT_STREAM_EVENTS } from '../agent-executor/index.js';
 import { SUBAGENT_AUDIT_EVENTS, emitToolCallInput } from './audit-events.js';
+import { truncateToolContent } from './truncate.js';
 import { oneLine } from '../../foundation/utils/index.js';
 
 export interface StreamCallbacksOptions {
@@ -88,13 +89,25 @@ export function createStreamCallbacks(opts: StreamCallbacksOptions): StreamCallb
       // phase 1411 (reframe of phase 1409): typed emit `tool_call_input` index row.
       // args body 0 入 audit / dialog/current.json 是全文权威源 / CLI 凭 tool_use_id join.
       const argsSize = JSON.stringify(args).length;
-      emitToolCallInput(opts.auditWriter, { name, toolUseId, argsSize });
+      emitToolCallInput(opts.auditWriter, { name, toolUseId, argsSize, step: 0 });
     },
     onToolResult: (name, toolUseId, result, step, maxSteps) => {
+      const oneLineContent = oneLine(result.content ?? '');
+      const { preview, cols } = truncateToolContent(
+        oneLineContent,
+        [
+          `tool_use_id=${String(toolUseId)}`,
+          `step=${step}`,
+          `contract_id=`,
+          `trace_id=`,
+          `status=${result.success ? 'ok' : 'err'}`,
+        ],
+      );
       opts.auditWriter.write(
-        'tool_result', name, toolUseId,
-        result.success ? 'ok' : 'err',
-        `summary=${oneLine(result.content ?? '')}`,
+        SUBAGENT_AUDIT_EVENTS.TOOL_RESULT,
+        name,
+        ...cols,
+        `summary=${preview}`,
       );
       safeSwWrite({
         ts: Date.now(),
@@ -102,7 +115,7 @@ export function createStreamCallbacks(opts: StreamCallbacksOptions): StreamCallb
         name,
         tool_use_id: toolUseId,
         success: result.success,
-        summary: oneLine(result.content ?? ''),
+        summary: preview,
         step: step + 1,
         maxSteps,
       });

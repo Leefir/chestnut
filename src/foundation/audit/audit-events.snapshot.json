@@ -109,7 +109,26 @@
       "task_shutdown_timeout_hit",
       "task_start_failed",
       "task_started",
-      "tool_async_result",
+      {
+        "type": "tool_async_result",
+        "cols": [
+          {
+            "name": "tool_name",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "tool_use_id",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "task_id",
+            "type": "string",
+            "required": true
+          }
+        ]
+      },
       "tool_task_retry"
     ],
     "core_contract_audit-events": [
@@ -412,11 +431,91 @@
       "subagent_persist_failed",
       "subagent_step_complete_failed",
       "subagent_timeout_rejection",
-      "tool_call_input",
+      {
+        "type": "tool_call_input",
+        "cols": [
+          {
+            "name": "tool_name",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "tool_use_id",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "step",
+            "type": "number",
+            "required": true
+          },
+          {
+            "name": "contract_id",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "trace_id",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "args_size",
+            "type": "number",
+            "required": true
+          }
+        ]
+      },
       "turn_end",
       "turn_error",
       "turn_interrupted",
-      "turn_start"
+      "turn_start",
+      {
+        "type": "tool_result",
+        "cols": [
+          {
+            "name": "tool_name",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "tool_use_id",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "step",
+            "type": "number",
+            "required": true
+          },
+          {
+            "name": "contract_id",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "trace_id",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "summary",
+            "type": "string",
+            "required": true,
+            "max_chars": 200
+          },
+          {
+            "name": "content_size",
+            "type": "number",
+            "required": true
+          }
+        ]
+      }
     ],
     "core_summon-system_audit-events": [
       "retro_index_parse_failed",
@@ -642,5 +741,5 @@
       "cron_outbox_summary_written"
     ]
   },
-  "schema_version": "1.0.0"
+  "schema_version": "2.0.0"
 }

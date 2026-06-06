@@ -118,10 +118,11 @@ describe('Phase 1411 — onToolCallInput audit emit (index row)', () => {
 
     const cols = inputCalls[0].slice(1);
     expect(cols[0]).toBe('summon');
-    expect(cols[1]).toBe('toolu_x1');
+    // phase 140: named cols for tool_call_input
+    expect(cols.some((c: string) => c === 'tool_use_id=toolu_x1')).toBe(true);
 
     const expectedSize = JSON.stringify({ goal: 'do the thing', mode: 'shadow' }).length;
-    expect(cols[2]).toBe(`args_size=${expectedSize}`);
+    expect(cols.some((c: string) => c === `args_size=${expectedSize}`)).toBe(true);
 
     // reframe (phase 1411): args body 0 入 audit
     expect(cols.some((c: string) => c.includes('do the thing'))).toBe(false);
@@ -146,7 +147,8 @@ describe('Phase 1411 — onToolCallInput audit emit (index row)', () => {
       (call: any[]) => call[0] === SUBAGENT_AUDIT_EVENTS.TOOL_CALL_INPUT,
     );
     expect(inputCalls).toHaveLength(1);
-    expect(inputCalls[0].slice(1)[2]).toBe('args_size=2');
+    const cols2 = inputCalls[0].slice(1) as string[];
+    expect(cols2.some((c: string) => c === 'args_size=2')).toBe(true);
   });
 
   it('reverse 3 — no onToolCallInput fire → no tool_call_input emit', async () => {

@@ -314,9 +314,9 @@ export function emitToolAsyncResult(
 ): void {
   audit.write(
     TASK_AUDIT_EVENTS.TOOL_ASYNC_RESULT,
-    `toolName=${opts.toolName}`,
-    `toolUseId=${opts.toolUseId}`,
-    `taskId=${opts.taskId}`,
+    `tool_name=${opts.toolName}`,
+    `tool_use_id=${String(opts.toolUseId)}`,
+    `task_id=${opts.taskId}`,
   );
 }
 

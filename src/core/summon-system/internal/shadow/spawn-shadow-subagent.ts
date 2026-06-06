@@ -40,7 +40,9 @@ export async function spawnShadowSubagent(
     shadowId,
     spawnedAt: new Date().toISOString(),
     spawnedByClawId: opts.ctx.clawId ?? '',
-    toolUseId: makeToolUseId(opts.ctx.currentToolUseId ?? ''),
+    toolUseId: opts.ctx.currentToolUseId
+      ? makeToolUseId(opts.ctx.currentToolUseId)
+      : makeToolUseId(`shadow_${randomUUID().slice(0, UUID_SHORT_LEN)}`),
     task: opts.task,
   };
   // synthesizeFormB 内部调 buildShadowInstruction(instructionArgs) 嵌 task 到 SHADOW INSTRUCTION

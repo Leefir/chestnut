@@ -60,6 +60,7 @@ import { formatTimeAgo } from './utils.js';
 import type { ToolUseId } from '../../foundation/tool-protocol/index.js';
 import type { TraceId } from './types/trace-id.js';
 import { makeTraceId } from './types/trace-id.js';
+import { truncateToolContent } from './truncate.js';
 
 
 
@@ -560,10 +561,22 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon, IRuntimeChat 
       name: string, toolUseId: ToolUseId,
       result: ToolResult, step: number, maxSteps: number
     ) => {
+      const oneLineContent = oneLine(result.content ?? '');
+      const { preview, cols } = truncateToolContent(
+        oneLineContent,
+        [
+          `tool_use_id=${String(toolUseId)}`,
+          `step=${step}`,
+          `contract_id=`,
+          `trace_id=${String(this.execContext.trace_id ?? '')}`,
+          `status=${result.success ? 'ok' : 'err'}`,
+        ],
+      );
       this.auditWriter.write(
-        RUNTIME_AUDIT_EVENTS.TOOL_RESULT, name, toolUseId,
-        result.success ? 'ok' : 'err',
-        `summary=${oneLine(result.content ?? '')}`,
+        RUNTIME_AUDIT_EVENTS.TOOL_RESULT,
+        name,
+        ...cols,
+        `summary=${preview}`,
       );
       origOnToolResult?.(name, toolUseId, result, step, maxSteps);
     };
@@ -576,7 +589,12 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon, IRuntimeChat 
     ) => {
       const argsSize = JSON.stringify(args).length;
       this.auditWriter.write(
-        RUNTIME_AUDIT_EVENTS.TOOL_CALL_INPUT, name, toolUseId,
+        RUNTIME_AUDIT_EVENTS.TOOL_CALL_INPUT,
+        name,
+        `tool_use_id=${String(toolUseId)}`,
+        `step=${this.execContext.stepNumber}`,
+        `contract_id=`,
+        `trace_id=${String(this.execContext.trace_id ?? '')}`,
         `args_size=${argsSize}`,
       );
     };
@@ -1058,7 +1076,12 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon, IRuntimeChat 
           // phase 1411 (reframe of phase 1409): generic tool_call index emit (chat path).
           const argsSize = JSON.stringify(args).length;
           this.auditWriter.write(
-            RUNTIME_AUDIT_EVENTS.TOOL_CALL_INPUT, name, toolUseId,
+            RUNTIME_AUDIT_EVENTS.TOOL_CALL_INPUT,
+            name,
+            `tool_use_id=${String(toolUseId)}`,
+            `step=${this.execContext.stepNumber}`,
+            `contract_id=`,
+            `trace_id=${String(this.execContext.trace_id ?? '')}`,
             `args_size=${argsSize}`,
           );
         },
