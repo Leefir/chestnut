@@ -268,40 +268,6 @@ describe.skipIf(!gitAvailable)('Snapshot', () => {
       });
     });
 
-    describe('consecutive failures are shared across instances for the same dir', () => {
-      let tmpDir: string;
-
-      beforeEach(async () => {
-        tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'snap-test-'));
-      });
-
-      afterEach(async () => {
-        await fsp.rm(tmpDir, { recursive: true, force: true });
-      });
-
-      it('consecutive failures are shared across instances for the same dir', async () => {
-      const audit = makeMockAudit();
-      const snapshot1 = new Snapshot(tmpDir, new NodeFileSystem({ baseDir: tmpDir }), audit, []);
-      const snapshot2 = new Snapshot(tmpDir, new NodeFileSystem({ baseDir: tmpDir }), audit, []);
-      await snapshot1.init();
-      await fsp.writeFile(path.join(tmpDir, 'data.txt'), 'hello');
-      await fsp.rm(path.join(tmpDir, '.git', 'HEAD'));
-
-      await snapshot1.commit('fail-1');
-      await snapshot1.commit('fail-2');
-
-      // snapshot2 shares the same counter (module-level singleton)
-      await snapshot2.commit('fail-3');
-
-      // DEGRADED should trigger at 3rd failure across instances
-      expect(audit.write).toHaveBeenCalledWith(
-        SNAPSHOT_AUDIT_EVENTS.DEGRADED,
-        expect.stringContaining('dir='),
-        expect.stringContaining('consecutive=3'),
-      );
-      });
-    });
-
     describe('commit writes snapshot_degraded audit at exactly 3 consecutive failures', () => {
       let tmpDir: string;
 

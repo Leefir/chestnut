@@ -32,30 +32,6 @@ describe.skipIf(!gitAvailable)('consecutiveFailures singleton', () => {
     await fsp.rm(tmpDir, { recursive: true, force: true });
   });
 
-  it('Case 1: cross-reassemble accumulation — failures share counter across instances', async () => {
-    const audit = { write: vi.fn() };
-    const fs = new NodeFileSystem({ baseDir: tmpDir });
-
-    // "Snapshot A" — first instance
-    const snapshotA = new Snapshot(tmpDir, fs, audit, []);
-    await snapshotA.init();
-    await fsp.writeFile(path.join(tmpDir, 'data.txt'), 'hello');
-    await fsp.rm(path.join(tmpDir, '.git', 'HEAD'));
-
-    await snapshotA.commit('fail-1');
-    await snapshotA.commit('fail-2');
-
-    // "reassemble" — create NEW instance for same dir
-    const snapshotB = new Snapshot(tmpDir, fs, audit, []);
-    await snapshotB.commit('fail-3');
-
-    expect(audit.write).toHaveBeenCalledWith(
-      SNAPSHOT_AUDIT_EVENTS.DEGRADED,
-      expect.stringContaining('dir='),
-      expect.stringContaining('consecutive=3'),
-    );
-  });
-
   it('Case 2: DEGRADED trigger writes persist file with degradedAt', async () => {
     const audit = { write: vi.fn() };
     const fs = new NodeFileSystem({ baseDir: tmpDir });

@@ -42,22 +42,9 @@ const DEFAULT_IGNORES = ['logs/', '*.tmp'];
 /** Minimum interval between git commits (ms). Commits within this window are skipped. */
 const COMMIT_THROTTLE_MS = 30_000;
 
-// ---- module-level singleton state (cross-instance consecutiveFailures) ----
-
 interface SnapshotState {
   consecutiveFailures: number;
   degradedAt?: number;
-}
-
-const _stateMap = new Map<string, SnapshotState>();
-
-function getState(dir: string): SnapshotState {
-  let s = _stateMap.get(dir);
-  if (!s) {
-    s = { consecutiveFailures: 0 };
-    _stateMap.set(dir, s);
-  }
-  return s;
 }
 
 const STATE_FILE = '.snapshot-state.json';
@@ -111,6 +98,7 @@ export class Snapshot {
   private readonly ignorePatterns: readonly string[];
   private readonly syncCleanupDirs?: readonly string[];
   private _lastCommitMs = 0;
+  private state: SnapshotState = { consecutiveFailures: 0 };
 
   constructor(dir: string, fs: FileSystem, audit: AuditLog, ignorePatterns: readonly string[], syncCleanupDirs?: readonly string[]) {
     this.dir = dir;
@@ -155,15 +143,14 @@ export class Snapshot {
           emitSnapshotStateCorrupt(this.audit, { reason: 'state_schema_invalid' });
         } else {
           const validState = loaded as Partial<SnapshotState>;
-          const s = getState(this.dir);
           if (typeof validState.consecutiveFailures === 'number' && validState.consecutiveFailures > 0) {
-            s.consecutiveFailures = validState.consecutiveFailures;
-            s.degradedAt = validState.degradedAt;
+            this.state.consecutiveFailures = validState.consecutiveFailures;
+            this.state.degradedAt = validState.degradedAt;
             // audit: restored prior failures from disk
             emitSnapshotCommitFailed(this.audit, {
               dir: this.dir,
               context: 'state_restored_from_disk',
-              consecutive: s.consecutiveFailures,
+              consecutive: this.state.consecutiveFailures,
             });
           }
         }
@@ -201,10 +188,9 @@ export class Snapshot {
       await Snapshot.git(this.dir, ['add', '.']);
       await Snapshot.git(this.dir, ['commit', '--allow-empty', '-m', 'init']);
       if (shouldResetCounter) {
-        const s = getState(this.dir);
-        s.consecutiveFailures = 0;
-        if (!s.degradedAt) {
-          _stateMap.delete(this.dir);
+        this.state.consecutiveFailures = 0;
+        if (!this.state.degradedAt) {
+          this.state = { consecutiveFailures: 0 };
         }
       }
       return ok(undefined);
@@ -255,9 +241,8 @@ export class Snapshot {
     const now = Date.now();
     if (now - this._lastCommitMs < COMMIT_THROTTLE_MS) {
       // throttle skip counts as "not a failure" — reset counter
-      const s = getState(this.dir);
-      if (s.consecutiveFailures > 0) {
-        s.consecutiveFailures = 0;
+      if (this.state.consecutiveFailures > 0) {
+        this.state.consecutiveFailures = 0;
         await tryClearPersist(this.fs, this.dir, this.audit);
       }
       return ok(undefined);
@@ -272,20 +257,18 @@ export class Snapshot {
         });
       }
       if (!status.stdout) {
-        const s = getState(this.dir);
-        s.consecutiveFailures = 0;
-        if (!s.degradedAt) {
-          _stateMap.delete(this.dir);
+        this.state.consecutiveFailures = 0;
+        if (!this.state.degradedAt) {
+          this.state = { consecutiveFailures: 0 };
         }
         return ok(undefined);
       }
       await Snapshot.git(this.dir, ['add', '.']);
       await Snapshot.git(this.dir, ['commit', '-m', message]);
       this._lastCommitMs = Date.now();
-      const s = getState(this.dir);
-      s.consecutiveFailures = 0;
-      if (!s.degradedAt) {
-        _stateMap.delete(this.dir);
+      this.state.consecutiveFailures = 0;
+      if (!this.state.degradedAt) {
+        this.state = { consecutiveFailures: 0 };
       }
       await tryClearPersist(this.fs, this.dir, this.audit);
       emitSnapshotCommitted(this.audit, {
@@ -299,20 +282,19 @@ export class Snapshot {
       return ok(undefined);
     } catch (rawErr) {
       const failure = this.classifyOrThrow(rawErr);
-      const s = getState(this.dir);
-      s.consecutiveFailures++;
-      await persistState(this.fs, this.dir, s, this.audit);
+      this.state.consecutiveFailures++;
+      await persistState(this.fs, this.dir, this.state, this.audit);
       emitSnapshotCommitFailed(this.audit, {
         dir: this.dir,
         kind: failure.kind,
-        consecutive: s.consecutiveFailures,
+        consecutive: this.state.consecutiveFailures,
       });
-      if (s.consecutiveFailures === 3) {
-        s.degradedAt = Date.now();
-        await persistState(this.fs, this.dir, s, this.audit);
+      if (this.state.consecutiveFailures === 3) {
+        this.state.degradedAt = Date.now();
+        await persistState(this.fs, this.dir, this.state, this.audit);
         emitSnapshotDegraded(this.audit, {
           dir: this.dir,
-          consecutive: s.consecutiveFailures,
+          consecutive: this.state.consecutiveFailures,
         });
       }
       return errResult(failure);
