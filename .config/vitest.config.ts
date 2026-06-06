@@ -59,10 +59,12 @@ const VI_MOCK_FILES = [
   'tests/core/contract/lock.test.ts',
   'tests/core/contract/pause-abort-verifier.test.ts',
   'tests/core/contract/verification.test.ts',
-  'tests/core/contract/verifier-job-cancel-skip.test.ts',
-  'tests/core/contract/verifier-job-signal-audit.test.ts',
-  'tests/core/contract/verifier-job.test.ts',
-  'tests/core/contract/verifier-robustness.test.ts',
+  // phase 91: verifier-job VerifierRuntimeConfig 加 runSubagent? DI 替 vi.mock pattern、
+  // 4 测试不需 module registry isolation、移 fast project。
+  // 'tests/core/contract/verifier-job-cancel-skip.test.ts',
+  // 'tests/core/contract/verifier-job-signal-audit.test.ts',
+  // 'tests/core/contract/verifier-job.test.ts',
+  // 'tests/core/contract/verifier-robustness.test.ts',
   // phase 1351: contract_manager.test.ts moved out (LOCK tests extracted to contract_manager-locks.test.ts)
   // phase 1338 split: sister fire-and-forget extracted; fire-and-forget tests
   // drive async verification pipeline (completeSubtask → fire-and-forget chain
