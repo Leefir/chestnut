@@ -297,10 +297,89 @@
       "step_executor_callback_failed",
       "task_system_init_failed",
       "task_system_start_dispatch_failed",
-      "tool_call_input",
+      {
+        "type": "tool_call_input",
+        "cols": [
+          {
+            "name": "tool_name",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "tool_use_id",
+            "type": "string",
+            "required": false
+          },
+          {
+            "name": "step",
+            "type": "number",
+            "required": false
+          },
+          {
+            "name": "contract_id",
+            "type": "string",
+            "required": false
+          },
+          {
+            "name": "args_size",
+            "type": "number",
+            "required": true
+          },
+          {
+            "name": "trace_id",
+            "type": "string",
+            "required": false
+          }
+        ]
+      },
       "tool_execution_failed",
       "tool_input_parse_failed",
-      "tool_result",
+      {
+        "type": "tool_result",
+        "cols": [
+          {
+            "name": "tool_name",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "tool_use_id",
+            "type": "string",
+            "required": false
+          },
+          {
+            "name": "step",
+            "type": "number",
+            "required": false
+          },
+          {
+            "name": "contract_id",
+            "type": "string",
+            "required": false
+          },
+          {
+            "name": "trace_id",
+            "type": "string",
+            "required": false
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "required": false
+          },
+          {
+            "name": "summary",
+            "type": "string",
+            "required": false,
+            "max_chars": 200
+          },
+          {
+            "name": "content_size",
+            "type": "number",
+            "required": false
+          }
+        ]
+      },
       "turn_end",
       "turn_error",
       "turn_interrupted",
@@ -562,5 +641,6 @@
       "cron_outbox_summary_skipped",
       "cron_outbox_summary_written"
     ]
-  }
+  },
+  "schema_version": "1.0.0"
 }
