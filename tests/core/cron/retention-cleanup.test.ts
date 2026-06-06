@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { runRetentionCleanup } from '../../../src/core/cron/jobs/retention-cleanup.js';
-import { CRON_AUDIT_EVENTS } from '../../../src/core/cron/audit-events.js';
+import { RETENTION_CLEANUP_AUDIT_EVENTS } from '../../../src/core/cron/jobs/retention-cleanup-audit-events.js';
 import type { FileSystem, FileEntry, StatInfo } from '../../../src/foundation/fs/types.js';
 import type { AuditLog } from '../../../src/foundation/audit/index.js';
 
@@ -73,7 +73,7 @@ describe('retention-cleanup', () => {
     const deletedCalls = (fs.deleteSync as ReturnType<typeof vi.fn>).mock.calls;
     expect(deletedCalls.length).toBe(1);
     expect(deletedCalls[0][0]).toContain('old.md');
-    expect(writes.some(w => w.type === CRON_AUDIT_EVENTS.RETENTION_CLEANUP)).toBe(true);
+    expect(writes.some(w => w.type === RETENTION_CLEANUP_AUDIT_EVENTS.CLEANUP)).toBe(true);
   });
 
   it('反向 2: no maxDays configured → skip', async () => {

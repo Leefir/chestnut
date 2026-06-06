@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as fsSync from 'fs';
 import { runRetentionCleanup } from '../../../src/core/cron/jobs/retention-cleanup.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
-import { CRON_AUDIT_EVENTS } from '../../../src/core/cron/audit-events.js';
+import { RETENTION_CLEANUP_AUDIT_EVENTS } from '../../../src/core/cron/jobs/retention-cleanup-audit-events.js';
 import { cleanupTempDirSync } from '../../utils/temp.js';
 
 describe('runRetentionCleanup > dialog/archive', () => {
@@ -48,7 +48,7 @@ describe('runRetentionCleanup > dialog/archive', () => {
 
     expect(fsSync.existsSync(oldFile)).toBe(false);
     expect(fsSync.existsSync(newFile)).toBe(true);
-    expect(writes.some(w => w.type === CRON_AUDIT_EVENTS.RETENTION_CLEANUP && w.cols.some(c => c.includes('deleted=')))).toBe(true);
+    expect(writes.some(w => w.type === RETENTION_CLEANUP_AUDIT_EVENTS.CLEANUP && w.cols.some(c => c.includes('deleted=')))).toBe(true);
   });
 
   it('边界：maxDays.dialog undefined 时 0 删 + 仍 emit RETENTION_CLEANUP', async () => {
@@ -69,7 +69,7 @@ describe('runRetentionCleanup > dialog/archive', () => {
     });
 
     expect(fsSync.existsSync(oldFile)).toBe(true);
-    expect(writes.some(w => w.type === CRON_AUDIT_EVENTS.RETENTION_CLEANUP && w.cols.some(c => c.includes('deleted=0')))).toBe(true);
+    expect(writes.some(w => w.type === RETENTION_CLEANUP_AUDIT_EVENTS.CLEANUP && w.cols.some(c => c.includes('deleted=0')))).toBe(true);
   });
 
   it('边界：archiveDir 不存在时不报错', async () => {
@@ -106,6 +106,6 @@ describe('runRetentionCleanup > dialog/archive', () => {
     });
 
     expect(fsSync.existsSync(subFile)).toBe(true);
-    expect(writes.some(w => w.type === CRON_AUDIT_EVENTS.RETENTION_CLEANUP && w.cols.some(c => c.includes('deleted=')))).toBe(true);
+    expect(writes.some(w => w.type === RETENTION_CLEANUP_AUDIT_EVENTS.CLEANUP && w.cols.some(c => c.includes('deleted=')))).toBe(true);
   });
 });

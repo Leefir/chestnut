@@ -16,7 +16,7 @@ import { isFileNotFound } from '../../../foundation/fs/types.js';
 import type { FileSystem } from '../../../foundation/fs/types.js';
 import type { AuditLog } from '../../../foundation/audit/index.js';
 import type { StreamLog } from '../../../foundation/stream/index.js';
-import { CRON_AUDIT_EVENTS } from '../audit-events.js';
+import { AUDIT_SIZE_MONITOR_AUDIT_EVENTS } from './audit-size-monitor-audit-events.js';
 import type { CronJob } from '../runner.js';
 import { parseSchedule } from '../runner.js';
 import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
@@ -69,7 +69,7 @@ export async function runAuditSizeMonitor(opts: AuditSizeMonitorOptions): Promis
       const prevLevel = auditOverThreshold.get(p) ?? null;
       if (level) {
         opts.audit.write(
-          CRON_AUDIT_EVENTS.AUDIT_SIZE_THRESHOLD_EXCEEDED,
+          AUDIT_SIZE_MONITOR_AUDIT_EVENTS.THRESHOLD_EXCEEDED,
           `path=${p}`,
           `size_bytes=${size}`,
           `level=${level}`,
@@ -97,7 +97,7 @@ export async function runAuditSizeMonitor(opts: AuditSizeMonitorOptions): Promis
     } catch (err) {
       if (isFileNotFound(err)) continue; // 复用 α-1 helper
       opts.audit.write(
-        CRON_AUDIT_EVENTS.AUDIT_SIZE_CHECK_FAILED,
+        AUDIT_SIZE_MONITOR_AUDIT_EVENTS.CHECK_FAILED,
         `path=${p}`,
         `code=${(err as NodeJS.ErrnoException)?.code ?? 'unknown'}`,
         `error=${formatErr(err)}`,

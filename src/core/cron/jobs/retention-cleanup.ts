@@ -1,6 +1,6 @@
 import type { FileSystem } from '../../../foundation/fs/types.js';
 import type { AuditLog } from '../../../foundation/audit/index.js';
-import { CRON_AUDIT_EVENTS } from '../audit-events.js';
+import { RETENTION_CLEANUP_AUDIT_EVENTS } from './retention-cleanup-audit-events.js';
 import { cleanupRetention } from '../../../foundation/messaging/index.js';
 // INBOX_DONE_DIR / INBOX_FAILED_DIR removed with DIRS (Phase 28 Step B)
 import { cleanupExpiredTaskFiles } from '../../async-task-system/index.js';
@@ -55,7 +55,7 @@ export async function runRetentionCleanup(opts: RetentionCleanupOptions): Promis
     totalDeleted += await cleanupArchives({ motionDir, fs, audit, maxDays: maxDays.dialog, signal });
   }
 
-  audit.write(CRON_AUDIT_EVENTS.RETENTION_CLEANUP, `deleted=${totalDeleted}`);
+  audit.write(RETENTION_CLEANUP_AUDIT_EVENTS.CLEANUP, `deleted=${totalDeleted}`);
 }
 
 export function createRetentionCleanupJob(

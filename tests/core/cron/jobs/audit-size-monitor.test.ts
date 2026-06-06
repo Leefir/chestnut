@@ -13,7 +13,7 @@ import {
   __resetAuditSizeMonitorState,
 } from '../../../../src/core/cron/jobs/audit-size-monitor.js';
 import { FileNotFoundError } from '../../../../src/foundation/fs/types.js';
-import { CRON_AUDIT_EVENTS } from '../../../../src/core/cron/audit-events.js';
+import { AUDIT_SIZE_MONITOR_AUDIT_EVENTS } from '../../../../src/core/cron/jobs/audit-size-monitor-audit-events.js';
 import { makeAudit } from '../../../helpers/audit.js';
 import type { FileSystem } from '../../../../src/foundation/fs/types.js';
 import type { StreamLog } from '../../../../src/foundation/stream/index.js';
@@ -60,7 +60,7 @@ describe('phase 8 — audit-size-monitor viewport stream', () => {
       streamLog,
     });
     expect(events).toHaveLength(2);
-    expect(events[0][0]).toBe(CRON_AUDIT_EVENTS.AUDIT_SIZE_THRESHOLD_EXCEEDED);
+    expect(events[0][0]).toBe(AUDIT_SIZE_MONITOR_AUDIT_EVENTS.THRESHOLD_EXCEEDED);
     expect(events[0]).toContain('level=warn');
     expect(streamLog.write).toHaveBeenCalledTimes(2);
     expect(streamLog.write).toHaveBeenCalledWith(expect.objectContaining({

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { runMetricsSnapshot, type MetricsSnapshotOptions } from '../../../src/core/cron/jobs/metrics-snapshot.js';
-import { CRON_AUDIT_EVENTS } from '../../../src/core/cron/audit-events.js';
+import { METRICS_SNAPSHOT_AUDIT_EVENTS } from '../../../src/core/cron/jobs/metrics-snapshot-audit-events.js';
 import type { AuditLog } from '../../../src/foundation/audit/index.js';
 import type { FileSystem } from '../../../src/foundation/fs/types.js';
 
@@ -52,7 +52,7 @@ describe('metrics-snapshot', () => {
     await runMetricsSnapshot({ motionDir: '/m', fs, audit });
 
     expect(writes.length).toBe(1);
-    expect(writes[0].type).toBe(CRON_AUDIT_EVENTS.METRICS_SNAPSHOT);
+    expect(writes[0].type).toBe(METRICS_SNAPSHOT_AUDIT_EVENTS.SNAPSHOT);
     const joined = writes[0].cols.join(' ');
     expect(joined).toContain('inbox_pending=1');
     expect(joined).toContain('inbox_done=2');

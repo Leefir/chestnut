@@ -1,6 +1,6 @@
 import type { FileSystem } from '../../../foundation/fs/types.js';
 import type { AuditLog } from '../../../foundation/audit/index.js';
-import { CRON_AUDIT_EVENTS } from '../audit-events.js';
+import { METRICS_SNAPSHOT_AUDIT_EVENTS } from './metrics-snapshot-audit-events.js';
 import type { CronJob } from '../runner.js';
 import { parseSchedule } from '../runner.js';
 import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
@@ -47,7 +47,7 @@ export async function runMetricsSnapshot(opts: MetricsSnapshotOptions): Promise<
   const tasksRunning  = countDir(`${motionDir}/tasks/running`, fs);
 
   audit.write(
-    CRON_AUDIT_EVENTS.METRICS_SNAPSHOT,
+    METRICS_SNAPSHOT_AUDIT_EVENTS.SNAPSHOT,
     `inbox_pending=${inboxPending}`,
     `inbox_done=${inboxDone}`,
     `inbox_failed=${inboxFailed}`,

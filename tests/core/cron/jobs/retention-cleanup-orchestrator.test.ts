@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { runRetentionCleanup } from '../../../../src/core/cron/jobs/retention-cleanup.js';
-import { CRON_AUDIT_EVENTS } from '../../../../src/core/cron/audit-events.js';
+import { RETENTION_CLEANUP_AUDIT_EVENTS } from '../../../../src/core/cron/jobs/retention-cleanup-audit-events.js';
 import * as messaging from '../../../../src/foundation/messaging/index.js';
 import * as taskSystem from '../../../../src/core/async-task-system/index.js';
 import * as dialogStore from '../../../../src/foundation/dialog-store/index.js';
@@ -63,7 +63,7 @@ describe('retention-cleanup orchestrator', () => {
     expect(taskSystem.cleanupExpiredTaskFiles).toHaveBeenCalled();
     expect(dialogStore.cleanupArchives).toHaveBeenCalled();
 
-    const cleanupEvent = writes.find(w => w.type === CRON_AUDIT_EVENTS.RETENTION_CLEANUP);
+    const cleanupEvent = writes.find(w => w.type === RETENTION_CLEANUP_AUDIT_EVENTS.CLEANUP);
     expect(cleanupEvent).toBeDefined();
     expect(cleanupEvent!.cols.some(c => c.includes('deleted=15'))).toBe(true);
   });
@@ -84,7 +84,7 @@ describe('retention-cleanup orchestrator', () => {
       maxDays: { inbox: 30, outbox: 30, tasks: 60, dialog: 90 },
     });
 
-    const cleanupEvent = writes.find(w => w.type === CRON_AUDIT_EVENTS.RETENTION_CLEANUP);
+    const cleanupEvent = writes.find(w => w.type === RETENTION_CLEANUP_AUDIT_EVENTS.CLEANUP);
     expect(cleanupEvent).toBeDefined();
     expect(cleanupEvent!.cols.some(c => c.includes('deleted=0'))).toBe(true);
   });

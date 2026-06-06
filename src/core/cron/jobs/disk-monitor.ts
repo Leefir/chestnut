@@ -2,7 +2,7 @@ import * as path from 'path';
 import { formatErr } from "../../../foundation/utils/index.js";
 import type { FileSystem } from '../../../foundation/fs/types.js';
 import type { AuditLog } from '../../../foundation/audit/index.js';
-import { CRON_AUDIT_EVENTS } from '../audit-events.js';
+import { DISK_MONITOR_AUDIT_EVENTS } from './disk-monitor-audit-events.js';
 import type { StreamLog } from '../../../foundation/stream/index.js';
 import { CLAWSPACE_DIR } from '../../../assembly/claw-dirs.js';
 import type { CronJob } from '../runner.js';
@@ -33,7 +33,7 @@ function getDirSize(dir: string, fs: FileSystem, audit?: AuditLog, signal?: Abor
     return size;
   } catch (err) {
     audit?.write(
-      CRON_AUDIT_EVENTS.DISK_MONITOR_CHECK,
+      DISK_MONITOR_AUDIT_EVENTS.CHECK,
       `step=scan_failed`,
       `dir=${dir}`,
       `reason=${formatErr(err)}`,
@@ -75,10 +75,10 @@ export async function runDiskMonitor(opts: DiskMonitorOptions): Promise<void> {
   }
 
   const totalMB = Math.round(totalSize / 1024 / 1024);
-  opts.audit.write(CRON_AUDIT_EVENTS.DISK_MONITOR_CHECK, `totalMB=${totalMB}`, `limitMB=${opts.limitMB}`);
+  opts.audit.write(DISK_MONITOR_AUDIT_EVENTS.CHECK, `totalMB=${totalMB}`, `limitMB=${opts.limitMB}`);
 
   if (totalMB > opts.limitMB) {
-    opts.audit.write(CRON_AUDIT_EVENTS.DISK_MONITOR_THRESHOLD_EXCEEDED, `totalMB=${totalMB}`, `limitMB=${opts.limitMB}`);
+    opts.audit.write(DISK_MONITOR_AUDIT_EVENTS.THRESHOLD_EXCEEDED, `totalMB=${totalMB}`, `limitMB=${opts.limitMB}`);
     // phase 8: only emit on under→over transition (dedup) / fire-and-forget viewport stream
     if (!diskOverThreshold) {
       opts.streamLog?.write({

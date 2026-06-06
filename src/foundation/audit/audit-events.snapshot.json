@@ -178,30 +178,42 @@
       "verification_timeout"
     ],
     "core_cron_audit-events": [
-      "cron_audit_size_check_failed",
-      "cron_audit_size_threshold_exceeded",
-      "cron_disk_monitor_check",
-      "cron_disk_monitor_threshold_exceeded",
       "cron_drain_late_settle",
       "cron_drain_timeout",
-      "cron_git_gc_weekly",
       "cron_handler_aborted",
       "cron_handler_stuck",
       "cron_handler_timeout",
       "cron_job_error",
       "cron_job_late_settled",
       "cron_job_started",
-      "cron_llm_stats",
-      "cron_metrics_snapshot",
       "cron_outbox_summary_cleared",
       "cron_outbox_summary_failed",
       "cron_outbox_summary_skipped",
       "cron_outbox_summary_written",
       "cron_parse_fallback",
       "cron_parse_invalid",
-      "cron_retention_cleanup",
       "cron_runner_started",
       "cron_runner_stopped"
+    ],
+    "core_cron_jobs_audit-size-monitor-audit-events": [
+      "cron_audit_size_check_failed",
+      "cron_audit_size_threshold_exceeded"
+    ],
+    "core_cron_jobs_disk-monitor-audit-events": [
+      "cron_disk_monitor_check",
+      "cron_disk_monitor_threshold_exceeded"
+    ],
+    "core_cron_jobs_git-gc-weekly-audit-events": [
+      "cron_git_gc_weekly"
+    ],
+    "core_cron_jobs_llm-stats-audit-events": [
+      "cron_llm_stats"
+    ],
+    "core_cron_jobs_metrics-snapshot-audit-events": [
+      "cron_metrics_snapshot"
+    ],
+    "core_cron_jobs_retention-cleanup-audit-events": [
+      "cron_retention_cleanup"
     ],
     "core_evolution-system_retro-audit-events": [
       "contract_retro_cleanup_failed",

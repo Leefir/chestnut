@@ -13,7 +13,7 @@ import { promises as fs } from 'fs';
 import { runLlmStats, type LlmStatsOptions } from '../../../src/core/cron/jobs/llm-stats.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
 import { createTempDir, cleanupTempDir } from '../../utils/temp.js';
-import { CRON_AUDIT_EVENTS } from '../../../src/core/cron/audit-events.js';
+import { LLM_STATS_AUDIT_EVENTS } from '../../../src/core/cron/jobs/llm-stats-audit-events.js';
 
 describe('phase 930: LLM_STATS audit emit avg_latency_ms key', () => {
   it('audit emit row 含 avg_latency_ms= snake_case key', async () => {
@@ -47,7 +47,7 @@ describe('phase 930: LLM_STATS audit emit avg_latency_ms key', () => {
 
     // 找 LLM_STATS row of step=report
     const reportRow = writes.find(
-      args => args[0] === CRON_AUDIT_EVENTS.LLM_STATS && args.includes('step=report')
+      args => args[0] === LLM_STATS_AUDIT_EVENTS.LLM_STATS && args.includes('step=report')
     );
     expect(reportRow).toBeDefined();
 

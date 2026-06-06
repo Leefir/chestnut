@@ -3,7 +3,7 @@ import { formatErr } from "../../../foundation/utils/index.js";
 import { exec } from '../../../foundation/process-exec/index.js';
 import type { FileSystem } from '../../../foundation/fs/types.js';
 import type { AuditLog } from '../../../foundation/audit/index.js';
-import { CRON_AUDIT_EVENTS } from '../audit-events.js';
+import { GIT_GC_WEEKLY_AUDIT_EVENTS } from './git-gc-weekly-audit-events.js';
 import type { CronJob } from '../runner.js';
 import { parseSchedule } from '../runner.js';
 import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
@@ -41,7 +41,7 @@ export async function runGitGcWeekly(opts: GitGcWeeklyOptions): Promise<void> {
       await exec('git', ['gc', '--auto'], { cwd: path.join(clawsDir, clawId) });
     } catch (err) {
       audit.write(
-        CRON_AUDIT_EVENTS.GIT_GC_WEEKLY,
+        GIT_GC_WEEKLY_AUDIT_EVENTS.GIT_GC_WEEKLY,
         `claw=${clawId}`,
         `step=gc_failed`,
         `error=${formatErr(err)}`,
@@ -49,7 +49,7 @@ export async function runGitGcWeekly(opts: GitGcWeeklyOptions): Promise<void> {
     }
   }
 
-  audit.write(CRON_AUDIT_EVENTS.GIT_GC_WEEKLY, `step=complete`, `claws=${clawIds.length}`);
+  audit.write(GIT_GC_WEEKLY_AUDIT_EVENTS.GIT_GC_WEEKLY, `step=complete`, `claws=${clawIds.length}`);
 }
 
 export function createGitGcWeeklyJob(
