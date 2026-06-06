@@ -31,4 +31,35 @@ describe('buildSummonContractTask', () => {
     expect(text).not.toContain('verification/');
     expect(text).not.toContain('subtask_id:');
   });
+
+  it('phase 119: omits two-phase scaffolding (verify=false)', () => {
+    const text = buildSummonContractTask('goal', '', 'claw', { verify: false });
+    expect(text).not.toContain('第一阶段');
+    expect(text).not.toContain('第二阶段');
+    expect(text).not.toContain('字段来自第一阶段推理');
+  });
+
+  it('phase 119: omits two-phase scaffolding (verify=true)', () => {
+    const text = buildSummonContractTask('goal', '', 'claw', { verify: true });
+    expect(text).not.toContain('第一阶段');
+    expect(text).not.toContain('第二阶段');
+    expect(text).not.toContain('字段来自第一阶段推理');
+  });
+
+  it('phase 119: target_claw boundary hard constraint present', () => {
+    const text = buildSummonContractTask('goal', '', 'my-claw', { verify: false });
+    expect(text).toContain('SUMMON_TARGET_CLAW_VIOLATION');
+    expect(text).toContain('只能');
+    expect(text).toContain('不补');
+    expect(text).toContain('target_claw');
+  });
+
+  it('phase 119: yaml field names preserved despite phase 1 deletion', () => {
+    for (const verify of [false, true]) {
+      const text = buildSummonContractTask('goal', '', 'claw', { verify });
+      expect(text).toContain('background');
+      expect(text).toContain('expectations');
+      expect(text).toContain('subtasks');
+    }
+  });
 });

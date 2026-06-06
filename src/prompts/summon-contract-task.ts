@@ -21,27 +21,9 @@ export function buildSummonContractTask(
   }
 
   task += `\n\n**重要协议约束**：
-1. 第二阶段必须从工具调用开始，不得跳过任何步骤直接输出结果标记。
-2. 你**绝不能**绕过 Step 4 的 \`chestnut contract create\` 自跑任务实际工作。
+1. 你**绝不能**绕过 Step 4 的 \`chestnut contract create\` 自跑任务实际工作。
    唯一成功证据 = \`chestnut contract create\` CLI 返 \`Contract created: <id> for claw <name>\` 行。
    post-processor 扫子代理 audit 找这一行、找不到判 SUMMON_SHADOW_FAILED。
-
-## 第一阶段：推理
-
-请先进行以下推理：
-
-**用户意图（background）**
-为什么要做这件事？与具体行动无关的动机和背景。
-
-**任务目标（goal）**
-要完成什么？（可直接引用本次目标）
-
-**全局要求与质量期望（expectations）**
-用户的约束和偏好（显性的 + 推断的）、成果质量标准、预期产出路径（如有）。
-不要遗漏用户在对话里表达过的要求。
-
-**子任务拆分**
-拆成哪几个子任务？每个子任务做什么、产出到哪个路径？
 
 ## 角色边界
 
@@ -62,9 +44,20 @@ export function buildSummonContractTask(
 
 提交后、target claw 由 dispatcher 派活、收 contract、跑 subtask、完成后通过 contract_completed 事件触 retro。整个执行链你不参与。
 
-## 第二阶段：执行
+**关键边界（phase 119）**：
 
-推理完成后，按顺序执行：
+你**只能**为本次 summon 指定的 target_claw 创建契约。即使你跑 \`chestnut claw list\`、
+\`chestnut contract show\` 看到别的 claw 缺契约、跑 daemon 没起、或任何"系统状态不完整"
+的信号——**也不要补**。
+
+补别人的缺 = **越界违规**：
+- 用户没让你做、motion 没派你做、你不知道补的契约是不是用户要的
+- 系统 gate 会校验 \`--claw <X>\` 必须等于 SummonDecision.targetClaw、不等 throw SUMMON_TARGET_CLAW_VIOLATION
+- 若 sibling 子代理在做别的 claw、各 sibling 各自负责自己的、不需要你帮忙
+
+只关注 target_claw、不补缺=合规。
+
+## 执行步骤
 
 ### 1. 确定目标 claw`;
 
@@ -139,7 +132,7 @@ function buildVerifyTrueWriteSection(): string {
 
 \`<contract-slug>\`：kebab-case，描述本次契约内容，如 \`pdf-to-markdown-survey\`。
 
-**contract.yaml 格式**（字段来自第一阶段推理）：
+**contract.yaml 格式**：
 \`\`\`yaml
 schema_version: 1
 title: "任务标题（50字以内）"
@@ -188,7 +181,7 @@ function buildVerifyFalseWriteSection(): string {
 
 \`<contract-slug>\`：kebab-case，描述本次契约内容。
 
-**contract.yaml 格式**（字段来自第一阶段推理）：
+**contract.yaml 格式**：
 \`\`\`yaml
 schema_version: 1
 title: "任务标题（50字以内）"
