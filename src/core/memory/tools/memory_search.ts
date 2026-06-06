@@ -6,6 +6,7 @@ import type { Tool, ExecContext, ExecutionInfra } from '../../../foundation/tool
 import { formatErr, parseFrontmatterFrame } from "../../../foundation/utils/index.js";
 import type { ToolResult } from '../../../foundation/tool-protocol/index.js';
 import type { FileEntry } from '../../../foundation/fs/types.js';
+import { MEMORY_DIR } from '../memory-paths.js';
 export const MEMORY_SEARCH_TOOL_NAME = 'memory_search' as const;
 
 
@@ -78,11 +79,11 @@ export const memorySearchTool: Tool = {
 
     let entries: FileEntry[];
     try {
-      entries = await infra.fs.list('memory/', { recursive: true, includeDirs: false });
+      entries = await infra.fs.list(`${MEMORY_DIR}/`, { recursive: true, includeDirs: false });
     } catch {
       return {
         success: true,
-        content: 'memory/ 目录为空，暂无记忆可检索',
+        content: `${MEMORY_DIR}/ 目录为空，暂无记忆可检索`,
       };
     }
 

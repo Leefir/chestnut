@@ -4,6 +4,7 @@ import { MOTION_CLAW_ID } from '../../constants.js';
 import { FileNotFoundError } from '../../foundation/fs/types.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { MEMORY_AUDIT_EVENTS } from './audit-events.js';
+import { MEMORY_DREAM_OUTPUTS_DIR } from './memory-paths.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { AsyncTaskSystem } from '../async-task-system/index.js';
 import type { InboxMessageOptionsBase } from '../../foundation/messaging/index.js';
@@ -406,10 +407,10 @@ export async function runRandomDream(opts: RandomDreamOptions): Promise<void> {
   saveRandomDreamState(opts.fs, updatedState, opts.audit);
 
   const dreamOutput = outputs.join('\n\n---\n\n');
-  const dreamOutputPath = `memory/dream-outputs/${taskId}.txt`;
+  const dreamOutputPath = `${MEMORY_DREAM_OUTPUTS_DIR}/${taskId}.txt`;
 
   // NEW: disk snapshot（motion 域）
-  await opts.motionFs.ensureDir('memory/dream-outputs');
+  await opts.motionFs.ensureDir(MEMORY_DREAM_OUTPUTS_DIR);
   await opts.motionFs.writeAtomic(dreamOutputPath, dreamOutput);
   opts.audit.write(
     MEMORY_AUDIT_EVENTS.DREAM_OUTPUT_PERSISTED,

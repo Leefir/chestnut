@@ -2,6 +2,7 @@ import * as path from 'path';
 import { formatErr } from "../../foundation/utils/index.js";
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { MEMORY_AUDIT_EVENTS } from './audit-events.js';
+import { MEMORY_DREAM_OUTPUTS_DIR } from './memory-paths.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import type { LLMOrchestrator } from '../../foundation/llm-orchestrator/index.js';
 import type { LLMOrchestratorConfig } from '../../foundation/llm-orchestrator/index.js';
@@ -305,8 +306,8 @@ async function persistDreamRun(
 
   if (ctx.motionFs) {
     const dreamId = `${Date.now()}_${ctx.clawId}`;
-    const dreamOutputPath = `memory/dream-outputs/${dreamId}.txt`;
-    await ctx.motionFs.ensureDir('memory/dream-outputs');
+    const dreamOutputPath = `${MEMORY_DREAM_OUTPUTS_DIR}/${dreamId}.txt`;
+    await ctx.motionFs.ensureDir(MEMORY_DREAM_OUTPUTS_DIR);
     await ctx.motionFs.writeAtomic(dreamOutputPath, dreamOutput);
     ctx.audit.write(
       MEMORY_AUDIT_EVENTS.DREAM_OUTPUT_PERSISTED,
