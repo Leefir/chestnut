@@ -14,7 +14,7 @@ import { TASKS_QUEUES_RUNNING_DIR } from './dirs.js';
 import type { TaskId } from './types.js';
 
 
-export interface ExecuteToolTaskDeps {
+interface ExecuteToolTaskDeps {
   fs: FileSystem;
   auditWriter: AuditLog;
   retryBaseDelayMs: number;

@@ -32,7 +32,7 @@ import type { TaskId } from './types.js';
 
 
 /** M9: 闭包 ≥ 6 依赖 → deps interface */
-export interface ExecuteSubAgentTaskDeps {
+interface ExecuteSubAgentTaskDeps {
   fs: FileSystem;
   fsFactory: (baseDir: string) => FileSystem;
   auditWriter: AuditLog;
