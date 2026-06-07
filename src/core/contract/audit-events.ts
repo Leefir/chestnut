@@ -20,6 +20,8 @@ export const CONTRACT_AUDIT_EVENTS = {
   CONTRACT_YAML_LEGACY_ESCALATION_FIELD: 'contract_yaml_legacy_escalation_field', // ← NEW phase 1399: escalation.max_retries → verification_attempts 30天兼容
   CONTRACT_YAML_SCHEMA_INVALID: 'contract_yaml_schema_invalid', // ← NEW (phase 587)
   OBSERVER_STATE_PARSE_FAILED: 'contract_observer_state_parse_failed',  // ← NEW (phase 1012 / r123 C fork)
+  // NEW phase 160: maybeAuditStep loadActive silent catch audit emit (playbook §1)
+  AUDITOR_LOAD_ACTIVE_FAILED: 'contract_auditor_load_active_failed',
   PROGRESS_CORRUPTED: 'contract_progress_corrupted',
   ARCHIVE_STARTED: 'contract_archive_started',
   ROLLBACK_FAILED: 'contract_rollback_failed',

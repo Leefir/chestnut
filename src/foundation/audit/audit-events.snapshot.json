@@ -138,6 +138,7 @@
       "contract_audit_drift_detected",
       "contract_audit_feedback_delivered",
       "contract_audit_triggered",
+      "contract_auditor_load_active_failed",
       "contract_boot_migrate_archive_skipped",
       "contract_boot_migrate_escalated",
       "contract_boot_reconcile",

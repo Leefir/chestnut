@@ -258,8 +258,15 @@ export class ContractSystem {
     let active: Contract | null;
     try {
       active = await this.loadActive();
-    } catch {
-      return;  // 容错：loadActive 失败不影响 Runtime
+    } catch (err) {
+      // phase 160: emit audit（DP「不丢弃静默」、playbook §1）
+      this.audit.write(
+        CONTRACT_AUDIT_EVENTS.AUDITOR_LOAD_ACTIVE_FAILED,
+        `clawId=${this.clawId}`,
+        `step=${currentStep}`,
+        `error=${formatErr(err)}`,
+      );
+      return;
     }
     if (!active) return;
 
