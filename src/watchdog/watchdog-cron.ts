@@ -163,7 +163,12 @@ export async function maybeCronClawInactivity(pm: ProcessManager, audit: AuditLo
       log(fsFactory, `[watchdog] Claw ${rawClawId} ${failureClass} ${inactiveMin}m${lastError ? ` (last error: ${lastError})` : ''}`);
       clawStateAPI.lastInactivityNotified.set(rawClawId, now);
     } catch (err) {
-      log(fsFactory, `[watchdog] Error checking claw ${rawClawId}: ${formatErr(err)}`);
+      audit.write(
+        WATCHDOG_AUDIT_EVENTS.CLAW_INACTIVITY_CHECK_FAILED,
+        `claw=${rawClawId}`,
+        `error=${formatErr(err)}`,
+      );
+      log(fsFactory, `[watchdog] Error checking claw ${rawClawId}: ${formatErr(err)}`);  // 保留 dev-debug
     }
   }
 }
@@ -364,6 +369,11 @@ export async function maybeCronCheckSubscriptions(pm: ProcessManager, audit: Aud
       clawStateAPI.lastInactivityNotified.set(rawClawId, now);
       consumeSubscription(fs, rawClawId);
     } catch (err) {
+      audit.write(
+        WATCHDOG_AUDIT_EVENTS.SUBSCRIPTION_PROCESS_FAILED,
+        `claw=${rawClawId}`,
+        `error=${formatErr(err)}`,
+      );
       log(fsFactory, `[watchdog] Error processing subscription for ${rawClawId}: ${formatErr(err)}`);
       // 不 consume / 下次 tick 重试
     }

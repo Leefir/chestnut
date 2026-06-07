@@ -64,7 +64,11 @@ export function listSubscriptions(
       .filter(n => n.endsWith('.json'));
   } catch (err) {
     if (isFileNotFound(err)) return [];
-    throw err;
+    audit?.write(
+      WATCHDOG_AUDIT_EVENTS.SUBSCRIPTION_DIR_LIST_FAILED,
+      `error=${formatErr(err)}`,
+    );
+    return [];  // 非 ENOENT treat as empty + audit（recovery + observability、watchdog 不死）
   }
   const result: StoredSubscription[] = [];
   for (const fname of files) {

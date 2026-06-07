@@ -34,4 +34,7 @@ export const WATCHDOG_AUDIT_EVENTS = {
   CONTRACT_DIR_SCAN_FAILED: 'watchdog_contract_dir_scan_failed',
   CLAW_DIR_LIST_FAILED: 'watchdog_claw_dir_list_failed',
   CLAWS_DIR_LIST_FAILED: 'watchdog_claws_dir_list_failed',
+  SUBSCRIPTION_DIR_LIST_FAILED: 'watchdog_subscription_dir_list_failed',
+  CLAW_INACTIVITY_CHECK_FAILED: 'watchdog_claw_inactivity_check_failed',
+  SUBSCRIPTION_PROCESS_FAILED: 'watchdog_subscription_process_failed',
 } as const;

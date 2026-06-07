@@ -709,6 +709,7 @@
       "watchdog_claw_crash_notify_reset",
       "watchdog_claw_crash_skipped_no_contract",
       "watchdog_claw_dir_list_failed",
+      "watchdog_claw_inactivity_check_failed",
       "watchdog_claw_scan",
       "watchdog_claws_dir_list_failed",
       "watchdog_cleanup_failed",
@@ -729,7 +730,9 @@
       "watchdog_subscription_consumed_no_contract",
       "watchdog_subscription_consumed_recovered",
       "watchdog_subscription_corrupt",
-      "watchdog_subscription_fired"
+      "watchdog_subscription_dir_list_failed",
+      "watchdog_subscription_fired",
+      "watchdog_subscription_process_failed"
     ],
     "core_step-executor_audit-events": [
       "step_executor_invariant_violation"
