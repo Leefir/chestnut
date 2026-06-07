@@ -240,7 +240,12 @@ export function createStreamReader(
       // If initialOffset given (catch-up mode / not file end) / read [offset, current size) immediately
       // so caller catches up on existing events before tailing new appends.
       if (initialOffset !== undefined && fs.existsSync(streamPath) && fs.statSync(streamPath).size > offset) {
-        void readIncrement();
+        readIncrement().catch(err =>
+          audit.write(
+            STREAM_AUDIT_EVENTS.READER_READ_FAILED,
+            `streamPath=${streamPath} reason=${formatErr(err)}`,
+          )
+        );
       }
       watcher = createWatcher(
         fs.resolve(streamPath),
