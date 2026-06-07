@@ -450,7 +450,7 @@ export class ContractSystem {
         if (!(await this.fs.exists(progressPath))) continue;
         try {
           const raw = await this.fs.read(progressPath);
-          const progress = JSON.parse(raw) as { status?: string; contract_id?: string; subtasks?: Record<string, { status?: string; escalated_at?: string; completed_at?: string }> };
+          const progress = JSON.parse(raw) as { status?: string; contract_id?: string; subtasks?: Record<string, { status?: string; escalated_at?: string; completed_at?: string; force_accepted?: boolean }> };
 
           // NEW phase 1399: active dir 'escalated' 残留 migrate → completed + force_accepted
           if (progress.subtasks) {
@@ -458,8 +458,8 @@ export class ContractSystem {
             for (const [stId, st] of Object.entries(progress.subtasks)) {
               if (st.status === 'escalated') {
                 st.status = 'completed';
-                (st as any).force_accepted = true;
-                delete (st as any).escalated_at;
+                st.force_accepted = true;
+                delete st.escalated_at;
                 if (!st.completed_at) st.completed_at = new Date().toISOString();
                 mutated = true;
                 this.audit.write(
