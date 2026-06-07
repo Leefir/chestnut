@@ -6,7 +6,7 @@ import type { AuditLog } from '../../../foundation/audit/index.js';
 import type { ProgressData } from '../manager.js';
 import type { ContractStatus } from '../types.js';
 import { CONTRACT_AUDIT_EVENTS } from '../audit-events.js';
-import { CONTRACT_DIR } from '../dirs.js';
+import { CONTRACT_ARCHIVE_DIR } from '../dirs.js';
 
 function readContractMeta(
   fs: FileSystem,
@@ -166,7 +166,7 @@ export function scanArchivedContracts(
   audit: AuditLog,
 ): ArchivedContractEntry[] {
   const entries: ArchivedContractEntry[] = [];
-  const archiveDir = path.join(clawDir, CONTRACT_DIR, 'archive');
+  const archiveDir = path.join(clawDir, CONTRACT_ARCHIVE_DIR);
   try {
     const dirs = fs.listSync(archiveDir, { includeDirs: true })
       .filter(e => e.isDirectory);

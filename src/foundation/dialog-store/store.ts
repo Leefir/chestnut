@@ -7,6 +7,11 @@
  * - Crash recovery from archive
  */
 
+const ARCHIVE_SUBDIR_DEFAULT = 'archive';
+/** Default archive sub-directory name (when caller doesn't inject) */
+const CORRUPTED_SUBDIR = 'corrupted';
+/** Sub-directory name for isolated corrupt dialog artifacts */
+
 import * as path from 'path';
 import { formatErr } from "../utils/index.js";
 import type { FileSystem } from '../fs/types.js';
@@ -60,7 +65,7 @@ export class DialogStore {
     archiveDir?: string,                              // phase 450: 可选 / 默认 'archive' subdir 保兼容
   ) {
     this.currentPath = path.join(dialogDir, filename);
-    this.archiveDir = path.join(dialogDir, archiveDir ?? 'archive');
+    this.archiveDir = path.join(dialogDir, archiveDir ?? ARCHIVE_SUBDIR_DEFAULT);
   }
 
   /**
@@ -492,8 +497,8 @@ export class DialogStore {
       }
       // 其他错误（parse / version / validation）——尝试隔离到 corrupted
       try {
-        await this.fs.ensureDir(path.join(this.archiveDir, 'corrupted'));
-        await this.fs.move(filePath, path.join(this.archiveDir, 'corrupted', filename));
+        await this.fs.ensureDir(path.join(this.archiveDir, CORRUPTED_SUBDIR));
+        await this.fs.move(filePath, path.join(this.archiveDir, CORRUPTED_SUBDIR, filename));
         this.audit.write(DIALOG_AUDIT_EVENTS.CORRUPTED, `file=${filename}`, `isolated=corrupted/${filename}`);
       } catch (moveErr) {
         this.audit.write(

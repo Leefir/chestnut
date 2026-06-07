@@ -19,6 +19,9 @@ import type { ContractId } from './types.js';
 import { formatErr } from '../../foundation/utils/index.js';
 import { CONTRACT_AUDIT_EVENTS } from './audit-events.js';
 
+const CORRUPTED_SUBDIR = 'corrupted';
+/** Sub-directory name for isolated corrupt artifacts */
+
 export interface IsolationArgs {
   contractId: ContractId;
   contractDir: string;
@@ -31,7 +34,7 @@ export async function isolateCorruptedFile(
   audit: AuditLog,
   args: IsolationArgs,
 ): Promise<{ backupPath: string } | null> {
-  const corruptedDir = path.join(args.contractDir, 'corrupted');
+  const corruptedDir = path.join(args.contractDir, CORRUPTED_SUBDIR);
   try {
     await fs.ensureDir(corruptedDir);
     const ts = Date.now();
