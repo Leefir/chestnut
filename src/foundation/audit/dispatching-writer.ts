@@ -17,7 +17,7 @@
 import * as path from 'path';
 import type { FileSystem } from '../fs/types.js';
 import type { AuditLog } from './types.js';
-import { AuditWriter, AUDIT_FILE } from './writer.js';
+import { AuditWriter } from './writer.js';
 
 export class DispatchingAuditWriter implements AuditLog {
   readonly __brand = 'AuditLog' as const;
