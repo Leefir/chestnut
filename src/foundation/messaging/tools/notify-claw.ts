@@ -11,6 +11,8 @@ import { formatErr } from "../../utils/index.js";
 import path from 'node:path';
 import type { Tool, ExecContext, ToolPermissions } from '../../tools/index.js';
 import { MOTION_CLAW_ID } from '../../../constants.js';
+import { INBOX_PENDING_DIR } from '../dirs.js';
+import { CLAWS_DIR } from '../../../assembly/claw-dirs.js';
 import type { ToolResult } from '../../tool-protocol/index.js';
 import type { FileSystem } from '../../fs/types.js';
 import type { AuditLog } from '../../audit/index.js';
@@ -82,7 +84,7 @@ export function createNotifyClawTool(deps: NotifyClawDeps): Tool {
 
       // phase 895: orphan prevention — target claw root 必由 claw create 流程预建
       // InboxWriter.ensureDirSync 否则静默建 orphan dir 违 DP「不丢弃静默」
-      const targetClawRoot = path.join(deps.chestnutRoot, 'claws', to);
+      const targetClawRoot = path.join(deps.chestnutRoot, CLAWS_DIR, to);
       if (!deps.fs.existsSync(targetClawRoot)) {
         deps.audit.write(
           MESSAGING_AUDIT_EVENTS.NOTIFY_CLAW_FAILED,
@@ -92,7 +94,7 @@ export function createNotifyClawTool(deps: NotifyClawDeps): Tool {
         return { success: false, content: `Failed to notify ${to}: claw not found` };
       }
 
-      const targetInboxDir = path.join(targetClawRoot, 'inbox', 'pending');
+      const targetInboxDir = path.join(targetClawRoot, INBOX_PENDING_DIR);
 
       try {
         InboxWriter.__internal_create(deps.fs, makeInboxPath(targetInboxDir), deps.audit).writeSync({

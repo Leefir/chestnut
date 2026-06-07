@@ -11,6 +11,8 @@ import type { InboxMessage } from './types.js';
 import type { FileSystem } from '../fs/types.js';
 import type { AuditLog } from '../audit/index.js';
 import { MOTION_CLAW_ID, UUID_SHORT_LEN } from '../../constants.js';
+import { INBOX_PENDING_DIR } from './dirs.js';
+import { CLAWS_DIR } from '../../assembly/claw-dirs.js';
 import { emitUnknownDestinationDlq } from './audit-emit.js';
 import { randomUUID } from 'crypto';
 
@@ -29,7 +31,7 @@ export function notifyClaw(
 ): void {
   // phase 1372 sub-4: DLQ for unknown destination — prevent silent orphan dir creation
   if (targetClawId !== MOTION_CLAW_ID && typeof fs.existsSync === 'function') {
-    const targetClawRoot = path.join(chestnutRoot, 'claws', targetClawId);
+    const targetClawRoot = path.join(chestnutRoot, CLAWS_DIR, targetClawId);
     if (!fs.existsSync(targetClawRoot)) {
       const dlqDir = path.join(chestnutRoot, MOTION_CLAW_ID, 'inbox', 'dead-letter');
       const fileName = `${Date.now()}_${randomUUID().slice(0, UUID_SHORT_LEN)}_${targetClawId}.md`;
@@ -52,8 +54,8 @@ export function notifyClaw(
   }
 
   const targetInboxDir = targetClawId === MOTION_CLAW_ID
-    ? path.join(chestnutRoot, MOTION_CLAW_ID, 'inbox', 'pending')
-    : path.join(chestnutRoot, 'claws', targetClawId, 'inbox', 'pending');
+    ? path.join(chestnutRoot, MOTION_CLAW_ID, INBOX_PENDING_DIR)
+    : path.join(chestnutRoot, CLAWS_DIR, targetClawId, INBOX_PENDING_DIR);
 
   try {
     InboxWriter.__internal_create(fs, makeInboxPath(targetInboxDir), audit).writeSync(message);
