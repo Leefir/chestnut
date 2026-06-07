@@ -13,11 +13,14 @@ import type { InboxReader, InboxMessageOptionsBase } from '../../foundation/mess
 import { HEARTBEAT_AUDIT_EVENTS } from './audit-events.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 
+/** Default heartbeat interval (seconds); 5 min by design */
+const HEARTBEAT_INTERVAL_SEC_DEFAULT = 300;
+
 /** phase 84: DI callback - caller (L6 装配期) bind chestnutRoot + targetClawId + audit */
 export type HeartbeatNotifyInboxFn = (message: InboxMessageOptionsBase) => void;
 
 export interface HeartbeatOptions {
-  /** 心跳间隔（秒），默认 300（5分钟） */
+  /** 心跳间隔（秒），默认 {@link HEARTBEAT_INTERVAL_SEC_DEFAULT}（5分钟） */
   interval?: number;
   audit: AuditLog;
   inboxReader: InboxReader;
@@ -36,7 +39,7 @@ export class Heartbeat {
   private readonly notifyInbox: HeartbeatNotifyInboxFn;
 
   constructor(options: HeartbeatOptions) {
-    this.interval = (options.interval ?? 300) * 1000;
+    this.interval = (options.interval ?? HEARTBEAT_INTERVAL_SEC_DEFAULT) * 1000;
     this.lastRun = Date.now();  // 启动后等满一个 interval 再首次触发
     this.audit = options.audit;
     this.inboxReader = options.inboxReader;
