@@ -141,6 +141,7 @@
       "contract_boot_migrate_archive_skipped",
       "contract_boot_migrate_escalated",
       "contract_boot_reconcile",
+      "contract_boot_reconcile_skipped",
       "contract_cancelled",
       "contract_complete_on_cancelled",
       "contract_completed",

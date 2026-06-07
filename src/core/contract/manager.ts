@@ -500,8 +500,13 @@ export class ContractSystem {
               );
             }
           }
-        } catch {
-          // silent: corrupted progress.json boot reconcile best-effort skip
+        } catch (err) {
+          this.audit.write(
+            CONTRACT_AUDIT_EVENTS.CONTRACT_BOOT_RECONCILE_SKIPPED,
+            `path=${progressPath}`,
+            `error=${formatErr(err)}`,
+          );
+          // silent: corrupted progress.json boot reconcile best-effort skip（forensics emit 上面）
         }
       }
     }
