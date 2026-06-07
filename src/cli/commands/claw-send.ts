@@ -10,7 +10,7 @@ import {
 } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
-import { writeInboxAsync } from '../../foundation/messaging/index.js';
+import { writeInboxAsync, INBOX_PENDING_DIR } from '../../foundation/messaging/index.js';
 import { createSystemAudit } from '../../foundation/audit/index.js';
 import { CLAWS_DIR } from '../../assembly/claw-dirs.js';
 import { createProcessManagerForCLI } from '../../foundation/process-manager/index.js';
@@ -33,7 +33,7 @@ export async function sendCommand(
   const clawDir = path.join(baseDir, CLAWS_DIR, name);
   const fileSystem = deps.fsFactory(clawDir);
   const audit = createSystemAudit(fileSystem, clawDir);
-  const inboxPendingRel = path.join('inbox', 'pending');
+  const inboxPendingRel = INBOX_PENDING_DIR;
 
   await writeInboxAsync(fileSystem, inboxPendingRel, {
     id: randomUUID(),

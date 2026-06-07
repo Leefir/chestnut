@@ -15,6 +15,7 @@ import { createToolRegistry } from '../../foundation/tools/index.js';
 import { CliError } from '../errors.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { makeContractId } from '../../core/contract/types.js';
+import { CLAWS_DIR } from '../../assembly/claw-dirs.js';
 import * as path from 'path';
 
 export async function contractCancelCommand(
@@ -29,7 +30,7 @@ export async function contractCancelCommand(
   const clawFs = deps.fsFactory(clawDir);
   const chestnutRoot = resolveChestnutRoot(clawDir, /* isMotion */ false);
   const clawAudit = createSystemAudit(clawFs, clawDir);
-  const manager = new ContractSystem({ clawDir, clawId, fs: clawFs, audit: clawAudit, toolRegistry: createToolRegistry(), fsFactory: deps.fsFactory, clawsDir: path.join(chestnutRoot, 'claws'), notifyClaw: (targetClawId, message) => notifyClaw(clawFs, chestnutRoot, targetClawId, message, clawAudit) });
+  const manager = new ContractSystem({ clawDir, clawId, fs: clawFs, audit: clawAudit, toolRegistry: createToolRegistry(), fsFactory: deps.fsFactory, clawsDir: path.join(chestnutRoot, CLAWS_DIR), notifyClaw: (targetClawId, message) => notifyClaw(clawFs, chestnutRoot, targetClawId, message, clawAudit) });
 
   let resolvedId = contractIdInput;
   if (!resolvedId) {

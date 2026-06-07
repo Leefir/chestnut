@@ -12,8 +12,8 @@ import {
   loadGlobalConfig, clawExists, getClawDir, getClawConfigPath,
 } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
-import { CONTRACT_DIR } from '../../core/contract/index.js';
-import { DIALOG_DIR } from '../../foundation/dialog-store/index.js';
+import { CONTRACT_DIR, CONTRACT_ARCHIVE_DIR } from '../../core/contract/index.js';
+import { DIALOG_DIR, DIALOG_ARCHIVE_DIR } from '../../foundation/dialog-store/index.js';
 import { migrateAndValidateSession, validateSessionData } from '../../foundation/dialog-store/store.js';
 import type { ContractId } from '../../core/contract/types.js';
 
@@ -123,7 +123,7 @@ function slotLetter(idx: number): string {
  */
 async function readContractStartedAt(fileSystem: FileSystem, contractId: ContractId): Promise<string | null> {
   // 先尝试 archive
-  const archivePath = path.join(CONTRACT_DIR, 'archive', contractId, 'progress.json');
+  const archivePath = path.join(CONTRACT_ARCHIVE_DIR, contractId, 'progress.json');
   const activePath = path.join(CONTRACT_DIR, 'active', contractId, 'progress.json');
 
   for (const p of [archivePath, activePath]) {
@@ -141,7 +141,7 @@ async function readContractStartedAt(fileSystem: FileSystem, contractId: Contrac
  */
 async function readContractTitle(fileSystem: FileSystem, contractId: ContractId): Promise<string | undefined> {
   // 从 progress.json 读取
-  const archivePath = path.join(CONTRACT_DIR, 'archive', contractId, 'progress.json');
+  const archivePath = path.join(CONTRACT_ARCHIVE_DIR, contractId, 'progress.json');
   const activePath = path.join(CONTRACT_DIR, 'active', contractId, 'progress.json');
 
   for (const p of [archivePath, activePath]) {
@@ -153,7 +153,7 @@ async function readContractTitle(fileSystem: FileSystem, contractId: ContractId)
   }
 
   // 从 contract.yaml 读取
-  const yamlPath = path.join(CONTRACT_DIR, 'archive', contractId, 'contract.yaml');
+  const yamlPath = path.join(CONTRACT_ARCHIVE_DIR, contractId, 'contract.yaml');
   const activeYamlPath = path.join(CONTRACT_DIR, 'active', contractId, 'contract.yaml');
 
   for (const p of [yamlPath, activeYamlPath]) {
@@ -362,10 +362,10 @@ async function showStepDetail(
   // 收集所有 dialog 文件（archive 先，current 最后）
   const dialogFiles: Array<{ relPath: string; mtime: number }> = [];
   try {
-    const archiveEntries = await fileSystem.list(path.join(DIALOG_DIR, 'archive'));
+    const archiveEntries = await fileSystem.list(path.join(DIALOG_ARCHIVE_DIR));
     for (const entry of archiveEntries) {
       if (!entry.isFile || !entry.name.endsWith('.json')) continue;
-      const relPath = path.join(DIALOG_DIR, 'archive', entry.name);
+      const relPath = path.join(DIALOG_ARCHIVE_DIR, entry.name);
       const stat = await fileSystem.stat(relPath);
       dialogFiles.push({ relPath, mtime: stat.mtime.getTime() });
     }

@@ -18,6 +18,7 @@ import * as path from 'path';
 import { loadGlobalConfig, clawExists, getClawDir, getClawConfigPath } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import { createSystemAudit } from '../../foundation/audit/index.js';
+import { CLAWS_DIR } from '../../assembly/claw-dirs.js';
 import { notifyClaw } from '../../foundation/messaging/index.js';
 import { ContractSystem } from '../../core/contract/index.js';
 import { createToolRegistry } from '../../foundation/tools/index.js';
@@ -60,7 +61,7 @@ export async function clawStatusCommand(
     audit,
     toolRegistry: createToolRegistry(),
     fsFactory: deps.fsFactory,
-    clawsDir: path.join(chestnutRoot, 'claws'),
+    clawsDir: path.join(chestnutRoot, CLAWS_DIR),
     notifyClaw: (targetClawId, message) => notifyClaw(clawFs, chestnutRoot, targetClawId, message, audit),
   });
 

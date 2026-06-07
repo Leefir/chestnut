@@ -10,7 +10,7 @@ import {
 import { createDirContext } from '../../foundation/audit/index.js';
 import { createProcessManagerForCLI } from '../../foundation/process-manager/index.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
-import { CONTRACT_DIR } from '../../core/contract/index.js';
+import { CONTRACT_DIR, CONTRACT_ARCHIVE_DIR } from '../../core/contract/index.js';
 import { CLAWS_DIR } from '../../assembly/claw-dirs.js';
 import { getLastActiveMs } from './claw-shared.js';
 import { handleCliError } from '../errors.js';
@@ -69,10 +69,10 @@ export async function listCommand(deps: { fsFactory: (baseDir: string) => FileSy
       } catch { /* silent: skip */ }
     }
     try {
-      const dirs = clawFs.listSync(path.join(CONTRACT_DIR, 'archive'), { includeDirs: true }).map(e => e.name);
+      const dirs = clawFs.listSync(CONTRACT_ARCHIVE_DIR, { includeDirs: true }).map(e => e.name);
       let latest = { mtime: 0, title: '' };
       for (const dir of dirs) {
-        const relYamlPath = path.join(CONTRACT_DIR, 'archive', dir, 'contract.yaml');
+        const relYamlPath = path.join(CONTRACT_ARCHIVE_DIR, dir, 'contract.yaml');
         if (clawFs.existsSync(relYamlPath)) {
           const stat = clawFs.statSync(relYamlPath);
           if (stat.mtime.getTime() > latest.mtime) {

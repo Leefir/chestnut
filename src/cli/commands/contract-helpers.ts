@@ -7,7 +7,7 @@ import * as path from 'path';
 import * as yaml from 'js-yaml';
 import type { ContractYaml } from '../../core/contract/index.js';
 import { createDirContext } from '../../foundation/audit/index.js';
-import { notifySystem } from '../../foundation/messaging/index.js';
+import { notifySystem, INBOX_PENDING_DIR } from '../../foundation/messaging/index.js';
 import { STREAM_FILE, createPerResourceStreamWriter, type StreamEvent } from '../../foundation/stream/index.js';
 import { CliError } from '../errors.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
@@ -74,7 +74,7 @@ export function notifyContractCreated(deps: { fsFactory: (baseDir: string) => Fi
   const body = lines.join('\n');
   notifySystem(
     fs,
-    path.join(clawDir, 'inbox', 'pending'),
+    path.join(clawDir, INBOX_PENDING_DIR),
     body,
     contractAudit,
     { type: 'contract_created', priority: 'high', idPrefix: 'contract-new' }

@@ -3,6 +3,7 @@
  */
 
 import { resolveChestnutRoot } from '../../assembly/install-paths.js';
+import { CLAWS_DIR } from '../../assembly/claw-dirs.js';
 import * as path from 'path';
 import { ContractSystem } from '../../core/contract/index.js';
 import { getClawDir } from '../../foundation/config/index.js';
@@ -26,7 +27,7 @@ export async function contractCreateCommand(deps: { fsFactory: (baseDir: string)
   // phase 1389: regular claw chestnutRoot 双层 up / mirror assemble.ts:279 模板 (phase 1387 Step B + bff2dcfc follow-up)
   const chestnutRoot = resolveChestnutRoot(clawDir, /* isMotion */ false);  // phase 1406: 单一 truth source
   const clawAudit = createSystemAudit(clawFs, clawDir);
-  const manager = new ContractSystem({ clawDir, clawId, fs: clawFs, audit: clawAudit, toolRegistry: createToolRegistry(), fsFactory: deps.fsFactory, clawsDir: path.join(chestnutRoot, 'claws'), notifyClaw: (targetClawId, message) => notifyClaw(clawFs, chestnutRoot, targetClawId, message, clawAudit) });
+  const manager = new ContractSystem({ clawDir, clawId, fs: clawFs, audit: clawAudit, toolRegistry: createToolRegistry(), fsFactory: deps.fsFactory, clawsDir: path.join(chestnutRoot, CLAWS_DIR), notifyClaw: (targetClawId, message) => notifyClaw(clawFs, chestnutRoot, targetClawId, message, clawAudit) });
 
   const contractId = await manager.create(contract);
   audit?.write(CLI_AUDIT_EVENTS.CONTRACT_CREATE, `claw=${clawId}`, `contract=${contractId}`, `mode=file`);
