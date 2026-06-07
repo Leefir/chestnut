@@ -23,7 +23,7 @@ import { type ToolUseId, makeToolUseId } from '../../../../foundation/tool-proto
 
 
 
-export interface RunShadowOptions {
+interface RunShadowOptions {
   task: string;
   timeoutMs?: number;
   maxSteps?: number;

@@ -21,7 +21,7 @@
 import type { LLMResponse } from '../../foundation/llm-provider/types.js';
 import type { LLMOrchestrator, LLMCallOptions } from '../../foundation/llm-orchestrator/index.js';
 import type { StepInput, StepResult, LLMCallInfo } from './types.js';
-export type { LLMCallInfo, StepCallbacks, StepInput, StepMeta, StepResult } from './types.js';
+
 import type { StepCallbacks } from './types.js';
 import { REACT_DEFAULT_MAX_TOKENS } from './constants.js';
 import { throwAbortError } from './abort-helpers.js';
