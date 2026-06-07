@@ -73,6 +73,7 @@
       "viewport_shutdown",
       "viewport_spinner_lifecycle",
       "viewport_task_stream_stale_cleanup",
+      "viewport_task_watch_stop_failed",
       "viewport_ui_cross_pollution",
       "viewport_unknown_event"
     ],
