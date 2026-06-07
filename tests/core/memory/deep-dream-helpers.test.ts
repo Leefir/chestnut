@@ -32,24 +32,23 @@ describe('deep-dream pure helpers (phase 1467)', () => {
       expect(__test_estimateTokens('')).toBe(0);
     });
 
-    it('ASCII text ~chars/4 ceil', () => {
-      expect(__test_estimateTokens('a')).toBe(1);        // ceil(1/4) = 1
-      expect(__test_estimateTokens('abcd')).toBe(1);     // ceil(4/4) = 1
-      expect(__test_estimateTokens('abcde')).toBe(2);    // ceil(5/4) = 2
-      expect(__test_estimateTokens('abcdefgh')).toBe(2); // ceil(8/4) = 2
+    it('ASCII text (cl100k_base encoding)', () => {
+      expect(__test_estimateTokens('a')).toBe(1);
+      expect(__test_estimateTokens('abcd')).toBe(1);
+      expect(__test_estimateTokens('abcde')).toBe(2);
+      expect(__test_estimateTokens('abcdefgh')).toBe(1); // common pattern = 1 token in cl100k_base
     });
 
-    it('long text scales', () => {
+    it('long text scales (cl100k_base)', () => {
       const long = 'x'.repeat(4000);
-      expect(__test_estimateTokens(long)).toBe(1000);
+      expect(__test_estimateTokens(long)).toBe(500); // cl100k_base compresses repeated chars
     });
 
-    it('multibyte chars counted by .length (JS UTF-16 code units)', () => {
-      // 中文 1 char ≈ 1 UTF-16 unit
-      const cn = '你好';                                    // 2 chars
-      expect(__test_estimateTokens(cn)).toBe(1);          // ceil(2/4) = 1
-      const cnLong = '你好世界'.repeat(100);                // 400 chars
-      expect(__test_estimateTokens(cnLong)).toBe(100);    // ceil(400/4) = 100
+    it('CJK text (cl100k_base)', () => {
+      const cn = '你好';
+      expect(__test_estimateTokens(cn)).toBe(2);       // 2 chars → 2 tokens
+      const cnLong = '你好世界'.repeat(100);            // 400 chars
+      expect(__test_estimateTokens(cnLong)).toBe(500); // ~1.25 tokens per char in cl100k_base
     });
   });
 
