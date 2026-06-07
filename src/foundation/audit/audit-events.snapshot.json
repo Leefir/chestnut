@@ -744,5 +744,16 @@
       "cron_outbox_summary_written"
     ]
   },
+  "fileRouting": {
+    "cron_job_started": "tick",
+    "cron_outbox_summary_skipped": "tick",
+    "cron_metrics_snapshot": "tick",
+    "cron_disk_monitor_check": "tick",
+    "daemon_liveness_heartbeat": "tick",
+    "daemon_loop_iteration": "tick",
+    "viewport_render_batch": "viewport",
+    "viewport_event_ingest": "viewport",
+    "viewport_spinner_lifecycle": "viewport"
+  },
   "schema_version": "2.0.0"
 }

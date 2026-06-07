@@ -21,6 +21,17 @@ export const DAEMON_AUDIT_EVENTS = {
   CLEANUP_PID_FAILED: 'daemon_cleanup_pid_failed',
 } as const;
 
+/**
+ * Phase 159 业主声明 file 归属（phase 122 §5.A + §6.7）.
+ *
+ * daemon_liveness_heartbeat / daemon_loop_iteration → tick（高频）、
+ * 其余异常 / 业务 event 留 audit（默认主 file）.
+ */
+export const DAEMON_FILE_ROUTING: Readonly<Record<string, 'audit' | 'tick'>> = {
+  daemon_liveness_heartbeat: 'tick',
+  daemon_loop_iteration: 'tick',
+} as const;
+
 export const LOOP_ITERATION_TYPES = {
   CHAIN: 'chain',
   CHAIN_LIMITED: 'chain_limited',

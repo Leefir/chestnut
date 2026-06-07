@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CRON_FILE_ROUTING } from '../../../src/core/cron/audit-events.js';
+import { DAEMON_FILE_ROUTING } from '../../../src/daemon/audit-events.js';
+import { VIEWPORT_FILE_ROUTING } from '../../../src/cli/commands/viewport-audit-events.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC_ROOT = path.resolve(__dirname, '../../../src');
@@ -22,6 +25,7 @@ interface SnapshotEntry {
 interface SnapshotJson {
   schema_version: string;
   modules: Record<string, (string | SnapshotEntry)[]>;
+  fileRouting?: Record<string, string>;
 }
 
 /**
@@ -72,6 +76,42 @@ describe('audit-events snapshot lock', () => {
           `${site.module}/${site.eventType} at ${site.file}:${site.line} missing required col '${required}'`,
         );
       }
+    }
+  });
+
+  it('snapshot fileRouting keys are a subset of owner-declared routings (phase 159)', () => {
+    const snapshot: SnapshotJson = JSON.parse(fs.readFileSync(SNAPSHOT_PATH, 'utf-8'));
+    expect(snapshot.fileRouting).toBeDefined();
+    const ownerRoutings = {
+      ...CRON_FILE_ROUTING,
+      ...DAEMON_FILE_ROUTING,
+      ...VIEWPORT_FILE_ROUTING,
+    };
+    for (const [type, file] of Object.entries(snapshot.fileRouting!)) {
+      expect(ownerRoutings).toHaveProperty(type);
+      expect(ownerRoutings[type as keyof typeof ownerRoutings]).toBe(file);
+    }
+  });
+
+  it('snapshot fileRouting contains all non-audit owner-declared types (phase 159)', () => {
+    const snapshot: SnapshotJson = JSON.parse(fs.readFileSync(SNAPSHOT_PATH, 'utf-8'));
+    const ownerRoutings = {
+      ...CRON_FILE_ROUTING,
+      ...DAEMON_FILE_ROUTING,
+      ...VIEWPORT_FILE_ROUTING,
+    };
+    for (const [type, file] of Object.entries(ownerRoutings)) {
+      if (file === 'audit') continue; // audit is default, may be omitted from snapshot.fileRouting
+      expect(snapshot.fileRouting!).toHaveProperty(type);
+      expect(snapshot.fileRouting![type]).toBe(file);
+    }
+  });
+
+  it('snapshot fileRouting values are within allowed file names (phase 159)', () => {
+    const snapshot: SnapshotJson = JSON.parse(fs.readFileSync(SNAPSHOT_PATH, 'utf-8'));
+    const allowedFiles = new Set(['audit', 'tick', 'viewport']);
+    for (const file of Object.values(snapshot.fileRouting!)) {
+      expect(allowedFiles).toContain(file);
     }
   });
 

@@ -21,3 +21,14 @@ export const VIEWPORT_AUDIT_EVENTS = {
   HISTORY_REPLAY_FAILED: 'chat_viewport_history_replay_failed',
   REFRESH_CLAWS_FAILED: 'chat_viewport_refresh_claws_failed',
 } as const;
+
+/**
+ * Phase 159 业主声明 file 归属（phase 122 §5.A + §6.7）.
+ *
+ * viewport 高频 UI tick 类 → 'viewport' file、其余留 'audit'（默认主 file）.
+ */
+export const VIEWPORT_FILE_ROUTING: Readonly<Record<string, 'audit' | 'viewport'>> = {
+  viewport_render_batch: 'viewport',
+  viewport_event_ingest: 'viewport',
+  viewport_spinner_lifecycle: 'viewport',
+} as const;

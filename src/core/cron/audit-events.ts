@@ -24,3 +24,22 @@ export const CRON_AUDIT_EVENTS = {
   // phase 28: STATE_SAVE_FAILED 砍 — phase1109 state persistence wiring 删（fs? optional 实际从未 wire 进 production）
   // phase 6: SUNSET_READY / SUNSET_QUERY_FAIL 砍 — sunset-monitor cron 移除 / dev-side 信号不该走 motion inbox
 } as const;
+
+/**
+ * Phase 159 业主声明 file 归属（phase 122 §5.A + §6.7）.
+ *
+ * 高频 tick 类 event 归 'tick' file（信噪比分流）、
+ * 异常 / 业务 event 留 'audit' file（业务事件主 file）.
+ */
+export const CRON_FILE_ROUTING: Readonly<Record<string, 'audit' | 'tick'>> = {
+  cron_job_started: 'tick',
+  cron_outbox_summary_skipped: 'tick',
+  cron_metrics_snapshot: 'tick',
+  cron_disk_monitor_check: 'tick',
+  // 异常类留 audit
+  cron_handler_aborted: 'audit',
+  cron_handler_timeout: 'audit',
+  cron_handler_stuck: 'audit',
+  cron_job_error: 'audit',
+  cron_job_late_settled: 'audit',
+} as const;
