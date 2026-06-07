@@ -44,7 +44,10 @@ function makeFs(files: Record<string, string | Buffer>, dirs: Record<string, str
     entries[p] = { content: buf, size: buf.length };
   }
   return {
-    existsSync: (p: string) => p in entries || p in dirs,
+    existsSync: (p: string) => {
+      if (p === '.' && (Object.keys(entries).length > 0 || Object.keys(dirs).length > 0)) return true;
+      return p in entries || p in dirs;
+    },
     statSync: (p: string) => {
       if (p in entries) return { size: entries[p].size, mtimeMs: 0, isDirectory: false, isFile: true };
       if (p in dirs) return { size: 0, mtimeMs: 0, isDirectory: true, isFile: false };
@@ -61,7 +64,19 @@ function makeFs(files: Record<string, string | Buffer>, dirs: Record<string, str
       const buf = Buffer.isBuffer(e.content) ? e.content : Buffer.from(e.content, 'utf8');
       return buf.slice(start, end);
     },
-    listSync: (p: string) => {
+    listSync: (p: string, _opts?: unknown) => {
+      if (p === '.') {
+        const names = new Set<string>();
+        for (const k of Object.keys(entries)) {
+          const slashIdx = k.indexOf('/');
+          names.add(slashIdx === -1 ? k : k.slice(0, slashIdx));
+        }
+        for (const k of Object.keys(dirs)) {
+          const slashIdx = k.indexOf('/');
+          names.add(slashIdx === -1 ? k : k.slice(0, slashIdx));
+        }
+        return Array.from(names).map(n => ({ name: n, isDirectory: true, isFile: false }));
+      }
       const list = dirs[p] || [];
       // Fake-fs convention: all listed children are treated as directories
       // (sufficient for CLAWS_DIR scan + inbox/pending count which ignores kind).

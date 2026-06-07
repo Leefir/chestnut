@@ -18,7 +18,7 @@ import type { FileSystem } from '../../foundation/fs/types.js';
 import { isFileNotFound } from '../../foundation/fs/types.js';
 import { ProcessManager, ProcessListUnavailable } from '../../foundation/process-manager/index.js';
 import { CLAWS_DIR } from '../../assembly/claw-dirs.js';
-import { AUDIT_FILE } from '../../foundation/audit/index.js';
+import { listAuditFiles } from '../../foundation/audit/index.js';
 import { INBOX_PENDING_DIR } from '../../foundation/messaging/index.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
 
@@ -91,46 +91,56 @@ export function computeClawInboxUnread(clawFs: FileSystem): number {
 }
 
 /**
- * Read the last-activity timestamp from the claw's audit.tsv tail.
- * Returns undefined when file is absent, empty, or last line is unparseable.
+ * Read the last-activity timestamp from the claw's audit files tail.
+ * Returns undefined when no audit files exist, all are empty, or last lines
+ * are unparseable.
  *
- * Implementation: reads up to last 8KB of file (single tail window — enough for
- * any reasonable single audit row, ISO ts is ~30 chars). Audit row format:
+ * Phase 172: multi-file aware — reads all audit files (audit.tsv + tick.tsv +
+ * viewport.tsv) and takes the max timestamp across all tails. This fixes the
+ * drift where tick/viewport activity was routed to separate files in phase 159
+ * but last-activity only checked audit.tsv.
+ *
+ * Implementation: reads up to last 8KB per file (single tail window — enough
+ * for any reasonable single audit row, ISO ts is ~30 chars). Audit row format:
  *   <ISO-timestamp>\tseq=N\t<type>\t<cols>...\n
  */
 const AUDIT_TAIL_WINDOW_BYTES = 8 * 1024;
 
 export function computeClawLastActivityAgoMs(clawFs: FileSystem, now: number): number | undefined {
-  let size: number;
-  try {
-    if (!clawFs.existsSync(AUDIT_FILE)) return undefined;
-    size = clawFs.statSync(AUDIT_FILE).size;
-  } catch (err) {
-    if (isFileNotFound(err)) return undefined;
-    throw err;
+  const files = listAuditFiles(clawFs, '.');
+  if (files.length === 0) return undefined;
+
+  let maxTs: number | undefined;
+
+  for (const file of files) {
+    try {
+      if (!clawFs.existsSync(file.path)) continue;
+      const size = clawFs.statSync(file.path).size;
+      if (size === 0) continue;
+
+      const start = Math.max(0, size - AUDIT_TAIL_WINDOW_BYTES);
+      const tail = clawFs.readBytesSync(file.path, start, size);
+
+      const text = tail.toString('utf8');
+      // Strip trailing newline so the last meaningful row is the final non-empty line
+      const trimmed = text.endsWith('\n') ? text.slice(0, -1) : text;
+      const lastLine = trimmed.slice(trimmed.lastIndexOf('\n') + 1);
+      if (lastLine === '') continue;
+
+      const tabIdx = lastLine.indexOf('\t');
+      const tsRaw = tabIdx === -1 ? lastLine : lastLine.slice(0, tabIdx);
+      const ts = Date.parse(tsRaw);
+      if (Number.isNaN(ts)) continue;
+      if (maxTs === undefined || ts > maxTs) {
+        maxTs = ts;
+      }
+    } catch {
+      // silent: single file read failure shouldn't break cross-file max
+    }
   }
-  if (size === 0) return undefined;
 
-  const start = Math.max(0, size - AUDIT_TAIL_WINDOW_BYTES);
-  let tail: Buffer;
-  try {
-    tail = clawFs.readBytesSync(AUDIT_FILE, start, size);
-  } catch (err) {
-    if (isFileNotFound(err)) return undefined;
-    throw err;
-  }
-
-  const text = tail.toString('utf8');
-  // Strip trailing newline so the last meaningful row is the final non-empty line
-  const trimmed = text.endsWith('\n') ? text.slice(0, -1) : text;
-  const lastLine = trimmed.slice(trimmed.lastIndexOf('\n') + 1);
-  if (lastLine === '') return undefined;
-
-  const tabIdx = lastLine.indexOf('\t');
-  const tsRaw = tabIdx === -1 ? lastLine : lastLine.slice(0, tabIdx);
-  const ts = Date.parse(tsRaw);
-  if (Number.isNaN(ts)) return undefined;
-  const elapsed = now - ts;
+  if (maxTs === undefined) return undefined;
+  const elapsed = now - maxTs;
   return elapsed >= 0 ? elapsed : 0;
 }
 
