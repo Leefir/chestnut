@@ -16,3 +16,16 @@ export const TOOL_AUDIT_EVENTS = {
   TOOL_NOT_FOUND: 'tool_not_found',                    // phase 70 NEW
   TOOL_INVALID_INPUT: 'tool_invalid_input',            // phase 70 NEW
 } as const;
+
+
+/**
+ * Phase 163 业主声明 file 归属（phase 122 §5.A + §6.7 + phase 159 模式）.
+ *
+ * 全 'audit'：业务事件归业务事件主 file（信噪比已通过 cron tick 分流改善）.
+ */
+export const TOOLS_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
+  tool_caller_access_violation: 'audit',
+  tools_invariant_violation: 'audit',
+  tool_not_found: 'audit',
+  tool_invalid_input: 'audit',
+} as const;

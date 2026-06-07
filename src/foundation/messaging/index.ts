@@ -35,7 +35,7 @@ export {
 } from './dirs.js';
 
 // phase 1435 F8: audit events const re-export — 跨模块 (cli / daemon) 引用走 barrel。
-export { MESSAGING_AUDIT_EVENTS } from './audit-events.js';
+export { MESSAGING_AUDIT_EVENTS, MESSAGING_FILE_ROUTING } from './audit-events.js';
 
 // phase 1414: inbox 消息格式化协议（散到各业主自管）
 export { createMessageFormatterRegistry } from './formatter-registry.js';

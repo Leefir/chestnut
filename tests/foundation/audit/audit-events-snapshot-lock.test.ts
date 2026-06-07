@@ -6,6 +6,22 @@ import { CRON_FILE_ROUTING } from '../../../src/core/cron/audit-events.js';
 import { DAEMON_FILE_ROUTING } from '../../../src/daemon/audit-events.js';
 import { VIEWPORT_FILE_ROUTING } from '../../../src/cli/commands/viewport-audit-events.js';
 
+// phase 163 新加 14 业主
+import { ASSEMBLY_FILE_ROUTING } from '../../../src/assembly/audit-events.js';
+import { ASSEMBLY_LLM_FILE_ROUTING } from '../../../src/assembly/llm-audit-events.js';
+import { CLI_FILE_ROUTING } from '../../../src/cli/audit-events.js';
+import { CONTRACT_FILE_ROUTING } from '../../../src/core/contract/audit-events.js';
+import { GATEWAY_FILE_ROUTING } from '../../../src/core/gateway/audit-events.js';
+import { HEARTBEAT_FILE_ROUTING } from '../../../src/core/heartbeat/audit-events.js';
+import { MEMORY_FILE_ROUTING } from '../../../src/core/memory/audit-events.js';
+import { PERMISSIONS_FILE_ROUTING } from '../../../src/core/permissions/audit-events.js';
+import { SUBAGENT_FILE_ROUTING } from '../../../src/core/subagent/audit-events.js';
+import { MESSAGING_FILE_ROUTING } from '../../../src/foundation/messaging/audit-events.js';
+import { SNAPSHOT_FILE_ROUTING } from '../../../src/foundation/snapshot/audit-events.js';
+import { STREAM_FILE_ROUTING } from '../../../src/foundation/stream/audit-events.js';
+import { TOOLS_FILE_ROUTING } from '../../../src/foundation/tools/audit-events.js';
+import { WATCHDOG_FILE_ROUTING } from '../../../src/watchdog/audit-events.js';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC_ROOT = path.resolve(__dirname, '../../../src');
 const SNAPSHOT_PATH = path.join(SRC_ROOT, 'foundation/audit/audit-events.snapshot.json');
@@ -79,13 +95,27 @@ describe('audit-events snapshot lock', () => {
     }
   });
 
-  it('snapshot fileRouting keys are a subset of owner-declared routings (phase 159)', () => {
+  it('snapshot fileRouting keys are a subset of owner-declared routings (phase 159 + 163)', () => {
     const snapshot: SnapshotJson = JSON.parse(fs.readFileSync(SNAPSHOT_PATH, 'utf-8'));
     expect(snapshot.fileRouting).toBeDefined();
     const ownerRoutings = {
       ...CRON_FILE_ROUTING,
       ...DAEMON_FILE_ROUTING,
       ...VIEWPORT_FILE_ROUTING,
+      ...ASSEMBLY_FILE_ROUTING,
+      ...ASSEMBLY_LLM_FILE_ROUTING,
+      ...CLI_FILE_ROUTING,
+      ...CONTRACT_FILE_ROUTING,
+      ...GATEWAY_FILE_ROUTING,
+      ...HEARTBEAT_FILE_ROUTING,
+      ...MEMORY_FILE_ROUTING,
+      ...PERMISSIONS_FILE_ROUTING,
+      ...SUBAGENT_FILE_ROUTING,
+      ...MESSAGING_FILE_ROUTING,
+      ...SNAPSHOT_FILE_ROUTING,
+      ...STREAM_FILE_ROUTING,
+      ...TOOLS_FILE_ROUTING,
+      ...WATCHDOG_FILE_ROUTING,
     };
     for (const [type, file] of Object.entries(snapshot.fileRouting!)) {
       expect(ownerRoutings).toHaveProperty(type);
@@ -93,17 +123,100 @@ describe('audit-events snapshot lock', () => {
     }
   });
 
-  it('snapshot fileRouting contains all non-audit owner-declared types (phase 159)', () => {
+  it('snapshot fileRouting contains all non-audit owner-declared types (phase 159 + 163)', () => {
     const snapshot: SnapshotJson = JSON.parse(fs.readFileSync(SNAPSHOT_PATH, 'utf-8'));
     const ownerRoutings = {
       ...CRON_FILE_ROUTING,
       ...DAEMON_FILE_ROUTING,
       ...VIEWPORT_FILE_ROUTING,
+      ...ASSEMBLY_FILE_ROUTING,
+      ...ASSEMBLY_LLM_FILE_ROUTING,
+      ...CLI_FILE_ROUTING,
+      ...CONTRACT_FILE_ROUTING,
+      ...GATEWAY_FILE_ROUTING,
+      ...HEARTBEAT_FILE_ROUTING,
+      ...MEMORY_FILE_ROUTING,
+      ...PERMISSIONS_FILE_ROUTING,
+      ...SUBAGENT_FILE_ROUTING,
+      ...MESSAGING_FILE_ROUTING,
+      ...SNAPSHOT_FILE_ROUTING,
+      ...STREAM_FILE_ROUTING,
+      ...TOOLS_FILE_ROUTING,
+      ...WATCHDOG_FILE_ROUTING,
     };
     for (const [type, file] of Object.entries(ownerRoutings)) {
       if (file === 'audit') continue; // audit is default, may be omitted from snapshot.fileRouting
       expect(snapshot.fileRouting!).toHaveProperty(type);
       expect(snapshot.fileRouting![type]).toBe(file);
+    }
+  });
+
+  it('all owner-declared types exist in snapshot.json (phase 163 coverage)', () => {
+    const snapshot: SnapshotJson = JSON.parse(fs.readFileSync(SNAPSHOT_PATH, 'utf-8'));
+    const allSnapshotTypes = new Set<string>();
+    for (const entries of Object.values(snapshot.modules)) {
+      for (const entry of entries) {
+        allSnapshotTypes.add(typeof entry === 'string' ? entry : entry.type);
+      }
+    }
+
+    const ownerRoutings = {
+      ...CRON_FILE_ROUTING,
+      ...DAEMON_FILE_ROUTING,
+      ...VIEWPORT_FILE_ROUTING,
+      ...ASSEMBLY_FILE_ROUTING,
+      ...ASSEMBLY_LLM_FILE_ROUTING,
+      ...CLI_FILE_ROUTING,
+      ...CONTRACT_FILE_ROUTING,
+      ...GATEWAY_FILE_ROUTING,
+      ...HEARTBEAT_FILE_ROUTING,
+      ...MEMORY_FILE_ROUTING,
+      ...PERMISSIONS_FILE_ROUTING,
+      ...SUBAGENT_FILE_ROUTING,
+      ...MESSAGING_FILE_ROUTING,
+      ...SNAPSHOT_FILE_ROUTING,
+      ...STREAM_FILE_ROUTING,
+      ...TOOLS_FILE_ROUTING,
+      ...WATCHDOG_FILE_ROUTING,
+    };
+
+    for (const type of Object.keys(ownerRoutings)) {
+      expect(allSnapshotTypes.has(type)).toBe(
+        true,
+        `owner-declared type "${type}" not found in snapshot.json (stale or typo)`,
+      );
+    }
+  });
+
+  it('phase 163 owner modules have OWNER_FILE_ROUTING declaration', () => {
+    const ownerModules = [
+      'assembly/audit-events.ts',
+      'assembly/llm-audit-events.ts',
+      'cli/audit-events.ts',
+      'core/contract/audit-events.ts',
+      'core/gateway/audit-events.ts',
+      'core/heartbeat/audit-events.ts',
+      'core/memory/audit-events.ts',
+      'core/permissions/audit-events.ts',
+      'core/subagent/audit-events.ts',
+      'foundation/messaging/audit-events.ts',
+      'foundation/snapshot/audit-events.ts',
+      'foundation/stream/audit-events.ts',
+      'foundation/tools/audit-events.ts',
+      'watchdog/audit-events.ts',
+      // phase 159 已有
+      'core/cron/audit-events.ts',
+      'daemon/audit-events.ts',
+      'cli/commands/viewport-audit-events.ts',
+    ];
+
+    for (const mod of ownerModules) {
+      const modPath = path.join(SRC_ROOT, mod);
+      const content = fs.readFileSync(modPath, 'utf-8');
+      expect(content).toMatch(
+        /_FILE_ROUTING\s*[:=]/,
+        `owner module ${mod} missing OWNER_FILE_ROUTING declaration`,
+      );
     }
   });
 

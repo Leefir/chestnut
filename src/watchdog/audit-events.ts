@@ -38,3 +38,43 @@ export const WATCHDOG_AUDIT_EVENTS = {
   CLAW_INACTIVITY_CHECK_FAILED: 'watchdog_claw_inactivity_check_failed',
   SUBSCRIPTION_PROCESS_FAILED: 'watchdog_subscription_process_failed',
 } as const;
+
+
+/**
+ * Phase 163 业主声明 file 归属（phase 122 §5.A + §6.7 + phase 159 模式）.
+ *
+ * 全 'audit'：业务事件归业务事件主 file（信噪比已通过 cron tick 分流改善）.
+ */
+export const WATCHDOG_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
+  watchdog_cleanup_failed: 'audit',
+  watchdog_crash: 'audit',
+  watchdog_claw_scan: 'audit',
+  claw_crash_detected: 'audit',
+  watchdog_claw_crash_notify_deduped: 'audit',
+  watchdog_claw_crash_skipped_no_contract: 'audit',
+  claw_crash_notify_dropped: 'audit',
+  watchdog_claw_crash_notify_reset: 'audit',
+  watchdog_state_load_failed: 'audit',
+  watchdog_state_schema_invalid: 'audit',
+  watchdog_pid_corrupt: 'audit',
+  watchdog_pid_foreign_workspace: 'audit',
+  watchdog_pid_read_failed: 'audit',
+  watchdog_pid_stale_auto_cleaned: 'audit',
+  watchdog_ensure_lock_timeout: 'audit',
+  watchdog_ensure_lock_stale_recovered: 'audit',
+  watchdog_orphan_sweep_killed: 'audit',
+  watchdog_orphan_sweep_failed: 'audit',
+  watchdog_stop: 'audit',
+  claw_has_contract_check_failed: 'audit',
+  watchdog_stream_read_failed: 'audit',
+  watchdog_subscription_fired: 'audit',
+  watchdog_subscription_consumed_recovered: 'audit',
+  watchdog_subscription_consumed_no_contract: 'audit',
+  watchdog_subscription_corrupt: 'audit',
+  watchdog_contract_dir_scan_failed: 'audit',
+  watchdog_claw_dir_list_failed: 'audit',
+  watchdog_claws_dir_list_failed: 'audit',
+  watchdog_subscription_dir_list_failed: 'audit',
+  watchdog_claw_inactivity_check_failed: 'audit',
+  watchdog_subscription_process_failed: 'audit',
+} as const;

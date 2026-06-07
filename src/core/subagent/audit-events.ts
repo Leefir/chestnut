@@ -57,3 +57,25 @@ export const REACT_LOOP_AUDIT_EVENTS = {
   LLM_CALL: 'llm_call',
   LLM_ERROR: 'llm_error',
 } as const;
+
+
+/**
+ * Phase 163 业主声明 file 归属（phase 122 §5.A + §6.7 + phase 159 模式）.
+ *
+ * 全 'audit'：业务事件归业务事件主 file（信噪比已通过 cron tick 分流改善）.
+ */
+export const SUBAGENT_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
+  tool_result: 'audit',
+  subagent_step_complete_failed: 'audit',
+  subagent_persist_failed: 'audit',
+  subagent_log_append_failed: 'audit',
+  ghost_callback_after_turn_end: 'audit',
+  subagent_timeout_rejection: 'audit',
+  tool_call_input: 'audit',
+  turn_start: 'audit',
+  turn_end: 'audit',
+  turn_interrupted: 'audit',
+  turn_error: 'audit',
+  llm_call: 'audit',
+  llm_error: 'audit',
+} as const;

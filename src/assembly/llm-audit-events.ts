@@ -33,3 +33,32 @@ export const LLM_AUDIT_EVENTS = {
   SDK_CLIENT_CACHE_HIT: 'llm_sdk_client_cache_hit',
   SDK_CLIENT_CACHE_MISS: 'llm_sdk_client_cache_miss',
 } as const;
+
+
+/**
+ * Phase 163 业主声明 file 归属（phase 122 §5.A + §6.7 + phase 159 模式）.
+ *
+ * 全 'audit'：业务事件归业务事件主 file（信噪比已通过 cron tick 分流改善）.
+ */
+export const ASSEMBLY_LLM_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
+  llm_provider_attempt_failed: 'audit',
+  llm_retry_scheduled: 'audit',
+  llm_provider_exhausted: 'audit',
+  llm_fallback_switched: 'audit',
+  llm_breaker_opened: 'audit',
+  llm_breaker_half_open: 'audit',
+  llm_breaker_closed: 'audit',
+  llm_healthcheck_failed: 'audit',
+  llm_stream_reset: 'audit',
+  llm_stream_parse_error: 'audit',
+  llm_tool_arg_parse_error: 'audit',
+  llm_idle_failover_triggered: 'audit',
+  llm_stream_idle_probe_attempted: 'audit',
+  llm_stream_idle_probe_succeeded: 'audit',
+  llm_context_exceeded_failover: 'audit',
+  llm_permanent_skip_retry: 'audit',
+  llm_all_providers_context_exceeded: 'audit',
+  llm_race_loser_cleaned: 'audit',
+  llm_sdk_client_cache_hit: 'audit',
+  llm_sdk_client_cache_miss: 'audit',
+} as const;

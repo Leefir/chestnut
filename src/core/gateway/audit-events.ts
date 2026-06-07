@@ -23,3 +23,29 @@ export const GATEWAY_AUDIT_EVENTS = {
   INTERRUPT_DEBOUNCED: 'gateway_interrupt_debounced',
   TRANSPORT_ERROR: 'gateway_transport_error',
 } as const;
+
+
+/**
+ * Phase 163 业主声明 file 归属（phase 122 §5.A + §6.7 + phase 159 模式）.
+ *
+ * 全 'audit'：业务事件归业务事件主 file（信噪比已通过 cron tick 分流改善）.
+ */
+export const GATEWAY_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
+  gateway_started: 'audit',
+  gateway_stopped: 'audit',
+  gateway_startup_failed: 'audit',
+  gateway_stop_noop: 'audit',
+  gateway_connection_accepted: 'audit',
+  gateway_connection_disconnected: 'audit',
+  gateway_ask_user_pending: 'audit',
+  gateway_ask_user_resolved: 'audit',
+  gateway_ask_user_cancelled: 'audit',
+  gateway_ask_user_reply_dropped: 'audit',
+  gateway_ask_user_race_loss: 'audit',
+  gateway_ask_user_broadcast_failed: 'audit',
+  gateway_ask_user_no_listener: 'audit',
+  gateway_connection_dropped: 'audit',
+  gateway_interrupt_triggered: 'audit',
+  gateway_interrupt_debounced: 'audit',
+  gateway_transport_error: 'audit',
+} as const;

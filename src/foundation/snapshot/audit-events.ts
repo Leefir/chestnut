@@ -18,3 +18,24 @@ export const SNAPSHOT_AUDIT_EVENTS = {
   STATE_CORRUPT: 'snapshot_state_corrupt',
   REALPATH_FAILED: 'snapshot_realpath_failed',
 } as const;
+
+
+/**
+ * Phase 163 业主声明 file 归属（phase 122 §5.A + §6.7 + phase 159 模式）.
+ *
+ * 全 'audit'：业务事件归业务事件主 file（信噪比已通过 cron tick 分流改善）.
+ */
+export const SNAPSHOT_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
+  snapshot_init_failed: 'audit',
+  snapshot_init_cleanup_failed: 'audit',
+  snapshot_commit_failed: 'audit',
+  snapshot_committed: 'audit',
+  snapshot_degraded: 'audit',
+  snapshot_sync_clean_failed: 'audit',
+  snapshot_sync_restore_failed: 'audit',
+  snapshot_status_stderr: 'audit',
+  snapshot_persist_failed: 'audit',
+  snapshot_try_clear_failed: 'audit',
+  snapshot_state_corrupt: 'audit',
+  snapshot_realpath_failed: 'audit',
+} as const;

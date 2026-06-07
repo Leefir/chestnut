@@ -21,3 +21,25 @@ export const MEMORY_AUDIT_EVENTS = {
   DREAM_OUTPUT_PERSISTED: 'dream_output_persisted',  // NEW phase 756
   DEEP_DREAM_RETRY_EXHAUSTED: 'deep_dream_retry_exhausted',  // NEW phase 1200
 } as const;
+
+
+/**
+ * Phase 163 业主声明 file 归属（phase 122 §5.A + §6.7 + phase 159 模式）.
+ *
+ * 全 'audit'：业务事件归业务事件主 file（信噪比已通过 cron tick 分流改善）.
+ */
+export const MEMORY_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
+  cron_deep_dream_job: 'audit',
+  cron_deep_dream_error: 'audit',
+  deep_dream_call_failed: 'audit',
+  deep_dream_unexpected: 'audit',
+  cron_random_dream_job: 'audit',
+  cron_random_dream_warning: 'audit',
+  cron_random_dream_error: 'audit',
+  cron_random_dream_pulse: 'audit',
+  random_dream_wait_timeout: 'audit',
+  random_dream_subagent_timeout: 'audit',
+  random_dream_output_missing: 'audit',
+  dream_output_persisted: 'audit',
+  deep_dream_retry_exhausted: 'audit',
+} as const;

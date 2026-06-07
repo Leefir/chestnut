@@ -35,3 +35,38 @@ export const MESSAGING_AUDIT_EVENTS = {
   OUTBOX_PEEK_FAILED: 'messaging_outbox_peek_failed',
   UNKNOWN_DESTINATION_DLQ: 'messaging_unknown_destination_dlq',
 } as const;
+
+
+/**
+ * Phase 163 业主声明 file 归属（phase 122 §5.A + §6.7 + phase 159 模式）.
+ *
+ * 全 'audit'：业务事件归业务事件主 file（信噪比已通过 cron tick 分流改善）.
+ */
+export const MESSAGING_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
+  inbox_done: 'audit',
+  inbox_written: 'audit',
+  inbox_write_failed: 'audit',
+  inbox_failed: 'audit',
+  inbox_watcher_failed: 'audit',
+  inbox_watcher_callback_failed: 'audit',
+  inbox_list_failed: 'audit',
+  inbox_move_failed: 'audit',
+  inbox_meta_failed: 'audit',
+  inbox_peek_race_skip: 'audit',
+  inbox_priority_unknown: 'audit',
+  inbox_legacy_claw_id_field: 'audit',
+  inbox_deduped: 'audit',
+  inbox_mark_done_failed: 'audit',
+  inbox_reconcile: 'audit',
+  inbox_nack: 'audit',
+  outbox_sent: 'audit',
+  outbox_delivered: 'audit',
+  outbox_send_failed: 'audit',
+  notify_claw_sent: 'audit',
+  notify_claw_failed: 'audit',
+  messaging_retention_cleanup_delete_failed: 'audit',
+  outbox_processing_orphan_cleaned: 'audit',
+  outbox_list_failed: 'audit',
+  messaging_outbox_peek_failed: 'audit',
+  messaging_unknown_destination_dlq: 'audit',
+} as const;

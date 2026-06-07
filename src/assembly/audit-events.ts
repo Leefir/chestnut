@@ -17,3 +17,22 @@ export const ASSEMBLY_AUDIT_EVENTS = {
   DISASSEMBLE_STEP_FAILED: 'disassemble_step_failed',
   FALLBACK_RECONCILE_FAILED: 'assembly_fallback_reconcile_failed',
 } as const;
+
+
+/**
+ * Phase 163 业主声明 file 归属（phase 122 §5.A + §6.7 + phase 159 模式）.
+ *
+ * 全 'audit'：业务事件归业务事件主 file（信噪比已通过 cron tick 分流改善）.
+ */
+export const ASSEMBLY_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
+  assemble_failed: 'audit',
+  assemble_lock_conflict: 'audit',
+  daemon_started: 'audit',
+  daemon_start: 'audit',
+  daemon_stop: 'audit',
+  daemon_unclean_exit: 'audit',
+  daemon_crash: 'audit',
+  cleanup_temp_files_failed: 'audit',
+  disassemble_step_failed: 'audit',
+  assembly_fallback_reconcile_failed: 'audit',
+} as const;
