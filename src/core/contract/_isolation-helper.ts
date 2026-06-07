@@ -22,7 +22,7 @@ import { CONTRACT_AUDIT_EVENTS } from './audit-events.js';
 const CORRUPTED_SUBDIR = 'corrupted';
 /** Sub-directory name for isolated corrupt artifacts */
 
-export interface IsolationArgs {
+interface IsolationArgs {
   contractId: ContractId;
   contractDir: string;
   filename: string;        // e.g. 'contract.yaml' | 'progress.json' | 'progress.lock'
