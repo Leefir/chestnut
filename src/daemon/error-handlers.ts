@@ -25,7 +25,7 @@ import { LLMAllProvidersFailedError } from '../foundation/llm-orchestrator/index
 /**
  * Daemon loop catch 块状态、handler 可读写以驱动 retry 状态机
  */
-export interface LoopErrorContext {
+interface LoopErrorContext {
   audit: AuditLog;
   loopFs: FileSystem;
   inboxPendingDir: string;
@@ -45,7 +45,7 @@ export interface LoopErrorContext {
  *
  * 注册表按 match 顺序匹配、首个 match=true 即 handle 后返回
  */
-export interface ErrorHandler {
+interface ErrorHandler {
   name: string;
   match: (err: unknown, ctx: LoopErrorContext) => boolean;
   handle: (err: unknown, ctx: LoopErrorContext) => Promise<void>;
@@ -127,7 +127,7 @@ const fallbackHandler: ErrorHandler = {
   },
 };
 
-export const ERROR_HANDLERS: ReadonlyArray<ErrorHandler> = [
+const ERROR_HANDLERS: ReadonlyArray<ErrorHandler> = [
   idleTimeoutHandler,
   userInterruptHandler,
   priorityInboxHandler,
