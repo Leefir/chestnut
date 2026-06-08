@@ -71,7 +71,6 @@ export async function executeStep(input: StepInput): Promise<StepResult> {
 
   if (estimateInputTokens({ messages, systemPrompt, tools }).total > budget.available) {
     messages = handleContextExceeded(messages, systemPrompt, budget.available);
-    callbacks?.onSafeCallbackError?.('context_trim', new Error(`Context trimmed to ${budget.available} tokens`));
   }
 
   const llmStartTime = Date.now();

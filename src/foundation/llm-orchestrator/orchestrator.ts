@@ -15,9 +15,9 @@ import {
   classifyLLMError,
   getUserActionHint,
 } from './errors.js';
-import {
-  ContextTrimExhaustedError,
-} from '../../core/l4_context_manager/index.js';
+// Phase 186: ContextTrimExhaustedError from L4 ContextManager — we avoid direct L2→L4 import
+// per architecture layer rules, and duck-type via error.name instead of instanceof.
+const CONTEXT_TRIM_EXHAUSTED_ERROR_NAME = 'ContextTrimExhaustedError';
 
 import type {
   LLMOrchestratorConfig,
@@ -171,7 +171,7 @@ export class LLMOrchestratorImpl implements LLMOrchestrator {
           if (lastError.name === 'AbortError' && !hardSignal?.aborted) throw lastError;
 
           // ContextManager trim exhausted → failover to next provider
-          if (lastError instanceof ContextTrimExhaustedError) {
+          if (lastError?.name === CONTEXT_TRIM_EXHAUSTED_ERROR_NAME) {
             this.events.emit({ type: 'context_exceeded_failover', provider: this.primary.name, stopReason: 'context_trim_exhausted' });
             break;
           }
@@ -283,7 +283,7 @@ export class LLMOrchestratorImpl implements LLMOrchestrator {
           if (fbLastError.name === 'AbortError' && !hardSignal?.aborted) throw fbLastError;
 
           // ContextManager trim exhausted → failover to next provider
-          if (fbLastError instanceof ContextTrimExhaustedError) {
+          if (fbLastError?.name === CONTEXT_TRIM_EXHAUSTED_ERROR_NAME) {
             this.events.emit({ type: 'context_exceeded_failover', provider: fb.name, stopReason: 'context_trim_exhausted' });
             break;
           }
