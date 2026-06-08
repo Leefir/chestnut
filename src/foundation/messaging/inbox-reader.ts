@@ -50,6 +50,19 @@ function classifyErrno(err: unknown): 'ENOSPC' | 'EACCES' | 'EIO' | 'EMFILE' | '
   return 'OTHER';
 }
 
+// phase 196: inbox 状态机状态空间单源、扫描语义决策编入 switch。
+// 未来加新态（如 'archived'）必触 INBOX_LOCATIONS 扩 + 编译期 assertNever
+// catch missing case、自动暴露所有 helper（如本 findByExtraMeta）需做语义决策的点。
+const INBOX_LOCATIONS = ['pending', 'inflight', 'done', 'failed'] as const;
+export type InboxLocation = typeof INBOX_LOCATIONS[number];
+
+/** Locations that findByExtraMeta returns on hit (failed/ scanning is by-design declined). */
+export type ScannedInboxLocation = Exclude<InboxLocation, 'failed'>;
+
+function assertNever(x: never): never {
+  throw new Error(`Unexpected inbox location: ${String(x)}`);
+}
+
 export interface InboxEntry {
   message: InboxMessage;
   filePath: string;
@@ -377,27 +390,61 @@ export class InboxReader {
    * Performance: parses every candidate file's meta (no index). For high-frequency
    * queries, caller should cache result or this method should grow a hash index sidecar.
    *
-   * @param key extraMeta key (e.g., 'summary-hash')
-   * @param value extraMeta value to match (string)
-   * @param opts.includeDoneWithinMs done file mtime window (ms); 0 / undefined → pending only
-   * @returns null if no hit, else { file: <basename>, location: 'pending' | 'done' }
+   * 扫描 inbox 状态机正向 3 态（pending → inflight → done within window）。
+   * `failed/` 不扫为显式语义决策：失败的 inbox 处理应让 caller（如 outbox-summary
+   * cron dedup）re-emit、不该 dedup 屏蔽。该决策编入下方 switch `case 'failed'`
+   * 语言层面、未来作者无需重新推导。
+   *
+   * 状态空间扩态时（如未来加 'archived'）：
+   *   1. INBOX_LOCATIONS 加 literal → InboxLocation type 自动扩
+   *   2. 本函数 switch 必报 TS error（assertNever default 不再 unreachable）
+   *   3. 作者被强制处理新态的扫描/不扫语义决策
+   *
+   * @returns null if no hit, else { file: <basename>, location: ScannedInboxLocation }
    */
   async findByExtraMeta(
     key: string,
     value: string,
     opts: { includeDoneWithinMs?: number } = {},
-  ): Promise<{ file: string; location: 'pending' | 'done' } | null> {
-    const pendingHit = await this._scanByExtraMeta(this.pendingDir, key, value, undefined);
-    if (pendingHit) return { file: pendingHit, location: 'pending' };
-
-    const windowMs = opts.includeDoneWithinMs ?? 0;
-    if (windowMs > 0) {
-      const cutoff = Date.now() - windowMs;
-      const doneHit = await this._scanByExtraMeta(this.doneDir, key, value, cutoff);
-      if (doneHit) return { file: doneHit, location: 'done' };
+  ): Promise<{ file: string; location: ScannedInboxLocation } | null> {
+    for (const location of INBOX_LOCATIONS) {
+      const hit = await this._tryScanLocation(location, key, value, opts);
+      if (hit) return hit;
     }
-
     return null;
+  }
+
+  private async _tryScanLocation(
+    location: InboxLocation,
+    key: string,
+    value: string,
+    opts: { includeDoneWithinMs?: number },
+  ): Promise<{ file: string; location: ScannedInboxLocation } | null> {
+    switch (location) {
+      case 'pending': {
+        const file = await this._scanByExtraMeta(this.pendingDir, key, value, undefined);
+        return file ? { file, location: 'pending' } : null;
+      }
+      case 'inflight': {
+        // phase 196: 扫 inflight 修 outbox-summary cron tick 在 motion drain→ack 窗口
+        // 的 dedup miss、无 mtime 窗口（inflight 本应短暂态、文件不该长期驻留）。
+        const file = await this._scanByExtraMeta(this.inflightDir, key, value, undefined);
+        return file ? { file, location: 'inflight' } : null;
+      }
+      case 'done': {
+        const windowMs = opts.includeDoneWithinMs ?? 0;
+        if (windowMs <= 0) return null;
+        const cutoff = Date.now() - windowMs;
+        const file = await this._scanByExtraMeta(this.doneDir, key, value, cutoff);
+        return file ? { file, location: 'done' } : null;
+      }
+      case 'failed':
+        // 显式语义决策：failed/ 不扫、让 caller re-emit。本 case 不可改为扫描、
+        // 否则 dedup 会屏蔽失败的通知、违反「失败需重新通知」契约。
+        return null;
+      default:
+        return assertNever(location);
+    }
   }
 
   private async _scanByExtraMeta(

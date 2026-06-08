@@ -58,6 +58,29 @@ describe('InboxReader.findByExtraMeta', () => {
     expect(hit?.location).toBe('pending');
   });
 
+  it('hits inflight when extraMeta matches and file drained but not acked', async () => {
+    await writer.write({
+      id: 'inf', type: 'test', from: 'sys', to: 'motion',
+      content: 'x', priority: 'normal', timestamp: new Date().toISOString(),
+    }, { hash: 'inflight123' });
+    // drainAndDeliver moves pending → inflight, ack/nack not called
+    await reader.drainAndDeliver();
+    const hit = await reader.findByExtraMeta('hash', 'inflight123');
+    expect(hit).not.toBeNull();
+    expect(hit?.location).toBe('inflight');
+  });
+
+  it('does NOT match failed/ (caller should re-emit on failures)', async () => {
+    await writer.write({
+      id: 'fail', type: 'test', from: 'sys', to: 'motion',
+      content: 'x', priority: 'normal', timestamp: new Date().toISOString(),
+    }, { hash: 'failed-hash' });
+    const drained = await reader.drainAndDeliver();
+    await reader.markFailed(drained.handles[0].filePath);
+    const hit = await reader.findByExtraMeta('hash', 'failed-hash', { includeDoneWithinMs: 86400000 });
+    expect(hit).toBeNull();  // explicit decline: failed/ not scanned
+  });
+
   it('hits done within window', async () => {
     await writer.write({
       id: 'm2', type: 'test', from: 'sys', to: 'motion',
