@@ -32,6 +32,9 @@ const PROVIDER_ATTEMPT_FAILED_ERR_DISPLAY_CHARS = 60;
 /** provider_failed 事件 display 时 errorMsg 截断 cap。 */
 const FALLBACK_FAILURE_ERR_DISPLAY_CHARS = 80;
 
+/** turn_error 事件 display 时 errorMsg 截断 cap。turn 终态错误、单 turn 最多 1 条、采用与系统 SUMMARY_MAX_CHARS 一致的较大 cap、保全诊断信息。 */
+const TURN_ERROR_ERR_DISPLAY_CHARS = 500;
+
 export interface TaskWatch {
   callerType: CallerType;
   silent: boolean;
@@ -178,10 +181,15 @@ export function createEventHandler(deps: EventHandlerDeps) {
         break;
       }
 
-      case 'turn_error':
+      case 'turn_error': {
         deps.turnTracker.abort();
-        deps.appendOutput('\x1b[31m', `✗ Error: ${event.error as string}`);
+        const errorMsg = event.error as string;
+        const shortErr = typeof errorMsg === 'string'
+          ? shortenErrorMsg(errorMsg, TURN_ERROR_ERR_DISPLAY_CHARS)
+          : errorMsg;
+        deps.appendOutput('\x1b[31m', `✗ Error: ${shortErr}`);
         break;
+      }
 
       case 'provider_info': {
         const providerName = event.name as string;
