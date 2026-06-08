@@ -18,6 +18,10 @@ import stringWidth from 'string-width';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { VIEWPORT_AUDIT_EVENTS } from './viewport-audit-events.js';
 
+function assertNever(x: never): never {
+  throw new Error(`Unexpected turn UI phase: ${String(x)}`);
+}
+
 export type TurnUIPhase =
   | 'idle'
   | 'waiting_llm'
@@ -185,6 +189,8 @@ export function createMainTurnUI(deps: MainTurnUIDeps): MainTurnUIController {
       case 'interrupting':
         startSpinner(label ?? 'Interrupting...');
         break;
+      default:
+        assertNever(next);
     }
     deps.updateDisplay();
   };

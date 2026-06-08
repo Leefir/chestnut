@@ -23,6 +23,10 @@ import { formatErr } from '../utils/index.js';
 import { DialogStore } from './store.js';
 import { DIALOG_DIR } from './dirs.js';
 
+function assertNever(x: never): never {
+  throw new Error(`Unexpected regime strategy: ${String(x)}`);
+}
+
 /** Regime switch 继承策略：identity 变化时 inherited messages 算法。*/
 export type RegimeStrategy = 'all' | 'last-turn' | 'none';
 
@@ -138,9 +142,7 @@ export async function performRegimeSwitch(
     case 'last-turn': inherited = extractLastTurn(oldMessages); break;
     case 'all': inherited = oldMessages; break;
     default:
-      audit.write(auditEvents.REGIME_SWITCH_FAILED,
-        'context=unknown_strategy', `strategy=${strategy}`);
-      inherited = oldMessages;
+      return assertNever(strategy);
   }
 
   // 4. tool_use 悬空 repair（per L5.G4）
