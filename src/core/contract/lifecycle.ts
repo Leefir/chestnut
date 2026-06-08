@@ -5,7 +5,7 @@
 
 import type { ContractId } from './types.js';
 import type { Contract } from '../contract/types.js';
-import type { ProgressData } from './types.js';
+import type { ProgressData, ContractStatus } from './types.js';
 import { PROGRESS_CURRENT_SCHEMA_VERSION } from './persistence.js';
 import { lockContract, releaseLock, type LockContext } from './lock.js';
 import { ToolError } from '../../foundation/errors.js';
@@ -17,6 +17,7 @@ import {
   emitContractCancelled,
   emitContractCrashed,
   emitContractNotifyFailed,
+  emitContractArchivePreconditionViolated,
 } from './audit-emit.js';
 
 import { type ArchiveDir } from './types.js';
@@ -273,6 +274,13 @@ export async function isContractComplete(
   return ctx.checkAllSubtasksCompleted(contractId, progress);
 }
 
+const ARCHIVE_ALLOWED_STATUSES = new Set<ContractStatus>([
+  'completed',
+  'cancelled',
+  'crashed',
+  'archive_pending_recovery',
+]);
+
 export async function moveContractToArchive(
   ctx: LifecycleContext,
   contractId: ContractId,
@@ -282,6 +290,24 @@ export async function moveContractToArchive(
     await releaseSource();
     return;
   }
+
+  // NEW phase 188 Step A: archive precondition / status 必须终态
+  const progress = await ctx.getProgress(contractId);
+  if (!progress) {
+    await releaseSource();
+    throw new ToolError(`Contract "${contractId}" progress unavailable: cannot archive`);
+  }
+  if (!ARCHIVE_ALLOWED_STATUSES.has(progress.status)) {
+    emitContractArchivePreconditionViolated(
+      ctx.audit,
+      { contractId, status: progress.status, context: 'moveContractToArchive' },
+    );
+    await releaseSource();
+    throw new ToolError(
+      `Contract "${contractId}" cannot be archived: status=${progress.status} (expected terminal)`,
+    );
+  }
+
   const dst = `${ctx.archiveDir}/${contractId}`;
   await ctx.fs.ensureDir(ctx.archiveDir);
 

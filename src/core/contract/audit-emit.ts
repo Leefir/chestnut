@@ -783,5 +783,99 @@ export function emitContractFileIsolated(
   );
 }
 
+// ─── ARCHIVE_PRECONDITION_VIOLATED ──────────────────────────────────────────
+export function emitContractArchivePreconditionViolated(
+  audit: AuditLog,
+  opts: {
+    contractId: ContractId;
+    status: string;
+    context?: string;
+  },
+): void {
+  if (!assertContractIdNonEmpty(audit, opts.contractId, 'emitContractArchivePreconditionViolated')) return;
+  const cols: string[] = [`contractId=${opts.contractId}`, `status=${opts.status}`];
+  if (opts.context !== undefined) cols.push(`context=${opts.context}`);
+  audit.write(CONTRACT_AUDIT_EVENTS.CONTRACT_ARCHIVE_PRECONDITION_VIOLATED, ...cols);
+}
+
+// ─── ARCHIVE_NONTERMINAL_DETECTED ───────────────────────────────────────────
+export function emitContractArchiveNonTerminalDetected(
+  audit: AuditLog,
+  opts: {
+    clawId: string;
+    contractId: string;
+    status: string;
+    context?: string;
+  },
+): void {
+  if (!assertContractIdNonEmpty(audit, opts.contractId, 'emitContractArchiveNonTerminalDetected')) return;
+  const cols: string[] = [
+    `clawId=${opts.clawId}`,
+    `contractId=${opts.contractId}`,
+    `status=${opts.status}`,
+  ];
+  if (opts.context !== undefined) cols.push(`context=${opts.context}`);
+  audit.write(CONTRACT_AUDIT_EVENTS.CONTRACT_ARCHIVE_NONTERMINAL_DETECTED, ...cols);
+}
+
+// ─── ARCHIVE_RECONCILE_STALE ────────────────────────────────────────────────
+export function emitContractArchiveReconcileStale(
+  audit: AuditLog,
+  opts: {
+    clawId: string;
+    contractId: string;
+    oldStatus: string;
+    newStatus: string;
+  },
+): void {
+  if (!assertContractIdNonEmpty(audit, opts.contractId, 'emitContractArchiveReconcileStale')) return;
+  audit.write(
+    CONTRACT_AUDIT_EVENTS.CONTRACT_ARCHIVE_RECONCILE_STALE,
+    `clawId=${opts.clawId}`,
+    `contractId=${opts.contractId}`,
+    `oldStatus=${opts.oldStatus}`,
+    `newStatus=${opts.newStatus}`,
+  );
+}
+
+// ─── ARCHIVE_RECONCILE_FAILED ─────────────────────────────────────────────────
+export function emitContractArchiveReconcileFailed(
+  audit: AuditLog,
+  opts: {
+    clawId: string;
+    contractId: string;
+    context: string;
+    error: string;
+  },
+): void {
+  if (!assertContractIdNonEmpty(audit, opts.contractId, 'emitContractArchiveReconcileFailed')) return;
+  audit.write(
+    CONTRACT_AUDIT_EVENTS.CONTRACT_ARCHIVE_RECONCILE_FAILED,
+    `clawId=${opts.clawId}`,
+    `contractId=${opts.contractId}`,
+    `context=${opts.context}`,
+    `error=${opts.error}`,
+  );
+}
+
+// ─── ARCHIVE_RECONCILE_SUMMARY ────────────────────────────────────────────────
+export function emitContractArchiveReconcileSummary(
+  audit: AuditLog,
+  opts: {
+    clawId: string;
+    scanned: number;
+    swept: number;
+    failed: number;
+  },
+): void {
+  audit.write(
+    CONTRACT_AUDIT_EVENTS.CONTRACT_ARCHIVE_RECONCILE_SUMMARY,
+    `clawId=${opts.clawId}`,
+    `scanned=${opts.scanned}`,
+    `swept=${opts.swept}`,
+    `failed=${opts.failed}`,
+  );
+}
+
 // ─── Legacy helper: format error ──────────────────────────────────────────────
 export { formatErr };
