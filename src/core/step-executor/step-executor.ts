@@ -69,7 +69,7 @@ export async function executeStep(input: StepInput): Promise<StepResult> {
     toolsForLLMTokens: estimateTextTokens(JSON.stringify(tools ?? [])),
   });
 
-  if (estimateInputTokens({ messages, systemPrompt, tools }).total > budget.available) {
+  if (budget.available > 0 && estimateInputTokens({ messages, systemPrompt, tools }).total > budget.available) {
     messages = handleContextExceeded(messages, systemPrompt, budget.available);
   }
 
