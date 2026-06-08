@@ -11,7 +11,7 @@
  * composer 单分支：
  *   (1) source_claw == MOTION_CLAW_ID → null (motion 自家、session 已含完整上下文 / DP「不冗余打扰」)
  *   (2) problem_pairs 空 → null (worker clean、body 内 evidence 路径已足 / DP「事件驱动恰好交付」)
- *   (3) 否则枚举 problem_pairs 每 pair 输出 `chestnut claw <实claw> trace <实contract>` + 推荐 shadow
+ *   (3) 否则枚举 problem_pairs 每 pair 输出 `chestnut claw <实claw> trace --contract <实contract>` + 推荐 shadow
  *
  * 应然 anchor (详 design/modules/l6_assembly.md A.phase1487-contract-events-composer-real):
  *   - DP「motion 是决策主体」: 去 [force-accepted] 字面 (event-collector.ts cleanup)
@@ -50,7 +50,7 @@ export const composer: GuidanceComposer<ContractEventsState> = (state): Guidance
     if (sepIdx <= 0 || sepIdx >= pair.length - 1) continue;  // malformed pair
     const claw = pair.slice(0, sepIdx);
     const contract = pair.slice(sepIdx + 1);
-    traceLines.push(`${clawCmd(claw, CLAW_VERBS.TRACE)} ${contract}`);
+    traceLines.push(`${clawCmd(claw, CLAW_VERBS.TRACE)} --contract ${contract}`);
   }
   if (traceLines.length === 0) {
     return null;
