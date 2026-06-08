@@ -49,7 +49,7 @@ interface ExecuteSubAgentTaskDeps {
   toolTimeoutMs?: number;
   permissionChecker?: PermissionChecker;
   // NEW phase 1369: AskMotionTool factory inject (per phase 619 caller DIP enforce template / cut async-task→summon reverse)
-  askMotionToolFactory: (llm: LLMOrchestrator, motionDialogStore: DialogStore) => Tool;
+  askMotionToolFactory: (llm: LLMOrchestrator, motionDialogStore: DialogStore, auditWriter?: AuditLog) => Tool;
   runSubagent?: typeof defaultRunSubagent;
 }
 
@@ -132,7 +132,7 @@ export async function executeSubAgentTask(
           new NoopAuditWriter(),  // ask_motion 不 own motion audit
           'current.json',
         );
-        const askMotion = deps.askMotionToolFactory(llm, motionDialogStore);
+        const askMotion = deps.askMotionToolFactory(llm, motionDialogStore, auditWriter);
         r.register(askMotion);
       }
 
