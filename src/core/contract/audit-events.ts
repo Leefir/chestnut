@@ -105,6 +105,8 @@ export const CONTRACT_AUDIT_EVENTS = {
   CONTRACT_ARCHIVE_RECONCILE_STALE: 'contract_archive_reconcile_stale',
   CONTRACT_ARCHIVE_RECONCILE_FAILED: 'contract_archive_reconcile_failed',
   CONTRACT_ARCHIVE_RECONCILE_SUMMARY: 'contract_archive_reconcile_summary',
+  // phase 197: archive_pending_recovery observer 扫到时归 audit、不投 motion inbox
+  CONTRACT_ARCHIVE_RECOVERY_PENDING_OBSERVED: 'contract_archive_recovery_pending_observed',
 } as const;
 
 /**
@@ -205,4 +207,5 @@ export const CONTRACT_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
   contract_archive_reconcile_stale: 'audit',
   contract_archive_reconcile_failed: 'audit',
   contract_archive_reconcile_summary: 'audit',
+  contract_archive_recovery_pending_observed: 'audit',
 } as const;

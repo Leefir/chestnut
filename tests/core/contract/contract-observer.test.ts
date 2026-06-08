@@ -4,7 +4,7 @@ import { runContractObserver } from '../../../src/core/contract/jobs/contract-ob
 import type { FileSystem } from '../../../src/foundation/fs/types.js';
 import type { AuditLog } from '../../../src/foundation/audit/index.js';
 
-function makeFsMock(scenario: 'empty' | 'completed' | 'mixed'): FileSystem {
+function makeFsMock(scenario: 'empty' | 'completed' | 'mixed' | 'recovery'): FileSystem {
   const now = Date.now();
   const oldTs = now - 86400000;
   const files = new Map<string, string>();
@@ -47,6 +47,14 @@ function makeFsMock(scenario: 'empty' | 'completed' | 'mixed'): FileSystem {
     }));
   }
 
+  if (scenario === 'recovery') {
+    files.set('/tmp/test/claws/claw1/contract/archive/c-recovery/progress.json', JSON.stringify({
+      contract_id: 'c-recovery',
+      status: 'archive_pending_recovery',
+      subtasks: {},
+    }));
+  }
+
   const dirs = new Map<string, { name: string; isDirectory: boolean; size: number }[]>();
   if (scenario === 'completed') {
     dirs.set('/tmp/test/claws', [{ name: 'claw1', isDirectory: true, size: 0 }]);
@@ -61,6 +69,13 @@ function makeFsMock(scenario: 'empty' | 'completed' | 'mixed'): FileSystem {
       { name: 'c1', isDirectory: true, size: 0 },
       { name: 'c2', isDirectory: true, size: 0 },
       { name: 'c3', isDirectory: true, size: 0 },
+    ]);
+  } else if (scenario === 'recovery') {
+    dirs.set('/tmp/test/claws', [{ name: 'claw1', isDirectory: true, size: 0 }]);
+    dirs.set('/tmp/test/claws/claw1', [{ name: 'contract', isDirectory: true, size: 0 }]);
+    dirs.set('/tmp/test/claws/claw1/contract', [{ name: 'archive', isDirectory: true, size: 0 }]);
+    dirs.set('/tmp/test/claws/claw1/contract/archive', [
+      { name: 'c-recovery', isDirectory: true, size: 0 },
     ]);
   } else {
     dirs.set('/tmp/test/claws', [{ name: 'claw1', isDirectory: true, size: 0 }]);
@@ -140,6 +155,22 @@ describe('Phase 542 — contract-observer deps 装配方注入', () => {
           crashes: expect.stringContaining('c3'),
         }),
       }),
+    );
+  });
+
+  it('phase 197: archive_pending_recovery 不投 motion、emit audit', async () => {
+    const opts = makeOpts({ fs: makeFsMock('recovery') });
+    await runContractObserver(opts);
+
+    // 不投 motion inbox
+    expect(opts.notifyMotion).not.toHaveBeenCalled();
+
+    // emit audit
+    expect(opts.motionAudit.write).toHaveBeenCalledWith(
+      'contract_archive_recovery_pending_observed',
+      'clawId=claw1',
+      'contractId=c-recovery',
+      'context=observer_scan',
     );
   });
 });

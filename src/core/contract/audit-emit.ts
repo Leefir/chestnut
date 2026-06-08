@@ -877,5 +877,19 @@ export function emitContractArchiveReconcileSummary(
   );
 }
 
+// ─── ARCHIVE_RECOVERY_PENDING_OBSERVED ────────────────────────────────────────
+// phase 197: archive_pending_recovery 系统内部状态、motion 无 actionable、归 audit 不投 inbox
+export function emitContractArchiveRecoveryPendingObserved(
+  audit: AuditLog,
+  args: { clawId: string; contractId: string; context: string },
+): void {
+  audit.write(
+    CONTRACT_AUDIT_EVENTS.CONTRACT_ARCHIVE_RECOVERY_PENDING_OBSERVED,
+    `clawId=${args.clawId}`,
+    `contractId=${args.contractId}`,
+    `context=${args.context}`,
+  );
+}
+
 // ─── Legacy helper: format error ──────────────────────────────────────────────
 export { formatErr };

@@ -138,6 +138,7 @@
       "contract_archive_reconcile_failed",
       "contract_archive_reconcile_stale",
       "contract_archive_reconcile_summary",
+      "contract_archive_recovery_pending_observed",
       "contract_archive_recovered",
       "contract_archive_started",
       "contract_audit_drift_detected",

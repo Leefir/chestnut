@@ -5,6 +5,7 @@ import type { AuditLog } from '../../../foundation/audit/index.js';
 import type { InboxMessageOptionsBase } from '../../../foundation/messaging/index.js';
 import { scanArchivedContracts } from './event-collector.js';
 import { CONTRACT_AUDIT_EVENTS } from '../audit-events.js';
+import { emitContractArchiveRecoveryPendingObserved } from '../audit-emit.js';
 
 function assertNever(x: never): never {
   throw new Error(`Unhandled variant: ${JSON.stringify(x)}`);
@@ -142,7 +143,7 @@ export async function runContractObserver(options: ContractObserverOptions): Pro
   const completedEvents: string[] = [];
   const cancelledEvents: string[] = [];
   const crashedEvents: string[] = [];
-  const recoveryEvents: string[] = [];
+  // recoveryEvents 数组删除（phase 197: 不再投 motion、改 emit audit）
   const allProblemPairs: string[] = [];
   const newlyDiscovered: string[] = [];
   const cancellations: Array<{ source_claw: string; contract_id: string; reason: string }> = [];
@@ -181,7 +182,12 @@ export async function runContractObserver(options: ContractObserverOptions): Pro
               });
               break;
             case 'archive_pending_recovery':
-              recoveryEvents.push(entry.body);
+              // phase 197: 系统内部状态、motion 无 actionable、归 audit 不投 inbox
+              emitContractArchiveRecoveryPendingObserved(motionAudit, {
+                clawId,
+                contractId: entry.contractId,
+                context: 'observer_scan',
+              });
               break;
             case 'pending':
             case 'running':
@@ -237,15 +243,6 @@ export async function runContractObserver(options: ContractObserverOptions): Pro
       extraFields: {
         crashes: JSON.stringify(crashes),
       },
-    });
-  }
-
-  if (recoveryEvents.length > 0) {
-    notifyMotion({
-      type: 'contract_events',  // recovery 复用 contract_events、不立第 4 个 type
-      source: 'system',
-      priority: 'high',
-      body: recoveryEvents.join('\n\n'),
     });
   }
 
