@@ -188,7 +188,7 @@ describe('createClawPermissionChecker', () => {
       expect(clawErr.context?.clawDir).toBe(CLAW_DIR);
     });
 
-    it('WriteOperationForbiddenError 携带 toolName 和 profile 信息', () => {
+    it('WriteOperationForbiddenError 携带 targetPath 和 reason 信息', () => {
       const checker = createClawPermissionChecker({ clawDir: CLAW_DIR });
       let err: unknown;
       try {
@@ -198,8 +198,25 @@ describe('createClawPermissionChecker', () => {
       }
       expect(err).toBeInstanceOf(WriteOperationForbiddenError);
       const writeErr = err as WriteOperationForbiddenError;
-      expect(writeErr.context?.toolName).toBe('write');
-      expect(writeErr.context?.profile).toBe('system');
+      expect(writeErr.context?.targetPath).toBe(`${CLAW_DIR}/AGENTS.md`);
+      expect(writeErr.context?.reason).toBe('system_readonly');
+      expect(writeErr.message).toContain('cannot be written');
+      expect(writeErr.message).toContain('system path');
+    });
+
+    it('WriteOperationForbiddenError outside_allowlist 携带正确 reason', () => {
+      const checker = createClawPermissionChecker({ clawDir: CLAW_DIR });
+      let err: unknown;
+      try {
+        checker.checkWrite(`${CLAW_DIR}/docker-compose.yml`);
+      } catch (e) {
+        err = e;
+      }
+      expect(err).toBeInstanceOf(WriteOperationForbiddenError);
+      const writeErr = err as WriteOperationForbiddenError;
+      expect(writeErr.context?.targetPath).toBe(`${CLAW_DIR}/docker-compose.yml`);
+      expect(writeErr.context?.reason).toBe('outside_allowlist');
+      expect(writeErr.message).toContain('writable allowlist');
     });
   });
 });

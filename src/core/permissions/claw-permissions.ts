@@ -193,7 +193,7 @@ function checkReadPermission(
 /**
  * Check write permission for a path
  * @throws PathNotInClawSpaceError if path is outside claw space
- * @throws WriteOperationForbiddenError if path is in read-only area
+ * @throws WriteOperationForbiddenError if path is system read-only or outside writable allowlist
  */
 function checkWritePermission(
   targetPath: string,
@@ -225,7 +225,7 @@ function checkWritePermission(
 
     // Check system paths (read-only)
     if (isSystemPath) {
-      throw new WriteOperationForbiddenError('write', 'system');
+      throw new WriteOperationForbiddenError(targetPath, 'system_readonly');
     }
 
     // Check writable paths
@@ -235,7 +235,7 @@ function checkWritePermission(
 
     // fallthrough: deny by default (explicit allow list)
     if (!isSystemPath && !isWritablePath) {
-      throw new WriteOperationForbiddenError('write', 'default');
+      throw new WriteOperationForbiddenError(targetPath, 'outside_allowlist');
     }
 
     return;
