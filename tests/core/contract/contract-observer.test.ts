@@ -133,7 +133,13 @@ describe('Phase 542 — contract-observer deps 装配方注入', () => {
       }),
     );
     expect(opts.notifyMotion).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'contract_crashed', body: expect.stringContaining('c3') }),
+      expect.objectContaining({
+        type: 'contract_crashed',
+        body: expect.stringContaining('c3'),
+        extraFields: expect.objectContaining({
+          crashes: expect.stringContaining('c3'),
+        }),
+      }),
     );
   });
 });
