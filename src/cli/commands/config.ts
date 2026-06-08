@@ -13,7 +13,6 @@ import type { LLMProviderConfig } from '../../foundation/llm-orchestrator/llm-pr
 import { PRESETS } from '../../foundation/config/index.js';
 import { createProcessManagerForCLI } from '../../foundation/process-manager/index.js';
 import { CliError } from '../errors.js';
-import { REACT_DEFAULT_MAX_TOKENS } from '../../core/step-executor/index.js';
 import { fitLine } from '../utils/string.js';
 import { DEFAULT_TERMINAL_WIDTH } from '../utils/constants.js';
 import { DEFAULT_LLM_TIMEOUT_MS } from '../../foundation/llm-orchestrator/index.js';
@@ -163,7 +162,7 @@ async function providerAdd(deps: { fsFactory: (baseDir: string) => FileSystem })
       label,
       api_key: apiKey,
       model,
-      max_tokens: REACT_DEFAULT_MAX_TOKENS,
+
       temperature: 0.7,
       timeout_ms: DEFAULT_LLM_TIMEOUT_MS,
     };

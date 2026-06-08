@@ -1,5 +1,5 @@
-// REACT_DEFAULT_MAX_TOKENS moved to step-executor/constants.ts (canonical owner,
-// step-executor is the primary consumer). Import from there.
+// phase 194: REACT_DEFAULT_MAX_TOKENS removed — provider adapter own its API protocol
+// (Anthropic must-set via model cap table fallback; OpenAI/Gemini conditional include).
 /** Maximum consecutive parse errors before aborting */
 export const MAX_CONSECUTIVE_PARSE_ERRORS = 3;
 

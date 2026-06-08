@@ -9,7 +9,6 @@ import { FORMAT_MAP } from '../../foundation/llm-orchestrator/llm-provider-confi
 import { passwordQuestion } from '../utils/password-prompt.js';
 import { CliError } from '../errors.js';
 import { PRESETS } from '../../foundation/config/index.js';
-import { REACT_DEFAULT_MAX_TOKENS } from '../../core/step-executor/index.js';
 import {
   DEFAULT_LLM_TIMEOUT_MS,
   DEFAULT_LLM_RETRY_ATTEMPTS,
@@ -286,7 +285,7 @@ export async function initCommand(deps: { fsFactory: (baseDir: string) => FileSy
           preset: presetId,
           api_key: apiKey,
           model: model,
-          max_tokens: REACT_DEFAULT_MAX_TOKENS,
+
           temperature: 0.7,
           timeout_ms: DEFAULT_LLM_TIMEOUT_MS,
           ...(baseUrl && { base_url: baseUrl }),

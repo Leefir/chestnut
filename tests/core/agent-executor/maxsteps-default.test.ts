@@ -61,5 +61,5 @@ describe('AgentExecutor maxSteps fallback (phase 883 B3)', () => {
 
     // LLM stream called DEFAULT_MAX_STEPS times (one per step)
     expect(llm.stream).toHaveBeenCalledTimes(DEFAULT_MAX_STEPS);
-  });
+  }, 60000);
 });

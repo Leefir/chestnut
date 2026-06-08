@@ -61,10 +61,11 @@ export class GeminiAdapter implements ProviderAdapter {
   }
 
   private buildRequestBody(options: LLMCallOptions): GeminiRequest {
+    const effectiveMaxTokens = options.maxTokens ?? this.config.maxTokens;
     const body: GeminiRequest = {
       contents: formatGeminiMessages(options.messages),
       generationConfig: {
-        maxOutputTokens: options.maxTokens ?? this.config.maxTokens,
+        ...(effectiveMaxTokens !== undefined ? { maxOutputTokens: effectiveMaxTokens } : {}),
         temperature: options.temperature ?? this.config.temperature,
       },
     };

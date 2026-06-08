@@ -36,7 +36,7 @@ import { parseResponse } from './openai-response-parser.js';
 interface OpenAIRequest {
   model: string;
   messages: Array<{ role: string; content: string; tool_calls?: unknown[]; tool_call_id?: string }>;
-  max_tokens: number;
+  max_tokens?: number;
   temperature?: number;
   tools?: Array<{
     type: 'function';
@@ -109,11 +109,12 @@ export class OpenAIAdapter implements ProviderAdapter {
   async call(options: LLMCallOptions): Promise<LLMResponse> {
     const { messages, system, tools, maxTokens, temperature, timeoutMs, signal } = options;
 
+    const effectiveMaxTokens = maxTokens ?? this.config.maxTokens;
     // Build request body
     const body: OpenAIRequest = {
       model: options.model ?? this.config.model,
       messages: formatMessages(messages, system),
-      max_tokens: maxTokens ?? this.config.maxTokens,
+      ...(effectiveMaxTokens !== undefined ? { max_tokens: effectiveMaxTokens } : {}),
     };
 
     if (temperature !== undefined) {
@@ -178,10 +179,11 @@ export class OpenAIAdapter implements ProviderAdapter {
   async* stream(options: LLMCallOptions): AsyncIterableIterator<StreamChunk> {
     const { messages, system, tools, maxTokens, temperature, timeoutMs, signal } = options;
 
+    const effectiveMaxTokens = maxTokens ?? this.config.maxTokens;
     const body: OpenAIRequest & { stream: boolean } = {
       model: options.model ?? this.config.model,
       messages: formatMessages(messages, system),
-      max_tokens: maxTokens ?? this.config.maxTokens,
+      ...(effectiveMaxTokens !== undefined ? { max_tokens: effectiveMaxTokens } : {}),
       stream: true,
     };
 

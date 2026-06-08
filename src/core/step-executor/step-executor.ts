@@ -23,7 +23,6 @@ import type { LLMOrchestrator, LLMCallOptions } from '../../foundation/llm-orche
 import type { StepInput, StepResult, LLMCallInfo } from './types.js';
 
 import type { StepCallbacks } from './types.js';
-import { REACT_DEFAULT_MAX_TOKENS } from './constants.js';
 import { throwAbortError } from './abort-helpers.js';
 import { safeCallback, extractText, appendAssistantMessage } from './utils.js';
 import { collectStreamResponse } from './llm-stream-collector.js';
@@ -51,7 +50,7 @@ const MODEL_CONTEXT_WINDOWS: Record<string, number> = {
 
 export async function executeStep(input: StepInput): Promise<StepResult> {
   let { messages, systemPrompt, llm, tools, ctx, callbacks } = input;
-  const maxTokens = input.maxTokens ?? REACT_DEFAULT_MAX_TOKENS;
+  const maxTokens = input.maxTokens;
 
   if (ctx.signal?.aborted) throwAbortError(ctx.signal);
   safeCallback('onBeforeLLMCall', () => callbacks?.onBeforeLLMCall?.(), callbacks);
@@ -64,7 +63,7 @@ export async function executeStep(input: StepInput): Promise<StepResult> {
 
   const budget = computeBudget({
     providerContextWindow,
-    reserveOutputTokens: maxTokens,
+    reserveOutputTokens: maxTokens ?? 0,
     systemPromptTokens: estimateTextTokens(systemPrompt),
     toolsForLLMTokens: estimateTextTokens(JSON.stringify(tools ?? [])),
   });

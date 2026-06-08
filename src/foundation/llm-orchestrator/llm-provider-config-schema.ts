@@ -8,15 +8,11 @@ import {
   DEFAULT_LLM_TIMEOUT_MS,
 } from './defaults.js';
 
-// phase 10: LLM provider 自 own max_tokens default（ML#2 业务语义自负 / ML#5 消反向 import）
-// 历史同源 step-executor REACT_DEFAULT_MAX_TOKENS、拆后各模块自管。
 export const FORMAT_MAP: Record<string, string> = {
   '1': 'custom-anthropic',
   '2': 'custom-openai',
   '3': 'custom-gemini',
 };
-
-export const LLM_PROVIDER_DEFAULT_MAX_TOKENS = 100_000_000;
 
 export const llmProviderConfigSchema = z.object({
   preset: z.string().min(1).optional(),
@@ -24,7 +20,7 @@ export const llmProviderConfigSchema = z.object({
   api_key: z.string().min(1, 'api_key must not be empty'),
   base_url: z.string().optional(),
   model: z.string().optional(),
-  max_tokens: z.number().min(1).max(100_000_000).default(LLM_PROVIDER_DEFAULT_MAX_TOKENS),
+  max_tokens: z.number().min(1).optional(),
   temperature: z.number().min(0).max(2).default(0.7),
   timeout_ms: z.number().min(1000).max(600000).default(DEFAULT_LLM_TIMEOUT_MS),
   thinking: z.boolean().optional(),

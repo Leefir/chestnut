@@ -79,7 +79,7 @@ export function handleMaxTokensStop(
   response: LLMResponse,
   input: StepInput,
   llmInfo: LLMCallInfo,
-  maxTokens: number,
+  maxTokens: number | undefined,
 ): StepResult {
   const { messages } = input;
   const toolCalls = extractToolCalls(response.content);
@@ -126,7 +126,9 @@ export function handleMaxTokensStop(
     const truncatedResults: ToolResultBlock[] = newToolCallIds.map(id => ({
       type: 'tool_result' as const,
       tool_use_id: id,
-      content: `[TRUNCATED] 输出超过单次 token 上限（${maxTokens} tokens），工具调用被截断未执行。请将内容拆分为多次较小的调用。`,
+      content: maxTokens !== undefined
+        ? `[TRUNCATED] 输出超过单次 token 上限（${maxTokens} tokens），工具调用被截断未执行。请将内容拆分为多次较小的调用。`
+        : `[TRUNCATED] 输出达到模型 token 上限，工具调用被截断未执行。请将内容拆分为多次较小的调用。`,
       is_error: true,
     }));
     appendToolResults(messages, [...parseErrorPrebuilt, ...truncatedResults]);
@@ -154,7 +156,9 @@ export function handleMaxTokensStop(
     return {
       kind: 'final',
       stopReason: 'max_tokens_text',
-      finalText: `[Response truncated due to length limit at ${maxTokens} tokens; only stale tool_result blocks received, no new content]`,
+      finalText: maxTokens !== undefined
+        ? `[Response truncated due to length limit at ${maxTokens} tokens; only stale tool_result blocks received, no new content]`
+        : `[Response truncated due to model length limit; only stale tool_result blocks received, no new content]`,
     };
   }
 

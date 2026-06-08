@@ -10,6 +10,27 @@ import type { LLMResponse } from './types.js';
 import { assertContentBlocks } from './_block-guards.js';
 import { LLM_PROVIDER_AUDIT_EVENTS } from './audit-events.js';
 
+// phase 194: Anthropic format 路径专用 model→max_tokens 查表 fallback
+// 用户未在 config 显式设 max_tokens 时由 adapter 自决（API 必填、必须给值）
+// 表只在 Anthropic format 路径生效（custom-openai / custom-gemini 走各自 adapter）
+interface AnthropicModelCapEntry {
+  pattern: RegExp;
+  maxTokens: number;
+}
+
+const ANTHROPIC_MODEL_CAP_TABLE: AnthropicModelCapEntry[] = [
+  { pattern: /deepseek-v4/i, maxTokens: 393216 },
+];
+
+const ANTHROPIC_FALLBACK_MAX_TOKENS = 65536;
+
+function resolveAnthropicMaxTokens(model: string): number {
+  for (const entry of ANTHROPIC_MODEL_CAP_TABLE) {
+    if (entry.pattern.test(model)) return entry.maxTokens;
+  }
+  return ANTHROPIC_FALLBACK_MAX_TOKENS;
+}
+
 export interface AnthropicRequestBody {
   model: string;
   messages: Array<{ role: string; content: string | unknown[] }>;
@@ -46,7 +67,9 @@ export abstract class BaseAnthropicAdapter implements ProviderAdapter {
     const body: AnthropicRequestBody = {
       model: options.model ?? this.config.model,
       messages: this.formatMessages(messages),
-      max_tokens: maxTokens ?? this.config.maxTokens,
+      max_tokens: maxTokens
+        ?? this.config.maxTokens
+        ?? resolveAnthropicMaxTokens(options.model ?? this.config.model),
     };
 
     if (system !== undefined) {

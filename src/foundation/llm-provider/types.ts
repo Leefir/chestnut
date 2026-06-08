@@ -104,7 +104,7 @@ export interface ProviderConfig {
   model: string;
 
   /** Maximum tokens to generate */
-  maxTokens: number;
+  maxTokens?: number;
 
   /** Temperature (0-2) */
   temperature: number;
