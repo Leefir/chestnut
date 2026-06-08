@@ -2,9 +2,12 @@
  * InboxReader - Inbox message processor (Messaging L2)
  *
  * Pure message pull and file management. No file-watching.
+ * - init(): ensure 4 dirs（pending/inflight/done/failed）+ reconcile orphaned inflight → pending
  * - drainInbox(): read pending, sort by priority, return entries (legacy, no file move)
  * - drainAndDeliver(): read pending, move to inflight/, return entries + handles
  * - ack/nack: confirm or reject delivery of inflight handles
+ * - peekMetas(filter?): non-consuming peek pending metas with optional priority filter
+ * - findByExtraMeta(key, value, opts?): dedup query — scan pending/inflight/done within window
  * - markDone/markFailed: move files to done/ or failed/ (legacy helpers)
  *
  * File-watching orchestration lives in Runtime (assembly layer).
@@ -374,14 +377,18 @@ export class InboxReader {
   /**
    * Find first inbox message whose extraMeta[key] === value.
    *
-   * Scope:
+   * Scope (forward state-machine order):
    * - pending/ (any age)
+   * - inflight/ (any age — drained but not yet acked, phase 196)
    * - done/ (mtime within opts.includeDoneWithinMs)
+   *
+   * `failed/` is NOT scanned by-design: failed inbox handling should let caller
+   * (e.g. outbox-summary cron dedup) re-emit, not be suppressed by dedup.
    *
    * Returns first hit (no need to enumerate all).
    *
-   * Use case: dedup query — caller wants to check "is there already a delivered/pending
-   * message with this hash within 24h?" before writing a new one.
+   * Use case: dedup query — caller wants to check "is there already a delivered/pending/
+   * inflight message with this hash within 24h?" before writing a new one.
    *
    * Performance: parses every candidate file's meta (no index). For high-frequency
    * queries, caller should cache result or this method should grow a hash index sidecar.

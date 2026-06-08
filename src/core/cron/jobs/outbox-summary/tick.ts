@@ -6,7 +6,7 @@
  * 流程：
  * 1. scan claws/*\/outbox/pending（经 OutboxReader）→ state
  * 2. if total_msgs == 0: emit CLEARED + return
- * 3. dedup query（经 InboxReader.findByExtraMeta）hash 已在 pending/done (mtime<24h) → SKIPPED
+ * 3. dedup query（经 InboxReader.findByExtraMeta）hash 已在 pending/inflight/done (mtime<24h 仅 done) → SKIPPED
  * 4. 不同 hash → 写新 summary（经 InboxWriter）
  *
  * 异常隔离归 cron runner（throw → cron_job_error / 详 l5_cron.md §1）.
