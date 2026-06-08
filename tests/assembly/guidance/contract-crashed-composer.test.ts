@@ -21,7 +21,6 @@ describe('phase 63+191: contract_crashed composer', () => {
     expect(text).toContain('相关基础设施:');
     expect(text).toContain('worker');
     expect(text).toContain('system: maxstepsexceedederror');
-    expect(text).toContain('chestnut contract');
     expect(text).toContain('daemon 仍活着');
     // 0 prescription 严格守
     expect(text).not.toMatch(/建议|推荐|应该|必须|优先|按.*优先级/);

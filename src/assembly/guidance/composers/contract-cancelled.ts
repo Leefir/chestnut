@@ -36,7 +36,6 @@ const SYSTEM_DID = [
 ];
 
 const INFRASTRUCTURE = [
-  `  CLI:        chestnut contract [list|cancel]`,
   `  agent 工具: exec, ask_user, send, summon, notify_claw`,
   `  文件系统:   archive 下的 contract 目录可 read/inspect、含 progress.json + contract.yaml`,
 ];

@@ -5,6 +5,9 @@
  * phase 1476 reframe: `CLI_COMMANDS` (verb-first 字面) → `clawCmd(id, CLAW_VERBS.X)` helper
  * (subject-first 形态) + `CONTRACT_COMMANDS.X` typed const（contract 子命令保 verb-first）.
  *
+ * phase 193 Step A: regex 改抓嵌入式字面（不要求整个 string literal 是 chestnut X Y）
+ * + 加 stripComments 排除注释行误报.
+ *
  * 守 ML#9「不可消除的耦合应显式表达、优先表达为让编译器检查」 — typed const enable
  * 编译期 typo 检测、配 invariant runtime 兜底 surface bypass detection.
  *
@@ -20,20 +23,37 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const composersDir = path.resolve(__dirname, '../../../src/assembly/guidance/composers');
 
+/** 简化注释剥离：块注释保换行、行注释删除（避免误抓 url 内 //） */
+function stripComments(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))
+    .replace(/(^|[^:])\/\/[^\n]*/g, (_m, prefix) => prefix);
+}
+
 describe('phase 1469: guidance composer must reference CLI via CLI_COMMANDS typed const', () => {
-  it('composer files contain no bare `chestnut X Y` string literals', () => {
+  it('composer files contain no bare `chestnut X Y` string literals (embedded or whole)', () => {
     const violations: Array<{ file: string; line: number; literal: string }> = [];
     const files = fs.readdirSync(composersDir).filter(f => f.endsWith('.ts') && f !== 'index.ts');
+
     for (const file of files) {
       const content = fs.readFileSync(path.join(composersDir, file), 'utf-8');
-      // 扫所有 string literal（单引号 / 双引号 / 模板字符串） 含 `chestnut X Y` 模式
-      const re = /['"`](chestnut\s+\w+(?:\s+\w+)*)['"`]/g;
-      for (const m of content.matchAll(re)) {
-        const before = content.slice(0, m.index ?? 0);
-        const line = before.split('\n').length;
-        violations.push({ file, line, literal: m[1] });
+      const lines = stripComments(content).split('\n');
+
+      for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+        const line = lines[lineIdx];
+        // 扫该行所有 string literal（双引号 / 单引号 / 模板）
+        const stringLiteralRe = /(?:`([^`]*)`|'([^']*)'|"([^"]*)")/g;
+        for (const m of line.matchAll(stringLiteralRe)) {
+          const literalContent = m[1] ?? m[2] ?? m[3] ?? '';
+          // 在 literal 内容里找 `chestnut` 前缀模式（不要求紧贴首尾）
+          const chestnutMatch = literalContent.match(/chestnut\s+\w+(?:\s+\S+)*/);
+          if (chestnutMatch) {
+            violations.push({ file, line: lineIdx + 1, literal: chestnutMatch[0] });
+          }
+        }
       }
     }
+
     if (violations.length > 0) {
       const summary = violations
         .map(v => `  - ${v.file}:${v.line}: '${v.literal}'`)

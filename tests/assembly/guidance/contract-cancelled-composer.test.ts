@@ -21,7 +21,6 @@ describe('phase 63+190: contract_cancelled composer', () => {
     expect(text).toContain('相关基础设施:');
     expect(text).toContain('worker');
     expect(text).toContain('user reason');
-    expect(text).toContain('chestnut contract');
     // 0 prescription 严格守
     expect(text).not.toMatch(/建议|推荐|应该|必须|优先|按.*优先级/);
   });
