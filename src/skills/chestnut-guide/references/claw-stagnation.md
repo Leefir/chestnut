@@ -3,11 +3,11 @@
 ## 诊断步骤
 
 ```
-chestnut contract log --claw <claw-id>
+chestnut contract show --claw <claw-id>
 chestnut claw <claw-id> trace --contract <contract-id>
 ```
 
-- `contract log`：看哪些 subtask 仍是 todo
+- `contract show`：看哪些 subtask 仍是 todo
 - `claw <claw-id> trace`：看 claw 最后做了什么，最后一步是工具调用还是纯文字回复
 
 ## 决策规则

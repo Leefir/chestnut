@@ -39,7 +39,7 @@ ${contractYaml}
 ### 第一步：读取执行结果
 
 \`\`\`
-chestnut contract log --claw ${clawId} --contract ${contractId}
+chestnut contract show --claw ${clawId} --contract ${contractId}
 \`\`\`
 
 查看各 subtask 的最终状态、重试次数、失败原因、验收 evidence。

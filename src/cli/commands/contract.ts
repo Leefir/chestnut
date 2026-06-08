@@ -8,7 +8,7 @@ export { contractCreateCommand } from './contract-create.js';
 export { contractCreateFromDirCommand } from './contract-create-from-dir.js';
 export { contractEventsCommand } from './contract-events.js';
 export { contractCancelCommand } from './contract-cancel.js';
-export { contractLogCommand } from './contract-log.js';
+export { contractShowCommand } from './contract-show.js';
 
 // shared helpers
 export { notifyContractCreated, parseAndValidateContractYaml } from './contract-helpers.js';

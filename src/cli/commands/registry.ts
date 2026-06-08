@@ -52,7 +52,7 @@ export function clawCmd(id: string, verb: ClawVerb): string {
  * 字面命令需要 args 时由 composer 自家拼 `${CONTRACT_COMMANDS.CANCEL} -c <id>`.
  */
 export const CONTRACT_COMMANDS = {
-  LOG: 'chestnut contract log',          // -c <claw>
+  SHOW: 'chestnut contract show',        // -c <claw> [--contract <id>]
   EVENTS: 'chestnut contract events',    // <claw> --since <ts>
   CANCEL: 'chestnut contract cancel',    // -c <claw> --reason <text> [--contract <id>]
   // 待立（per CLI-by-need doctrine in `design/modules/l2_messaging.md §10.6`）：

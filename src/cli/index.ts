@@ -25,7 +25,7 @@ import {
   chatCommand as motionChatCommand,
   stopCommand as motionStopCommand,
 } from './commands/motion.js';
-import { contractCreateCommand, contractCreateFromDirCommand, contractLogCommand, contractEventsCommand, contractCancelCommand } from './commands/contract.js';
+import { contractCreateCommand, contractCreateFromDirCommand, contractShowCommand, contractEventsCommand, contractCancelCommand } from './commands/contract.js';
 import { skillInstallUserCommand, skillInstallClawCommand } from './commands/skill.js';
 import { runWatchdogLoop, startCommand as watchdogStart, stopCommand as watchdogStop } from '../watchdog/watchdog.js';
 import { createConfigCommand } from './commands/config.js';
@@ -229,12 +229,12 @@ contractCmd
   }));
 
 contractCmd
-  .command('log')
-  .description('Show contract execution log for a claw')
+  .command('show')
+  .description('Show contract state snapshot for a claw')
   .requiredOption('-c, --claw <id>', 'Target claw ID')
   .option('--contract <id>', 'Contract ID (default: active contract)')
   .action(withCliErrorHandling(async (opts: { claw: string; contract?: string }) => {
-    await contractLogCommand({ fsFactory }, opts.claw, opts.contract);
+    await contractShowCommand({ fsFactory }, opts.claw, opts.contract);
   }));
 
 contractCmd

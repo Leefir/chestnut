@@ -1,5 +1,5 @@
 /**
- * Show contract log for a claw
+ * Show contract state snapshot for a claw
  */
 
 import { resolveChestnutRoot } from '../../assembly/install-paths.js';
@@ -16,10 +16,10 @@ import { makeContractId } from '../../core/contract/types.js';
 import { CLAWS_DIR } from '../../assembly/claw-dirs.js';
 import * as path from 'path';
 
-/** contract-log evidence console.log 显示截断 cap（trigger=keep 同值、'…' Unicode append）*/
+/** contract-show evidence console.log 显示截断 cap（trigger=keep 同值、'…' Unicode append）*/
 const EVIDENCE_PREVIEW_CHARS = 300;
 
-export async function contractLogCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, clawId: string, contractId?: string): Promise<void> {
+export async function contractShowCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, clawId: string, contractId?: string): Promise<void> {
   const clawDir = getClawDir(clawId);
   const clawFs = deps.fsFactory(clawDir);
   const chestnutRoot = resolveChestnutRoot(clawDir, /* isMotion */ false);  // phase 1406: 单一 truth source
