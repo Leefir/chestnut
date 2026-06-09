@@ -368,6 +368,7 @@ auditCmd
   .option('--step <n>', 'Filter by step number (exact match)')
   .option('--contract-id <id>', 'Filter by contract_id (exact match)')
   .option('--subtask-id <id>', 'Filter by subtask_id (exact match)')
+  .option('--no-hint', 'Suppress 0 result hint to stderr')
   .action(withCliErrorHandling(async (opts: {
     claw: string;
     file: string;
@@ -386,6 +387,7 @@ auditCmd
     step?: string;
     contractId?: string;
     subtaskId?: string;
+    noHint?: boolean;
   }) => {
     const { auditQueryCommand } = await import('./commands/audit-query.js');
     await auditQueryCommand({ fsFactory }, {
@@ -394,6 +396,7 @@ auditCmd
       toSeq: opts.toSeq !== undefined ? parseIntOption(opts.toSeq, '--to-seq must be a number') : undefined,
       limit: opts.limit !== undefined ? parseIntOption(opts.limit, '--limit must be a number') : undefined,
       step: opts.step !== undefined ? parseIntOption(opts.step, '--step must be a number') : undefined,
+      noHint: opts.noHint,
     });
   }));
 

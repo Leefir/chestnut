@@ -43,6 +43,8 @@ export interface AuditQueryOpts {
   step?: number;
   contractId?: string;
   subtaskId?: string;
+  // phase 216 Step D
+  noHint?: boolean;
 }
 
 export async function auditQueryCommand(
@@ -98,12 +100,16 @@ export async function auditQueryCommand(
   };
 
   // 5. dispatch read or follow
+  let scannedRows = 0;
+  let matchedRows = 0;
   if (opts.follow) {
     const reader = createAuditReader(fs, files[0].path);
     const sigintHandler = () => { reader.close(); };
     process.on('SIGINT', sigintHandler);
     try {
       for await (const rec of reader.follow(readOpts)) {
+        scannedRows++;
+        matchedRows++;
         emit(rec, files[0].name, opts.json ?? false);
       }
     } finally {
@@ -113,9 +119,30 @@ export async function auditQueryCommand(
     for (const f of files) {
       if (!fs.existsSync(f.path)) continue;
       const reader = createAuditReader(fs, f.path);
+      // Count all successfully parsed rows (unfiltered) for scannedRows
+      for await (const _ of reader.read({})) {
+        scannedRows++;
+      }
       for await (const rec of reader.read(readOpts)) {
+        matchedRows++;
         emit(rec, f.name, opts.json ?? false);
       }
+    }
+  }
+
+  // phase 216 Step D: 0 result hint std-2
+  if (matchedRows === 0 && !opts.noHint) {
+    const filterDesc = formatFilters(opts);
+    const claw = opts.claw ?? 'default';
+    if (process.stderr.isTTY) {
+      process.stderr.write(
+        `No audit rows match filter (${filterDesc}) in claw '${claw}'.\n` +
+        `(${scannedRows} rows scanned)\n`
+      );
+    } else {
+      process.stderr.write(
+        `No audit rows match filter (${filterDesc}) in claw '${claw}'. (${scannedRows} rows scanned)\n`
+      );
     }
   }
 }
@@ -150,6 +177,23 @@ function emit(rec: AuditRecord, sourceName: string, json: boolean): void {
       process.stdout.write(`  → 详情：chestnut audit lookup ${rec.toolUseId} -c <claw>\n`);
     }
   }
+}
+
+function formatFilters(opts: AuditQueryOpts): string {
+  const parts: string[] = [];
+  if (opts.step !== undefined) parts.push(`--step ${opts.step}`);
+  if (opts.toolUseId) parts.push(`--tool-use-id ${opts.toolUseId}`);
+  if (opts.contractId) parts.push(`--contract-id ${opts.contractId}`);
+  if (opts.subtaskId) parts.push(`--subtask-id ${opts.subtaskId}`);
+  if (opts.type) parts.push(`--type ${opts.type}`);
+  if (opts.trace) parts.push(`--trace ${opts.trace}`);
+  if (opts.col && Object.keys(opts.col).length > 0) {
+    for (const [k, v] of Object.entries(opts.col)) {
+      parts.push(`--col ${k}=${v}`);
+    }
+  }
+  if (parts.length === 0) return '(no filter)';
+  return parts.join(' ');
 }
 
 export function collectColFilter(value: string, prev: Record<string, string> = {}): Record<string, string> {
