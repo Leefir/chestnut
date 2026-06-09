@@ -18,6 +18,7 @@ import * as path from 'path';
 import type { FileSystem } from '../fs/types.js';
 import type { AuditLog } from './types.js';
 import { AuditWriter } from './writer.js';
+import { clipPreview, clipMessage, clipSummary } from './_helpers.js';
 
 export class DispatchingAuditWriter implements AuditLog {
   readonly __brand = 'AuditLog' as const;
@@ -63,6 +64,10 @@ export class DispatchingAuditWriter implements AuditLog {
       writer.dispose?.();
     }
   }
+
+  preview(s: string): string { return clipPreview(s); }
+  message(s: string): string { return clipMessage(s); }
+  summary(s: string): string { return clipSummary(s); }
 
   /** Get internal AuditWriter for a specific file (testing / inspection only). */
   _getWriterForFile(fileName: string): AuditWriter | undefined {

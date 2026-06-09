@@ -3,7 +3,7 @@ import { formatErr } from "../utils/index.js";
 import type { FileSystem } from '../fs/types.js';
 import type { AuditLog } from './types.js';
 import { pushFallback } from './writer.js';
-import { esc } from './_helpers.js';
+import { esc, clipPreview, clipMessage, clipSummary } from './_helpers.js';
 import { UUID_SHORT_LEN } from '../../constants.js';
 
 /** BatchedAuditWriter constructor option fallback default — flush 触发的 buffer line 阈值 */
@@ -121,4 +121,8 @@ export class BatchedAuditWriter implements AuditLog {
       this.timer = null;
     }
   }
+
+  preview(s: string): string { return clipPreview(s); }
+  message(s: string): string { return clipMessage(s); }
+  summary(s: string): string { return clipSummary(s); }
 }

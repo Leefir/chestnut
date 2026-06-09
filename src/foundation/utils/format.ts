@@ -8,6 +8,11 @@ export function oneLine(s: string): string {
   return content.slice(0, SUMMARY_MAX_CHARS) + '…';
 }
 
+export function clipText(s: string, maxChars: number): string {
+  const content = (s ?? '').trimStart();
+  return content.length <= maxChars ? content : content.slice(0, maxChars) + '…';
+}
+
 const INSPECT_OPTS = {
   depth: 2,
   breakLength: Infinity,

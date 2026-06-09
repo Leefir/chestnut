@@ -3,6 +3,13 @@ export interface AuditLog {
   readonly __brand: 'AuditLog';
   write(type: string, ...cols: (string | number)[]): void;
   dispose?(): void;
+
+  /** Truncate s to AUDIT_PREVIEW_LEN (100) — short raw preview, "glance" level. */
+  preview(s: string): string;
+  /** Truncate s to AUDIT_MESSAGE_MAX_CHARS (200) — mid context, error / reason / command. */
+  message(s: string): string;
+  /** Truncate s to SUMMARY_MAX_CHARS (500) — long content summary, tool_result preview level. */
+  summary(s: string): string;
 }
 
 /**

@@ -1,5 +1,6 @@
 import type { StreamEvent, StreamLog } from '../../foundation/stream/index.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
+import { clipPreview, clipMessage, clipSummary } from '../../foundation/audit/_helpers.js';
 
 export class NoopStreamWriter implements StreamLog {
   write(_event: StreamEvent): boolean {
@@ -14,4 +15,8 @@ export class NoopAuditWriter implements AuditLog {
   write(_type: string, ..._cols: (string | number)[]): void {
     this.seq++;
   }
+
+  preview(s: string): string { return clipPreview(s); }
+  message(s: string): string { return clipMessage(s); }
+  summary(s: string): string { return clipSummary(s); }
 }

@@ -37,7 +37,7 @@ import { UUID_SHORT_LEN } from '../../constants.js';
 import { FileNotFoundError } from '../fs/types.js';
 import type { FileSystem } from '../fs/types.js';
 import type { AuditLog } from './types.js';
-import { esc } from './_helpers.js';
+import { esc, clipPreview, clipMessage, clipSummary } from './_helpers.js';
 
 export const FALLBACK_BUFFER_CAP = 1000;
 const FALLBACK_FRONTMATTER_PREFIX = '# drop_count_since_last_dump=';
@@ -263,6 +263,10 @@ export class AuditWriter implements AuditLog {
   dispose(): void {
     dumpFallback();
   }
+
+  preview(s: string): string { return clipPreview(s); }
+  message(s: string): string { return clipMessage(s); }
+  summary(s: string): string { return clipSummary(s); }
 
   private rotateIfNeeded(): void {
     try {
