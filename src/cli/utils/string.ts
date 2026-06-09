@@ -1,6 +1,5 @@
 import stringWidth from 'string-width';
 
-export { oneLine } from '../../foundation/utils/index.js';
 import { DEFAULT_TERMINAL_WIDTH } from './constants.js';
 
 /**

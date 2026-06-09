@@ -30,7 +30,7 @@ import { RUNTIME_AUDIT_EVENTS, REACT_LOOP_AUDIT_EVENTS } from './runtime-audit-e
 import { TASK_AUDIT_EVENTS } from '../async-task-system/audit-events.js';
 // phase 1414: HEARTBEAT_AUDIT_EVENTS import removed — heartbeat 自家 inbox-formatter 持 audit
 // phase 1406: DIALOG_DIR no longer used here — regime-switch recovery path is owned by performRegimeSwitch helper
-import { oneLine, formatErr } from '../../foundation/utils/index.js';
+import { formatErr } from '../../foundation/utils/index.js';
 import { escapeForLog } from '../../foundation/tools/index.js';
 import { MaxStepsExceededError, WallTimeExceededError, ConsecutiveParseErrorsExceededError, ConsecutiveMaxTokensToolUseError } from '../agent-executor/index.js';
 import { LockContentionExhaustedError } from '../contract/errors.js';
@@ -577,7 +577,7 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon {
       result: ToolResult, step: number, maxSteps: number
     ) => {
       const content = result.content ?? '';
-      const preview = oneLine(content);
+      const preview = this.auditWriter.summary(content);
       this.auditWriter.write(
         RUNTIME_AUDIT_EVENTS.TOOL_RESULT,
         name,

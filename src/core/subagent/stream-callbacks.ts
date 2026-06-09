@@ -17,7 +17,7 @@ import type { ToolUseId } from '../../foundation/tool-protocol/index.js';
 import { AGENT_STREAM_EVENTS } from '../agent-executor/index.js';
 import { SUBAGENT_AUDIT_EVENTS, emitToolCallInput } from './audit-events.js';
 
-import { oneLine } from '../../foundation/utils/index.js';
+
 
 export interface StreamCallbacksOptions {
   streamWriter: StreamLog;
@@ -93,7 +93,7 @@ export function createStreamCallbacks(opts: StreamCallbacksOptions): StreamCallb
     },
     onToolResult: (name, toolUseId, result, step, maxSteps) => {
       const content = result.content ?? '';
-      const preview = oneLine(content);
+      const preview = opts.auditWriter.summary(content);
       opts.auditWriter.write(
         SUBAGENT_AUDIT_EVENTS.TOOL_RESULT,
         name,

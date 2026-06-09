@@ -2,12 +2,6 @@ import { inspect } from 'node:util';
 
 export const SUMMARY_MAX_CHARS = 500;
 
-export function oneLine(s: string): string {
-  const content = (s ?? '').trimStart();
-  if (content.length <= SUMMARY_MAX_CHARS) return content;
-  return content.slice(0, SUMMARY_MAX_CHARS) + '…';
-}
-
 export function clipText(s: string, maxChars: number): string {
   const content = (s ?? '').trimStart();
   return content.length <= maxChars ? content : content.slice(0, maxChars) + '…';

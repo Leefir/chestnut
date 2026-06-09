@@ -61,7 +61,12 @@ function makeSubAgent(overrides: { timeoutMs?: number } = {}) {
     stat: vi.fn().mockResolvedValue({ size: 0, mtime: new Date() }),
   } as unknown as FileSystem;
 
-  const mockAuditWriter = { write: vi.fn() };
+  const mockAuditWriter = {
+    write: vi.fn(),
+    preview: (s: string) => s,
+    message: (s: string) => s,
+    summary: (s: string) => s,
+  };
 
   const mockRegistry = {
     getAll: vi.fn().mockReturnValue([]),
