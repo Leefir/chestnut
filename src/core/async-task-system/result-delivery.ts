@@ -11,7 +11,7 @@ import {
   emitResultDeliveryEnsureDirFailed,
 } from './audit-emit.js';
 import { TASKS_QUEUES_RESULTS_DIR } from './dirs.js';
-import { SUMMARY_MAX_CHARS } from '../../foundation/utils/index.js';
+
 import type { SubAgentTask, ToolTask } from './types.js';
 import type { ToolResult } from '../../foundation/tool-protocol/index.js';
 import type { TaskId } from './types.js';
@@ -60,6 +60,9 @@ interface SendResultCoreParams {
  *   3. write inbox (inline retry)      → fail: emit inline_fallback_failed +
  *      re-throw original err (caller fallback chain unchanged)
  */
+/** Inbox result summary cap — owned by result-delivery (convergent 500 with audit summary cap). */
+const TASK_RESULT_SUMMARY_MAX_CHARS = 500;
+
 async function sendResultCore(p: SendResultCoreParams): Promise<void> {
   let resultRef: string | undefined;
   try {
@@ -75,7 +78,7 @@ async function sendResultCore(p: SendResultCoreParams): Promise<void> {
     });
   }
 
-  const summary = resultRef ? p.fullContent.slice(0, SUMMARY_MAX_CHARS) : p.fullContent;
+  const summary = resultRef ? p.fullContent.slice(0, TASK_RESULT_SUMMARY_MAX_CHARS) : p.fullContent;
   const inlineContent = p.buildInlineJson();
   const messageContent = resultRef ? p.buildRefJson(resultRef, summary) : inlineContent;
 

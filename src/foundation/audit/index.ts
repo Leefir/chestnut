@@ -24,8 +24,6 @@ export type { AuditLog } from './types.js';
 import type { AuditLog } from './types.js';
 
 export { AuditWriter, AUDIT_FILE, reconcileFallbackDumps } from './writer.js';
-export { AUDIT_MESSAGE_MAX_CHARS } from './defaults.js';
-export { AUDIT_PREVIEW_LEN } from '../constants.js';
 export { createDirContext } from './dir-context.js';
 import { DispatchingAuditWriter } from './dispatching-writer.js';
 export { DispatchingAuditWriter };

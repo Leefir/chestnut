@@ -154,7 +154,13 @@ export async function createCoreInfrastructure(input: CoreInfraInput): Promise<C
 
     let llm: LLMOrchestrator;
     try {
-      llm = createLLMOrchestrator({ ...llmConfig, events: createLLMAuditSink(auditWriter) });
+      const auditLog = auditWriter;
+      llm = createLLMOrchestrator({
+        ...llmConfig,
+        primary: { ...llmConfig.primary, auditLog },
+        fallbacks: llmConfig.fallbacks?.map((fb) => ({ ...fb, auditLog })),
+        events: createLLMAuditSink(auditWriter),
+      });
     } catch (e) {
       auditWriter.write(ASSEMBLY_AUDIT_EVENTS.ASSEMBLE_FAILED, `module=llm`, `phase=construct`, `reason=${formatErr(e)}`);
       throw new Error(`Assembly: LLMOrchestrator construct failed: ${formatErr(e)}`, { cause: e });

@@ -8,7 +8,6 @@ import type { StreamChunk } from './types.js';
 import { formatErr } from "../utils/index.js";
 import type { CombinedAbortHandle } from './abort-helper.js';
 import { LLMError, LLMRateLimitError } from './errors.js';
-import { AUDIT_PREVIEW_LEN } from '../constants.js';
 
 export type StreamParseErrorCallback = (event: {
   provider: string;
@@ -20,8 +19,7 @@ export type StreamParseErrorCallback = (event: {
  * Parse OpenAI SSE stream
  *
  * @param providerName - provider name (用于 LLMError + LLMRateLimitError throw + observability event)
- * @param onStreamParseError - 可选 SSE parse 错回调
- * @param maxAuditChars - 审计日志 raw 字段最大长度（由调用方从 audit 模块注入，避免 L1→L2 常量依赖）
+ * @param onStreamParseError - 可选 SSE parse 错回调；parser 传 raw 全文，由 callback 实现侧自截
  */
 export async function* parseSSEStream(
   response: Response,
@@ -29,7 +27,6 @@ export async function* parseSSEStream(
   idleTimeoutMs: number,
   providerName: string,
   onStreamParseError: StreamParseErrorCallback | undefined,
-  maxAuditChars: number,
 ): AsyncIterableIterator<StreamChunk> {
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
@@ -90,7 +87,7 @@ export async function* parseSSEStream(
         } catch (err) {
           onStreamParseError?.({
             provider: providerName,
-            raw: data.slice(0, AUDIT_PREVIEW_LEN),
+            raw: data,
             error: formatErr(err),
           });
           continue;
@@ -186,7 +183,7 @@ export async function* parseSSEStream(
       if (!buf.started && (buf.id !== '' || buf.name !== '')) {
         onStreamParseError?.({
           provider: providerName,
-          raw: JSON.stringify({ id: buf.id, name: buf.name }).slice(0, maxAuditChars),
+          raw: JSON.stringify({ id: buf.id, name: buf.name }),
           error: 'tool_use buffer incomplete (missing id or name at stream end)',
         });
       }

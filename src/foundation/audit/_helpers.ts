@@ -10,8 +10,7 @@
  * phase 213 Step A 增加 clip helper：audit field cap 归 audit 模块 own。
  */
 
-import { AUDIT_PREVIEW_LEN, AUDIT_MESSAGE_MAX_CHARS } from './defaults.js';
-import { SUMMARY_MAX_CHARS } from '../utils/index.js';
+import { AUDIT_PREVIEW_LEN, AUDIT_MESSAGE_MAX_CHARS, SUMMARY_MAX_CHARS } from './defaults.js';
 
 export function esc(s: string): string {
   return s

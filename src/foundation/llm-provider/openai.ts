@@ -24,7 +24,6 @@ import type {
 } from './types.js';
 import { STREAM_MAX_DURATION_MS, STREAM_IDLE_MAX_MS } from './constants.js';
 import { withCombinedAbortSignal, classifyFetchAbortError } from './abort-helper.js';
-import { AUDIT_MESSAGE_MAX_CHARS } from '../constants.js';
 // NEW imports（sub-file）
 import { formatMessages, formatTools } from './openai-message-formatter.js';
 import { parseSSEStream } from './openai-sse-parser.js';
@@ -216,7 +215,17 @@ export class OpenAIAdapter implements ProviderAdapter {
       // 进入 stream 阶段：切换 timer 为总时长保护
       abortHandle.enterStreamPhase(STREAM_MAX_DURATION_MS);
       const idleTimeoutMs = Math.min(timeout, STREAM_IDLE_MAX_MS);
-      yield* parseSSEStream(response, abortHandle, idleTimeoutMs, this.name, this.onStreamParseError, AUDIT_MESSAGE_MAX_CHARS);
+      const auditLog = this.config.auditLog;
+      const onParseError = auditLog
+        ? (event: { provider: string; raw: string; error: string }) => {
+            this.onStreamParseError?.({
+              provider: event.provider,
+              raw: auditLog.preview(event.raw),
+              error: event.error,
+            });
+          }
+        : this.onStreamParseError;
+      yield* parseSSEStream(response, abortHandle, idleTimeoutMs, this.name, onParseError);
     } catch (error) {
       const classified = classifyFetchAbortError(error, signal, timeout, this.name);
       if (classified) throw classified;

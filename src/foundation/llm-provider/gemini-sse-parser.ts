@@ -8,7 +8,6 @@ import type { StreamChunk } from './types.js';
 import { formatErr } from "../utils/index.js";
 import type { CombinedAbortHandle } from './abort-helper.js';
 import { LLMError, LLMRateLimitError } from './errors.js';
-import { AUDIT_PREVIEW_LEN } from '../constants.js';
 
 interface GeminiResponse {
   candidates: Array<{
@@ -58,7 +57,7 @@ export async function* parseGeminiSSEStream(
         try { event = JSON.parse(data); } catch (e) {
           onStreamParseError?.({
             provider: providerName,
-            raw: data.slice(0, AUDIT_PREVIEW_LEN),
+            raw: data,
             error: formatErr(e),
           });
           continue;

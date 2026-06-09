@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AUDIT_PREVIEW_LEN, AUDIT_MESSAGE_MAX_CHARS } from '../../../src/foundation/audit/index.js';
+import { AUDIT_PREVIEW_LEN, AUDIT_MESSAGE_MAX_CHARS } from '../../../src/foundation/audit/defaults.js';
 
 describe('phase 982: AUDIT_PREVIEW_LEN const', () => {
   it('exports value = 100', () => {

@@ -1,7 +1,5 @@
 import { inspect } from 'node:util';
 
-export const SUMMARY_MAX_CHARS = 500;
-
 export function clipText(s: string, maxChars: number): string {
   const content = (s ?? '').trimStart();
   return content.length <= maxChars ? content : content.slice(0, maxChars) + '…';

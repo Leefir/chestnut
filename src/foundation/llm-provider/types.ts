@@ -7,6 +7,8 @@
 
 import type { ApiFormat } from './presets.js';
 import type { ToolUseId } from '../tool-protocol/tool-use-id.js';
+import type { AuditLog } from '../audit/types.js';
+export type { AuditLog } from '../audit/types.js';
 
 /** Minimal audit sink interface — L1 owns this duck-typed interface, L2b implements */
 export interface AuditSink {
@@ -136,8 +138,8 @@ export interface ProviderConfig {
   /** Reasoning effort for OpenAI o-series models */
   reasoningEffort?: 'low' | 'medium' | 'high';
 
-  /** Optional audit sink for formatter guard events (L2b injects via config) */
-  auditLog?: AuditSink;
+  /** Optional audit sink for formatter guard events / SSE parse error clipping (L2b injects via config) */
+  auditLog?: AuditLog;
 }
 
 /**

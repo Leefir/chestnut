@@ -11,12 +11,11 @@
  * + phase 1118 in-file marker補 (`coding plan/phase1118/`).
  */
 import { createServer, connect, type Server, type Socket } from 'node:net';
-import { formatErr } from "../utils/index.js";
+import { formatErr, clipText } from "../utils/index.js";
 import * as path from 'path';
 import { randomUUID } from 'node:crypto';
 import type { FileSystem } from '../fs/types.js';
 import { isFileNotFound } from '../fs/types.js';
-import { AUDIT_PREVIEW_LEN } from '../constants.js';
 import type { Transport, TransportOptions, BroadcastFailure, TransportErrorEvent } from './types.js';
 import type { Connection } from './types.js';
 
@@ -25,6 +24,9 @@ interface ConnectionEntry {
   meta: Connection;
   buf: string;
 }
+
+/** Transport debug preview cap — convergent choice with audit preview cap but owned locally (phase 213 Step D). */
+const BUFFER_PREVIEW_MAX_CHARS = 100;
 
 /** Latent advertise — see file header. Future wire site: `assemble.ts:538` */
 export class UnixDomainSocketTransport implements Transport {
@@ -143,7 +145,7 @@ export class UnixDomainSocketTransport implements Transport {
           kind: 'partial_message_lost',
           connectionId: id,
           bufferedBytes: entry.buf.length,
-          bufferPreview: entry.buf.slice(0, AUDIT_PREVIEW_LEN),
+          bufferPreview: clipText(entry.buf, BUFFER_PREVIEW_MAX_CHARS),
         });
       }
       this.connections.delete(id);

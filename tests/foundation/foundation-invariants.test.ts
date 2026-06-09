@@ -103,34 +103,39 @@ describe('foundation/ 域 ML#5 invariant: no business caller role literal', () =
   });
 });
 
-describe('phase 1278 α: AUDIT_PREVIEW_LEN must not import from audit module', () => {
-  it('no src/ file imports AUDIT_PREVIEW_LEN from audit barrel or audit/defaults', () => {
-    const files = walk('src');
+describe('phase 213 Step D: audit cap constants owned inside audit module', () => {
+  it('no src/ file outside foundation/audit/ references AUDIT_PREVIEW_LEN or AUDIT_MESSAGE_MAX_CHARS', () => {
+    const files = walk('src').filter(
+      (f) => !f.includes('foundation/audit/') && !f.includes('foundation/constants.ts'),
+    );
     const violations: string[] = [];
     for (const file of files) {
       const src = readFileSync(file, 'utf-8');
-      // Ban import of AUDIT_PREVIEW_LEN from any audit module path
-      const bad = src.match(/import\s+.*AUDIT_PREVIEW_LEN.*from\s+['"][^'"]*audit[^'"]*['"]/g);
-      if (bad) {
-        violations.push(`${file}: ${bad.join(', ')}`);
+      if (/\bAUDIT_PREVIEW_LEN\b|\bAUDIT_MESSAGE_MAX_CHARS\b/.test(src)) {
+        violations.push(file);
       }
     }
     if (violations.length > 0) {
       expect.fail(
-        `AUDIT_PREVIEW_LEN must import from foundation/constants.js only. Violations:\n${violations.join('\n')}`,
+        `AUDIT_PREVIEW_LEN / AUDIT_MESSAGE_MAX_CHARS must only live inside foundation/audit/. Violations:\n${violations.join('\n')}`,
       );
     }
   });
 
-  it('AUDIT_PREVIEW_LEN is exported from foundation/constants.ts', () => {
-    const src = readFileSync('src/foundation/constants.ts', 'utf-8');
+  it('AUDIT_PREVIEW_LEN + AUDIT_MESSAGE_MAX_CHARS are defined in audit/defaults.ts', () => {
+    const src = readFileSync('src/foundation/audit/defaults.ts', 'utf-8');
     expect(src).toMatch(/export\s+const\s+AUDIT_PREVIEW_LEN\s*=\s*100/);
+    expect(src).toMatch(/export\s+const\s+AUDIT_MESSAGE_MAX_CHARS\s*=\s*200/);
   });
 
-  it('audit/defaults.ts re-exports from constants.js (backward-compat sunset)', () => {
-    const src = readFileSync('src/foundation/audit/defaults.ts', 'utf-8');
-    expect(src).toMatch(/export\s+\{\s*AUDIT_PREVIEW_LEN\s*\}\s+from\s+['"]\.\.\/constants\.js['"]/);
-    expect(src).toMatch(/SUNSET/);
+  it('foundation/constants.ts no longer defines or exports AUDIT_PREVIEW_LEN / AUDIT_MESSAGE_MAX_CHARS', () => {
+    try {
+      const src = readFileSync('src/foundation/constants.ts', 'utf-8');
+      expect(src).not.toMatch(/\bAUDIT_PREVIEW_LEN\b/);
+      expect(src).not.toMatch(/\bAUDIT_MESSAGE_MAX_CHARS\b/);
+    } catch (e: any) {
+      if (e.code !== 'ENOENT') throw e;
+    }
   });
 });
 
