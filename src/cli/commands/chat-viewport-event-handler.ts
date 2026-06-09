@@ -21,7 +21,6 @@ import type { MainTurnUIController } from './main-turn-ui.js';
 import type { ThinkingMode } from './chat-viewport-commands.js';
 import type { createViewportObservability } from './chat-viewport-observability.js';
 import { type TaskId, makeTaskId } from '../../core/async-task-system/types.js';
-import { oneLine } from '../../foundation/utils/index.js';
 
 
 export interface TaskWatch {
@@ -172,9 +171,8 @@ export function createEventHandler(deps: EventHandlerDeps) {
 
       case 'turn_error': {
         deps.turnTracker.abort();
-        const errorMsg = event.error as string;
-        const shortErr = typeof errorMsg === 'string' ? oneLine(errorMsg) : errorMsg;
-        deps.appendOutput('\x1b[31m', `✗ Error: ${shortErr}`);
+        const errorMsg = event.error;
+        deps.appendOutput('\x1b[31m', `✗ Error: ${typeof errorMsg === 'string' ? errorMsg : String(errorMsg)}`);
         break;
       }
 
@@ -191,7 +189,7 @@ export function createEventHandler(deps: EventHandlerDeps) {
         const providerName = event.provider as string;
         const errorClass = event.errorClass as string | undefined;
         const userActionHint = event.userActionHint as string | undefined;
-        const errorMsg = event.error as string;
+        const errorMsg = event.error;
         // phase 1425: surface 所有非 abort 失败到用户（含 transient timeout/network）/ 用户必须可观察 primary 故障
         if (errorClass && errorClass !== 'abort') {
           const hint = userActionHint === 'rotate_api_key' ? 'rotate or update API key'
@@ -205,8 +203,8 @@ export function createEventHandler(deps: EventHandlerDeps) {
             : errorClass === 'transient' ? 'network/service unavailable'
             : errorClass === 'rate_limit' ? 'rate limited'
             : 'unknown error';
-          const shortErr = typeof errorMsg === 'string' ? oneLine(errorMsg) : errorMsg;
-          deps.appendOutput('\x1b[2m', `\x1b[38;5;203m✗\x1b[0m \x1b[2m${providerName} ${classLabel} (${shortErr}) / suggestion: ${hint}\x1b[0m`);
+          const errStr = typeof errorMsg === 'string' ? errorMsg : String(errorMsg);
+          deps.appendOutput('\x1b[2m', `\x1b[38;5;203m✗\x1b[0m \x1b[2m${providerName} ${classLabel} (${errStr}) / suggestion: ${hint}\x1b[0m`);
         }
         break;
       }
@@ -228,19 +226,18 @@ export function createEventHandler(deps: EventHandlerDeps) {
 
       case 'provider_exhausted': {
         const providerName = event.provider as string;
-        const errorMsg = event.error as string;
-        const shortErr = typeof errorMsg === 'string' ? oneLine(errorMsg) : errorMsg;
-        deps.appendOutput('\x1b[2m', `\x1b[38;5;203m✗\x1b[0m \x1b[2m${providerName} exhausted retries (${shortErr})\x1b[0m`);
+        const errorMsg = event.error;
+        const errStr = typeof errorMsg === 'string' ? errorMsg : String(errorMsg);
+        deps.appendOutput('\x1b[2m', `\x1b[38;5;203m✗\x1b[0m \x1b[2m${providerName} exhausted retries (${errStr})\x1b[0m`);
         break;
       }
 
       case 'provider_failed': {
         const providerName = event.provider as string;
         const providerModel = event.model as string;
-        const errorMsg = event.error as string;
-        // 截断过长的错误消息
-        const shortErr = oneLine(errorMsg);
-        deps.appendOutput('\x1b[2m', `\x1b[38;5;203m✗\x1b[0m \x1b[2m${providerModel} · ${providerName} failed: ${shortErr}\x1b[0m`);
+        const errorMsg = event.error;
+        const errStr = typeof errorMsg === 'string' ? errorMsg : String(errorMsg);
+        deps.appendOutput('\x1b[2m', `\x1b[38;5;203m✗\x1b[0m \x1b[2m${providerModel} · ${providerName} failed: ${errStr}\x1b[0m`);
         break;
       }
 
