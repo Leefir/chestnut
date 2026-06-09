@@ -116,7 +116,9 @@ export function handleMaxTokensStop(
       input.callbacks?.onMaxTokensStateAOrphanDrop?.({
         orphans: orphanPrebuilt.map(pr => ({
           tool_use_id: pr.tool_use_id,
-          content_preview: input.ctx.auditWriter?.message(pr.content) ?? pr.content,
+          // phase 215: producer 传全文、消费侧 (runtime audit emit) 末端 .preview 截。
+          // 字段名 'content_preview' 保留兼容（未来独立 phase 可重命名 'content'）。
+          content_preview: pr.content,
           is_error: pr.is_error === true,
         })),
         llm: llmInfo,

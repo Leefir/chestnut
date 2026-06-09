@@ -48,7 +48,10 @@ const shadowSubAgentTaskSchema = z.object({
   ...commonSubAgentFields,
   mode: z.literal('shadow'),
   shadowMessages: z.array(z.unknown()),
-  intentPreview: z.string().max(60),
+  // phase 215: 去 max(60) 约束。phase 214 改 spawn-shadow 存全文（opts.task）、
+  // 消费侧 subagent-executor 用 auditWriter.preview() 末端截、schema 应同步去约束。
+  // 字段名 'intentPreview' 保留兼容（未来独立 phase 可重命名 task.intent）。
+  intentPreview: z.string(),
 });
 
 const subAgentTaskDiscriminatedUnion = z.discriminatedUnion('mode', [
