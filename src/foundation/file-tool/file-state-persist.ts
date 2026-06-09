@@ -31,17 +31,14 @@ interface PersistFormatV1 {
   entries: Record<string, FileState>;
 }
 
-/**
- * Persist `ctx.readFileState` Map to disk atomically.
- *
- * Best-effort: failures emit `READ_FILE_STATE_PERSIST_FAILED` audit and do NOT throw —
- * the agent's tool result is unaffected. Per DP「信息不丢」, the audit captures the failure;
- * per smooth-degrade, the in-memory Map remains intact for current daemon lifetime.
- *
- * Subagent contexts (no `persistReadFileState` flag) skip entirely.
- */
-export async function persistReadFileState(ctx: ExecContext): Promise<void> {
-  if (!ctx.persistReadFileState) return;
+// phase 220 Step A: per-ctx in-flight persist tracker.
+// recordReadResult/recordWriteResult/recordEditResult fire persistReadFileState as fire-and-forget;
+// without serialization, a background persist can resolve AFTER clearReadFileState (called by
+// regime-switch hook), re-creating the on-disk file we just deleted.
+// All persist + clear ops chain through this WeakMap so clear awaits any pending persist.
+const inflightPersist = new WeakMap<ExecContext, Promise<void>>();
+
+async function _doPersistReadFileState(ctx: ExecContext): Promise<void> {
   const payload: PersistFormatV1 = {
     version: 1,
     updated_at: new Date().toISOString(),
@@ -55,6 +52,29 @@ export async function persistReadFileState(ctx: ExecContext): Promise<void> {
       `op=write reason=${formatErr(err)}`,
     );
   }
+}
+
+/**
+ * Persist `ctx.readFileState` Map to disk atomically.
+ *
+ * Best-effort: failures emit `READ_FILE_STATE_PERSIST_FAILED` audit and do NOT throw —
+ * the agent's tool result is unaffected. Per DP「信息不丢」, the audit captures the failure;
+ * per smooth-degrade, the in-memory Map remains intact for current daemon lifetime.
+ *
+ * Subagent contexts (no `persistReadFileState` flag) skip entirely.
+ *
+ * phase 220: serialized per ctx via inflightPersist chain so clearReadFileState can drain
+ * any pending writes before delete (prevents race where fire-and-forget resolves after clear).
+ */
+export async function persistReadFileState(ctx: ExecContext): Promise<void> {
+  if (!ctx.persistReadFileState) return;
+  const prev = inflightPersist.get(ctx);
+  const next = (async () => {
+    if (prev) await prev.catch(() => {});
+    await _doPersistReadFileState(ctx);
+  })();
+  inflightPersist.set(ctx, next);
+  return next;
 }
 
 /**
@@ -163,6 +183,14 @@ export async function clearReadFileState(ctx: ExecContext): Promise<void> {
     ctx.readFileState.clear();
   }
   if (!ctx.persistReadFileState) return;
+  // phase 220 Step A: drain any pending fire-and-forget persist before delete.
+  // Otherwise a persist started by recordReadResult earlier in the dialog may resolve
+  // AFTER our delete, re-creating read-state.json post-regime-switch.
+  const pending = inflightPersist.get(ctx);
+  if (pending) {
+    await pending.catch(() => {});
+    inflightPersist.delete(ctx);
+  }
   try {
     await ctx.fs.delete(READ_STATE_FILE);
   } catch (err) {
