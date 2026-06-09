@@ -425,33 +425,43 @@ describe('AsyncTaskSystem Tool Tasks', () => {
 
   describe('pending queue with dispatcher', () => {
     it('should queue tasks when max concurrent reached and dispatch when slots free', async () => {
-      // Fill up to max concurrent (3) with slow tasks
-      const slowCallback = () => new Promise<ToolResult>(r => setTimeout(() => r({ success: true, content: 'slow' }), 50));
-      
+      // phase 220 Step B: replace setTimeout(50ms) slow callbacks with manually-controlled
+      // promises. Original 50ms window raced against scheduleToolCompat path (~10-30ms) +
+      // event-loop scheduling under fast project isolate:false, so a slow task could resolve
+      // before the 4th task ingested, letting the dispatcher immediately move 4th from
+      // pending → running (skipping the pending-state observation the test relies on).
+      // Manual barrier: slows stay running until we release them.
+      const slowReleases: Array<() => void> = [];
+      const slowCallback = () => new Promise<ToolResult>(r => {
+        slowReleases.push(() => r({ success: true, content: 'slow' }));
+      });
+
       // Schedule 3 slow tasks
       const taskIds: string[] = [];
       for (let i = 0; i < 3; i++) {
         const id = await scheduleToolCompat(taskSystem, `slowTool${i}`, slowCallback, 'parent-claw');
         taskIds.push(id);
       }
-      
+
       await waitFor(() => taskSystem.listRunning().length === 3);
-      
+
       // All 3 should be running
       expect(taskSystem.listRunning().length).toBe(3);
       expect(taskSystem.listPending().length).toBe(0);
-      
-      // Schedule a 4th task - should go to pending
+
+      // Schedule a 4th task - must go to pending because all 3 slows are blocked.
       const fastCallback = vi.fn().mockResolvedValue({ success: true, content: 'fast' });
       const fourthId = await scheduleToolCompat(taskSystem, 'fourthTool', fastCallback, 'parent-claw');
-      
-      // Wait for the task to be queued before asserting state (B.flaky-17)
+
       await waitFor(() => taskSystem.listPending().includes(fourthId));
-      
-      // Should be in pending, not running
+
+      // Should be in pending, not running (slows held → no slot free)
       expect(taskSystem.listPending()).toContain(fourthId);
       expect(taskSystem.listRunning()).not.toContain(fourthId);
-      
+
+      // Release the slow callbacks so the dispatcher can drain pending.
+      for (const release of slowReleases) release();
+
       await waitFor(() => !taskSystem.listRunning().includes(fourthId) && !taskSystem.listPending().includes(fourthId));
       
       // Now fourth should be dispatched and completed
