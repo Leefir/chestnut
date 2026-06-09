@@ -89,7 +89,7 @@ function loadRandomDreamState(fs: FileSystem, audit: AuditLog): RandomDreamState
       return { processedContractIds: (parsed as { processedContractIds: string[] }).processedContractIds, pendingLateSettle: pending };
     }
     audit.write(MEMORY_AUDIT_EVENTS.RANDOM_DREAM_ERROR,
-      `step=load_state_shape_invalid`,
+      `site=load_state_shape_invalid`,
       `reason=processedContractIds_not_string_array`);
     return { processedContractIds: [] };
   } catch (err) {
@@ -99,7 +99,7 @@ function loadRandomDreamState(fs: FileSystem, audit: AuditLog): RandomDreamState
     }
     // 其他 IO 错（parse 损坏 / 权限 / 等）必 audit + 返空 resilient
     audit.write(MEMORY_AUDIT_EVENTS.RANDOM_DREAM_ERROR,
-      `step=load_state`,
+      `site=load_state`,
       `reason=${formatErr(err)}`,
     );
     return { processedContractIds: [] };
@@ -114,7 +114,7 @@ function saveRandomDreamState(fs: FileSystem, state: RandomDreamState, audit: Au
     );
   } catch (err) {
     audit.write(MEMORY_AUDIT_EVENTS.RANDOM_DREAM_ERROR,
-      `step=save_state`,
+      `site=save_state`,
       `reason=${formatErr(err)}`,
     );
     throw err;   // re-throw 保 caller flow（cron runner phase 552 late_error 路径捕获）
@@ -195,7 +195,7 @@ async function computeWeight(
       hints.push(...factors.hints);
     } catch (e) {
       audit.write(MEMORY_AUDIT_EVENTS.RANDOM_DREAM_ERROR,
-        `step=getContractProgress_api`,
+        `site=getContractProgress_api`,
         `clawId=${clawId}`,
         `contractId=${contractId}`,
         `reason=${formatErr(e)}`);
@@ -208,7 +208,7 @@ async function computeWeight(
       const parsed: unknown = JSON.parse(fs.readSync(progressPath));
       if (typeof parsed !== 'object' || parsed === null || typeof (parsed as Record<string, unknown>).subtasks !== 'object') {
         audit.write(MEMORY_AUDIT_EVENTS.RANDOM_DREAM_ERROR,
-          'step=load_progress', 'reason=shape_mismatch', `got=${typeof parsed}`);
+          'site=load_progress', 'reason=shape_mismatch', `got=${typeof parsed}`);
         return { weight, hint: hints.join('、') || '正常' };
       }
       const progress = parsed as ProgressData;
@@ -223,7 +223,7 @@ async function computeWeight(
         e instanceof FileNotFoundError;
       if (!isMissing) {
         audit.write(MEMORY_AUDIT_EVENTS.RANDOM_DREAM_ERROR,
-          `step=load_progress_fallback`,
+          `site=load_progress_fallback`,
           `contractDir=${contractDir}`,
           `reason=${formatErr(e)}`);
       }

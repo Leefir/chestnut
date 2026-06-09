@@ -430,7 +430,7 @@ Prompt: ...
       );
     });
 
-    it('loadRandomDreamState parse 错时 audit RANDOM_DREAM_ERROR step=load_state 并返空（A.dream-state-io-silent random-dream 扩散 phase 597）', async () => {
+    it('loadRandomDreamState parse 错时 audit RANDOM_DREAM_ERROR site=load_state 并返空（A.dream-state-io-silent random-dream 扩散 phase 597 / phase 216 col 名空间隔离）', async () => {
       // setup: 写入损坏 .random-dream-state.json
       await fs.writeFile(path.join(chestnutRoot, '.random-dream-state.json'), 'corrupted{', 'utf-8');
 
@@ -444,7 +444,7 @@ Prompt: ...
 
       expect(mockAudit.write).toHaveBeenCalledWith(
         'cron_random_dream_error',
-        'step=load_state',
+        'site=load_state',
         expect.stringMatching(/^reason=/),
       );
     });
@@ -460,12 +460,12 @@ Prompt: ...
       await runRandomDream(makeOpts(chestnutRoot, motionDir));
 
       const loadStateCalls = mockAudit.write.mock.calls.filter((c: any[]) =>
-        c.some((arg: any) => typeof arg === 'string' && arg.includes('step=load_state'))
+        c.some((arg: any) => typeof arg === 'string' && arg.includes('site=load_state'))
       );
       expect(loadStateCalls).toHaveLength(0);
     });
 
-    it('saveRandomDreamState writeAtomicSync 失败时 audit step=save_state 并 re-throw', async () => {
+    it('saveRandomDreamState writeAtomicSync 失败时 audit site=save_state 并 re-throw（phase 216 col 名空间隔离）', async () => {
       const chestnutNodeFs = new NodeFileSystem({ baseDir: chestnutRoot });
       const writeSpy = vi.spyOn(chestnutNodeFs, 'writeAtomicSync').mockImplementation(function (this: NodeFileSystem, p: string, content: string) {
         if (p === '.random-dream-state.json') {
@@ -484,7 +484,7 @@ Prompt: ...
 
       expect(mockAudit.write).toHaveBeenCalledWith(
         'cron_random_dream_error',
-        'step=save_state',
+        'site=save_state',
         expect.stringMatching(/^reason=.*EIO/),
       );
 

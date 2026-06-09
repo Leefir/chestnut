@@ -42,6 +42,12 @@ interface SnapshotJson {
   schema_version: string;
   modules: Record<string, (string | SnapshotEntry)[]>;
   fileRouting?: Record<string, string>;
+  stepColOwner?: {
+    file: string;
+    eventType: string;
+    valueType: string;
+    _comment?: string;
+  };
 }
 
 /**
@@ -95,15 +101,23 @@ describe('audit-events snapshot lock', () => {
     }
   });
 
-  it('cron events 不含 step= col (phase 180 命名空间隔离)', () => {
+  it('`step=` col 单源 emit = snapshot.stepColOwner (phase 216 white-list)', () => {
     const snapshot: SnapshotJson = JSON.parse(fs.readFileSync(SNAPSHOT_PATH, 'utf-8'));
-    const emitSites = collectAuditWriteEmitSites(SRC_ROOT, snapshot);
+    const sot = snapshot.stepColOwner;
+    expect(sot).toBeDefined();
+    expect(sot.file).toBe('src/core/runtime/runtime.ts');
+    expect(sot.eventType).toBe('tool_call_input');
+    expect(sot.valueType).toBe('StepNumber');
 
+    const emitSites = collectAuditWriteEmitSites(SRC_ROOT, snapshot);
     for (const site of emitSites) {
-      if (!site.isCron) continue;
-      expect(site.emittedCols).not.toContain(
-        'step',
-        `${site.module}/${site.eventType} at ${site.file}:${site.line} emits forbidden 'step=' col (step col 单源归 step-executor)`,
+      if (!site.emittedCols.includes('step')) continue;  // 没 step= 的不管
+      // 有 step= 的必是 SoT
+      expect(site.file).toBe(sot.file,
+        `${site.module}/${site.eventType} at ${site.file}:${site.line} emits 'step=' but not SoT (= ${sot.file}/${sot.eventType})`,
+      );
+      expect(site.eventType).toBe(sot.eventType,
+        `${site.module}/${site.eventType} at ${site.file}:${site.line} emits 'step=' on wrong event type (SoT = ${sot.eventType})`,
       );
     }
   });

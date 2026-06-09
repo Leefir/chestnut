@@ -346,7 +346,26 @@
     "core_memory_audit-events": [
       "cron_deep_dream_error",
       "cron_deep_dream_job",
-      "cron_random_dream_error",
+      {
+        "type": "cron_random_dream_error",
+        "cols": [
+          {
+            "name": "site",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "got",
+            "type": "string",
+            "required": false
+          }
+        ]
+      },
       "cron_random_dream_job",
       "cron_random_dream_pulse",
       "cron_random_dream_warning",
@@ -833,5 +852,11 @@
     "viewport_event_ingest": "viewport",
     "viewport_spinner_lifecycle": "viewport"
   },
-  "schema_version": "2.0.0"
+  "schema_version": "2.0.0",
+  "stepColOwner": {
+    "file": "src/core/runtime/runtime.ts",
+    "eventType": "tool_call_input",
+    "valueType": "StepNumber",
+    "_comment": "phase 216 立、white-list SoT 单源、跨业主 ctx 字段 stepNumber 由 agent-executor 产生 / runtime emit"
+  }
 }

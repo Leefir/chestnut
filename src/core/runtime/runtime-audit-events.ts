@@ -81,9 +81,13 @@ export const REACT_LOOP_AUDIT_EVENTS = {
 } as const;
 
 /**
- * Phase 140: runtime 业主声明 ID-naming map.
+ * Phase 140 + phase 216: runtime 业主声明 ID-naming map.
  *
- * SoT: runtime 是 trace_id / stepNumber 的产生方。
+ * SoT 区分:
+ * - trace_id：runtime 是产生方（startTrace 时新生成 traceId）
+ * - stepNumber：runtime 是 **emit 方**（audit emit `step=` col on tool_call_input）；
+ *               产生方 = agent-executor（agent-executor.ts:75 `ctx.stepNumber = makeStepNumber(stepCount)`、ReAct loop counter）；
+ *               ctx 跨业主边界传递、phase 216 立 StepNumber brand 编译期守语义。
  */
 export const RUNTIME_ID_NAMING: Readonly<Record<string, IdNamingEntry>> = {
   trace: {
