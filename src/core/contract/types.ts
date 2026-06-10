@@ -195,3 +195,38 @@ export function makeSubtaskId(s: string): SubtaskId { return s as SubtaskId; }
 declare const ArchiveDirBrand: unique symbol;
 export type ArchiveDir = string & { readonly [ArchiveDirBrand]: true };
 export function makeArchiveDir(s: string): ArchiveDir { return s as ArchiveDir; }
+
+// ============================================================================
+// Phase 230: ContractCreatePolicy plug-in registry framework
+// ============================================================================
+
+export interface CreatePolicyContext {
+  /** caller 调用上下文中的 subagent task id（CLI 命令可从 env.CHESTNUT_SUBAGENT_TASK_ID 拿、in-process 路径自定） */
+  subagentTaskId?: string;
+  /** 创建 contract 的 claw 目录、policy 可基于此做 claw-scoped 校验 */
+  clawDir?: string;
+}
+
+export interface ContractCreatePolicy {
+  /** policy 命名空间（caller 模块自负、如 'summon-verify'） */
+  name: string;
+  /** 通过 = void、拒 = throw ContractCreatePolicyViolationError */
+  check(ctx: CreatePolicyContext, contract: ContractYaml): Promise<void>;
+}
+
+export class ContractCreatePolicyViolationError extends Error {
+  constructor(
+    public readonly policyName: string,
+    public readonly cause: string,
+    public readonly details?: Record<string, unknown>,
+  ) {
+    super(`contract create rejected by policy '${policyName}': ${cause}`);
+    this.name = 'ContractCreatePolicyViolationError';
+  }
+}
+
+export interface CreateContractOptions {
+  contract: ContractYaml;
+  subagentTaskId?: string;
+  clawDir?: string;
+}

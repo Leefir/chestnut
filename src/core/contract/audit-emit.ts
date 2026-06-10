@@ -892,5 +892,18 @@ export function emitContractArchiveRecoveryPendingObserved(
   );
 }
 
+// ─── CONTRACT_CREATE_POLICY_REJECTED ────────────────────────────────────────
+export function emitContractCreatePolicyRejected(
+  audit: AuditLog,
+  payload: { policyName: string; cause: string; details?: Record<string, unknown> },
+): void {
+  audit.write(
+    CONTRACT_AUDIT_EVENTS.CONTRACT_CREATE_POLICY_REJECTED,
+    `policyName=${payload.policyName}`,
+    `cause=${payload.cause}`,
+    ...(payload.details !== undefined ? [`details=${JSON.stringify(payload.details)}`] : []),
+  );
+}
+
 // ─── Legacy helper: format error ──────────────────────────────────────────────
 export { formatErr };

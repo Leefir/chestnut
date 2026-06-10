@@ -107,6 +107,8 @@ export const CONTRACT_AUDIT_EVENTS = {
   CONTRACT_ARCHIVE_RECONCILE_SUMMARY: 'contract_archive_reconcile_summary',
   // phase 197: archive_pending_recovery observer 扫到时归 audit、不投 motion inbox
   CONTRACT_ARCHIVE_RECOVERY_PENDING_OBSERVED: 'contract_archive_recovery_pending_observed',
+  // Phase 230: contract create policy rejected
+  CONTRACT_CREATE_POLICY_REJECTED: 'contract_create_policy_rejected',
 } as const;
 
 /**

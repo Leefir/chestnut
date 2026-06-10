@@ -43,6 +43,7 @@ import {
   emitContractNotifyFailed,
   emitContractCreated,
   emitContractProgressSchemaInvalid,
+  emitContractCreatePolicyRejected,
 } from './audit-emit.js';
 import { CONTRACT_AUDIT_EVENTS } from './audit-events.js';
 import { isolateCorruptedFile } from './_isolation-helper.js';
@@ -51,7 +52,9 @@ import { UUID_SHORT_LEN, type ClawId } from '../../constants.js';
 
 import type {
   ContractYaml, ProgressData, VerificationResult, VerifierConfig, VerifierResult,
+  ContractCreatePolicy, CreatePolicyContext, CreateContractOptions,
 } from './types.js';
+import { ContractCreatePolicyViolationError } from './types.js';
 import {
   lockContract,
   type LockContext,
@@ -159,6 +162,9 @@ export class ContractSystem {
    * 改后：each ContractSystem instance own its own mutex / per-test 自然 fresh / 0 leak / 0 reset hook
    */
   private readonly verificationMutex = new VerificationMutex();
+
+  // Phase 230: contract create policy plug-in registry
+  private createPolicies = new Map<string, ContractCreatePolicy>();
 
   private _registerVerifierController(contractId: ContractId, ctrl: AbortController, promise: Promise<unknown>): void {
     let s = this._activeContractControllers.get(contractId);
@@ -601,7 +607,36 @@ export class ContractSystem {
   // class own logic（不下沉的部分）
   // ============================================================================
 
-  async create(contractYaml: ContractYaml): Promise<string> {
+  registerCreatePolicy(name: string, policy: ContractCreatePolicy): void {
+    // by-design: 后注册覆盖（caller 模块装配期通常只注册一次、Assembly 集中 wire）
+    this.createPolicies.set(name, policy);
+  }
+
+  async create(contractYaml: ContractYaml): Promise<string>;
+  async create(options: CreateContractOptions): Promise<string>;
+  async create(arg: ContractYaml | CreateContractOptions): Promise<string> {
+    const opts = 'contract' in arg ? arg : { contract: arg };
+    const contractYaml = opts.contract;
+    // Phase 230: policy iteration（在 schema 校验后、lock 创建前）
+    const ctx: CreatePolicyContext = {
+      subagentTaskId: opts.subagentTaskId,
+      clawDir: opts.clawDir,
+    };
+    for (const policy of this.createPolicies.values()) {
+      try {
+        await policy.check(ctx, contractYaml);
+      } catch (err) {
+        if (err instanceof ContractCreatePolicyViolationError) {
+          emitContractCreatePolicyRejected(this.audit, {
+            policyName: err.policyName,
+            cause: err.cause,
+            details: err.details,
+          });
+        }
+        throw err; // 上抛、契约不创建
+      }
+    }
+
     if (contractYaml.id !== undefined && contractYaml.id.trim() === '') {
       throw new ContractValidationError('id', 'empty',
         'contract id must not be empty (yaml: id: "<not blank>")');
