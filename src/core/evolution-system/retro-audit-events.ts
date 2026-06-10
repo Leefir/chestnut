@@ -21,4 +21,7 @@ export const RETRO_AUDIT_EVENTS = {
   STATE_SAVE_FAILED: 'retro_state_save_failed',
   // phase 253 Step A: _saveState schema invariant violated
   EVOLUTION_STATE_INVARIANT_VIOLATED: 'evolution_state_invariant_violated',
+  // phase 253 Step B: cross-source audit
+  EVOLUTION_STATE_CROSS_SOURCE_MISMATCH: 'evolution_state_cross_source_mismatch',
+  EVOLUTION_STATE_CROSS_SOURCE_SKIPPED: 'evolution_state_cross_source_skipped',
 } as const;

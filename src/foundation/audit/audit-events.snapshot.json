@@ -327,6 +327,8 @@
       "contract_retro_skill_failed",
       "contract_retro_yaml_failed",
       "evolution_boot_reconcile",
+      "evolution_state_cross_source_mismatch",
+      "evolution_state_cross_source_skipped",
       "evolution_state_invariant_violated",
       "retro_skipped_duplicate",
       "retro_state_load_failed",

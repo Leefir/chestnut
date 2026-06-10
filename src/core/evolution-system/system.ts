@@ -8,6 +8,7 @@ import { createSkillSystem as defaultCreateSkillSystem } from '../../foundation/
 import { scheduleRetro } from './retro-scheduler.js';
 import { RETRO_AUDIT_EVENTS } from './retro-audit-events.js';
 import { assertEvolutionStateShape } from './invariants.js';
+import { auditEvolutionStateCrossSource } from './state-cross-source-audit.js';
 import * as path from 'path';
 
 import { CLAWSPACE_DIR } from '../../foundation/claw-paths.js';
@@ -26,6 +27,8 @@ export interface EvolutionSystemDeps {
   contractManager: ContractSystem;
   retroSubagentTimeoutMs?: number;   // default 600000ms (10 min)
   createSkillSystem?: typeof defaultCreateSkillSystem;
+  /** phase 253 Step B: cross-source audit archive 列表 provider、可选注入 */
+  listArchiveContractIds?: () => Promise<string[]>;
 }
 
 export interface RetroResult {
@@ -169,6 +172,12 @@ export class EvolutionSystem {
 
       // phase 253 Step A: schema invariant check（违例 emit audit、不 throw、不阻 save、Path #4）
       assertEvolutionStateShape(data, this.deps.audit);
+
+      // phase 253 Step B: cross-source audit（fire-and-forget、provider 可选）
+      if (this.deps.listArchiveContractIds) {
+        void auditEvolutionStateCrossSource(data, this.deps.listArchiveContractIds, this.deps.audit)
+          .catch(() => { /* silent: fire-and-forget cross-source audit failure handled by state-cross-source-audit.ts internal catch */ });
+      }
 
       await this.deps.fs.writeAtomic(STATE_FILE_PATH, JSON.stringify(data, null, 2));
     } catch (e) {
