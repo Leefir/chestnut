@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createSummonContractCreateGate } from '../../../src/core/summon-system/contract-create-gate.js';
+import { createSummonContractCreateGate } from '../../../src/core/summon-system/summon-verify-policy.js';
 import { CliError } from '../../../src/cli/errors.js';
 import type { SummonStateStore } from '../../../src/core/summon-system/index.js';
 
