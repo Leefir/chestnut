@@ -9,8 +9,9 @@ import type { Message, TextBlock, ToolUseBlock, ToolResultBlock, ThinkingBlock }
 import { CliError } from '../errors.js';
 import { migrateAndValidateSession, validateSessionData } from '../../foundation/dialog-store/store.js';
 
-export interface Turn {
+export interface Step {
   num: number;
+  userInput?: { content: string; chars: number };
   texts: string[];
   thinkings: string[];
   toolUses: ToolUseBlock[];
@@ -21,15 +22,24 @@ export interface SessionLike {
   messages: Message[];
 }
 
-export function parseMessagesFromSession(session: SessionLike): Turn[] {
+export function parseMessagesFromSession(session: SessionLike): Step[] {
   const messages = session.messages;
-  const turns: Turn[] = [];
+  const steps: Step[] = [];
 
-  let turnNum = 0;
+  let stepNum = 0;
+  let pendingUserInput: { content: string; chars: number } | undefined;
+
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
+    if (msg.role === 'user') {
+      const textContent = extractUserTextContent(msg);
+      if (textContent !== undefined) {
+        pendingUserInput = { content: textContent, chars: textContent.length };
+      }
+      continue;
+    }
     if (msg.role === 'assistant') {
-      turnNum++;
+      stepNum++;
       const blocks = Array.isArray(msg.content)
         ? msg.content
         : [{ type: 'text', text: msg.content } as TextBlock];
@@ -37,8 +47,9 @@ export function parseMessagesFromSession(session: SessionLike): Turn[] {
       const nextUserMsg = messages[i + 1]?.role === 'user' ? messages[i + 1] : undefined;
       const toolResults = collectToolResults(nextUserMsg);
 
-      const turn: Turn = {
-        num: turnNum,
+      const step: Step = {
+        num: stepNum,
+        userInput: pendingUserInput,
         texts: [],
         thinkings: [],
         toolUses: [],
@@ -46,16 +57,25 @@ export function parseMessagesFromSession(session: SessionLike): Turn[] {
       };
 
       for (const block of blocks) {
-        if (block.type === 'text') turn.texts.push((block as TextBlock).text);
-        else if (block.type === 'thinking') turn.thinkings.push((block as ThinkingBlock).thinking);
-        else if (block.type === 'tool_use') turn.toolUses.push(block as ToolUseBlock);
+        if (block.type === 'text') step.texts.push((block as TextBlock).text);
+        else if (block.type === 'thinking') step.thinkings.push((block as ThinkingBlock).thinking);
+        else if (block.type === 'tool_use') step.toolUses.push(block as ToolUseBlock);
       }
 
-      turns.push(turn);
+      steps.push(step);
+      pendingUserInput = undefined;
     }
   }
 
-  return turns;
+  return steps;
+}
+
+function extractUserTextContent(msg: Message): string | undefined {
+  if (typeof msg.content === 'string') return msg.content || undefined;
+  if (!Array.isArray(msg.content)) return undefined;
+  const textBlocks = msg.content.filter((b): b is TextBlock => b.type === 'text');
+  if (textBlocks.length === 0) return undefined;
+  return textBlocks.map(b => b.text).join('\n');
 }
 
 function collectToolResults(userMsg: Message | undefined): Map<string, ToolResultBlock> {

@@ -38,7 +38,7 @@ describe('claw-steps', () => {
   }
 
   describe('clawStepsCommand', () => {
-    it('motion 路由 → 输出 motion turn 结构', async () => {
+    it('motion 路由 → 输出 motion step 结构', async () => {
       writeCurrentJson('motion', {
         messages: [
           { role: 'assistant', content: [{ type: 'text', text: 'motion hello' }] },
@@ -48,7 +48,7 @@ describe('claw-steps', () => {
       expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('motion hello'));
     });
 
-    it('claw 路由 → 输出 claw turn 结构', async () => {
+    it('claw 路由 → 输出 claw step 结构', async () => {
       writeCurrentJson('claws/test-claw', {
         messages: [
           { role: 'assistant', content: [{ type: 'text', text: 'claw hello' }] },
@@ -72,15 +72,15 @@ describe('claw-steps', () => {
       await expect(clawStepsCommand({ fsFactory }, 'empty-claw')).rejects.toThrow('dialog session not found');
     });
 
-    it('空 turns → No turns found.', async () => {
+    it('空 steps → No steps found.', async () => {
       writeCurrentJson('motion', { messages: [] });
       await clawStepsCommand({ fsFactory }, 'motion');
-      expect(consoleLogSpy).toHaveBeenCalledWith('No turns found.');
+      expect(consoleLogSpy).toHaveBeenCalledWith('No steps found.');
     });
   });
 
   describe('clawStepCommand', () => {
-    it('step <n> 整 turn → 输出 turn full detail', async () => {
+    it('step <n> 整 step → 输出 step full detail', async () => {
       writeCurrentJson('motion', {
         messages: [
           { role: 'assistant', content: [{ type: 'text', text: 'detail text' }] },
@@ -90,7 +90,7 @@ describe('claw-steps', () => {
       expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('detail text'));
     });
 
-    it('step <n.x> slot → 输出 turn slot', async () => {
+    it('step <n.x> slot → 输出 step slot', async () => {
       writeCurrentJson('motion', {
         messages: [
           {
@@ -111,13 +111,13 @@ describe('claw-steps', () => {
       expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('=== call: Read ==='));
     });
 
-    it('step 不存在 → CliError「Turn N not found」', async () => {
+    it('step 不存在 → CliError「Step N not found」', async () => {
       writeCurrentJson('motion', {
         messages: [
           { role: 'assistant', content: [{ type: 'text', text: 'only' }] },
         ],
       });
-      await expect(clawStepCommand({ fsFactory }, '99', 'motion')).rejects.toThrow('Turn 99 not found');
+      await expect(clawStepCommand({ fsFactory }, '99', 'motion')).rejects.toThrow('Step 99 not found');
     });
 
     it('step 格式非法 → CliError「Invalid step number」', async () => {

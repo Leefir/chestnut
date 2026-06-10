@@ -65,7 +65,7 @@ describe('subagent-steps wrap', () => {
     // When called directly (simulating outer .action wrapper), the throw propagates
     // and wrapper calls handleCliError → console.error once.
     await expect(subagentStepCommand({ fsFactory }, '5', 'sub-1', 'test-claw')).rejects.toThrow(
-      'step 5 out of range (total turns: 1)',
+      'step 5 out of range (total steps: 1)',
     );
     // No direct console.error in the function anymore (throw handles it)
     expect(consoleErrSpy).not.toHaveBeenCalled();

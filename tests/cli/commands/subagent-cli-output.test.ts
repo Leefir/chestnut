@@ -57,8 +57,8 @@ vi.mock('../../../src/cli/commands/_message-renderer.js', () => ({
       toolResults: new Map([['tu1', { type: 'tool_result', tool_use_id: 'tu1', content: 'ok', is_error: false }]]),
     },
   ]),
-  renderSteps: vi.fn().mockReturnValue('TURN  CALL  RESULT\n1  (text) "hello"'),
-  renderStepFull: vi.fn().mockReturnValue('turn 1\n\ncall: Read\n\nfile_path: "/tmp/a"\n\nresult\n\nok\n'),
+  renderSteps: vi.fn().mockReturnValue('STEP  CALL  RESULT\n1  (text) "hello"'),
+  renderStepFull: vi.fn().mockReturnValue('step 1\n\ncall: Read\n\nfile_path: "/tmp/a"\n\nresult\n\nok\n'),
 }));
 
 describe('subagent-list', () => {
@@ -118,8 +118,8 @@ describe('subagent steps --json', () => {
         toolResults: new Map([['tu1', { type: 'tool_result', tool_use_id: 'tu1', content: 'ok', is_error: false }]]),
       },
     ]);
-    vi.mocked(renderSteps).mockReturnValue('TURN  CALL  RESULT\n1  (text) "hello"');
-    vi.mocked(renderStepFull).mockReturnValue('turn 1\n\ncall: Read\n\nfile_path: "/tmp/a"\n\nresult\n\nok\n');
+    vi.mocked(renderSteps).mockReturnValue('STEP  CALL  RESULT\n1  (text) "hello"');
+    vi.mocked(renderStepFull).mockReturnValue('step 1\n\ncall: Read\n\nfile_path: "/tmp/a"\n\nresult\n\nok\n');
 
     vi.clearAllMocks();
   });
@@ -162,7 +162,7 @@ describe('subagent steps --json', () => {
     await subagentStepsCommand({ fsFactory }, 'task-1', 'test-claw');
 
     const output = consoleLogSpy.mock.calls.flat().join('\n');
-    expect(output).toContain('TURN');
+    expect(output).toContain('STEP');
   });
 
   it('falls back to text render without --json (step)', async () => {
@@ -171,7 +171,7 @@ describe('subagent steps --json', () => {
     await subagentStepCommand({ fsFactory }, '1', 'task-1', 'test-claw');
 
     const output = consoleLogSpy.mock.calls.flat().join('\n');
-    expect(output).toContain('turn 1');
+    expect(output).toContain('step 1');
   });
 
   it('outputs empty JSON when no turns (steps)', async () => {
