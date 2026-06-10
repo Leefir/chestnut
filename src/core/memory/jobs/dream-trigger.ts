@@ -1,13 +1,13 @@
-import type { CronJob } from '../runner.js';
-import { parseSchedule } from '../runner.js';
+import type { CronJob } from '../../cron/runner.js';
+import { parseSchedule } from '../../cron/runner.js';
 import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
-import type { MemorySystem } from '../../memory/index.js';
+import type { MemorySystem } from '../index.js';
 
 /**
  * Cron job timeout (ms) / 防 stuck handler 占 cron tick.
- * dream-trigger 是 assembly 装配 memorySystem capability 的 cron wrapper、
- * 无 dedicated business handler (memorySystem 直调).
- * 故 timeout const inline at module natural owner、显式标 ML#2/#3 例外.
+ * dream-trigger 是 MemorySystem 暴露给 cron 框架的 trigger factory、
+ * 业务执行体（runDeepDream + runRandomDream）归 MemorySystem。
+ * phase 237 物理迁出 cron/jobs/（per drift-backlog B.phase197-cron-jobs-业务归属未彻底分散 升档 (a)）。
  */
 export const DREAM_TRIGGER_CRON_TIMEOUT_MS = 30 * 60_000;  // 30 min
 

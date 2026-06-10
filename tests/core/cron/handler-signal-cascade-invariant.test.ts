@@ -78,7 +78,7 @@ describe('cron handler signal cascade invariant (phase 1266 r135 B fork)', () =>
   });
 
   it('反向 3: dream-trigger cooperative invariant (already wire signal)', () => {
-    const dreamTriggerPath = path.join(repoRoot, 'src', 'core', 'cron', 'jobs', 'dream-trigger.ts');
+    const dreamTriggerPath = path.join(repoRoot, 'src', 'core', 'memory', 'jobs', 'dream-trigger.ts');
     const src = readFileSync(dreamTriggerPath, 'utf-8');
 
     // Dream-trigger must remain cooperative with async (signal) =>

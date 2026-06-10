@@ -20,7 +20,7 @@ import { createMetricsSnapshotJob } from '../core/cron/jobs/metrics-snapshot.js'
 import { createGitGcWeeklyJob } from '../core/cron/jobs/git-gc-weekly.js';
 import { createRetentionCleanupJob } from '../core/cron/jobs/retention-cleanup.js';
 import { createAuditSizeMonitorJob } from '../core/cron/jobs/audit-size-monitor.js';
-import { createDreamTriggerJob } from '../core/cron/jobs/dream-trigger.js';
+import { createDreamTriggerJob } from '../core/memory/jobs/dream-trigger.js';
 import { createMemorySystem, memorySearchTool } from '../core/memory/index.js';
 import type { MemorySystem } from '../core/memory/index.js';
 import { createClawContractBridge } from '../core/memory/claw-contract-bridge.js';
