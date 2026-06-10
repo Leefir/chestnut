@@ -380,6 +380,7 @@
       "deep_dream_retry_exhausted",
       "deep_dream_unexpected",
       "dream_output_persisted",
+      "memory_dream_invariant_violated",
       "memory_random_dream_late_settle_abandoned",
       "memory_random_dream_late_settle_consumed",
       "memory_random_dream_late_settle_pending",

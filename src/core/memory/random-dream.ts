@@ -12,6 +12,7 @@ import type { ProgressData } from '../contract/index.js';
 import type { ContractId } from '../contract/types.js';
 import { type TaskId, makeTaskId } from '../async-task-system/types.js';
 import { listArchiveContracts } from '../contract/index.js';
+import { assertDreamStateShape } from './invariants.js';
 import {
   RANDOM_DREAM_SYSTEM_PROMPT,
   buildRandomDreamPrompt,
@@ -107,6 +108,9 @@ function loadRandomDreamState(fs: FileSystem, audit: AuditLog): RandomDreamState
 }
 
 function saveRandomDreamState(fs: FileSystem, state: RandomDreamState, audit: AuditLog): void {
+  // phase 247 Step A: schema invariant（违例 emit audit、不 throw、保既有 save throw 语义）
+  assertDreamStateShape(state, audit, 'random_dream_save');
+
   try {
     fs.writeAtomicSync(
       RANDOM_DREAM_STATE_FILE,
@@ -329,6 +333,13 @@ interface DreamExtractionResult {
 export function __test_extractDreamOutputs(log: string): DreamExtractionResult {
   return extractDreamOutputs(log);
 }
+
+// phase 247: export-for-test
+/** @internal test-only export (phase 247) */
+export const __test_saveRandomDreamState = saveRandomDreamState;
+/** @internal test-only export (phase 247) */
+export const __test_RANDOM_DREAM_STATE_FILE = RANDOM_DREAM_STATE_FILE;
+export type { RandomDreamState as __test_RandomDreamState };
 
 /** 从 sub-agent log 中提取 [DREAM_OUTPUT contract_id="..."]...[/DREAM_OUTPUT] 块 */
 function extractDreamOutputs(log: string): DreamExtractionResult {

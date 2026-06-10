@@ -15,6 +15,7 @@ import type { SessionData } from '../../foundation/dialog-store/types.js';
 import { CLAWS_DIR } from '../../foundation/claw-paths.js';
 import { INBOX_PENDING_DIR } from '../../foundation/messaging/index.js';
 import { FileNotFoundError } from '../../foundation/fs/types.js';
+import { assertDreamStateShape } from './invariants.js';
 
 /** Default max tokens for memory compression pass */
 const COMPRESSION_TOKENS_DEFAULT = 4000;
@@ -100,6 +101,9 @@ function loadDreamState(clawFs: FileSystem, audit: AuditLog, clawId: string): Dr
 }
 
 function saveDreamState(clawFs: FileSystem, state: DreamStateData, audit: AuditLog, clawId: string): void {
+  // phase 247 Step A: schema invariant（违例 emit audit、不 throw、不阻 save、Path #4）
+  assertDreamStateShape(state, audit, 'deep_dream_save');
+
   try {
     clawFs.writeAtomicSync(DEEP_DREAM_STATE_FILE, JSON.stringify(state, null, 2));
   } catch (err) {

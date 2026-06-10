@@ -23,6 +23,7 @@ export const MEMORY_AUDIT_EVENTS = {
   RANDOM_DREAM_LATE_SETTLE_PENDING: 'memory_random_dream_late_settle_pending',   // NEW phase 170
   RANDOM_DREAM_LATE_SETTLE_CONSUMED: 'memory_random_dream_late_settle_consumed',  // NEW phase 170
   RANDOM_DREAM_LATE_SETTLE_ABANDONED: 'memory_random_dream_late_settle_abandoned', // NEW phase 170
+  MEMORY_DREAM_INVARIANT_VIOLATED: 'memory_dream_invariant_violated',  // NEW phase 247 Step A
 } as const;
 
 
