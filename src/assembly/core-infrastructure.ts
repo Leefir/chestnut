@@ -1,6 +1,6 @@
 import path from 'path';
 import { formatErr } from '../foundation/utils/index.js';
-import { resolveChestnutRoot } from './install-paths.js';
+import { resolveChestnutRoot } from '../foundation/install-paths.js';
 import { CLAWS_DIR } from '../foundation/claw-paths.js';
 
 import type { FileSystem } from '../foundation/fs/types.js';

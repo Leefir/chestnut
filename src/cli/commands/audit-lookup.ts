@@ -12,7 +12,7 @@ import {
   getClawDir,
   getClawConfigPath,
 } from '../../foundation/config/index.js';
-import { getNamedSubrootDir } from '../../assembly/install-paths.js';
+import { getNamedSubrootDir } from '../../foundation/install-paths.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
 import { CliError } from '../errors.js';
 import {

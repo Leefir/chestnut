@@ -1,16 +1,14 @@
 /**
- * @module L6.Assembly.InstallPaths
- * chestnut 安装根 + 子目录 + claw 实例路径推算 + claw id 校验。
+ * @module Foundation.InstallPaths
  *
- * phase 78 加 getChestnutRoot + getNamedSubrootDir、phase 81 加 getWorkspaceRoot +
- * assertSafeClawId（private） + getClawDir + getClawConfigPath、自 foundation/paths.ts
- * 整迁 → L6 Assembly 真业务 owner（chestnut 安装根 = 装配根决定）。
+ * chestnut 安装根 + 子目录 + claw 实例路径推算 + brand type.
  *
- * cluster L1-L4 去 claw 化 / paths.ts 解散第六-七步、详
- * `coding plan/cluster-claw-decoupling-roadmap.md`。
+ * phase 242 ML#5/ML#9 真治: phase 78/81 era 迁 → L6 Assembly own、但 3 foundation
+ * → L6 反向 imports = ML#5 strict violation。user 「好」 ratify Path #6、reverse
+ * phase 78/81 era trade-off、install-paths 归 foundation 真 owner (path 是基础设施、
+ * 与 fs/identity 同层、与 phase 238 claw-paths 同型基础设施)。
  *
- * Claw* brand + factory + resolveChestnutRoot 仍 paths.ts、phase 82+ cluster 处理
- *（200+ caller、大 cluster）；import string type-only = L6 → L1 合规过渡。
+ * sister phase 238 claw-paths 迁 foundation 直接同型真治模板。
  */
 
 import * as path from 'path';

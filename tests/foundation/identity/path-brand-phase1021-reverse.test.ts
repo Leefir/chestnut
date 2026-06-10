@@ -8,7 +8,7 @@
  * After branding: path.dirname returns string → can't assign to ChestnutRoot → TS2322.
  */
 
-import { type ChestnutRoot, makeChestnutRoot } from '../../../src/assembly/install-paths.js';
+import { type ChestnutRoot, makeChestnutRoot } from '../../../src/foundation/install-paths.js';
 import { describe, it, expect } from 'vitest';
 import * as path from 'path';
 

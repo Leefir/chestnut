@@ -3,7 +3,7 @@
  * Watchdog logging + audit + inbox message
  */
 
-import { makeChestnutRoot } from '../assembly/install-paths.js';
+import { makeChestnutRoot } from '../foundation/install-paths.js';
 import * as path from 'path';
 import type { FileSystem } from '../foundation/fs/types.js';
 import { getChestnutFs, getAuditWriter, getMotionContext } from './watchdog-context.js';

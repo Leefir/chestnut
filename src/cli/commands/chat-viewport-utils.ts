@@ -6,7 +6,7 @@
 import { randomUUID } from 'crypto';
 import { UUID_SHORT_LEN } from '../../constants.js';
 import { EXEC_MAX_OUTPUT } from '../../foundation/command-tool/constants.js';
-import { getChestnutRoot, makeChestnutRoot } from '../../assembly/install-paths.js';
+import { getChestnutRoot, makeChestnutRoot } from '../../foundation/install-paths.js';
 import * as path from 'path';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { notifyClaw } from '../../foundation/messaging/index.js';

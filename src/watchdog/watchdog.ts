@@ -18,7 +18,7 @@
  * 本 file 保：runWatchdogLoop（main loop）+ shutdownWatchdog（graceful stop）+ barrel re-export
  */
 
-import { makeChestnutRoot } from '../assembly/install-paths.js';
+import { makeChestnutRoot } from '../foundation/install-paths.js';
 import * as path from 'path';
 import { formatErr } from "../foundation/utils/index.js";
 import { setTimeout } from 'timers/promises';

@@ -25,7 +25,7 @@ export {
   getClawConfigPath,
   getChestnutRoot,
   getNamedSubrootDir,
-} from '../../assembly/install-paths.js';
+} from '../install-paths.js';
 export { getGlobalConfigPath } from './global-config-path.js';
 
 // CRUD

@@ -2,7 +2,7 @@
  * Create a contract for a claw
  */
 
-import { resolveChestnutRoot } from '../../assembly/install-paths.js';
+import { resolveChestnutRoot } from '../../foundation/install-paths.js';
 import { CLAWS_DIR } from '../../foundation/claw-paths.js';
 import * as path from 'path';
 import { ContractSystem } from '../../core/contract/index.js';

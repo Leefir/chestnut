@@ -6,7 +6,7 @@
  * phase 34 Step C：从 assemble() 抽出步骤 12-15（Snapshot → StreamWriter → Runtime → shadowTool）。
  */
 
-import { resolveChestnutRoot } from './install-paths.js';
+import { resolveChestnutRoot } from '../foundation/install-paths.js';
 import { CLAWS_DIR } from '../foundation/claw-paths.js';
 import path from 'path';
 import { formatErr } from '../foundation/utils/index.js';

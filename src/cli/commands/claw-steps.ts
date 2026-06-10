@@ -3,7 +3,7 @@
  * claw steps + step commands for main-agent dialog observation
  */
 
-import { getClawDir, getNamedSubrootDir } from '../../assembly/install-paths.js';
+import { getClawDir, getNamedSubrootDir } from '../../foundation/install-paths.js';
 import * as path from 'path';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { DIALOG_DIR } from '../../foundation/dialog-store/index.js';

@@ -2,7 +2,7 @@
  * @module L6.CLI.Claw.Chat
  */
 
-import { getWorkspaceRoot } from '../../assembly/install-paths.js';
+import { getWorkspaceRoot } from '../../foundation/install-paths.js';
 import * as path from 'path';
 import {
   loadGlobalConfig, clawExists, getClawDir, getClawConfigPath,

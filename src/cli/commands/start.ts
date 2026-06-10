@@ -7,7 +7,7 @@
  * - Partial onboarding: resumes with a reminder
  */
 
-import { getWorkspaceRoot, makeChestnutRoot } from '../../assembly/install-paths.js';
+import { getWorkspaceRoot, makeChestnutRoot } from '../../foundation/install-paths.js';
 import { CLAWS_DIR } from '../../foundation/claw-paths.js';
 import * as path from 'path';
 import { formatErr } from "../../foundation/utils/index.js";

@@ -1,7 +1,7 @@
 /**
  * Path getters tests
  */
-import { getClawDir } from '../../../src/assembly/install-paths.js';
+import { getClawDir } from '../../../src/foundation/install-paths.js';
 import { describe, it, expect } from 'vitest';
 
 describe('Phase 537 — getClawDir traversal guard', () => {

@@ -18,12 +18,10 @@ import path from 'node:path';
 const ASSEMBLY_IMPORT_PATTERN = /from\s+['"][^'"]*\/assembly\/[^'"]*['"]/;
 
 const BASELINE_ALLOW_LIST = new Set([
-  // L1 foundation/ (5) — install-paths / compose-config 仍 L6 own、待后续 cluster 治理
+  // L1 foundation/ (3) — compose-config 仍 L6 own、待 phase 240 cluster 治理
   'src/foundation/config/crud.ts',
-  'src/foundation/config/global-config-path.ts',
   'src/foundation/config/index.ts',
   'src/foundation/llm-orchestrator/config-adapter.ts',
-  'src/foundation/process-manager/signal-clean-stop.ts',
 ]);
 
 function walk(dir: string): string[] {

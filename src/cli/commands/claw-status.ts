@@ -13,7 +13,7 @@
  * - format 与 agent status tool 输出一致、避免漂移；多 `Claw:` header 标 namespace
  */
 
-import { resolveChestnutRoot } from '../../assembly/install-paths.js';
+import { resolveChestnutRoot } from '../../foundation/install-paths.js';
 import * as path from 'path';
 import { loadGlobalConfig, clawExists, getClawDir, getClawConfigPath } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';

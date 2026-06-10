@@ -3,7 +3,7 @@
  * 「确保 watchdog 在运行」职责唯一入口 (ML#1)
  * OS-level advisory lock 保 atomic check-and-spawn (ML#9)
  */
-import { makeChestnutRoot } from '../assembly/install-paths.js';
+import { makeChestnutRoot } from '../foundation/install-paths.js';
 import type { FileSystem } from '../foundation/fs/types.js';
 import { getChestnutDir, getAuditWriter } from './watchdog-context.js';
 import { isWatchdogAlive } from './watchdog-pid.js';

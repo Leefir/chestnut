@@ -10,11 +10,20 @@ module.exports = {
     {
       name: 'no-core-to-assembly',
       comment: [
-        'L4/L5 core modules 不应反向 import L6 Assembly (ML#5 strict)。',
-        'phase 238 真治后 27 imports 已 cleared、rule 立 strict 防 future drift。',
+        'L4/L5 core + L1/L2 foundation modules 不应反向 import L6 Assembly (ML#5 strict)。',
+        'phase 238 + 242 真治后 imports 已 cleared、rule 立 strict 防 future drift。',
+        'pathNot: 3 file 遗留 compose-config import = phase 240 待处理、非 install-paths。',
       ].join(' '),
       severity: 'error',
-      from: { path: '^src/core/' },
+      from: {
+        path: '^src/(core|foundation)/',
+        pathNot: [
+          // phase 240 待处理: compose-config 仍 L6 own、3 file 遗留 import 允许至 phase 240 真治
+          '^src/foundation/config/crud\\.ts$',
+          '^src/foundation/config/index\\.ts$',
+          '^src/foundation/llm-orchestrator/config-adapter\\.ts$',
+        ],
+      },
       to: { path: '^src/assembly/' },
     },
     {

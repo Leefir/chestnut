@@ -3,7 +3,7 @@
  * Shared helpers for subagent CLI commands
  */
 
-import { getClawDir, getNamedSubrootDir } from '../../assembly/install-paths.js';
+import { getClawDir, getNamedSubrootDir } from '../../foundation/install-paths.js';
 import * as path from 'path';
 import {
   TASKS_QUEUES_DONE_DIR,

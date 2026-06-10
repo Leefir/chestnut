@@ -37,7 +37,7 @@ import { createDirContext } from '../foundation/audit/index.js';
 import { getChestnutRoot, getClawDir, loadGlobalConfig } from '../foundation/config/index.js';
 import { createSummonStateStore, createSummonVerifyPolicy } from '../core/summon-system/index.js';
 import { createContractSystem } from '../core/contract/index.js';
-import { resolveChestnutRoot } from '../assembly/install-paths.js';
+import { resolveChestnutRoot } from '../foundation/install-paths.js';
 import { CLAWS_DIR } from '../foundation/claw-paths.js';
 import { createSystemAudit } from '../foundation/audit/index.js';
 import { notifyClaw } from '../foundation/messaging/index.js';
