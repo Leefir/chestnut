@@ -28,6 +28,9 @@ export const INTERRUPT_POLL_WARN_EVERY = 5;
 /** Interrupt poller 连续错误上限（达后禁 poller + emit LOOP_INTERRUPT_POLLER_DISABLED audit）*/
 export const INTERRUPT_POLL_MAX_ERRORS = 20;
 
+/** Interrupt poller disable 后 recovery backoff（ms）/ phase 229: DP「中断可恢复」+ ML#8 接口最小 */
+export const INTERRUPT_POLL_RECOVERY_BACKOFF_MS = 30_000;
+
 /**
  * ReAct chain 单 tick 内 batch 最大轮数 / 防 runaway 安全闸.
  * 达 cap 时 emit LOOP_ITERATION_TYPES.CHAIN_LIMITED audit / chain 强制结束本 tick.

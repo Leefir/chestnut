@@ -27,6 +27,7 @@ import {
   DAEMON_FALLBACK_TIMEOUT_MS,
   INTERRUPT_POLL_INTERVAL_MS,
   INTERRUPT_POLL_MAX_ERRORS,
+  INTERRUPT_POLL_RECOVERY_BACKOFF_MS,
   INTERRUPT_POLL_WARN_EVERY,
   REACT_CHAIN_MAX_ITERATIONS,
   LLM_RETRY_INITIAL_DELAY_MS,
@@ -175,7 +176,8 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
       try {
         // Start polling for the interrupt file
         let interruptErrCount = 0;
-        interruptPoller = setInterval(() => {
+
+        const pollInterruptFile = () => {
           try {
             agentFs.deleteSync('interrupt');
             // Reached here: file existed and was deleted — trigger abort
@@ -200,9 +202,19 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
               options.audit.write(DAEMON_AUDIT_EVENTS.LOOP_INTERRUPT_POLLER_DISABLED, `error_count=${interruptErrCount}`, `last_error=${formatErr(err)}`);
               clearInterval(interruptPoller!);
               interruptPoller = null;
+              // phase 229: DP「中断可恢复」+ DP「系统能自己做的就自己做好」delayed retry recovery
+              setTimeout(() => {
+                options.audit.write(DAEMON_AUDIT_EVENTS.LOOP_INTERRUPT_POLLER_RECOVERY_ATTEMPT, `backoff_ms=${INTERRUPT_POLL_RECOVERY_BACKOFF_MS}`);
+                interruptErrCount = 0;
+                interruptPoller = setInterval(pollInterruptFile, INTERRUPT_POLL_INTERVAL_MS);
+                interruptPoller.unref();
+                options.audit.write(DAEMON_AUDIT_EVENTS.LOOP_INTERRUPT_POLLER_RECOVERED);
+              }, INTERRUPT_POLL_RECOVERY_BACKOFF_MS);
             }
           }
-        }, INTERRUPT_POLL_INTERVAL_MS);
+        };
+
+        interruptPoller = setInterval(pollInterruptFile, INTERRUPT_POLL_INTERVAL_MS);
         interruptPoller.unref();
 
         try {
