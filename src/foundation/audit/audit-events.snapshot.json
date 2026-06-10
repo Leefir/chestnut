@@ -503,6 +503,7 @@
         ]
       },
       "turn_end",
+      "turn_completeness_mismatch",
       "turn_error",
       "turn_interrupted",
       "turn_start"

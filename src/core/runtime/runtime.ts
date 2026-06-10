@@ -59,6 +59,7 @@ import { formatTimeAgo } from './utils.js';
 import type { ToolUseId } from '../../foundation/tool-protocol/index.js';
 import type { TraceId } from './types/trace-id.js';
 import { makeTraceId } from './types/trace-id.js';
+import { auditTurnCompleteness, type TurnStreamCounts } from './turn-completeness.js';
 
 function auditError(
   audit: AuditLog,
@@ -761,7 +762,29 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon {
         trace_id: traceId,
       });
 
-      await this._runReact(messages, callbacks);
+      // phase 227: turn-level stream counter for cross-source completeness audit
+      const turnStartMessagesLength = messages.length;
+      const turnStreamCounts: TurnStreamCounts = {
+        textEnd: 0,
+        toolCall: 0,
+        toolResult: 0,
+      };
+      const wrappedCallbacks: StreamCallbacks = {
+        ...callbacks,
+        onTextEnd: () => { turnStreamCounts.textEnd++; callbacks?.onTextEnd?.(); },
+        onToolCall: (n, id) => { turnStreamCounts.toolCall++; callbacks?.onToolCall?.(n, id); },
+        onToolResult: (n, id, r, s, ms) => { turnStreamCounts.toolResult++; callbacks?.onToolResult?.(n, id, r, s, ms); },
+      };
+
+      await this._runReact(messages, wrappedCallbacks);
+
+      // phase 227: cross-source completeness audit
+      auditTurnCompleteness(
+        turnStreamCounts,
+        messages.slice(turnStartMessagesLength),
+        this.auditWriter,
+        this.currentTraceId,
+      );
 
       // Turn completed normally
       callbacks?.onTurnEnd?.();
@@ -906,7 +929,30 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon {
     this.currentAbortController = abortController;
     this.execContext.signal = abortController.signal;
     try {
-      await this._runReact(messages, callbacks);
+      // phase 227: turn-level stream counter for cross-source completeness audit
+      const turnStartMessagesLength = messages.length;
+      const turnStreamCounts: TurnStreamCounts = {
+        textEnd: 0,
+        toolCall: 0,
+        toolResult: 0,
+      };
+      const wrappedCallbacks: StreamCallbacks = {
+        ...callbacks,
+        onTextEnd: () => { turnStreamCounts.textEnd++; callbacks?.onTextEnd?.(); },
+        onToolCall: (n, id) => { turnStreamCounts.toolCall++; callbacks?.onToolCall?.(n, id); },
+        onToolResult: (n, id, r, s, ms) => { turnStreamCounts.toolResult++; callbacks?.onToolResult?.(n, id, r, s, ms); },
+      };
+
+      await this._runReact(messages, wrappedCallbacks);
+
+      // phase 227: cross-source completeness audit
+      auditTurnCompleteness(
+        turnStreamCounts,
+        messages.slice(turnStartMessagesLength),
+        this.auditWriter,
+        this.currentTraceId,
+      );
+
       this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_END);
     } catch (err) {
       // Note: do NOT save messages here - see processBatch catch block for explanation
@@ -969,7 +1015,30 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon {
     this.currentAbortController = abortController;
     this.execContext.signal = abortController.signal;
     try {
-      await this._runReact(retryMessages, callbacks);
+      // phase 227: turn-level stream counter for cross-source completeness audit
+      const turnStartMessagesLength = retryMessages.length;
+      const turnStreamCounts: TurnStreamCounts = {
+        textEnd: 0,
+        toolCall: 0,
+        toolResult: 0,
+      };
+      const wrappedCallbacks: StreamCallbacks = {
+        ...callbacks,
+        onTextEnd: () => { turnStreamCounts.textEnd++; callbacks?.onTextEnd?.(); },
+        onToolCall: (n, id) => { turnStreamCounts.toolCall++; callbacks?.onToolCall?.(n, id); },
+        onToolResult: (n, id, r, s, ms) => { turnStreamCounts.toolResult++; callbacks?.onToolResult?.(n, id, r, s, ms); },
+      };
+
+      await this._runReact(retryMessages, wrappedCallbacks);
+
+      // phase 227: cross-source completeness audit
+      auditTurnCompleteness(
+        turnStreamCounts,
+        retryMessages.slice(turnStartMessagesLength),
+        this.auditWriter,
+        this.currentTraceId,
+      );
+
       callbacks?.onTurnEnd?.();
       this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_END);
     } catch (err) {

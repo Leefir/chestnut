@@ -62,6 +62,8 @@ export const RUNTIME_AUDIT_EVENTS = {
   MAX_TOKENS_ASSISTANT_EMPTY_SKIPPED: 'max_tokens_assistant_empty_skipped',
   // phase 1383: max_tokens stop handler State A orphan prebuilt drop observability
   MAX_TOKENS_STATE_A_ORPHAN_DROP: 'max_tokens_state_a_orphan_drop',
+  // phase 227: turn_end cross-source completeness audit
+  TURN_COMPLETENESS_MISMATCH: 'turn_completeness_mismatch',
 } as const;
 
 /**

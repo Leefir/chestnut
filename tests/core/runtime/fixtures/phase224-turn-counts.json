@@ -1,0 +1,9 @@
+{
+  "streamCounts": {
+    "textEnd": 1093,
+    "toolCall": 104,
+    "toolResult": 15
+  },
+  "turnSlice": [],
+  "traceId": "phase224-trace"
+}
