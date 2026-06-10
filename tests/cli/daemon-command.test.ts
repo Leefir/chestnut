@@ -204,7 +204,7 @@ async function waitForAuditCall(eventName: string, timeoutMs = 15_000): Promise<
 // ============================================================================
 // Tests
 // ============================================================================
-import { createDaemonCommand } from '../../src/daemon/daemon.js';
+import { createDaemonCommand, _resetDaemonSignalHandlers } from '../../src/daemon/daemon.js';
 
 const daemonCommand = createDaemonCommand({
   fsFactory,
@@ -220,6 +220,7 @@ const daemonCommand = createDaemonCommand({
 
 describe('daemonCommand - A4a startup success', () => {
   beforeEach(() => {
+    _resetDaemonSignalHandlers();  // phase 251: clear module-level sigtermHandler/sigintHandler/uncaughtHandler/unhandledRejectionHandler refs so test #N's installation isn't seeing test #N-1's stale handler closure
     mockProcessOnEvent.removeAllListeners();
     mockAuditEvent.removeAllListeners();
     vi.clearAllMocks();
@@ -282,6 +283,7 @@ describe('daemonCommand - A4a startup success', () => {
 
 describe('daemonCommand - A4a startup failure', () => {
   beforeEach(() => {
+    _resetDaemonSignalHandlers();  // phase 251: clear module-level sigtermHandler/sigintHandler/uncaughtHandler/unhandledRejectionHandler refs so test #N's installation isn't seeing test #N-1's stale handler closure
     mockProcessOnEvent.removeAllListeners();
     mockAuditEvent.removeAllListeners();
     vi.clearAllMocks();
@@ -378,6 +380,7 @@ describe('daemonCommand - A4a startup failure', () => {
 
 describe('daemonCommand - A4d shutdown signal', () => {
   beforeEach(() => {
+    _resetDaemonSignalHandlers();  // phase 251: clear module-level sigtermHandler/sigintHandler/uncaughtHandler/unhandledRejectionHandler refs so test #N's installation isn't seeing test #N-1's stale handler closure
     mockProcessOnEvent.removeAllListeners();
     mockAuditEvent.removeAllListeners();
     vi.clearAllMocks();
@@ -434,6 +437,7 @@ describe('daemonCommand - A4d shutdown signal', () => {
 
 describe('daemonCommand - A4d crash handler', () => {
   beforeEach(() => {
+    _resetDaemonSignalHandlers();  // phase 251: clear module-level sigtermHandler/sigintHandler/uncaughtHandler/unhandledRejectionHandler refs so test #N's installation isn't seeing test #N-1's stale handler closure
     mockProcessOnEvent.removeAllListeners();
     mockAuditEvent.removeAllListeners();
     vi.clearAllMocks();
@@ -486,6 +490,7 @@ describe('daemonCommand - A4d crash handler', () => {
 
 describe('daemonCommand - review_request dispatch (phase184)', () => {
   beforeEach(() => {
+    _resetDaemonSignalHandlers();  // phase 251: clear module-level sigtermHandler/sigintHandler/uncaughtHandler/unhandledRejectionHandler refs so test #N's installation isn't seeing test #N-1's stale handler closure
     mockProcessOnEvent.removeAllListeners();
     mockAuditEvent.removeAllListeners();
     vi.clearAllMocks();
