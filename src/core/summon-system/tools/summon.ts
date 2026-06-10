@@ -10,6 +10,7 @@ import { buildSummonContractTask, buildMinerSystemPrompt, buildMiningUserMessage
 
 
 import { SUMMON_AUDIT_EVENTS, emitSummonDispatched, emitSummonRejectedShadow } from '../audit-events.js';
+import { isFileNotFound } from '../../../foundation/fs/types.js';
 import type { SummonStateStore } from '../summon-state-store.js';
 import { SUMMON_CONTRACT_EXTRACT_POSTPROCESSOR_NAME } from '../post-processors/contract-extract.js';
 import { SUMMON_CALLER_TYPES, type SummonCallerType } from '../caller-types.js';
@@ -102,7 +103,7 @@ export class SummonTool implements Tool {
       }
     } catch (e) {
       const code = (e as NodeJS.ErrnoException).code;
-      if (code !== 'ENOENT' && code !== 'ENOTDIR') {
+      if (!isFileNotFound(e) && code !== 'ENOTDIR') {
         ctx.auditWriter?.write(SUMMON_AUDIT_EVENTS.LOAD_SKILLS_FAILED, `error=${String(e)}`);
       }
     }

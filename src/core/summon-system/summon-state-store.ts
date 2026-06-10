@@ -1,4 +1,4 @@
-import type { FileSystem } from '../../foundation/fs/types.js';
+import { isFileNotFound, type FileSystem } from '../../foundation/fs/types.js';
 import type { TaskId } from '../async-task-system/types.js';
 import { SUMMON_AUDIT_EVENTS } from './audit-events.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
@@ -45,8 +45,7 @@ export function createSummonStateStore(fs: FileSystem, audit?: AuditLog): Summon
         const content = await fs.read(relPath);
         return JSON.parse(content) as SummonDecision;
       } catch (e) {
-        const code = (e as NodeJS.ErrnoException).code;
-        if (code === 'ENOENT') return undefined;
+        if (isFileNotFound(e)) return undefined;
         audit?.write(SUMMON_AUDIT_EVENTS.SUMMON_STATE_READ_FAILED, `taskId=${taskId}`, `error=${String(e)}`);
         return undefined;   // 读失败按"无决策"处理、gate 走 pass-through
       }

@@ -19,7 +19,7 @@ import { makeClawId } from '../../constants.js';
 import { CLAWS_DIR } from '../../assembly/claw-dirs.js';
 import { resolveDaemonEntry } from '../../assembly/spawn-entry.js';
 import { CLI_AUDIT_EVENTS } from '../audit-events.js';
-import type { FileSystem } from '../../foundation/fs/types.js';
+import { isFileNotFound, type FileSystem } from '../../foundation/fs/types.js';
 
 export async function stopAllCommand(
   deps: { fsFactory: (baseDir: string) => FileSystem },
@@ -75,7 +75,7 @@ export async function stopAllCommand(
       .filter(e => e.isDirectory)
       .map(e => e.name);
   } catch (e) {
-    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+    if (!isFileNotFound(e)) {
       process.stderr.write(`[stop] readdirSync claws dir failed: ${(e as Error).message}\n`);
     }
   }

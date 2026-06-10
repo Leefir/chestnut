@@ -130,6 +130,12 @@
             "reason": "pre-existing silent catch / TODO phase TBD convert to canonical"
         },
         {
+            "file": "src/cli/commands/stop.ts",
+            "line": 77,
+            "body_excerpt": "if (!isFileNotFound(e)) {       process.stderr.write(`[stop] readdirSync claws dir failed: ${(e as Error).message}\\n`);     }",
+            "reason": "pre-existing catch / phase 223: ENOENT-only → isFileNotFound helper / false-positive stderr 消 / 非 ENOENT 才报"
+        },
+        {
             "file": "src/cli/commands/subagent-helpers.ts",
             "line": 119,
             "body_excerpt": "} catch { /* ignore */ }",

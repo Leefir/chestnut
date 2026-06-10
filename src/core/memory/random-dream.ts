@@ -1,7 +1,7 @@
 import * as path from 'path';
 import { formatErr } from "../../foundation/utils/index.js";
 import { MOTION_CLAW_ID } from '../../constants.js';
-import { FileNotFoundError } from '../../foundation/fs/types.js';
+import { FileNotFoundError, isFileNotFound } from '../../foundation/fs/types.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { MEMORY_AUDIT_EVENTS } from './audit-events.js';
 import { MEMORY_DREAM_OUTPUTS_DIR } from './memory-paths.js';
@@ -218,10 +218,7 @@ async function computeWeight(
       hints.push(...factors.hints);
     } catch (e) {
       // ENOENT 是预期（contract 无 progress.json 是正常初态）— 仅非 ENOENT 必 audit
-      const isMissing =
-        (e as NodeJS.ErrnoException).code === 'ENOENT' ||
-        e instanceof FileNotFoundError;
-      if (!isMissing) {
+      if (!isFileNotFound(e)) {
         audit.write(MEMORY_AUDIT_EVENTS.RANDOM_DREAM_ERROR,
           `site=load_progress_fallback`,
           `contractDir=${contractDir}`,

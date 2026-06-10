@@ -12,7 +12,7 @@ import * as path from 'path';
 import { CLAWSPACE_DIR } from '../../assembly/claw-dirs.js';
 import { CONTRACT_AUDIT_EVENTS } from '../contract/audit-events.js';
 import type { Message } from '../../foundation/llm-provider/types.js';
-import { FileNotFoundError } from '../../foundation/fs/types.js';
+import { FileNotFoundError, isFileNotFound } from '../../foundation/fs/types.js';
 import { isProgrammingBug } from '../../foundation/errors.js';
 import { readPendingRetrospective, InvalidJSONError, UnexpectedFormatError, InvalidTargetClawError } from '../summon-system/index.js';
 import type { ContractId } from '../contract/types.js';
@@ -257,10 +257,7 @@ export class EvolutionSystem {
           baseMessages = parsed;
         }
       } catch (e) {
-        const isMissing =
-          (e as NodeJS.ErrnoException).code === 'ENOENT' ||
-          e instanceof FileNotFoundError;
-        if (isMissing) {
+        if (isFileNotFound(e)) {
           this.deps.audit.write(
             RETRO_AUDIT_EVENTS.MINING_FAILED,
             `taskId=${miningTaskId}`,
