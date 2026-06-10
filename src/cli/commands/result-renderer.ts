@@ -53,7 +53,12 @@ function renderToolUseSections(tu: ToolUseBlock, result: ToolResultBlock | undef
   return sections;
 }
 
-export function renderSteps(steps: Step[]): string {
+export interface RenderStepsOpts {
+  cliPrefix?: string;
+  noHint?: boolean;
+}
+
+export function renderSteps(steps: Step[], opts: RenderStepsOpts = {}): string {
   const lines: string[] = ['STEP  CALL  RESULT'];
 
   for (const step of steps) {
@@ -77,6 +82,12 @@ export function renderSteps(steps: Step[]): string {
       const stepLabel = multi ? `${step.num}.${slotLetter(idx)}` : String(step.num);
       lines.push(`${stepLabel}  ${argsStr}  ${result}`);
     });
+  }
+
+  if (!opts.noHint && steps.length > 0 && opts.cliPrefix) {
+    lines.push('');
+    const lastNum = steps[steps.length - 1].num;
+    lines.push(`→ chestnut ${opts.cliPrefix} step <n> for full detail (n=1..${lastNum}, or N.<a-z> for tool slot)`);
   }
 
   return lines.join('\n');

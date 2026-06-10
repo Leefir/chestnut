@@ -32,8 +32,9 @@ export function createSubagentCommand(deps: { fsFactory: (baseDir: string) => Fi
     .description('Show subagent turn steps')
     .requiredOption('-c, --claw <claw>', 'Claw to query')
     .option('--json', 'Output as JSON (machine-readable)')
-    .action(async (id: string, opts: { claw: string; json?: boolean }) => {
-      await subagentStepsCommand(deps, id, opts.claw, { json: opts.json });
+    .option('--no-hint', 'Suppress step <n> usage hint')
+    .action(async (id: string, opts: { claw: string; json?: boolean; hint?: boolean }) => {
+      await subagentStepsCommand(deps, id, opts.claw, { json: opts.json, noHint: opts.hint === false });
     });
 
   cmd

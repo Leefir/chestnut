@@ -55,8 +55,8 @@ describe('phase 961: motion steps/step action uses withCliErrorHandling wrapper'
     const stepsIdx = indexSource.indexOf("motionCmd\n  .command('steps')");
     expect(stepsIdx).toBeGreaterThan(-1);
     const block = indexSource.slice(stepsIdx, stepsIdx + 400);
-    expect(block).toContain('.action(withCliErrorHandling(async () => {');
-    expect(block).toContain('await motionStepsCommand({ fsFactory });');
+    expect(block).toContain('.action(withCliErrorHandling(async (');
+    expect(block).toContain('await motionStepsCommand({ fsFactory }');
     // phase 961: raw try/catch removed
     expect(block).not.toMatch(/try\s*\{/);
     expect(block).not.toContain('process.exitCode = handleCliError(error)');

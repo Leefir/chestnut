@@ -28,14 +28,15 @@ function resolveDialogPath(deps: { fsFactory: (baseDir: string) => FileSystem },
   return path.join(baseDir, DIALOG_DIR, 'current.json');
 }
 
-export async function clawStepsCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, name: string): Promise<void> {
+export async function clawStepsCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, name: string, opts: { noHint?: boolean } = {}): Promise<void> {
   const session = loadSessionFromFile(deps, resolveDialogPath(deps, name));
   const steps = parseMessagesFromSession(session);
   if (steps.length === 0) {
     console.log('No steps found.');
     return;
   }
-  console.log(renderSteps(steps));
+  const cliPrefix = name === MOTION_CLAW_ID ? MOTION_CLAW_ID : `claw ${name}`;
+  console.log(renderSteps(steps, { cliPrefix, noHint: opts.noHint }));
 }
 
 export async function clawStepCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, n: string, name: string): Promise<void> {

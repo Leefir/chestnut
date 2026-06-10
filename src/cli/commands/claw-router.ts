@@ -346,10 +346,18 @@ async function runLs(deps: RouterDeps, name: string, args: string[]): Promise<vo
 
 
 async function runSteps(deps: RouterDeps, name: string, args: string[]): Promise<void> {
-  if (args.length > 0) {
-    throw new CliError(`'steps' takes no extra arguments (got: ${args.join(' ')})`);
+  const parser = makeVerbParser('steps');
+  parser.option('--no-hint', 'Suppress step <n> usage hint');
+  try {
+    parser.parse(args, { from: 'user' });
+  } catch (err) {
+    throw new CliError(`invalid 'claw <name> steps' options: ${(err as Error).message}`);
   }
-  await clawStepsCommand(deps, name);
+  if (parser.args.length > 0) {
+    throw new CliError(`'steps' takes no extra arguments (got: ${parser.args.join(' ')})`);
+  }
+  const opts = parser.opts() as { hint?: boolean };
+  await clawStepsCommand(deps, name, { noHint: opts.hint === false });
 }
 
 async function runStep(deps: RouterDeps, name: string, args: string[]): Promise<void> {
@@ -372,14 +380,15 @@ async function runTrace(deps: RouterDeps, name: string, args: string[]): Promise
   parser.requiredOption('--contract <contractId>', 'Contract ID');
   // phase 1484: --step 接 string (N or N.x form) / 解析推到 clawTraceCommand 与 claw step N.x 同源
   parser.option('--step <n>', 'Show full content of step N or N.x (e.g. 5 or 5.a)');
+  parser.option('--no-hint', 'Suppress step <n> usage hint');
   try {
     parser.parse(args, { from: 'user' });
   } catch (err) {
     throw new CliError(`invalid 'claw <name> trace' options: ${(err as Error).message}`);
   }
-  const opts = parser.opts() as { contract: string; step?: string };
+  const opts = parser.opts() as { contract: string; step?: string; hint?: boolean };
   const { clawTraceCommand } = await import('./claw.js');
-  await clawTraceCommand(deps, name, makeContractId(opts.contract), opts.step);
+  await clawTraceCommand(deps, name, makeContractId(opts.contract), opts.step, { noHint: opts.hint === false });
 }
 
 async function runStatus(deps: RouterDeps, name: string, args: string[]): Promise<void> {

@@ -22,7 +22,7 @@ describe('motion-steps', () => {
 
   it('motionStepsCommand 等价 clawStepsCommand("motion")', async () => {
     await motionStepsCommand({ fsFactory });
-    expect(clawStepsSpy).toHaveBeenCalledWith(expect.objectContaining({ fsFactory: expect.any(Function) }), 'motion');
+    expect(clawStepsSpy).toHaveBeenCalledWith(expect.objectContaining({ fsFactory: expect.any(Function) }), 'motion', expect.any(Object));
     expect(clawStepsSpy).toHaveBeenCalledTimes(1);
   });
 

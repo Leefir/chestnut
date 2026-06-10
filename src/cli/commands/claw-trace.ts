@@ -57,6 +57,7 @@ export async function clawTraceCommand(
   clawId: string,
   contractId: ContractId,
   step?: string,
+  opts: { noHint?: boolean } = {},
 ): Promise<void> {
   loadGlobalConfig(deps);
 
@@ -85,7 +86,7 @@ export async function clawTraceCommand(
     await showStepDetail(fileSystem, events, step);
   } else {
     // 概览输出
-    showTraceOverview(clawId, contractId, title, startedAt, events);
+    showTraceOverview(clawId, contractId, title, startedAt, events, opts.noHint);
   }
 }
 
@@ -227,6 +228,7 @@ function showTraceOverview(
   title: string | undefined,
   startedAt: string,
   events: StreamEvent[],
+  noHint?: boolean,
 ): void {
   // 头部信息
   const titleLine = title ? `"${title}"` : '(untitled)';
@@ -310,6 +312,11 @@ function showTraceOverview(
   }
 
   flushText();
+
+  if (!noHint && totalTurns > 0) {
+    console.log('');
+    console.log(`→ chestnut claw ${clawId} trace --contract ${contractId} --step <n> for full detail (n=1..${totalTurns})`);
+  }
 }
 
 /**

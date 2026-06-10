@@ -168,8 +168,9 @@ motionCmd
 motionCmd
   .command('steps')
   .description('Show motion turn steps')
-  .action(withCliErrorHandling(async () => {
-    await motionStepsCommand({ fsFactory });
+  .option('--no-hint', 'Suppress step <n> usage hint')
+  .action(withCliErrorHandling(async (opts: { hint?: boolean }) => {
+    await motionStepsCommand({ fsFactory }, { noHint: opts.hint === false });
   }));
 
 // motion step

@@ -7,8 +7,8 @@ import { MOTION_CLAW_ID } from '../../constants.js';
 import { clawStepsCommand, clawStepCommand } from './claw-steps.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 
-export async function motionStepsCommand(deps: { fsFactory: (baseDir: string) => FileSystem }): Promise<void> {
-  await clawStepsCommand(deps, MOTION_CLAW_ID);
+export async function motionStepsCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, opts: { noHint?: boolean } = {}): Promise<void> {
+  await clawStepsCommand(deps, MOTION_CLAW_ID, opts);
 }
 
 export async function motionStepCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, n: string): Promise<void> {

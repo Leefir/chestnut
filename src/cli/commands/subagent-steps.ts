@@ -51,7 +51,7 @@ function stepToJson(step: Step): unknown {
   };
 }
 
-export async function subagentStepsCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, id: string, clawId: string, opts?: { json?: boolean }): Promise<void> {
+export async function subagentStepsCommand(deps: { fsFactory: (baseDir: string) => FileSystem }, id: string, clawId: string, opts?: { json?: boolean; noHint?: boolean }): Promise<void> {
   const clawDir = resolveClawDir(clawId);
   const clawFs = deps.fsFactory(clawDir);
   if (!clawFs.existsSync('.')) {
@@ -78,7 +78,8 @@ export async function subagentStepsCommand(deps: { fsFactory: (baseDir: string) 
       as_of: new Date().toISOString(),
     }, null, 2));
   } else {
-    console.log(renderSteps(steps));
+    const cliPrefix = `subagent ${id}`;
+    console.log(renderSteps(steps, { cliPrefix, noHint: opts?.noHint }));
   }
 }
 
