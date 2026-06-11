@@ -21,6 +21,9 @@ import { SNAPSHOT_FILE_ROUTING } from '../../../src/foundation/snapshot/audit-ev
 import { STREAM_FILE_ROUTING } from '../../../src/foundation/stream/audit-events.js';
 import { TOOLS_FILE_ROUTING } from '../../../src/foundation/tools/audit-events.js';
 import { WATCHDOG_FILE_ROUTING } from '../../../src/watchdog/audit-events.js';
+import { FILE_TOOL_FILE_ROUTING } from '../../../src/foundation/file-tool/audit-events.js';
+import { COMMAND_TOOL_FILE_ROUTING } from '../../../src/foundation/command-tool/audit-events.js';
+import { RUNTIME_FILE_ROUTING } from '../../../src/core/runtime/runtime-audit-events.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC_ROOT = path.resolve(__dirname, '../../../src');
@@ -143,6 +146,9 @@ describe('audit-events snapshot lock', () => {
       ...STREAM_FILE_ROUTING,
       ...TOOLS_FILE_ROUTING,
       ...WATCHDOG_FILE_ROUTING,
+      ...FILE_TOOL_FILE_ROUTING,
+      ...COMMAND_TOOL_FILE_ROUTING,
+      ...RUNTIME_FILE_ROUTING,
     };
     for (const [type, file] of Object.entries(snapshot.fileRouting!)) {
       expect(ownerRoutings).toHaveProperty(type);

@@ -388,7 +388,7 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon {
       } catch (e) {
         // 不可预期失败暴露 / audit emit / 不破 message 投递（fallback graceful、仅缺 guidance 追加）
         this.auditWriter.write(
-          'guidance_composer_failed',
+          RUNTIME_AUDIT_EVENTS.GUIDANCE_COMPOSER_FAILED,
           `type=${type}`,
           `reason=${formatErr(e)}`,
         );

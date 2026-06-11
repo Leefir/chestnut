@@ -64,6 +64,8 @@ export const RUNTIME_AUDIT_EVENTS = {
   MAX_TOKENS_STATE_A_ORPHAN_DROP: 'max_tokens_state_a_orphan_drop',
   // phase 227: turn_end cross-source completeness audit
   TURN_COMPLETENESS_MISMATCH: 'turn_completeness_mismatch',
+  // NEW (raw migration phase 272 Step C)
+  GUIDANCE_COMPOSER_FAILED: 'guidance_composer_failed',
 } as const;
 
 /**
@@ -110,6 +112,13 @@ export const RUNTIME_ID_NAMING: Readonly<Record<string, IdNamingEntry>> = {
  * Phase 140: runtime tool 类 event col schema (β 兼容期，required: false).
  * 用于 snapshot.json schema 同步（Step E）+ lock test 守 emit cols.
  */
+/**
+ * Phase 163 业主声明 file 归属（phase 122 §5.A + §6.7 + phase 159 模式）.
+ */
+export const RUNTIME_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
+  guidance_composer_failed: 'audit',
+} as const;
+
 export const RUNTIME_TOOL_EVENT_COLS: Readonly<Record<string, readonly ColSchemaEntry[]>> = {
   tool_result: [
     { name: 'tool_name', type: 'string', required: true },

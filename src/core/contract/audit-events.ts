@@ -115,6 +115,8 @@ export const CONTRACT_AUDIT_EVENTS = {
   CONTRACT_PROGRESS_CROSS_SOURCE_MISMATCH: 'contract_progress_cross_source_mismatch',
   CONTRACT_PROGRESS_CROSS_SOURCE_SKIPPED: 'contract_progress_cross_source_skipped',
   CONTRACT_OBSERVER_STATE_INVARIANT_VIOLATED: 'contract_observer_state_invariant_violated',
+  // phase 66 NEW (raw migration phase 272 Step C)
+  MARK_CRASHED_GRACEFUL_FALLBACK: 'mark_crashed_graceful_fallback',
 } as const;
 
 /**
@@ -202,6 +204,7 @@ export const CONTRACT_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
   contract_onboarding_progress_parse_failed: 'audit',
   contract_dir_race_retry: 'audit',
   contract_archive_partial_recovery_failed: 'audit',
+  mark_crashed_graceful_fallback: 'audit',
   contract_archive_recovered: 'audit',
   verification_pipeline_race_rejected: 'audit',
   contract_file_isolated: 'audit',

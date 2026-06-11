@@ -10,6 +10,7 @@ import { PROGRESS_CURRENT_SCHEMA_VERSION } from './persistence.js';
 import { lockContract, releaseLock, type LockContext } from './lock.js';
 import { ToolError } from '../../foundation/errors.js';
 import { formatErr } from '../../foundation/utils/index.js';
+import { CONTRACT_AUDIT_EVENTS } from './audit-events.js';
 
 import {
   emitContractPaused,
@@ -227,7 +228,7 @@ export async function markCrashed(
     } catch (getProgressErr) {
       // phase 66: progress.json 自身 schema corruption → fallback minimal progress
       ctx.audit.write(
-        'mark_crashed_graceful_fallback',
+        CONTRACT_AUDIT_EVENTS.MARK_CRASHED_GRACEFUL_FALLBACK,
         `contractId=${contractId}`,
         `reason=getProgress_failed`,
         `cause=${cause}`,
