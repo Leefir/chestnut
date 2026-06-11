@@ -7,6 +7,8 @@ import * as fs from 'fs/promises';
 import * as os from 'os';
 import { randomUUID } from 'crypto';
 import type { LLMOrchestratorConfig } from '../../../src/foundation/llm-orchestrator/types.js';
+import { createClawTopology } from '../../../src/core/claw-topology/topology.js';
+import { makeClawId } from '../../../src/core/claw-id.js';
 
 // ─── LLMOrchestrator mock ──────────────────────────────────────────
 const mockLlmCall = vi.fn();
@@ -29,12 +31,23 @@ function makeTextResponse(text: string) {
   return { content: [{ type: 'text', text }], stop_reason: 'end_turn' };
 }
 
-function makeOpts(overrides: Partial<DeepDreamOptions> = {}): DeepDreamOptions {
+function makeTopology(chestnutRoot: string) {
+  return createClawTopology({
+    fs: new NodeFileSystem({ baseDir: chestnutRoot }),
+    chestnutRoot,
+    motionClawId: makeClawId('motion'),
+    motionDir: 'motion',
+  });
+}
+
+function makeOpts(overrides: Partial<DeepDreamOptions> & { chestnutRoot?: string } = {}): DeepDreamOptions {
+  const chestnutRoot = overrides.chestnutRoot ?? '';
   return {
-    chestnutRoot: '',
+    clawsDir: chestnutRoot ? `${chestnutRoot}/claws` : '',
+    clawTopology: makeTopology(chestnutRoot),
     llmConfig: fakeLlmConfig,
     llmService: mockLlmService as any,
-    fs: new NodeFileSystem({ baseDir: '' }),
+    fs: new NodeFileSystem({ baseDir: chestnutRoot }),
     audit: mockAudit,
     clawFsFactory: (clawDir) => new NodeFileSystem({ baseDir: clawDir }),
     ...overrides,
@@ -62,7 +75,7 @@ describe('runDeepDream — clawFsFactory 注入路径（caller DIP enforce）', 
 
     const factory = vi.fn().mockImplementation((clawDir: string) => new NodeFileSystem({ baseDir: clawDir }));
 
-    await runDeepDream(makeOpts({ clawsDir: `${chestnutDir}/claws`, fs: new NodeFileSystem({ baseDir: chestnutDir }), clawFsFactory: factory }));
+    await runDeepDream(makeOpts({ chestnutRoot: chestnutDir, clawFsFactory: factory }));
 
     expect(factory).toHaveBeenCalledTimes(3);
     expect(factory).toHaveBeenCalledWith(path.join(clawsDir, 'a'));
@@ -78,7 +91,7 @@ describe('runDeepDream — clawFsFactory 注入路径（caller DIP enforce）', 
 
     const factory = vi.fn().mockImplementation((clawDir: string) => new NodeFileSystem({ baseDir: clawDir }));
 
-    await runDeepDream(makeOpts({ clawsDir: `${chestnutDir}/claws`, fs: new NodeFileSystem({ baseDir: chestnutDir }), clawFsFactory: factory }));
+    await runDeepDream(makeOpts({ chestnutRoot: chestnutDir, clawFsFactory: factory }));
 
     expect(factory).not.toHaveBeenCalled();
 
@@ -104,7 +117,7 @@ describe('runDeepDream — clawFsFactory 注入路径（caller DIP enforce）', 
       return new NodeFileSystem({ baseDir: clawDir });
     });
 
-    await runDeepDream(makeOpts({ clawsDir: `${chestnutDir}/claws`, fs: new NodeFileSystem({ baseDir: chestnutDir }), clawFsFactory: factory }));
+    await runDeepDream(makeOpts({ chestnutRoot: chestnutDir, clawFsFactory: factory }));
 
     expect(factory).toHaveBeenCalledTimes(3);
     expect(factory).toHaveBeenCalledWith(path.join(clawsDir, 'ok1'));

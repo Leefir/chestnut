@@ -3,6 +3,8 @@ import { makeMockAudit } from '../../helpers/audit.js';
 import { runContractObserver } from '../../../src/core/contract/jobs/contract-observer.js';
 import type { FileSystem } from '../../../src/foundation/fs/types.js';
 import type { AuditLog } from '../../../src/foundation/audit/index.js';
+import type { ClawTopology } from '../../../src/core/claw-topology/types.js';
+import * as path from 'path';
 
 function makeFsMock(scenario: 'empty' | 'completed' | 'mixed' | 'recovery'): FileSystem {
   const now = Date.now();
@@ -100,18 +102,33 @@ function makeAuditMock(): AuditLog {
   return makeMockAudit();
 }
 
+function makeMockTopology(fs: FileSystem, clawsDir: string): ClawTopology {
+  return {
+    enumerate() {
+      const entries = fs.listSync(clawsDir, { includeDirs: true });
+      return entries.filter(e => e.isDirectory).map(e => e.name);
+    },
+    resolve(clawId) {
+      return { kind: 'local', clawDir: path.join(clawsDir, clawId) };
+    },
+    async read() { return ''; },
+    async readJSON() { return {} as any; },
+  };
+}
+
 function makeOpts(overrides: Partial<{
   fs: FileSystem;
   motionAudit: AuditLog;
   notifyMotion: ReturnType<typeof vi.fn>;
 }> = {}) {
+  const fs = overrides.fs ?? makeFsMock('empty');
   return {
     clawsDir: '/tmp/test/claws',
+    clawTopology: makeMockTopology(fs, '/tmp/test/claws'),
     motionDir: '/tmp/test/motion',
-    fs: makeFsMock('empty'),
-    motionAudit: makeAuditMock(),
-    notifyMotion: vi.fn(),
-    ...overrides,
+    fs,
+    motionAudit: overrides.motionAudit ?? makeAuditMock(),
+    notifyMotion: overrides.notifyMotion ?? vi.fn(),
   };
 }
 

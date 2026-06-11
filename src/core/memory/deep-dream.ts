@@ -1,4 +1,3 @@
-import * as path from 'path';
 import { formatErr } from "../../foundation/utils/index.js";
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { MEMORY_AUDIT_EVENTS } from './audit-events.js';
@@ -15,6 +14,8 @@ import type { SessionData } from '../../foundation/dialog-store/types.js';
 import { CLAWS_DIR } from '../../foundation/claw-paths.js';
 import { INBOX_PENDING_DIR } from '../../foundation/messaging/index.js';
 import { FileNotFoundError } from '../../foundation/fs/types.js';
+import { MOTION_CLAW_ID } from '../../constants.js';
+import type { ClawTopology } from '../../core/claw-topology/index.js';
 import { assertDreamStateShape } from './invariants.js';
 import { auditDeepDreamCrossSource } from './dream-cross-source-audit.js';
 
@@ -37,6 +38,8 @@ interface DreamStateData {
 
 export interface DeepDreamOptions {
   clawsDir: string;                              // phase 84: caller (装配期) 算好 claws dir 后传入
+  /** phase 259: caller (装配期) 注入的 claw topology */
+  clawTopology: ClawTopology;
   motionDir?: string;                    // motion 域 / dream-outputs 归属
   motionFs?: FileSystem;                 // baseDir = motionDir
   llmConfig: LLMOrchestratorConfig;
@@ -404,20 +407,18 @@ export async function runDeepDream(opts: DeepDreamOptions): Promise<void> {
     return;
   }
 
-  const clawIds = opts.fs.listSync(CLAWS_DIR, { includeDirs: true })
-    .filter(e => opts.fs.statSync(path.join(CLAWS_DIR, e.name)).isDirectory)
-    .map(e => e.name);
-
+  const clawIds = opts.clawTopology.enumerate().filter(id => id !== MOTION_CLAW_ID);
   if (clawIds.length === 0) return;
 
   const llm = opts.llmService;   // ← 使用注入的 LLM（修 N1）
 
   // 串行处理每个 claw
   for (const clawId of clawIds) {
-    const clawDir = path.join(opts.clawsDir, clawId);
     try {
-      const clawFs = opts.clawFsFactory(clawDir);
-      await runDeepDreamForClaw(clawId, clawDir, clawFs, opts.motionFs, llm, maxCompressionTokens, opts.audit, opts.signal);
+      const location = opts.clawTopology.resolve(clawId);
+      if (location.kind !== 'local') continue;
+      const clawFs = opts.clawFsFactory(location.clawDir);
+      await runDeepDreamForClaw(clawId, location.clawDir, clawFs, opts.motionFs, llm, maxCompressionTokens, opts.audit, opts.signal);
     } catch (err) {
       opts.audit.write(MEMORY_AUDIT_EVENTS.DEEP_DREAM_UNEXPECTED, `step=unexpected`, `clawId=${clawId}`, `reason=${formatErr(err)}`);
       // 单 claw 失败不阻断其他 claw

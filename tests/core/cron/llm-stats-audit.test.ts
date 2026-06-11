@@ -15,6 +15,8 @@ import { runLlmStats, type LlmStatsOptions } from '../../../src/core/cron/jobs/l
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
 import { createTempDir, cleanupTempDir } from '../../utils/temp.js';
 import { LLM_STATS_AUDIT_EVENTS } from '../../../src/core/cron/jobs/llm-stats-audit-events.js';
+import { createClawTopology } from '../../../src/core/claw-topology/topology.js';
+import { makeClawId } from '../../../src/core/claw-id.js';
 
 describe('phase 930 + 180: LLM_STATS audit emit avgLatencyMs key', () => {
   it('audit emit row 含 avgLatencyMs= camelCase key', async () => {
@@ -36,11 +38,20 @@ describe('phase 930 + 180: LLM_STATS audit emit avgLatencyMs key', () => {
     const writes: any[][] = [];
     const audit = { write: (...args: any[]) => writes.push(args) , preview: (s: string) => s, message: (s: string) => s, summary: (s: string) => s};
 
+    const chestnutFs = new NodeFileSystem({ baseDir: chestnutDir });
+    const topology = createClawTopology({
+      fs: chestnutFs,
+      chestnutRoot: chestnutDir,
+      motionClawId: makeClawId('motion'),
+      motionDir,
+    });
+
     const opts: LlmStatsOptions = {
       chestnutDir,
       motionDir,
-      chestnutFs: new NodeFileSystem({ baseDir: chestnutDir }),
+      chestnutFs,
       motionFs: new NodeFileSystem({ baseDir: motionDir }),
+      clawTopology: topology,
       audit: audit as any,
     };
 

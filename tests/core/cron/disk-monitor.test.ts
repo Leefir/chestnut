@@ -3,6 +3,7 @@ import { runDiskMonitor, __resetDiskMonitorState } from '../../../src/core/cron/
 import type { FileSystem } from '../../../src/foundation/fs/types.js';
 import type { AuditLog } from '../../../src/foundation/audit/index.js';
 import type { StreamLog } from '../../../src/foundation/stream/index.js';
+import type { ClawTopology } from '../../../src/core/claw-topology/types.js';
 
 function makeFsMock(totalSizeBytes: number): FileSystem {
   const dirs = new Map<string, { name: string; isDirectory: boolean; size: number }[]>();
@@ -23,11 +24,21 @@ function makeFsMock(totalSizeBytes: number): FileSystem {
 
 function makeAuditMock(): AuditLog { return { write: vi.fn() }; }
 
+function makeMockTopology(): ClawTopology {
+  return {
+    enumerate: () => ['claw1'],
+    resolve: () => ({ kind: 'local', clawDir: '/tmp/test/claws/claw1' }),
+    read: async () => '',
+    readJSON: async () => ({} as any),
+  };
+}
+
 function makeOpts(overrides: Partial<{
   limitMB: number; fs: FileSystem; audit: AuditLog; motionAudit: AuditLog; streamLog: StreamLog;
 }> = {}) {
   return {
     clawsDir: '/tmp/test/claws',
+    clawTopology: makeMockTopology(),
     limitMB: 100,
     fs: makeFsMock(0),
     audit: makeAuditMock(),

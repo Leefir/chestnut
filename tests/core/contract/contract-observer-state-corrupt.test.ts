@@ -3,6 +3,8 @@ import { runContractObserver } from '../../../src/core/contract/jobs/contract-ob
 import { CONTRACT_AUDIT_EVENTS } from '../../../src/core/contract/audit-events.js';
 import type { FileSystem } from '../../../src/foundation/fs/types.js';
 import type { AuditLog } from '../../../src/foundation/audit/index.js';
+import type { ClawTopology } from '../../../src/core/claw-topology/types.js';
+import * as path from 'path';
 
 function makeFsMockWithState(stateContent: string): FileSystem {
   const files = new Map<string, string>();
@@ -21,6 +23,20 @@ function makeFsMockWithState(stateContent: string): FileSystem {
     ensureDirSync: () => {},
     writeAtomicSync: () => {},
   } as unknown as FileSystem;
+}
+
+function makeMockTopology(fs: FileSystem, clawsDir: string): ClawTopology {
+  return {
+    enumerate() {
+      const entries = fs.listSync(clawsDir, { includeDirs: true });
+      return entries.filter(e => e.isDirectory).map(e => e.name);
+    },
+    resolve(clawId) {
+      return { kind: 'local', clawDir: path.join(clawsDir, clawId) };
+    },
+    async read() { return ''; },
+    async readJSON() { return {} as any; },
+  };
 }
 
 function makeAuditMock(): { audit: AuditLog; events: Array<[string, ...(string | number)[]]> } {
@@ -43,6 +59,7 @@ describe('contract observer state file shape_mismatch emits OBSERVER_STATE_PARSE
 
     await runContractObserver({
       clawsDir: '/tmp/test/claws',
+      clawTopology: makeMockTopology(fs, '/tmp/test/claws'),
       motionDir: '/tmp/test/motion',
       fs,
       motionAudit: audit,
@@ -68,6 +85,7 @@ describe('contract observer state file shape_mismatch emits OBSERVER_STATE_PARSE
 
     await runContractObserver({
       clawsDir: '/tmp/test/claws',
+      clawTopology: makeMockTopology(fs, '/tmp/test/claws'),
       motionDir: '/tmp/test/motion',
       fs,
       motionAudit: audit,
@@ -92,6 +110,7 @@ describe('contract observer state file shape_mismatch emits OBSERVER_STATE_PARSE
 
     await runContractObserver({
       clawsDir: '/tmp/test/claws',
+      clawTopology: makeMockTopology(fs, '/tmp/test/claws'),
       motionDir: '/tmp/test/motion',
       fs,
       motionAudit: audit,

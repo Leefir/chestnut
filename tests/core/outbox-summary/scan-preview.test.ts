@@ -14,6 +14,9 @@ import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
 import { OutboxReader } from '../../../src/foundation/messaging/index.js';
 import { encodeOutbox } from '../../../src/foundation/messaging/codec-outbox.js';
 import type { OutboxMessage } from '../../../src/foundation/messaging/types.js';
+import { createClawTopology } from '../../../src/core/claw-topology/topology.js';
+import { makeClawId } from '../../../src/core/claw-id.js';
+import type { ClawTopology } from '../../../src/core/claw-topology/types.js';
 
 function makeAudit() {
   const events: Array<[string, ...unknown[]]> = [];
@@ -83,6 +86,7 @@ describe('scanOutboxes preview collection', () => {
   let root: string;
   let fs: NodeFileSystem;
   let outboxReader: OutboxReader;
+  let topology: ClawTopology;
 
   beforeEach(async () => {
     root = path.join(tmpdir(), `outbox-summary-preview-${randomUUID()}`);
@@ -90,6 +94,12 @@ describe('scanOutboxes preview collection', () => {
     fs = new NodeFileSystem({ baseDir: root });
     const { audit } = makeAudit();
     outboxReader = new OutboxReader(fs, audit);
+    topology = createClawTopology({
+      fs,
+      chestnutRoot: root,
+      motionClawId: makeClawId('motion'),
+      motionDir: 'motion',
+    });
   });
 
   afterEach(async () => {
@@ -107,7 +117,7 @@ describe('scanOutboxes preview collection', () => {
       encodeOutbox(makeMsg('latest message here', '2026-06-04T11:00:00Z')),
     );
 
-    const state = await scanOutboxes({ clawsDir: `${root}/claws`, fs, outboxReader });
+    const state = await scanOutboxes({ clawsDir: `${root}/claws`, clawTopology: topology, fs, outboxReader });
     expect(state.previews).toEqual({ clawA: 'latest message here' });
   });
 
@@ -119,7 +129,7 @@ describe('scanOutboxes preview collection', () => {
       encodeOutbox(makeMsg(longContent, '2026-06-04T10:00:00Z')),
     );
 
-    const state = await scanOutboxes({ clawsDir: `${root}/claws`, fs, outboxReader });
+    const state = await scanOutboxes({ clawsDir: `${root}/claws`, clawTopology: topology, fs, outboxReader });
     expect(state.previews.clawA).toBe('a'.repeat(PREVIEW_MAX_CHARS) + '…');
   });
 
@@ -130,7 +140,7 @@ describe('scanOutboxes preview collection', () => {
       'INVALID CONTENT',
     );
 
-    const state = await scanOutboxes({ clawsDir: `${root}/claws`, fs, outboxReader });
+    const state = await scanOutboxes({ clawsDir: `${root}/claws`, clawTopology: topology, fs, outboxReader });
     expect(state.counts).toEqual({ clawA: 1 });
     expect(state.previews).toEqual({ clawA: '(读取失败)' });
   });
@@ -147,7 +157,7 @@ describe('scanOutboxes preview collection', () => {
       encodeOutbox(makeMsg('clawB reports done', '2026-06-04T10:00:00Z')),
     );
 
-    const state = await scanOutboxes({ clawsDir: `${root}/claws`, fs, outboxReader });
+    const state = await scanOutboxes({ clawsDir: `${root}/claws`, clawTopology: topology, fs, outboxReader });
     expect(state.previews).toEqual({
       clawA: 'clawA says hi',
       clawB: 'clawB reports done',

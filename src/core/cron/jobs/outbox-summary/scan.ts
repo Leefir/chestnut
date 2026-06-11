@@ -8,12 +8,12 @@
  * （per-tick handler 异常隔离归 cron runner / 详 l5_cron.md §1）.
  */
 
-import * as path from 'path';
 import type { FileSystem } from '../../../../foundation/fs/types.js';
 import { isFileNotFound } from '../../../../foundation/fs/types.js';
 import type { OutboxReader } from '../../../../foundation/messaging/index.js';
 import { MOTION_CLAW_ID } from '../../../../constants.js';
-import { enumerateClaws } from '../../../../foundation/claw-paths.js';
+import type { ClawTopology } from '../../../../core/claw-topology/index.js';
+import type { ClawId } from '../../../../core/claw-id.js';
 import { computeHash } from './hash.js';
 import { PREVIEW_MAX_CHARS } from './types.js';
 import type { OutboxSummaryState } from './types.js';
@@ -21,16 +21,18 @@ import type { OutboxSummaryState } from './types.js';
 export interface ScanDeps {
   /** phase 84: caller (L6 装配期) 算好 claws dir 后传入 / L4 模块 0 知 chestnut 拓扑 */
   clawsDir: string;
+  /** phase 259: caller (装配期) 注入的 claw topology */
+  clawTopology: ClawTopology;
   fs: FileSystem;             // 仅供 enumerate claws/
   outboxReader: OutboxReader; // Messaging 对外入口：单 claw outbox/pending 列举
 }
 
 export async function scanOutboxes(deps: ScanDeps): Promise<OutboxSummaryState> {
-  const { clawsDir, fs, outboxReader } = deps;
+  const { clawTopology, outboxReader } = deps;
 
-  let clawIds: string[];
+  let clawIds: ClawId[];
   try {
-    clawIds = enumerateClaws(fs, clawsDir).filter(id => id !== MOTION_CLAW_ID);
+    clawIds = clawTopology.enumerate().filter(id => id !== MOTION_CLAW_ID);
   } catch (err) {
     if (isFileNotFound(err)) return emptyState();
     throw err;
@@ -41,13 +43,14 @@ export async function scanOutboxes(deps: ScanDeps): Promise<OutboxSummaryState> 
   const previews: Record<string, string> = {};
 
   for (const clawId of clawIds) {
-    const clawDir = path.join(clawsDir, clawId);
-    const files = await outboxReader.listClawOutboxPending(clawDir);
+    const location = clawTopology.resolve(clawId);
+    if (location.kind !== 'local') continue;
+    const files = await outboxReader.listClawOutboxPending(location.clawDir);
     if (files.length > 0) {
       counts[clawId] = files.length;
       for (const f of files) fileSet.push(`${clawId}:${f}`);
 
-      const last = await outboxReader.peekLastOutboxPending(clawDir);
+      const last = await outboxReader.peekLastOutboxPending(location.clawDir);
       if (last) {
         previews[clawId] = truncatePreview(last.message.content);
       } else {

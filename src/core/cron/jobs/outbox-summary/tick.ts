@@ -15,6 +15,7 @@
 import type { FileSystem } from '../../../../foundation/fs/types.js';
 import type { AuditLog } from '../../../../foundation/audit/index.js';
 import type { InboxReader, InboxWriter, OutboxReader } from '../../../../foundation/messaging/index.js';
+import type { ClawTopology } from '../../../../core/claw-topology/index.js';
 import { OUTBOX_SUMMARY_AUDIT_EVENTS } from './audit-events.js';
 import { scanOutboxes } from './scan.js';
 import { findExistingSummaryByHash } from './dedup.js';
@@ -23,6 +24,8 @@ import { writeNewSummary } from './write.js';
 interface OutboxSummaryTickDeps {
   /** phase 84: caller (L6 装配期) 算好 claws dir 后传入 */
   clawsDir: string;
+  /** phase 259: caller (装配期) 注入的 claw topology */
+  clawTopology: ClawTopology;
   fs: FileSystem;
   inboxReader: InboxReader;
   inboxWriter: InboxWriter;
@@ -34,6 +37,7 @@ interface OutboxSummaryTickDeps {
 export async function runOutboxSummaryTick(deps: OutboxSummaryTickDeps): Promise<void> {
   const state = await scanOutboxes({
     clawsDir: deps.clawsDir,
+    clawTopology: deps.clawTopology,
     fs: deps.fs,
     outboxReader: deps.outboxReader,
   });

@@ -13,15 +13,14 @@
  *   方便测试 + 与 CLI 命令解耦
  */
 
-import * as path from 'path';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { isFileNotFound } from '../../foundation/fs/types.js';
 import { ProcessManager, ProcessListUnavailable } from '../../foundation/process-manager/index.js';
-import { CLAWS_DIR } from '../../foundation/claw-paths.js';
 import { makeClawId } from '../../constants.js';
 import { listAuditFiles } from '../../foundation/audit/index.js';
 import { INBOX_PENDING_DIR } from '../../foundation/messaging/index.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
+import type { ClawTopology } from '../../core/claw-topology/index.js';
 
 // ── Views ───────────────────────────────────────────────────────────────────
 
@@ -150,6 +149,8 @@ export function computeClawLastActivityAgoMs(clawFs: FileSystem, now: number): n
 export interface ForumStatusDeps {
   fsFactory: (baseDir: string) => FileSystem;
   baseDir: string; // workspace root containing .chestnut/claws/*
+  /** phase 259: caller (装配期) 注入的 claw topology */
+  clawTopology: ClawTopology;
   motionDir: string; // .chestnut/motion (for motion-side inbox)
   pm: ProcessManager;
   now: () => number;
@@ -197,28 +198,23 @@ export function computeForumStatusView(deps: ForumStatusDeps): ForumStatusView {
   const trackedPids: number[] = [];
   if (motionStatus.pid !== undefined) trackedPids.push(motionStatus.pid);
 
-  const rootFs = deps.fsFactory(deps.baseDir);
-  if (rootFs.existsSync(CLAWS_DIR)) {
-    const entries = rootFs
-      .listSync(CLAWS_DIR, { includeDirs: true })
-      .filter(e => e.isDirectory)
-      .map(e => e.name);
-    totalClawCount = entries.length;
+  const allClawIds = deps.clawTopology.enumerate().filter(id => id !== MOTION_CLAW_ID);
+  totalClawCount = allClawIds.length;
 
-    for (const name of entries) {
-      const s = deps.pm.getAliveStatus(makeClawId(name));
-      if (!s.alive || s.pid === undefined) continue;
-      trackedPids.push(s.pid);
-      const clawDir = path.join(deps.baseDir, CLAWS_DIR, name);
-      const clawFs = deps.fsFactory(clawDir);
-      activeClaws.push({
-        name,
-        pid: s.pid,
-        uptimeMs: computeProcessUptimeMs(s.pid, nowMs, deps.getStartTime),
-        lastActivityAgoMs: computeClawLastActivityAgoMs(clawFs, nowMs),
-        inboxUnread: computeClawInboxUnread(clawFs),
-      });
-    }
+  for (const clawId of allClawIds) {
+    const s = deps.pm.getAliveStatus(makeClawId(clawId));
+    if (!s.alive || s.pid === undefined) continue;
+    trackedPids.push(s.pid);
+    const location = deps.clawTopology.resolve(makeClawId(clawId));
+    if (location.kind !== 'local') continue;
+    const clawFs = deps.fsFactory(location.clawDir);
+    activeClaws.push({
+      name: clawId,
+      pid: s.pid,
+      uptimeMs: computeProcessUptimeMs(s.pid, nowMs, deps.getStartTime),
+      lastActivityAgoMs: computeClawLastActivityAgoMs(clawFs, nowMs),
+      inboxUnread: computeClawInboxUnread(clawFs),
+    });
   }
 
   // ── Orphans ──

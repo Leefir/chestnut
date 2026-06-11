@@ -53,6 +53,9 @@ const BASELINE_ALLOW_LIST = new Set([
   'src/core/memory/tools/memory_search.ts',
   'src/core/cron/jobs/outbox-summary/scan.ts',
   'src/core/cron/jobs/outbox-summary/write.ts',
+  'src/core/cron/jobs/disk-monitor.ts',        // phase 259: MOTION_CLAW_ID filter in enumerate
+  'src/core/cron/jobs/git-gc-weekly.ts',        // phase 259: MOTION_CLAW_ID filter in enumerate
+  'src/core/memory/deep-dream.ts',              // phase 259: MOTION_CLAW_ID filter in enumerate
   'src/core/runtime/claw-config-schema.ts',
   'src/core/runtime/create-runtime.ts',
   'src/core/runtime/runtime.ts',

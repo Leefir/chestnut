@@ -5,10 +5,11 @@ import type { AuditLog } from '../../../foundation/audit/index.js';
 import { DISK_MONITOR_AUDIT_EVENTS } from './disk-monitor-audit-events.js';
 import type { StreamLog } from '../../../foundation/stream/index.js';
 import { CLAWSPACE_DIR } from '../../../foundation/claw-paths.js';
-import { enumerateClaws } from '../../../foundation/claw-paths.js';
 import type { CronJob } from '../runner.js';
 import { parseSchedule } from '../runner.js';
 import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
+import type { ClawTopology } from '../../../core/claw-topology/index.js';
+import { MOTION_CLAW_ID } from '../../../constants.js';
 
 /**
  * Cron job timeout (ms) / 防 stuck handler 占 cron tick.
@@ -45,6 +46,8 @@ function getDirSize(dir: string, fs: FileSystem, audit?: AuditLog, signal?: Abor
 
 export interface DiskMonitorOptions {
   clawsDir: string;   // phase 84: caller (装配期) 算好 claws dir 后传入
+  /** phase 259: caller (装配期) 注入的 claw topology */
+  clawTopology: ClawTopology;
   limitMB: number;        // 阈值（informational only / 仅作开发者参考、无 action）
   fs: FileSystem;
   audit: AuditLog;
@@ -55,6 +58,7 @@ export interface DiskMonitorOptions {
 
 export interface DiskMonitorJobDeps {
   clawsDir: string;
+  clawTopology: ClawTopology;
   limitMB: number;
   fs: FileSystem;
   audit: AuditLog;
@@ -63,13 +67,14 @@ export interface DiskMonitorJobDeps {
 }
 
 export async function runDiskMonitor(opts: DiskMonitorOptions): Promise<void> {
-  const { clawsDir } = opts;
-  if (!opts.fs.existsSync(clawsDir)) return;
+  const { clawTopology } = opts;
 
   let totalSize = 0;
-  for (const clawId of enumerateClaws(opts.fs, clawsDir)) {
+  for (const clawId of clawTopology.enumerate().filter(id => id !== MOTION_CLAW_ID)) {
     if (opts.signal?.aborted) return;
-    const clawspaceDir = path.join(clawsDir, clawId, CLAWSPACE_DIR);
+    const location = clawTopology.resolve(clawId);
+    if (location.kind !== 'local') continue;
+    const clawspaceDir = path.join(location.clawDir, CLAWSPACE_DIR);
     if (opts.fs.existsSync(clawspaceDir)) {
       totalSize += getDirSize(clawspaceDir, opts.fs, opts.audit, opts.signal);
     }

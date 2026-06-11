@@ -23,6 +23,7 @@ import { SKILLS_DIR_DEFAULT } from '../foundation/skill-system/index.js';
 import { ContractSystem, createContractSystem } from '../core/contract/index.js';
 import { makeClawId } from '../core/claw-id.js';
 import { MOTION_CLAW_ID } from '../constants.js';
+import type { ClawTopology } from '../core/claw-topology/index.js';
 import { createOutboxWriter, type OutboxWriter, notifyClaw as notifyClawFn } from '../foundation/messaging/index.js';
 import { TASKS_SYNC_DIR } from '../core/async-task-system/index.js';
 import { ASSEMBLY_AUDIT_EVENTS } from './audit-events.js';
@@ -57,6 +58,7 @@ export interface CoreInfraOutput {
   chestnutRoot: string;
   clawDir: string;
   clawId: string;
+  topology: ClawTopology;
 }
 
 /**
@@ -90,6 +92,7 @@ export async function createCoreInfrastructure(input: CoreInfraInput): Promise<C
 
   let processManager: ProcessManager | undefined;
   let auditWriter: AuditLog | undefined;
+  let topology: ClawTopology | undefined;
 
   try {
     // --- 1. AuditWriter (daemon.ts L100-104) ---
@@ -186,7 +189,7 @@ export async function createCoreInfrastructure(input: CoreInfraInput): Promise<C
 
       // phase 257: wire ClawTopology（替换 read/ls/search via Map.set 同名替换）
       const { wireClawTopology } = await import('./wire-claw-topology.js');
-      wireClawTopology({
+      topology = wireClawTopology({
         fs: systemFs,
         chestnutRoot,
         audit: auditWriter,
@@ -282,6 +285,7 @@ export async function createCoreInfrastructure(input: CoreInfraInput): Promise<C
       chestnutRoot,
       clawDir,
       clawId,
+      topology,
     };
   } catch (e) {
     if (lockState.acquired && processManager) {

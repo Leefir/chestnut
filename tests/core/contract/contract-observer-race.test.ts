@@ -13,6 +13,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { runContractObserver } from '../../../src/core/contract/jobs/contract-observer.js';
 import type { FileSystem, FileEntry } from '../../../src/foundation/fs/types.js';
 import type { AuditLog } from '../../../src/foundation/audit/index.js';
+import type { ClawTopology } from '../../../src/core/claw-topology/types.js';
+import * as path from 'path';
 const TEST_CLAWS_DIR = '/test/root/claws';
 const TEST_MOTION_DIR = '/test/root/motion';
 
@@ -82,6 +84,20 @@ function createMockFs(opts: MockFsOpts): { fs: FileSystem; writes: Map<string, s
   return { fs: fs as FileSystem, writes };
 }
 
+function makeMockTopology(fs: FileSystem, clawsDir: string): ClawTopology {
+  return {
+    enumerate() {
+      const entries = fs.listSync(clawsDir, { includeDirs: true });
+      return entries.filter(e => e.isDirectory).map(e => e.name);
+    },
+    resolve(clawId) {
+      return { kind: 'local', clawDir: path.join(clawsDir, clawId) };
+    },
+    async read() { return ''; },
+    async readJSON() { return {} as any; },
+  };
+}
+
 function createMockAudit(): { audit: AuditLog; events: string[][] } {
   const events: string[][] = [];
   const audit: AuditLog = {
@@ -122,6 +138,7 @@ describe('phase 37 contract-observer race 根治', () => {
 
     await runContractObserver({
       clawsDir: TEST_CLAWS_DIR,
+      clawTopology: makeMockTopology(fs, TEST_CLAWS_DIR),
       motionDir: TEST_MOTION_DIR,
       fs,
       motionAudit: audit,
@@ -155,6 +172,7 @@ describe('phase 37 contract-observer race 根治', () => {
 
     await runContractObserver({
       clawsDir: TEST_CLAWS_DIR,
+      clawTopology: makeMockTopology(fs, TEST_CLAWS_DIR),
       motionDir: TEST_MOTION_DIR,
       fs,
       motionAudit: audit,
@@ -179,6 +197,7 @@ describe('phase 37 contract-observer race 根治', () => {
 
     await runContractObserver({
       clawsDir: TEST_CLAWS_DIR,
+      clawTopology: makeMockTopology(fs, TEST_CLAWS_DIR),
       motionDir: TEST_MOTION_DIR,
       fs,
       motionAudit: audit,
@@ -221,6 +240,7 @@ describe('phase 37 contract-observer race 根治', () => {
 
     await runContractObserver({
       clawsDir: TEST_CLAWS_DIR,
+      clawTopology: makeMockTopology(fs, TEST_CLAWS_DIR),
       motionDir: TEST_MOTION_DIR,
       fs,
       motionAudit: audit,
@@ -254,6 +274,7 @@ describe('phase 37 contract-observer race 根治', () => {
 
     await runContractObserver({
       clawsDir: TEST_CLAWS_DIR,
+      clawTopology: makeMockTopology(fs, TEST_CLAWS_DIR),
       motionDir: TEST_MOTION_DIR,
       fs,
       motionAudit: audit,

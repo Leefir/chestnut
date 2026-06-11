@@ -2,11 +2,11 @@ import * as path from 'path';
 import type { FileSystem } from '../../../foundation/fs/types.js';
 import type { AuditLog } from '../../../foundation/audit/index.js';
 import { LLM_STATS_AUDIT_EVENTS } from './llm-stats-audit-events.js';
-import { CLAWS_DIR } from '../../../foundation/claw-paths.js';
 import { MOTION_CLAW_ID } from '../../../constants.js';
 import type { CronJob } from '../runner.js';
 import { parseSchedule } from '../runner.js';
 import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
+import type { ClawTopology } from '../../../core/claw-topology/index.js';
 
 
 /**
@@ -57,6 +57,8 @@ export interface LlmStatsOptions {
   motionDir: string;
   chestnutFs: FileSystem;   // baseDir = chestnutRoot
   motionFs: FileSystem;       // baseDir = motionDir
+  /** phase 259: caller (装配期) 注入的 claw topology */
+  clawTopology: ClawTopology;
   audit: AuditLog;
   signal?: AbortSignal;
 }
@@ -65,6 +67,7 @@ export interface LlmStatsJobDeps {
   motionDir: string;
   chestnutFs: FileSystem;
   motionFs: FileSystem;
+  clawTopology: ClawTopology;
   audit: AuditLog;
 }
 
@@ -105,16 +108,24 @@ export async function runLlmStats(opts: LlmStatsOptions): Promise<void> {
 function collectEntries(opts: LlmStatsOptions, targetDate: string): ParsedLlmRow[] {
   const results: ParsedLlmRow[] = [];
 
-  const candidates: Array<{ fs: FileSystem; file: string; clawId: string }> = [
+  let clawIds: import('../../../core/claw-id.js').ClawId[];
+  try {
+    clawIds = opts.clawTopology.enumerate().filter(id => id !== MOTION_CLAW_ID);
+  } catch {
+    // silent: claws dir 不存在时无 claw 可统计、行为兼容（等同空集合）
+    clawIds = [];
+  }
+  const candidates = [
     { fs: opts.motionFs, file: 'audit.tsv', clawId: MOTION_CLAW_ID },
-    ...(() => {
-      if (!opts.chestnutFs.existsSync(CLAWS_DIR)) return [];
-      return opts.chestnutFs.listSync(CLAWS_DIR, { includeDirs: true }).map(e => ({
+    ...clawIds.map(clawId => {
+      const location = opts.clawTopology.resolve(clawId);
+      if (location.kind !== 'local') return null;
+      return {
         fs: opts.chestnutFs,
-        file: path.join(CLAWS_DIR, e.name, 'audit.tsv'),
-        clawId: e.name,
-      }));
-    })(),
+        file: path.join(location.clawDir, 'audit.tsv'),
+        clawId: clawId as string,
+      };
+    }).filter(c => c !== null),
   ];
 
   for (const { fs, file, clawId } of candidates) {

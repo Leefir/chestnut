@@ -149,6 +149,7 @@ export async function createMotionAddons(
       const clawContractBridge = createClawContractBridge({
         fsFactory,
         clawsDir: path.join(chestnutRoot, CLAWS_DIR),  // phase 84
+        clawTopology: core.topology,  // phase 259
         // phase 104: pre-bound notifyClaw
         notifyClaw: (targetClawId, message) =>
           notifyClaw(parentFs, chestnutRoot, targetClawId, message, auditWriter),
@@ -163,6 +164,7 @@ export async function createMotionAddons(
       try {
         memorySystem = createMemorySystem({
           clawsDir: path.join(chestnutRoot, CLAWS_DIR),  // phase 84
+          clawTopology: core.topology,  // phase 259
           motionDir: clawDir,
           fs: chestnutFs,
           motionFs: systemFs,
@@ -189,6 +191,7 @@ export async function createMotionAddons(
       const cronJobs = [
         createDiskMonitorJob({
           clawsDir: path.join(chestnutRoot, CLAWS_DIR),  // phase 84
+          clawTopology: core.topology,  // phase 259
           limitMB: diskLimitMB,
           fs: chestnutFs,
           audit: auditWriter,
@@ -199,6 +202,7 @@ export async function createMotionAddons(
           motionDir: clawDir,
           chestnutFs,
           motionFs: systemFs,
+          clawTopology: core.topology,  // phase 259
           audit: auditWriter,
         }, globalConfig),
         createDreamTriggerJob({ memorySystem: memorySystem! }, globalConfig),
@@ -209,6 +213,7 @@ export async function createMotionAddons(
         }, globalConfig),
         createContractObserverJob({
           clawsDir: path.join(chestnutRoot, CLAWS_DIR),    // phase 101
+          clawTopology: core.topology,  // phase 259
           motionDir: path.join(chestnutRoot, 'motion'),  // phase 101
           fs: chestnutFs,
           motionAudit: auditWriter,  // phase 724 α：主 auditWriter 单 instance 复用
@@ -216,6 +221,7 @@ export async function createMotionAddons(
         }, globalConfig),
         createGitGcWeeklyJob({
           clawsDir: path.join(chestnutRoot, CLAWS_DIR),  // phase 84
+          clawTopology: core.topology,  // phase 259
           fs: chestnutFs,
           audit: auditWriter,
         }, globalConfig),
@@ -239,6 +245,7 @@ export async function createMotionAddons(
         }, globalConfig),
         createOutboxSummaryJob({
           clawsDir: path.join(chestnutRoot, CLAWS_DIR),  // phase 84: L4 0 知 chestnut 拓扑、装配期算
+          clawTopology: core.topology,  // phase 259
           fs: chestnutFs,
           audit: auditWriter,
           inboxReader,

@@ -9,6 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { computeClawLastActivityAgoMs } from '../../../src/core/status-service/index.js';
 import type { FileSystem } from '../../../src/foundation/fs/types.js';
+// phase 259: 本测试仅测 computeClawLastActivityAgoMs 纯 helper，不涉 ForumStatusDeps / clawTopology
 
 // ── Fake FS helpers ─────────────────────────────────────────────────────────
 

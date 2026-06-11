@@ -29,6 +29,7 @@ import type { FileSystem } from '../../../src/foundation/fs/types.js';
 import type { ProcessManager } from '../../../src/foundation/process-manager/index.js';
 import { ProcessListUnavailable } from '../../../src/foundation/process-manager/index.js';
 import { MOTION_CLAW_ID } from '../../../src/constants.js';
+import type { ClawTopology } from '../../../src/core/claw-topology/types.js';
 
 // ── Fake FS helpers ─────────────────────────────────────────────────────────
 
@@ -234,9 +235,17 @@ describe('computeForumStatusView', () => {
       return makeFs({});
     };
 
+    const clawTopology: ClawTopology = {
+      enumerate: () => claws.map(name => name),
+      resolve: (clawId) => ({ kind: 'local', clawDir: path.join(baseDir, 'claws', clawId) }),
+      read: async () => '',
+      readJSON: async () => ({} as any),
+    };
+
     return {
       fsFactory,
       baseDir,
+      clawTopology,
       motionDir,
       pm: makePm(aliveMap),
       now: () => NOW,

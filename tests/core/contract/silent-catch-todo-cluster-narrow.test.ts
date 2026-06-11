@@ -14,6 +14,22 @@ import { runContractObserver } from '../../../src/core/contract/jobs/contract-ob
 import { CONTRACT_AUDIT_EVENTS } from '../../../src/core/contract/audit-events.js';
 import { makeAudit } from '../../helpers/audit.js';
 import type { FileSystem } from '../../../src/foundation/fs/types.js';
+import type { ClawTopology } from '../../../src/core/claw-topology/types.js';
+import * as path from 'path';
+
+function makeMockTopology(fs: FileSystem, clawsDir: string): ClawTopology {
+  return {
+    enumerate() {
+      const entries = fs.listSync(clawsDir, { includeDirs: true });
+      return entries.filter(e => e.isDirectory).map(e => e.name);
+    },
+    resolve(clawId) {
+      return { kind: 'local', clawDir: path.join(clawsDir, clawId) };
+    },
+    async read() { return ''; },
+    async readJSON() { return {} as any; },
+  };
+}
 
 function makeFsThrow(code: string): FileSystem {
   return {
@@ -118,6 +134,7 @@ describe('phase 1010 — silent X TODO cluster narrow', () => {
     const notifyInbox = vi.fn();
     await runContractObserver({
       clawsDir: '/tmp/test/claws',
+      clawTopology: makeMockTopology(fs, '/tmp/test/claws'),
       motionDir: '/tmp/test/motion',
       fs,
       motionAudit: audit,
@@ -144,6 +161,7 @@ describe('phase 1010 — silent X TODO cluster narrow', () => {
     const notifyInbox = vi.fn();
     await runContractObserver({
       clawsDir: '/tmp/test/claws',
+      clawTopology: makeMockTopology(fs, '/tmp/test/claws'),
       motionDir: '/tmp/test/motion',
       fs,
       motionAudit: audit,

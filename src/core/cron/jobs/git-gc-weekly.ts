@@ -2,8 +2,9 @@ import * as path from 'path';
 import { formatErr } from "../../../foundation/utils/index.js";
 import { exec } from '../../../foundation/process-exec/index.js';
 import type { FileSystem } from '../../../foundation/fs/types.js';
-import { enumerateClaws } from '../../../foundation/claw-paths.js';
 import type { AuditLog } from '../../../foundation/audit/index.js';
+import type { ClawTopology } from '../../../core/claw-topology/index.js';
+import { MOTION_CLAW_ID } from '../../../constants.js';
 import { GIT_GC_WEEKLY_AUDIT_EVENTS } from './git-gc-weekly-audit-events.js';
 import type { CronJob } from '../runner.js';
 import { parseSchedule } from '../runner.js';
@@ -17,6 +18,8 @@ export const GIT_GC_WEEKLY_CRON_TIMEOUT_MS = 120_000;
 
 export interface GitGcWeeklyOptions {
   clawsDir: string;
+  /** phase 259: caller (装配期) 注入的 claw topology */
+  clawTopology: ClawTopology;
   fs: FileSystem;
   audit: AuditLog;
   signal?: AbortSignal;
@@ -24,22 +27,23 @@ export interface GitGcWeeklyOptions {
 
 export interface GitGcWeeklyJobDeps {
   clawsDir: string;
+  clawTopology: ClawTopology;
   fs: FileSystem;
   audit: AuditLog;
 }
 
 export async function runGitGcWeekly(opts: GitGcWeeklyOptions): Promise<void> {
-  const { clawsDir, fs, audit } = opts;
+  const { clawTopology, fs, audit } = opts;
 
-  if (!fs.existsSync(clawsDir)) return;
-
-  const clawIds = enumerateClaws(fs, clawsDir);
+  const clawIds = clawTopology.enumerate().filter(id => id !== MOTION_CLAW_ID);
   for (const clawId of clawIds) {
     if (opts.signal?.aborted) return;
-    const gitDir = path.join(clawsDir, clawId, '.git');
+    const location = clawTopology.resolve(clawId);
+    if (location.kind !== 'local') continue;
+    const gitDir = path.join(location.clawDir, '.git');
     if (!fs.existsSync(gitDir)) continue;
     try {
-      await exec('git', ['gc', '--auto'], { cwd: path.join(clawsDir, clawId) });
+      await exec('git', ['gc', '--auto'], { cwd: location.clawDir });
     } catch (err) {
       audit.write(
         GIT_GC_WEEKLY_AUDIT_EVENTS.GIT_GC_WEEKLY_CLAW_FAILED,

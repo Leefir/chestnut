@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemorySystem, createMemorySystem } from '../../../src/core/memory/system.js';
+import type { ClawTopology } from '../../../src/core/claw-topology/types.js';
 
 vi.mock('../../../src/core/memory/deep-dream.js', () => ({
   runDeepDream: vi.fn(async () => {}),
@@ -12,8 +13,16 @@ import { runDeepDream as runDeepDreamMock } from '../../../src/core/memory/deep-
 import { runRandomDream as runRandomDreamMock } from '../../../src/core/memory/random-dream.js';
 
 describe('MemorySystem', () => {
+  const mockTopology = {
+    enumerate: vi.fn(() => []),
+    resolve: vi.fn(() => ({ kind: 'local', clawDir: '/tmp/chestnut/claws/test' })),
+    read: vi.fn(async () => ''),
+    readJSON: vi.fn(async () => ({} as any)),
+  } as unknown as ClawTopology;
+
   const mockOpts = {
     clawsDir: '/tmp/chestnut/claws',
+    clawTopology: mockTopology,
     motionDir: '/tmp/motion',
     fs: {} as any,
     motionFs: {} as any,
@@ -44,6 +53,7 @@ describe('MemorySystem', () => {
       expect(runDeepDreamMock).toHaveBeenCalledOnce();
       expect(runDeepDreamMock).toHaveBeenCalledWith(expect.objectContaining({
         clawsDir: '/tmp/chestnut/claws',
+        clawTopology: mockTopology,
         llmConfig: mockOpts.llmConfig,
         llmService: mockOpts.llmService,
         maxCompressionTokens: 100,

@@ -1,8 +1,8 @@
 import * as path from 'path';
 import { formatErr, assertNever } from "../../../foundation/utils/index.js";
 import { isFileNotFound, type FileSystem } from '../../../foundation/fs/types.js';
-import { enumerateClaws } from '../../../foundation/claw-paths.js';
 import type { AuditLog } from '../../../foundation/audit/index.js';
+import type { ClawTopology } from '../../../core/claw-topology/index.js';
 import type { InboxMessageOptionsBase } from '../../../foundation/messaging/index.js';
 import { scanArchivedContracts } from './event-collector.js';
 import { CONTRACT_AUDIT_EVENTS } from '../audit-events.js';
@@ -13,7 +13,7 @@ export type NotifyMotionFn = (message: InboxMessageOptionsBase) => void;
 import type { CronJob } from '../../cron/runner.js';
 import { parseSchedule } from '../../cron/runner.js';
 import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
-import { makeClawId } from '../../../constants.js';
+import { makeClawId, MOTION_CLAW_ID } from '../../../constants.js';
 
 
 /**
@@ -25,6 +25,8 @@ export const CONTRACT_OBSERVER_CRON_TIMEOUT_MS = 5 * 60_000;
 export interface ContractObserverOptions {
   /** phase 101: caller (装配期) 算好的 claws dir */
   clawsDir: string;
+  /** phase 259: caller (装配期) 注入的 claw topology */
+  clawTopology: ClawTopology;
   /** phase 101: caller (装配期) 算好的 motion dir (state file 位置) */
   motionDir: string;
   fs: FileSystem;
@@ -36,6 +38,7 @@ export interface ContractObserverOptions {
 
 export interface ContractObserverJobDeps {
   clawsDir: string;
+  clawTopology: ClawTopology;
   motionDir: string;
   fs: FileSystem;
   motionAudit: AuditLog;
@@ -112,7 +115,7 @@ function loadObserverState(fs: FileSystem, stateFile: string, audit: AuditLog): 
 }
 
 export async function runContractObserver(options: ContractObserverOptions): Promise<void> {
-  const { clawsDir, motionDir, fs, motionAudit, notifyMotion } = options;
+  const { clawsDir, clawTopology, motionDir, fs, motionAudit, notifyMotion } = options;
 
   // phase 37: tickStart 在 scan 开始捕获、写为 lastCheckTs（不再 end-of-scan now、关 race window）
   const tickStart = Date.now();
@@ -125,7 +128,7 @@ export async function runContractObserver(options: ContractObserverOptions): Pro
   // 扫描 claws/ 目录
   let clawIds: string[];
   try {
-    clawIds = enumerateClaws(fs, clawsDir);
+    clawIds = clawTopology.enumerate().filter(id => id !== MOTION_CLAW_ID);
   } catch (err) {
     if (isFileNotFound(err)) return;
     motionAudit.write(
@@ -148,8 +151,9 @@ export async function runContractObserver(options: ContractObserverOptions): Pro
   for (const clawId of clawIds) {
     if (options.signal?.aborted) return;
     try {
-      const clawDir = path.join(clawsDir, clawId);
-      const entries = scanArchivedContracts(fs, clawDir, makeClawId(clawId), motionAudit);
+      const location = clawTopology.resolve(makeClawId(clawId));
+      if (location.kind !== 'local') continue;
+      const entries = scanArchivedContracts(fs, location.clawDir, makeClawId(clawId), motionAudit);
       for (const entry of entries) {
         const key = `${clawId}:${entry.contractId}`;
         if (notifiedSet.has(key)) continue;  // dedup: 已通知

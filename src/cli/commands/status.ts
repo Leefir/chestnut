@@ -25,6 +25,7 @@ import {
   formatForumStatusView,
 } from '../../core/status-service/index.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
+import { createClawTopology } from '../../core/claw-topology/index.js';
 
 export async function statusCommand(deps: { fsFactory: (baseDir: string) => FileSystem }): Promise<void> {
   loadGlobalConfig(deps);
@@ -43,9 +44,17 @@ export async function statusCommand(deps: { fsFactory: (baseDir: string) => File
   const nodeFs = deps.fsFactory(process.cwd());
   const daemonEntryPath = resolveDaemonEntry(nodeFs);
 
+  const topology = createClawTopology({
+    fs: deps.fsFactory(baseDir),
+    chestnutRoot: baseDir,
+    motionClawId: MOTION_CLAW_ID,
+    motionDir,
+  });
+
   const view = computeForumStatusView({
     fsFactory: deps.fsFactory,
     baseDir,
+    clawTopology: topology,
     motionDir,
     pm,
     now: () => Date.now(),

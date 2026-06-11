@@ -23,6 +23,9 @@ import { DEDUP_DONE_WINDOW_MS } from '../../../src/core/cron/jobs/outbox-summary
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
 import { InboxReader, InboxWriter, makeInboxPath } from '../../../src/foundation/messaging/index.js';
 import { OutboxReader } from '../../../src/foundation/messaging/index.js';
+import { createClawTopology } from '../../../src/core/claw-topology/topology.js';
+import { makeClawId } from '../../../src/core/claw-id.js';
+import type { ClawTopology } from '../../../src/core/claw-topology/types.js';
 
 function makeAudit() {
   const events: Array<[string, ...(string | number)[]]> = [];
@@ -61,6 +64,7 @@ describe('phase 42: runOutboxSummaryTick orchestration', () => {
   let inboxReader: InboxReader;
   let inboxWriter: InboxWriter;
   let outboxReader: OutboxReader;
+  let topology: ClawTopology;
 
   beforeEach(async () => {
     root = path.join(tmpdir(), `outbox-summary-tick-${randomUUID()}`);
@@ -85,6 +89,12 @@ describe('phase 42: runOutboxSummaryTick orchestration', () => {
       audit,
     );
     outboxReader = new OutboxReader(fs, audit);
+    topology = createClawTopology({
+      fs,
+      chestnutRoot: root,
+      motionClawId: makeClawId('motion'),
+      motionDir: 'motion',
+    });
   });
 
   afterEach(async () => {
@@ -94,6 +104,7 @@ describe('phase 42: runOutboxSummaryTick orchestration', () => {
   it('0 unread + no existing summary → no write, CLEARED audit', async () => {
     await runOutboxSummaryTick({
       clawsDir: `${root}/claws`,
+      clawTopology: topology,
       fs,
       inboxReader,
       inboxWriter,
@@ -109,6 +120,7 @@ describe('phase 42: runOutboxSummaryTick orchestration', () => {
     await fsAsync.writeFile(path.join(root, 'claws/clawA/outbox/pending/m1.md'), 'x');
     await runOutboxSummaryTick({
       clawsDir: `${root}/claws`,
+      clawTopology: topology,
       fs,
       inboxReader,
       inboxWriter,
@@ -125,6 +137,7 @@ describe('phase 42: runOutboxSummaryTick orchestration', () => {
     await fsAsync.writeFile(path.join(root, 'claws/clawA/outbox/pending/m1.md'), 'x');
     await runOutboxSummaryTick({
       clawsDir: `${root}/claws`,
+      clawTopology: topology,
       fs,
       inboxReader,
       inboxWriter,
@@ -135,6 +148,7 @@ describe('phase 42: runOutboxSummaryTick orchestration', () => {
     events.length = 0;
     await runOutboxSummaryTick({
       clawsDir: `${root}/claws`,
+      clawTopology: topology,
       fs,
       inboxReader,
       inboxWriter,
@@ -150,6 +164,7 @@ describe('phase 42: runOutboxSummaryTick orchestration', () => {
     await fsAsync.writeFile(path.join(root, 'claws/clawA/outbox/pending/m1.md'), 'x');
     await runOutboxSummaryTick({
       clawsDir: `${root}/claws`,
+      clawTopology: topology,
       fs,
       inboxReader,
       inboxWriter,
@@ -163,6 +178,7 @@ describe('phase 42: runOutboxSummaryTick orchestration', () => {
     events.length = 0;
     await runOutboxSummaryTick({
       clawsDir: `${root}/claws`,
+      clawTopology: topology,
       fs,
       inboxReader,
       inboxWriter,
@@ -178,6 +194,7 @@ describe('phase 42: runOutboxSummaryTick orchestration', () => {
     await fsAsync.writeFile(path.join(root, 'claws/clawA/outbox/pending/m1.md'), 'x');
     await runOutboxSummaryTick({
       clawsDir: `${root}/claws`,
+      clawTopology: topology,
       fs,
       inboxReader,
       inboxWriter,
@@ -193,6 +210,7 @@ describe('phase 42: runOutboxSummaryTick orchestration', () => {
     events.length = 0;
     await runOutboxSummaryTick({
       clawsDir: `${root}/claws`,
+      clawTopology: topology,
       fs,
       inboxReader,
       inboxWriter,
@@ -207,6 +225,7 @@ describe('phase 42: runOutboxSummaryTick orchestration', () => {
     await fsAsync.writeFile(path.join(root, 'claws/clawA/outbox/pending/m1.md'), 'x');
     await runOutboxSummaryTick({
       clawsDir: `${root}/claws`,
+      clawTopology: topology,
       fs,
       inboxReader,
       inboxWriter,
@@ -222,6 +241,7 @@ describe('phase 42: runOutboxSummaryTick orchestration', () => {
     events.length = 0;
     await runOutboxSummaryTick({
       clawsDir: `${root}/claws`,
+      clawTopology: topology,
       fs,
       inboxReader,
       inboxWriter,
@@ -237,6 +257,7 @@ describe('phase 42: runOutboxSummaryTick orchestration', () => {
     await fsAsync.writeFile(path.join(root, 'claws/clawA/outbox/pending/m1.md'), 'x');
     await runOutboxSummaryTick({
       clawsDir: `${root}/claws`,
+      clawTopology: topology,
       fs,
       inboxReader,
       inboxWriter,
@@ -249,6 +270,7 @@ describe('phase 42: runOutboxSummaryTick orchestration', () => {
     events.length = 0;
     await runOutboxSummaryTick({
       clawsDir: `${root}/claws`,
+      clawTopology: topology,
       fs,
       inboxReader,
       inboxWriter,
@@ -266,6 +288,7 @@ describe('phase 42: runOutboxSummaryTick orchestration', () => {
     await fsAsync.writeFile(path.join(root, 'claws/clawA/outbox/pending/m1.md'), 'x');
     await runOutboxSummaryTick({
       clawsDir: `${root}/claws`,
+      clawTopology: topology,
       fs,
       inboxReader,
       inboxWriter,
@@ -278,6 +301,7 @@ describe('phase 42: runOutboxSummaryTick orchestration', () => {
     events.length = 0;
     await runOutboxSummaryTick({
       clawsDir: `${root}/claws`,
+      clawTopology: topology,
       fs,
       inboxReader,
       inboxWriter,
