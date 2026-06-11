@@ -242,6 +242,7 @@ export default defineConfig({
           poolOptions: { threads: { maxThreads, isolate: false } },
           testTimeout: 15000,
           hookTimeout: 10000,
+          maxConcurrency: 20, // phase 300: lift default 5 → 20 for describe.concurrent blocks
         },
       },
       {
