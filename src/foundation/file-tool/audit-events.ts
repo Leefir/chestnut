@@ -23,5 +23,13 @@ export const FILE_TOOL_AUDIT_EVENTS = {
   /** write 工具 overwrite gate 拒绝、payload: path=<resolved> reason=not-read|partial|stale|verify-failed (phase 1443) */
   OVERWRITE_GATE_REJECTED: 'overwrite_gate_rejected',
   READ_FILE_STATE_INVARIANT_VIOLATED: 'read_file_state_invariant_violated',
-  read_file_state_invariant_violated: 'audit',
+  // NEW phase 272 Step B: raw audit emit migration to const SoT
+  SEARCH_OVERFLOW_PERSIST_FAILED: 'search_overflow_persist_failed',
+} as const;
+
+/**
+ * Phase 159 业主声明 file 归属（phase 122 §5.A + §6.7）.
+ */
+export const FILE_TOOL_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
+  search_overflow_persist_failed: 'audit',
 } as const;

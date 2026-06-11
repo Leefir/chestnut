@@ -77,7 +77,7 @@ async function persistOverflow(
     await ctx.fs.writeAtomic(fullPath, frontmatter + output);
     return path.relative(ctx.workspaceDir, fullPath);
   } catch (err) {
-    ctx.auditWriter?.write('overflow_persist_failed', `reason=${formatErr(err)}`);
+    ctx.auditWriter?.write(COMMAND_TOOL_AUDIT_EVENTS.OVERFLOW_PERSIST_FAILED, `reason=${formatErr(err)}`);
     return null;
   }
 }

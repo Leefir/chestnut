@@ -693,6 +693,8 @@
       "daemon_stop_attempt",
       "daemon_stop_failed",
       "daemon_stop_success",
+      "daemon_uncaught_exception",
+      "daemon_unhandled_rejection",
       "idle_timeout",
       "priority_inbox",
       "snapshot_commit_failed",
@@ -731,7 +733,8 @@
       "read_file_state_loaded",
       "read_file_state_persist_failed",
       "read_file_state_recorded",
-      "read_overflow_persist_failed"
+      "read_overflow_persist_failed",
+      "search_overflow_persist_failed"
     ],
     "foundation_llm-provider_audit-events": [
       "llm_provider_assistant_empty_content_skipped",
@@ -808,7 +811,8 @@
       "skill_version_invalid"
     ],
     "foundation_command-tool_audit-events": [
-      "exec_motion_self_kill_blocked"
+      "exec_motion_self_kill_blocked",
+      "overflow_persist_failed"
     ],
     "foundation_tools_audit-events": [
       "tool_caller_access_violation",

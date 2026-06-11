@@ -31,7 +31,9 @@ export const DAEMON_AUDIT_EVENTS = {
   DAEMON_EXIT_ZERO: 'daemon_exit_zero',
   LLM_RETRY_STATE_INVARIANT_VIOLATED: 'daemon_llm_retry_state_invariant_violated',
   LLM_RETRY_STATE_LOAD_FAILED: 'daemon_llm_retry_state_load_failed',
-  daemon_llm_retry_state_invariant_violated: 'audit',
+  // NEW phase 272 Step B: raw audit emit migration to const SoT
+  UNHANDLED_REJECTION: 'daemon_unhandled_rejection',
+  UNCAUGHT_EXCEPTION: 'daemon_uncaught_exception',
 } as const;
 
 /**

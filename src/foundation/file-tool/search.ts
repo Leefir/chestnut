@@ -15,6 +15,7 @@ import type { ToolResult } from '../tool-protocol/index.js';
 import { resolveWorkspacePath } from './resolve-path.js';
 
 import { formatErr } from '../utils/index.js';
+import { FILE_TOOL_AUDIT_EVENTS } from './audit-events.js';
 import { UUID_SHORT_LEN } from '../../constants.js';
 import {
   TASKS_SYNC_SEARCH_DIR,
@@ -220,7 +221,7 @@ async function persistOverflow(
     await ctx.fs.writeAtomic(fullPath, frontmatter + fullContent);
     return { relPath: nodePath.relative(ctx.workspaceDir, fullPath), error: null };
   } catch (err) {
-    ctx.auditWriter?.write('search_overflow_persist_failed', `reason=${formatErr(err)}`);
+    ctx.auditWriter?.write(FILE_TOOL_AUDIT_EVENTS.SEARCH_OVERFLOW_PERSIST_FAILED, `reason=${formatErr(err)}`);
     return { relPath: null, error: formatErr(err) };
   }
 }

@@ -5,4 +5,13 @@
 
 export const COMMAND_TOOL_AUDIT_EVENTS = {
   EXEC_MOTION_SELF_KILL_BLOCKED: 'exec_motion_self_kill_blocked',
+  // NEW phase 272 Step B: raw audit emit migration to const SoT
+  OVERFLOW_PERSIST_FAILED: 'overflow_persist_failed',
+} as const;
+
+/**
+ * Phase 159 业主声明 file 归属（phase 122 §5.A + §6.7）.
+ */
+export const COMMAND_TOOL_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
+  overflow_persist_failed: 'audit',
 } as const;

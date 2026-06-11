@@ -3,6 +3,7 @@ import type { FileSystem } from './foundation/fs/types.js';
 import { createSystemAudit, type AuditLog } from './foundation/audit/index.js';
 import { getClawDir, getNamedSubrootDir } from './foundation/config/index.js';
 import { MOTION_CLAW_ID } from './constants.js';
+import { DAEMON_AUDIT_EVENTS } from './daemon/audit-events.js';
 
 // shim pre-assemble audit sink（phase189 §7.A7 清零）
 // 独立于 daemon.ts 的 preAssembleAudit：shim 在 daemon.ts 未入时兜底
@@ -37,7 +38,7 @@ const errMsg = (reason: unknown): string =>
 process.on('unhandledRejection', (reason) => {
   const msg = errMsg(reason);
   try {
-    shimAudit?.write('daemon_unhandled_rejection', `error=${msg}`);
+    shimAudit?.write(DAEMON_AUDIT_EVENTS.UNHANDLED_REJECTION, `error=${msg}`);
   } catch { /* audit 写入失败静默，fallback console 保运维可见 */ }
   console.error('[daemon] Unhandled rejection:', reason);
   process.exit(1);
@@ -46,7 +47,7 @@ process.on('unhandledRejection', (reason) => {
 process.on('uncaughtException', (err) => {
   const msg = errMsg(err);
   try {
-    shimAudit?.write('daemon_uncaught_exception', `error=${msg}`);
+    shimAudit?.write(DAEMON_AUDIT_EVENTS.UNCAUGHT_EXCEPTION, `error=${msg}`);
   } catch { /* silent: audit-down 时 fallback console 保运维可见 / 已是 last-resort fallback / 不可再 audit 自身 */ }
   console.error('[daemon] Uncaught exception:', err);
   process.exit(1);
