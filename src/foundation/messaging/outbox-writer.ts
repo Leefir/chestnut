@@ -98,7 +98,7 @@ export class OutboxWriter {
       });
       // phase 273 Step B: dedup CC-2 (fire-and-forget、不阻 write、Path #4)
       void auditOutboxDedup(filename, this.outboxDir, this.fs, this.audit)
-        .catch(() => { /* self-defensive */ });
+        .catch(() => { /* silent: fire-and-forget dedup audit must not block write path */ });
       return filePath;
     } catch (err) {
       emitOutboxSendFailed(this.audit, {

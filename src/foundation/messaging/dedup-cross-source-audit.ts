@@ -16,6 +16,7 @@
 
 import type { AuditLog } from '../audit/index.js';
 import type { FileSystem } from '../fs/types.js';
+import { formatErr } from '../utils/index.js';
 import { MESSAGING_AUDIT_EVENTS } from './audit-events.js';
 
 /**
@@ -43,7 +44,7 @@ export async function auditInboxDedup(
     audit.write(
       MESSAGING_AUDIT_EVENTS.MESSAGING_DEDUP_CROSS_SOURCE_SKIPPED,
       `kind=cc1_skip`, `reason=fs_list_failed`,
-      `error=${err instanceof Error ? err.message : String(err)}`,
+      `error=${formatErr(err)}`,
     );
     return;
   }
@@ -81,7 +82,7 @@ export async function auditOutboxDedup(
     audit.write(
       MESSAGING_AUDIT_EVENTS.MESSAGING_DEDUP_CROSS_SOURCE_SKIPPED,
       `kind=cc2_skip`, `reason=fs_list_failed`,
-      `error=${err instanceof Error ? err.message : String(err)}`,
+      `error=${formatErr(err)}`,
     );
     return;
   }

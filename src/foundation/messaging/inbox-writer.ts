@@ -77,7 +77,7 @@ export class InboxWriter {
     emitInboxWritten(this.audit, { file: filename, to: msg.to });
     // phase 273 Step B: dedup CC-1 (fire-and-forget、不阻 write、Path #4)
     void auditInboxDedup(filename, this.inboxDir, this.fs, this.audit)
-      .catch(() => { /* self-defensive */ });
+      .catch(() => { /* silent: fire-and-forget dedup audit must not block write path */ });
   }
 
   /** sync 写，供 task/system 同步路径使用 */
@@ -115,7 +115,7 @@ export class InboxWriter {
     emitInboxWritten(this.audit, { file: filename, to: opts.to });
     // phase 273 Step B: dedup CC-1 (fire-and-forget)
     void auditInboxDedup(filename, this.inboxDir, this.fs, this.audit)
-      .catch(() => { /* self-defensive */ });
+      .catch(() => { /* silent: fire-and-forget dedup audit must not block write path */ });
   }
 
   /** 读 frontmatter meta；纯读，静态方法不依赖 audit */
