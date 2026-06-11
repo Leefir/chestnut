@@ -24,6 +24,7 @@ import { createTimeoutController } from './timeout-controller.js';
 import { createStreamCallbacks } from './stream-callbacks.js';
 import { classifyAndAuditError } from './error-classifier.js';
 import { assertStepsEntryShape } from './invariants.js';
+import { auditSubagentArtifactCompleteness } from './artifact-cross-source-audit.js';
 
 
 
@@ -83,6 +84,11 @@ export class SubAgent {
   private auditWriter: AuditLog;
   private permissionChecker?: PermissionChecker;
 
+  // phase 270 Step B: cross-source artifact completeness counters
+  private turnStartCount = 0;
+  private turnEndCount = 0;
+  private textEndCount = 0;
+  private auditStepCount = 0;
 
   constructor(options: SubAgentOptions) {
     this.agentId = options.agentId;
@@ -137,6 +143,7 @@ export class SubAgent {
     // Turn start: written before any potentially-throwing init so catch always pairs it
     stream.safeSwWrite({ ts: Date.now(), type: AGENT_STREAM_EVENTS.TURN_START });
     this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_START);
+    this.turnStartCount++;   // phase 270 Step B
 
     try {
       const callerType = this.callerType ?? 'subagent';
@@ -211,7 +218,7 @@ export class SubAgent {
           onBeforeLLMCall: stream.callbacks.onBeforeLLMCall,
           onTextDelta: (delta: string) => { timeout.resetIdle?.(); stream.callbacks.onTextDelta(delta); },
           onThinkingDelta: (delta: string) => { timeout.resetIdle?.(); stream.callbacks.onThinkingDelta(delta); },
-          onTextEnd: stream.callbacks.onTextEnd,
+          onTextEnd: () => { this.textEndCount++; stream.callbacks.onTextEnd(); },
           onToolCall: async (name, toolUseId) => {
             timeout.resetIdle?.();
             stream.callbacks.onToolCall(name, toolUseId);
@@ -256,6 +263,7 @@ export class SubAgent {
               // 不 throw — 持久化失败不终止任务
             }
             auditStep++;
+            this.auditStepCount++;   // phase 270 Step B
             auditStepTools = [];
             auditStepStart = Date.now();
           },
@@ -271,6 +279,7 @@ export class SubAgent {
 
       stream.safeSwWrite({ ts: Date.now(), type: AGENT_STREAM_EVENTS.TURN_END });
       this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_END);
+      this.turnEndCount++;   // phase 270 Step B
       stream.markTurnEnded();
 
       // Extract final text result
@@ -296,6 +305,7 @@ export class SubAgent {
       if (!stream.isTurnEnded()) {
         stream.safeSwWrite({ ts: Date.now(), type: AGENT_STREAM_EVENTS.TURN_END });
         this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_END);
+        this.turnEndCount++;   // phase 270 Step B
         stream.closeSw();
       }
       // 持久化 messages — finally 保证超时/中断/正常结束都落盘（best-effort）
@@ -312,6 +322,20 @@ export class SubAgent {
           `error=${formatErr(e)}`,
         );
       }
+
+      // phase 270 Step B: multi-artifact completeness cross-source (fire-and-forget、不阻 finally)
+      void auditSubagentArtifactCompleteness(
+        {
+          agentId: this.agentId,
+          resultDir: this.resultDir,
+          turnStartCount: this.turnStartCount,
+          turnEndCount: this.turnEndCount,
+          textEndCount: this.textEndCount,
+          auditStepCount: this.auditStepCount,
+        },
+        { fs: this.fs, messageStore: this.messageStore },
+        this.auditWriter,
+      ).catch(() => { /* silent: self-defensive、不阻 finally */ });
     }
   }
 

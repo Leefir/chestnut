@@ -554,9 +554,12 @@
       "ghost_callback_after_turn_end",
       "llm_call",
       "llm_error",
+      "subagent_artifact_cross_source_mismatch",
+      "subagent_artifact_cross_source_skipped",
       "subagent_log_append_failed",
       "subagent_persist_failed",
       "subagent_step_complete_failed",
+      "subagent_steps_invariant_violated",
       "subagent_timeout_rejection",
       {
         "type": "tool_call_input",
