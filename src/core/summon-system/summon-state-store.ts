@@ -2,6 +2,7 @@ import { isFileNotFound, type FileSystem } from '../../foundation/fs/types.js';
 import type { TaskId } from '../async-task-system/types.js';
 import { SUMMON_AUDIT_EVENTS } from './audit-events.js';
 import { assertSummonDecisionShape } from './invariants.js';
+import { auditSummonDecisionCrossSource, type AsyncTaskUniverseProvider } from './cross-source-audit.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 
 const SUMMON_STATE_SUBDIR = 'summon-state';
@@ -30,11 +31,20 @@ export interface SummonStateStore {
  * - subagentTaskId 是通用执行身份、CLI 见到时不一定来自 summon（也可能来自 spawn）
  * - 非 summon 路径的 task 没有 SummonDecision、应 pass-through、不拒
  */
-export function createSummonStateStore(fs: FileSystem, audit?: AuditLog): SummonStateStore {
+export function createSummonStateStore(
+  fs: FileSystem,
+  audit?: AuditLog,
+  asyncTaskUniverseProvider?: AsyncTaskUniverseProvider,   // phase 255 Step B: 可选 provider
+): SummonStateStore {
   return {
     async write(decision) {
-      // phase 255 Step A: schema invariant（violation emit audit、不 throw、不阻 write、保 IO 错既有 throw 路径）
-      assertSummonDecisionShape(decision, audit, 'write');
+      assertSummonDecisionShape(decision, audit, 'write');   // Step A
+
+      // phase 255 Step B: cross-source SC-1 (fire-and-forget、provider 可选)
+      if (audit && asyncTaskUniverseProvider) {
+        void auditSummonDecisionCrossSource(decision, asyncTaskUniverseProvider, audit)
+          .catch(() => { /* silent: cross-source audit failure is already logged by provider catch */ });
+      }
 
       const relPath = `${SUMMON_STATE_SUBDIR}/${decision.taskId}.json`;
       try {

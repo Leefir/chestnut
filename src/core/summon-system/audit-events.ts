@@ -30,6 +30,8 @@ export const SUMMON_AUDIT_EVENTS = {
   SUMMON_GATE_NO_DECISION: 'summon_gate_no_decision',
   SUMMON_TARGET_CLAW_VIOLATION: 'summon_target_claw_violation',
   SUMMON_STATE_INVARIANT_VIOLATED: 'summon_state_invariant_violated',
+  SUMMON_STATE_CROSS_SOURCE_MISMATCH: 'summon_state_cross_source_mismatch',
+  SUMMON_STATE_CROSS_SOURCE_SKIPPED: 'summon_state_cross_source_skipped',
   SUMMON_STATE_LEGACY_V0_MIGRATED: 'summon_state_legacy_v0_migrated',
 } as const;
 
