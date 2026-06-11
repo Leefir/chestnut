@@ -29,6 +29,8 @@ import {
   emitSnapshotSyncRestoreFailed,
   emitSnapshotTryClearFailed,
 } from './audit-emit.js';
+import { assertSnapshotStateShape } from './invariants.js';
+import { auditSnapshotStateCrossSource } from './state-cross-source-audit.js';
 import { ok, err as errResult, type Result } from '../utils/index.js';
 import { classifyGitError, type ExpectedGitFailure, type GitExecError } from './git-errors.js';
 
@@ -50,6 +52,13 @@ interface SnapshotState {
 const STATE_FILE_REL = path.join('.git', '.snapshot-state.json');
 
 async function persistState(fs: FileSystem, dir: string, state: SnapshotState, audit?: AuditLog): Promise<void> {
+  if (audit) {
+    // phase 275 Step A: shape invariant
+    assertSnapshotStateShape(state, audit);
+    // phase 275 Step B: state-internal cross-source (sync、不阻 path、不 throw)
+    auditSnapshotStateCrossSource(state, audit, Date.now());
+  }
+
   try {
     await fs.writeAtomic(STATE_FILE_REL, JSON.stringify(state));
   } catch {

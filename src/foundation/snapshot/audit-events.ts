@@ -17,6 +17,9 @@ export const SNAPSHOT_AUDIT_EVENTS = {
   TRY_CLEAR_FAILED: 'snapshot_try_clear_failed',
   STATE_CORRUPT: 'snapshot_state_corrupt',
   REALPATH_FAILED: 'snapshot_realpath_failed',
+  STATE_INVARIANT_VIOLATED: 'snapshot_state_invariant_violated',
+  STATE_CROSS_SOURCE_MISMATCH: 'snapshot_state_cross_source_mismatch',
+  STATE_CROSS_SOURCE_SKIPPED: 'snapshot_state_cross_source_skipped',
 } as const;
 
 
@@ -38,4 +41,7 @@ export const SNAPSHOT_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
   snapshot_try_clear_failed: 'audit',
   snapshot_state_corrupt: 'audit',
   snapshot_realpath_failed: 'audit',
+  snapshot_state_invariant_violated: 'audit',
+  snapshot_state_cross_source_mismatch: 'audit',
+  snapshot_state_cross_source_skipped: 'audit',
 } as const;
