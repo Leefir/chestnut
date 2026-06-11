@@ -4,10 +4,10 @@
  */
 
 export { SummonTool } from './tools/summon.js';
-export { createSummonStateStore, type SummonStateStore, type SummonDecision } from './summon-state-store.js';
 export { createSummonVerifyPolicy, type SummonVerifyPolicyDeps } from './summon-verify-policy.js';
 export { SUMMON_CALLER_TYPES } from './caller-types.js';
 export { AskMotionTool } from './tools/ask-motion.js';
+export { checkLegacySummonStateFiles } from './legacy-state-detection.js';
 
 export {
   summonContractExtractPostProcessor,

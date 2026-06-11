@@ -17,7 +17,7 @@ import { createToolRegistry, type ToolRegistry } from '../foundation/tools/index
 import { createFileTools } from '../foundation/file-tool/index.js';
 import { createCommandTools } from '../foundation/command-tool/index.js';
 import { spawnTool } from '../core/spawn-system/index.js';
-import { SummonTool, createSummonStateStore, createSummonVerifyPolicy } from '../core/summon-system/index.js';
+import { SummonTool, checkLegacySummonStateFiles } from '../core/summon-system/index.js';
 import { createSkillSystem as defaultCreateSkillSystem, SkillSystem } from '../foundation/skill-system/index.js';
 import { SKILLS_DIR_DEFAULT } from '../foundation/skill-system/index.js';
 import { ContractSystem, createContractSystem } from '../core/contract/index.js';
@@ -103,6 +103,13 @@ export async function createCoreInfrastructure(input: CoreInfraInput): Promise<C
       });
     } catch (e) {
       throw new Error(`Assembly: audit writer construct failed: ${formatErr(e)}`, { cause: e });
+    }
+
+    // phase 281 Step B: scan legacy summon-state/ files and emit audit (no auto-delete)
+    try {
+      await checkLegacySummonStateFiles(systemFs, auditWriter);
+    } catch (err) {
+      auditWriter.write(ASSEMBLY_AUDIT_EVENTS.FALLBACK_RECONCILE_FAILED, `reason=${formatErr(err)}`);
     }
 
     // Reconcile prior crash fallback dumps after audit writer is ready
@@ -201,10 +208,8 @@ export async function createCoreInfrastructure(input: CoreInfraInput): Promise<C
       // shadow path 通过 ExecContext.getCallerSnapshot() 读 caller 深度态、
       // mining path 用 ctx.registry 取 miner profile 工具）。不再走 Runtime
       // initialize() 内反向 import + new + register「结构性循环依赖妥协」。
-      // phase 108 Step B: 注入 SummonStateStore（motion clawDir 下 .chestnut/summon-state/）
-      // phase 276 Step A: audit 注入修 P0-4 (auditWriter 让 SUMMON_STATE_*_FAILED 真 emit)
-      const summonStateStore = createSummonStateStore(systemFs, auditWriter);
-      toolRegistry.register(new SummonTool(summonStateStore));
+      // phase 281 Step B: SummonStateStore 已删；SummonTool 构造期 0 参。
+      toolRegistry.register(new SummonTool());
 
       // phase378 后 exec 业务归 CommandTool L2 / 不再经 registerBuiltinTools / Assembly 显式注册
       const commandTools = createCommandTools();
@@ -248,11 +253,8 @@ export async function createCoreInfrastructure(input: CoreInfraInput): Promise<C
       throw new Error(`Assembly: ContractSystem.init failed: ${formatErr(e)}`, { cause: e });
     }
 
-    // Phase 230: wire SummonVerifyPolicy into ContractSystem
-    // phase 276 Step A: audit 注入
-    const summonStateStore = createSummonStateStore(systemFs, auditWriter);
-    const summonVerifyPolicy = createSummonVerifyPolicy({ summonStateStore, auditWriter: auditWriter });
-    contractManager.registerCreatePolicy('summon-verify', summonVerifyPolicy);
+    // Phase 230 / phase 281 Step B: SummonVerifyPolicy 改在 business-systems.ts
+    // 注册（依赖 AsyncTaskSystem 构造完成后才能提供 loadTask）。
 
     // --- L2: outboxWriter ---
     let outboxWriter: OutboxWriter;

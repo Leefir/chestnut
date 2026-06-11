@@ -13,7 +13,16 @@ import { TASKS_SYNC_SHADOW_DIR } from '../core/summon-system/internal/shadow/ind
 import { InboxWriter, makeInboxPath, INBOX_PENDING_DIR } from '../foundation/messaging/index.js';
 import { createAsyncTaskSystem } from '../core/async-task-system/index.js';
 import type { AsyncTaskSystem } from '../core/async-task-system/system.js';
-import { summonContractExtractPostProcessor, SUMMON_CONTRACT_EXTRACT_POSTPROCESSOR_NAME, AskMotionTool } from '../core/summon-system/index.js';
+import {
+  TASKS_QUEUES_PENDING_DIR,
+  TASKS_QUEUES_RUNNING_DIR,
+  TASKS_QUEUES_DONE_DIR,
+  TASKS_QUEUES_FAILED_DIR,
+} from '../core/async-task-system/dirs.js';
+import { validateTaskShape } from '../core/async-task-system/task-corrupt-helpers.js';
+import type { SubAgentTask, TaskId } from '../core/async-task-system/types.js';
+import { isFileNotFound } from '../foundation/fs/types.js';
+import { summonContractExtractPostProcessor, SUMMON_CONTRACT_EXTRACT_POSTPROCESSOR_NAME, AskMotionTool, createSummonVerifyPolicy } from '../core/summon-system/index.js';
 import { createEvolutionSystem } from '../core/evolution-system/index.js';
 import type { EvolutionSystem } from '../core/evolution-system/index.js';
 import { createSubmitSubtaskTool } from '../core/contract/index.js';
@@ -123,6 +132,28 @@ export async function createBusinessSystems(input: BusinessSysInput): Promise<Bu
   }
   taskSystem.addPostProcessor(SUMMON_CONTRACT_EXTRACT_POSTPROCESSOR_NAME, summonContractExtractPostProcessor);
   taskSystem.addPostProcessor('dispatch-contract-extract', summonContractExtractPostProcessor);
+
+  // Phase 230 / phase 281 Step B: wire SummonVerifyPolicy into ContractSystem
+  // 必须在 AsyncTaskSystem 构造完成后注册，以便 policy 通过 taskSystem 加载 task metadata。
+  const summonVerifyPolicy = createSummonVerifyPolicy({
+    auditWriter,
+    loadTask: async (taskId: TaskId): Promise<SubAgentTask | undefined> => {
+      for (const dir of [TASKS_QUEUES_PENDING_DIR, TASKS_QUEUES_RUNNING_DIR, TASKS_QUEUES_DONE_DIR, TASKS_QUEUES_FAILED_DIR]) {
+        try {
+          const content = await systemFs.read(`${dir}/${taskId}.json`);
+          const parsed = JSON.parse(content) as unknown;
+          if (validateTaskShape(parsed) && (parsed as SubAgentTask).kind === 'subagent') {
+            return parsed as SubAgentTask;
+          }
+        } catch (err) {
+          if (isFileNotFound(err)) continue;
+          throw err;
+        }
+      }
+      return undefined;
+    },
+  });
+  contractManager.registerCreatePolicy('summon-verify', summonVerifyPolicy);
 
   // --- 10. EvolutionSystem (motion only / phase411 Step B) ---
   let evolutionSystem: EvolutionSystem | undefined;

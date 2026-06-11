@@ -1,5 +1,6 @@
 /**
- * SummonVerifyPolicy unit tests (phase 240 rewrite of phase 230 follow-up).
+ * SummonVerifyPolicy unit tests (phase 240 rewrite of phase 230 follow-up,
+ * phase 281 Step B migrate from SummonStateStore to SubAgentTask.summonDecision metadata).
  *
  * Background: phase 230 introduced ContractCreatePolicy plug-in framework + replaced
  * SummonContractCreateGate with SummonVerifyPolicy; an adapter shim was left behind
@@ -12,6 +13,10 @@
  * the `read throws → SUMMON_STATE_READ_FAILED + pass-through` path the old tests
  * never exercised.
  *
+ * Phase 281 Step B: decision source changed from SummonStateStore.read to
+ * loadTask(taskId).summonDecision. Tests now construct a SubAgentTask with
+ * optional summonDecision metadata.
+ *
  * Assertion patterns:
  * - Violation cases assert on `policyName` + `cause` + `details` (public fields of
  *   ContractCreatePolicyViolationError), not on the message string — message format
@@ -23,28 +28,37 @@ import { describe, it, expect, vi } from 'vitest';
 import { createSummonVerifyPolicy } from '../../../src/core/summon-system/summon-verify-policy.js';
 import { ContractCreatePolicyViolationError } from '../../../src/core/contract/types.js';
 import { SUMMON_AUDIT_EVENTS } from '../../../src/core/summon-system/audit-events.js';
-import { makeTaskId } from '../../../src/core/async-task-system/types.js';
-import type {
-  SummonStateStore,
-  SummonDecision,
-} from '../../../src/core/summon-system/summon-state-store.js';
+import { makeTaskId, type TaskId, type SubAgentTask } from '../../../src/core/async-task-system/types.js';
 import type { ContractYaml } from '../../../src/core/contract/types.js';
 import type { AuditLog } from '../../../src/foundation/audit/index.js';
 
-type DecisionBody = Omit<SummonDecision, 'taskId'>;
+type DecisionBody = Omit<NonNullable<SubAgentTask['summonDecision']>, 'schema_version'> & { schema_version?: 1 };
 
-function makeStore(
+function makeSubAgentTask(
+  taskId: string,
   decision?: DecisionBody,
-  readImpl?: (taskId: string) => Promise<SummonDecision | undefined>,
-): SummonStateStore {
+): SubAgentTask {
   return {
-    write: vi.fn().mockResolvedValue(undefined),
-    read: vi.fn().mockImplementation(async (taskId: string) => {
-      if (readImpl) return readImpl(taskId);
-      if (!decision) return undefined;
-      return { taskId: makeTaskId(taskId), ...decision };
-    }),
+    kind: 'subagent',
+    id: makeTaskId(taskId),
+    mode: 'shadow',
+    intent: 'test intent',
+    timeoutMs: 1000,
+    parentClawId: 'parent-claw',
+    createdAt: '2024-01-01T00:00:00.000Z',
+    ...(decision ? { summonDecision: { schema_version: 1 as const, ...decision } } : {}),
   };
+}
+
+function makeLoadTask(
+  decision?: DecisionBody,
+  readImpl?: (taskId: string) => Promise<SubAgentTask | undefined>,
+): (taskId: TaskId) => Promise<SubAgentTask | undefined> {
+  return vi.fn().mockImplementation(async (taskId: string) => {
+    if (readImpl) return readImpl(taskId);
+    if (!decision) return undefined;
+    return makeSubAgentTask(taskId, decision);
+  });
 }
 
 function makeAudit(): {
@@ -83,78 +97,78 @@ function makeBaseDecision(over?: Partial<DecisionBody>): DecisionBody {
   };
 }
 
-describe('SummonVerifyPolicy (phase 240 rewrite of phase 230 follow-up)', () => {
+describe('SummonVerifyPolicy (phase 240 rewrite of phase 230 follow-up, phase 281 metadata)', () => {
 
   describe('pass-through paths (no decision read or no violation)', () => {
-    it('subagentTaskId undefined → no-op pass, store.read not called', async () => {
-      const store = makeStore(makeBaseDecision({ verify: false, targetClaw: 'my-claw' }));
+    it('subagentTaskId undefined → no-op pass, loadTask not called', async () => {
+      const loadTask = makeLoadTask(makeBaseDecision({ verify: false, targetClaw: 'my-claw' }));
       const { audit } = makeAudit();
-      const policy = createSummonVerifyPolicy({ summonStateStore: store, auditWriter: audit });
+      const policy = createSummonVerifyPolicy({ loadTask, auditWriter: audit });
       await expect(
         policy.check({}, makeContract([{ subtask_id: 'a', type: 'llm' }])),
       ).resolves.toBeUndefined();
-      expect(store.read).not.toHaveBeenCalled();
+      expect(loadTask).not.toHaveBeenCalled();
     });
 
-    it('subagentTaskId unset + decision.targetClaw set → pass, store.read still not called', async () => {
-      const store = makeStore(makeBaseDecision({ targetClaw: 'my-claw' }));
+    it('subagentTaskId unset + decision.targetClaw set → pass, loadTask still not called', async () => {
+      const loadTask = makeLoadTask(makeBaseDecision({ targetClaw: 'my-claw' }));
       const { audit } = makeAudit();
-      const policy = createSummonVerifyPolicy({ summonStateStore: store, auditWriter: audit });
+      const policy = createSummonVerifyPolicy({ loadTask, auditWriter: audit });
       await expect(
         policy.check({ clawDir: 'other-claw' }, makeContract()),
       ).resolves.toBeUndefined();
-      expect(store.read).not.toHaveBeenCalled();
+      expect(loadTask).not.toHaveBeenCalled();
     });
 
     it('verify=false + decision.targetClaw unset + clawDir present → pass (motion 未指定 targetClaw 由子代理自决)', async () => {
-      const store = makeStore(makeBaseDecision({ verify: false }));
+      const loadTask = makeLoadTask(makeBaseDecision({ verify: false }));
       const { audit } = makeAudit();
-      const policy = createSummonVerifyPolicy({ summonStateStore: store, auditWriter: audit });
+      const policy = createSummonVerifyPolicy({ loadTask, auditWriter: audit });
       await expect(
         policy.check({ subagentTaskId: 't1', clawDir: 'any-claw' }, makeContract()),
       ).resolves.toBeUndefined();
     });
 
     it('verify=true + clawDir mismatch → pass (verify=true 路径不校 target_claw)', async () => {
-      const store = makeStore(makeBaseDecision({ verify: true, targetClaw: 'statsvc-auditor' }));
+      const loadTask = makeLoadTask(makeBaseDecision({ verify: true, targetClaw: 'statsvc-auditor' }));
       const { audit } = makeAudit();
-      const policy = createSummonVerifyPolicy({ summonStateStore: store, auditWriter: audit });
+      const policy = createSummonVerifyPolicy({ loadTask, auditWriter: audit });
       await expect(
         policy.check({ subagentTaskId: 't1', clawDir: 'gateway-auditor' }, makeContract()),
       ).resolves.toBeUndefined();
     });
 
     it('verify=true + verification non-empty → pass', async () => {
-      const store = makeStore(makeBaseDecision({ verify: true }));
+      const loadTask = makeLoadTask(makeBaseDecision({ verify: true }));
       const { audit } = makeAudit();
-      const policy = createSummonVerifyPolicy({ summonStateStore: store, auditWriter: audit });
+      const policy = createSummonVerifyPolicy({ loadTask, auditWriter: audit });
       await expect(
         policy.check({ subagentTaskId: 't1' }, makeContract([{ subtask_id: 'a', type: 'llm' }])),
       ).resolves.toBeUndefined();
     });
 
     it('verify=false + verification empty → pass', async () => {
-      const store = makeStore(makeBaseDecision({ verify: false }));
+      const loadTask = makeLoadTask(makeBaseDecision({ verify: false }));
       const { audit } = makeAudit();
-      const policy = createSummonVerifyPolicy({ summonStateStore: store, auditWriter: audit });
+      const policy = createSummonVerifyPolicy({ loadTask, auditWriter: audit });
       await expect(
         policy.check({ subagentTaskId: 't1' }, makeContract([])),
       ).resolves.toBeUndefined();
     });
 
     it('verify=false + verification missing → pass', async () => {
-      const store = makeStore(makeBaseDecision({ verify: false }));
+      const loadTask = makeLoadTask(makeBaseDecision({ verify: false }));
       const { audit } = makeAudit();
-      const policy = createSummonVerifyPolicy({ summonStateStore: store, auditWriter: audit });
+      const policy = createSummonVerifyPolicy({ loadTask, auditWriter: audit });
       await expect(
         policy.check({ subagentTaskId: 't1' }, makeContract()),
       ).resolves.toBeUndefined();
     });
 
-    it('store.read throws → audit SUMMON_STATE_READ_FAILED + pass-through (phase 240 NEW)', async () => {
-      const store = makeStore(undefined, async () => { throw new Error('boom'); });
+    it('loadTask throws → audit SUMMON_STATE_READ_FAILED + pass-through (phase 240 NEW)', async () => {
+      const loadTask = makeLoadTask(undefined, async () => { throw new Error('boom'); });
       const { audit, writes } = makeAudit();
-      const policy = createSummonVerifyPolicy({ summonStateStore: store, auditWriter: audit });
+      const policy = createSummonVerifyPolicy({ loadTask, auditWriter: audit });
       await expect(
         policy.check(
           { subagentTaskId: 't1', clawDir: 'any-claw' },
@@ -173,9 +187,9 @@ describe('SummonVerifyPolicy (phase 240 rewrite of phase 230 follow-up)', () => 
 
   describe('target_claw boundary (phase 119 contract)', () => {
     it('verify=false + clawDir match → pass', async () => {
-      const store = makeStore(makeBaseDecision({ verify: false, targetClaw: 'my-claw' }));
+      const loadTask = makeLoadTask(makeBaseDecision({ verify: false, targetClaw: 'my-claw' }));
       const { audit, writes } = makeAudit();
-      const policy = createSummonVerifyPolicy({ summonStateStore: store, auditWriter: audit });
+      const policy = createSummonVerifyPolicy({ loadTask, auditWriter: audit });
       await expect(
         policy.check({ subagentTaskId: 't1', clawDir: 'my-claw' }, makeContract()),
       ).resolves.toBeUndefined();
@@ -183,9 +197,9 @@ describe('SummonVerifyPolicy (phase 240 rewrite of phase 230 follow-up)', () => 
     });
 
     it('verify=false + clawDir mismatch → throw ContractCreatePolicyViolationError', async () => {
-      const store = makeStore(makeBaseDecision({ verify: false, targetClaw: 'statsvc-auditor' }));
+      const loadTask = makeLoadTask(makeBaseDecision({ verify: false, targetClaw: 'statsvc-auditor' }));
       const { audit } = makeAudit();
-      const policy = createSummonVerifyPolicy({ summonStateStore: store, auditWriter: audit });
+      const policy = createSummonVerifyPolicy({ loadTask, auditWriter: audit });
       const err = await policy
         .check({ subagentTaskId: 't1', clawDir: 'gateway-auditor' }, makeContract())
         .catch(e => e);
@@ -204,9 +218,9 @@ describe('SummonVerifyPolicy (phase 240 rewrite of phase 230 follow-up)', () => 
     });
 
     it('audit SUMMON_TARGET_CLAW_VIOLATION 载荷正确', async () => {
-      const store = makeStore(makeBaseDecision({ verify: false, targetClaw: 'statsvc-auditor' }));
+      const loadTask = makeLoadTask(makeBaseDecision({ verify: false, targetClaw: 'statsvc-auditor' }));
       const { audit, writes } = makeAudit();
-      const policy = createSummonVerifyPolicy({ summonStateStore: store, auditWriter: audit });
+      const policy = createSummonVerifyPolicy({ loadTask, auditWriter: audit });
       await policy
         .check({ subagentTaskId: 't1', clawDir: 'gateway-auditor' }, makeContract())
         .catch(() => { /* swallow: 本 case 验 audit 载荷、不断言抛出（独立 case 已覆盖） */ });
@@ -220,10 +234,10 @@ describe('SummonVerifyPolicy (phase 240 rewrite of phase 230 follow-up)', () => 
   });
 
   describe('verify=false verification violation', () => {
-    it('store decision undefined → audit SUMMON_GATE_NO_DECISION + pass-through', async () => {
-      const store = makeStore();  // read returns undefined
+    it('task.summonDecision undefined → audit SUMMON_GATE_NO_DECISION + pass-through', async () => {
+      const loadTask = makeLoadTask();  // no decision
       const { audit, writes } = makeAudit();
-      const policy = createSummonVerifyPolicy({ summonStateStore: store, auditWriter: audit });
+      const policy = createSummonVerifyPolicy({ loadTask, auditWriter: audit });
       await expect(
         policy.check(
           { subagentTaskId: 't1', clawDir: 'any-claw' },
@@ -238,9 +252,9 @@ describe('SummonVerifyPolicy (phase 240 rewrite of phase 230 follow-up)', () => 
     });
 
     it('verify=false + verification non-empty → throw violation + audit SUMMON_VERIFY_FALSE_VIOLATION', async () => {
-      const store = makeStore(makeBaseDecision({ verify: false, targetClaw: 'foo' }));
+      const loadTask = makeLoadTask(makeBaseDecision({ verify: false, targetClaw: 'foo' }));
       const { audit, writes } = makeAudit();
-      const policy = createSummonVerifyPolicy({ summonStateStore: store, auditWriter: audit });
+      const policy = createSummonVerifyPolicy({ loadTask, auditWriter: audit });
       const err = await policy
         .check(
           { subagentTaskId: 't1', clawDir: 'any-claw' },

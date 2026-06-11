@@ -72,6 +72,7 @@ export async function spawnShadowSubagent(
     shadowSystemPrompt: opts.systemPrompt,
     shadowToolsForLLM: opts.toolsForLLM,
     postProcessor: opts.postProcessor,
+    summonDecision: opts.summonDecision,
   });
 
   return { taskId: makeTaskId(taskId), shadowId };

@@ -1,6 +1,7 @@
 import type { ExecContext } from '../../../../foundation/tools/index.js';
 import type { Message, ToolDefinition } from '../../../../foundation/llm-provider/types.js';
 import type { TaskId } from '../../../async-task-system/types.js';
+import type { SummonDecisionMetadata } from '../../../async-task-system/task-schemas.js';
 
 
 export interface SpawnShadowSubagentOptions {
@@ -21,6 +22,8 @@ export interface SpawnShadowSubagentOptions {
   postProcessor?: string;
   /** shadow id 前缀，默认 'shadow'、summon 传 'summon' */
   shadowIdPrefix?: string;
+  /** phase 281: summon decision 内嵌 metadata，随 task lifecycle 同步 */
+  summonDecision?: SummonDecisionMetadata;
 }
 
 export type SpawnShadowSubagentResult =

@@ -25,14 +25,10 @@ export const SUMMON_AUDIT_EVENTS = {
   DISPATCHED: 'summon_dispatched',
   REJECTED_SHADOW: 'summon_rejected_shadow',
   SUMMON_VERIFY_FALSE_VIOLATION: 'summon_verify_false_violation',
-  SUMMON_STATE_WRITE_FAILED: 'summon_state_write_failed',
   SUMMON_STATE_READ_FAILED: 'summon_state_read_failed',
   SUMMON_GATE_NO_DECISION: 'summon_gate_no_decision',
   SUMMON_TARGET_CLAW_VIOLATION: 'summon_target_claw_violation',
-  SUMMON_STATE_INVARIANT_VIOLATED: 'summon_state_invariant_violated',
-  SUMMON_STATE_CROSS_SOURCE_MISMATCH: 'summon_state_cross_source_mismatch',
-  SUMMON_STATE_CROSS_SOURCE_SKIPPED: 'summon_state_cross_source_skipped',
-  SUMMON_STATE_LEGACY_V0_MIGRATED: 'summon_state_legacy_v0_migrated',
+  SUMMON_LEGACY_STATE_FILE_DETECTED: 'summon_legacy_state_file_detected',
 } as const;
 
 export function emitSummonDispatched(audit: AuditLog, opts: {

@@ -16,8 +16,8 @@ import type { FileSystem } from '../../foundation/fs/types.js';
 import type { PermissionChecker } from '../../foundation/tool-protocol/permission.js';
 import type { WatcherFactory } from '../../foundation/file-watcher/index.js';
 import type { CallerType } from '../caller-types.js';
-
 import type { ToolUseId } from '../../foundation/tool-protocol/index.js';
+import type { SummonDecisionMetadata } from './task-schemas.js';
 
 // phase 64: TaskId brand 迁回（自 foundation/identity 解散）— types.ts 历史注释 admit
 // 「物理迁自 core/async-task-system/types.ts」(phase 1365)
@@ -82,6 +82,8 @@ interface CommonSubAgentTaskFields {
   isShadow?: boolean;
   shadowSystemPrompt?: string;
   shadowToolsForLLM?: ToolDefinition[];
+  // phase 281: summon decision 内嵌 metadata，随 task lifecycle 同步
+  summonDecision?: SummonDecisionMetadata;
 }
 
 // phase 218: intent 在 both mode 都存在、shadow 独有 shadowMessages

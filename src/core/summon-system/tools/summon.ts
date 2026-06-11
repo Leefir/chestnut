@@ -11,7 +11,6 @@ import { buildSummonContractTask, buildMinerSystemPrompt, buildMiningUserMessage
 
 import { SUMMON_AUDIT_EVENTS, emitSummonDispatched, emitSummonRejectedShadow } from '../audit-events.js';
 import { isFileNotFound } from '../../../foundation/fs/types.js';
-import type { SummonStateStore } from '../summon-state-store.js';
 import { SUMMON_CONTRACT_EXTRACT_POSTPROCESSOR_NAME } from '../post-processors/contract-extract.js';
 import { SUMMON_CALLER_TYPES, type SummonCallerType } from '../caller-types.js';
 import { spawnShadowSubagent, stripIncompleteToolUse, SHADOW_CALLER_LABEL } from '../internal/shadow/index.js';
@@ -47,8 +46,8 @@ export class SummonTool implements Tool {
    */
   readonly accessesCaller = true;
 
-  // phase 108 Step B: constructor takes SummonStateStore for verify decision persistence.
-  constructor(private readonly stateStore: SummonStateStore) {}
+  // phase 281 Step B: SummonStateStore 已删；decision 内嵌 SubAgentTask metadata。
+  constructor() {}
 
   schema = {
     type: 'object',
@@ -201,16 +200,15 @@ export class SummonTool implements Tool {
       idleTimeoutMs,
       postProcessor: SUMMON_CONTRACT_EXTRACT_POSTPROCESSOR_NAME,
       shadowIdPrefix: 'summon',
+      summonDecision: {
+        schema_version: 1,
+        mode: 'shadow',
+        verify,
+        targetClaw,
+        dispatchedAt: new Date().toISOString(),
+      },
     });
     if (!('taskId' in result)) return result;
-
-    await this.stateStore.write({
-      taskId: result.taskId,
-      verify,
-      targetClaw,
-      mode: 'shadow',
-      dispatchedAt: new Date().toISOString(),
-    });
 
     return { taskId: result.taskId };
   }
@@ -252,15 +250,14 @@ export class SummonTool implements Tool {
       postProcessor: SUMMON_CONTRACT_EXTRACT_POSTPROCESSOR_NAME,
       mainContextSnapshot,
       systemPrompt,
+      summonDecision: {
+        schema_version: 1,
+        mode: 'mining',
+        verify,
+        targetClaw,
+        dispatchedAt: new Date().toISOString(),
+      },
     }));
-
-    await this.stateStore.write({
-      taskId,
-      verify,
-      targetClaw,
-      mode: 'mining',
-      dispatchedAt: new Date().toISOString(),
-    });
 
     return { taskId };
   }

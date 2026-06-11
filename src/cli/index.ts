@@ -7,7 +7,6 @@ if (!process.env.CHESTNUT_ROOT) {
   process.env.CHESTNUT_ROOT = process.cwd();
 }
 
-import * as path from 'path';
 import { program, Help } from 'commander';
 import { CliError } from './errors.js';
 import { withCliErrorHandling } from './with-cli-error-handling.js';
@@ -35,7 +34,7 @@ import { createSubagentCommand } from './commands/subagent.js';
 import { motionStepsCommand, motionStepCommand } from './commands/motion-steps.js';
 import { createDirContext } from '../foundation/audit/index.js';
 import { getChestnutRoot, getClawDir, loadGlobalConfig } from '../foundation/config/index.js';
-import { createSummonStateStore, createSummonVerifyPolicy } from '../core/summon-system/index.js';
+import { createSummonVerifyPolicy } from '../core/summon-system/index.js';
 import { createContractSystem } from '../core/contract/index.js';
 import { resolveChestnutRoot } from '../foundation/install-paths.js';
 // CLAWS_DIR removed: phase 263
@@ -228,16 +227,13 @@ contractCmd
     } else if (opts.file) {
       await contractCreateCommand({ fsFactory }, opts.claw, opts.file, { audit });
     } else if (opts.dir) {
-      const motionClawDir = path.join(getChestnutRoot(), 'motion');
-      const motionFs = fsFactory(motionClawDir);
-
-      // Phase 230: create ContractSystem + wire SummonVerifyPolicy
+      // Phase 230 / phase 281 Step B: create ContractSystem + wire SummonVerifyPolicy
       const clawDir = getClawDir(opts.claw);
       const clawFs = fsFactory(clawDir);
       const chestnutRoot = resolveChestnutRoot(clawDir, /* isMotion */ false);
       const clawAudit = createSystemAudit(clawFs, clawDir);
-      // phase 276 Step A: audit 注入修 P0-4
-      const summonStateStore = createSummonStateStore(motionFs, clawAudit);
+      // phase 281 Step B: CLI manual contract create 无 subagentTaskId，loadTask 不被调用。
+      const summonVerifyPolicy = createSummonVerifyPolicy({ loadTask: async () => undefined, auditWriter: clawAudit });
 
       // phase 257: wire ClawTopology 到 ContractSystem 的 ToolRegistry
       const toolRegistry = createToolRegistry();
@@ -262,7 +258,6 @@ contractCmd
         fsFactory,
         notifyClaw: (targetClawId, message) => notifyClaw(clawFs, chestnutRoot, targetClawId, message, clawAudit),
       });
-      const summonVerifyPolicy = createSummonVerifyPolicy({ summonStateStore, auditWriter: clawAudit });
       contractSystem.registerCreatePolicy('summon-verify', summonVerifyPolicy);
 
       await contractCreateFromDirCommand({ fsFactory, contractSystem }, opts.claw, opts.dir, { audit });

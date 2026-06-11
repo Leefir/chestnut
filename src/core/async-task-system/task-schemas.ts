@@ -13,6 +13,20 @@ import { z } from 'zod';
 // 字符串值与 system.ts CallerType 等价（保持单一真相 / type-import）
 const CallerTypeSchema = z.enum(['claw', 'subagent', 'verifier', 'shadow', 'miner']);
 
+/**
+ * phase 281: SummonDecision 内嵌 metadata，与 async-task task 文件 lifecycle 同步。
+ * 字段对齐 summon-state-store.ts SummonDecision（不含 taskId，task.id 即 taskId）。
+ */
+export const SummonDecisionMetadataSchema = z.object({
+  schema_version: z.literal(1),
+  mode: z.enum(['shadow', 'mining']),
+  verify: z.boolean(),
+  targetClaw: z.string().optional(),
+  dispatchedAt: z.string(),
+});
+
+export type SummonDecisionMetadata = z.infer<typeof SummonDecisionMetadataSchema>;
+
 const commonSubAgentFields = {
   kind: z.literal('subagent'),
   id: z.string(),
@@ -37,6 +51,8 @@ const commonSubAgentFields = {
   shadowToolsForLLM: z.array(z.unknown()).optional(),
   // phase 218: intent 提到 common fields（union 合并）
   intent: z.string(),
+  // phase 281: summon decision 内嵌 metadata，随 task lifecycle 同步
+  summonDecision: SummonDecisionMetadataSchema.optional(),
 };
 
 const standardSubAgentTaskSchema = z.object({

@@ -2,16 +2,19 @@ import type { ContractYaml } from '../contract/index.js';
 import type { ContractCreatePolicy, CreatePolicyContext } from '../contract/types.js';
 import { ContractCreatePolicyViolationError } from '../contract/types.js';
 import { SUMMON_AUDIT_EVENTS } from './audit-events.js';
-import type { SummonStateStore } from './summon-state-store.js';
+import type { SubAgentTask } from '../async-task-system/types.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
-import { makeTaskId } from '../async-task-system/types.js';
+import { makeTaskId, type TaskId } from '../async-task-system/types.js';
 
 // ============================================================================
 // Phase 230: SummonVerifyPolicy — ContractCreatePolicy implementation
+// Phase 281 Step B: decision 改从 SubAgentTask.summonDecision metadata 读取，
+// 不再依赖 summon-state-store（已删）。pre-phase 281 任务无 metadata → undefined。
 // ============================================================================
 
 export interface SummonVerifyPolicyDeps {
-  summonStateStore: SummonStateStore;
+  /** 按 taskId 加载 SubAgentTask；找不到或不是 subagent 时返 undefined */
+  loadTask: (taskId: TaskId) => Promise<SubAgentTask | undefined>;
   auditWriter: AuditLog;
 }
 
@@ -27,10 +30,10 @@ export function createSummonVerifyPolicy(
         return;
       }
 
-      let decision;
+      let task: SubAgentTask | undefined;
       try {
         // phase 276 Step A: makeTaskId SoT (ML#9 编译器可检) / 替 'subagentTaskId as TaskId' 直 cast
-        decision = await deps.summonStateStore.read(makeTaskId(subagentTaskId));
+        task = await deps.loadTask(makeTaskId(subagentTaskId));
       } catch (err) {
         deps.auditWriter.write(
           SUMMON_AUDIT_EVENTS.SUMMON_STATE_READ_FAILED,
@@ -41,8 +44,10 @@ export function createSummonVerifyPolicy(
         return;
       }
 
+      const decision = task?.summonDecision;
+
       if (!decision) {
-        // store 找不到 decision = 非 summon 创建路径（如直接 CLI 调用、其他 caller subagent）
+        // metadata 缺失 = 非 summon 创建路径（如直接 CLI 调用、其他 caller subagent、pre-phase 281 旧任务）
         deps.auditWriter.write(
           SUMMON_AUDIT_EVENTS.SUMMON_GATE_NO_DECISION,
           `subagentTaskId=${subagentTaskId}`,
