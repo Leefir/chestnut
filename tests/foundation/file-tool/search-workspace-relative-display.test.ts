@@ -3,7 +3,7 @@
  * Phase 1422 — updated for unified segmented output (pattern / [Content matches]).
  *
  * Verify that search results show workspace-relative paths (no clawspace/ prefix)
- * for same-claw searches, while cross-claw display attaches [clawId] prefix.
+ * for same-claw searches.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -119,32 +119,5 @@ describe('search tool — workspace-relative display (phase 776 + 1422)', () => 
     expect(result.content).toContain('foo.txt');
     expect(result.content).toContain('1: needle subagent');
     expect(result.content).not.toContain('tasks/subagents/task-123/foo.txt');
-  });
-
-  it('cross-claw search: prefixes matches with [clawId]', async () => {
-    const mainClawDir = path.join(tempDir, '.chestnut', 'claws', 'main-claw');
-    await fs.mkdir(mainClawDir, { recursive: true });
-    const otherClawDir = path.join(tempDir, 'claws', 'other-claw', 'clawspace');
-    await fs.mkdir(otherClawDir, { recursive: true });
-    await fs.writeFile(path.join(otherClawDir, 'note.txt'), 'cross-claw needle');
-
-    const mockFs = new NodeFileSystem({ baseDir: mainClawDir });
-    const ctx = new ExecContextImpl({
-      clawId: 'main-claw',
-      clawDir: mainClawDir,
-      clawsDir: path.join(tempDir, 'claws'),
-      syncDir: path.join(mainClawDir, 'tasks/sync'),
-      profile: 'full',
-      fs: mockFs,
-      fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir }),
-      permissionChecker: createClawPermissionChecker({ clawDir: mainClawDir, strict: true }),
-    });
-
-    const result = await searchTool.execute({ text: 'needle', path: 'clawspace', claw: 'other-claw' }, ctx);
-
-    expect(result.success).toBe(true);
-    expect(result.content).toContain('[other-claw]');
-    expect(result.content).toContain('note.txt');
-    expect(result.content).toContain('cross-claw needle');
   });
 });

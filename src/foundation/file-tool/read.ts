@@ -2,8 +2,6 @@
  * @module L2.FileTool
  * read tool - Read file contents.
  *
- * Cross-claw access: `claw: "<id>"` targets another claw (read/ls do NOT implement `"*"` broadcast — only search does).
- *
  * phase 1430 cap model:
  *   - `READ_DEFAULT_LINES = 200` applies when caller does NOT pass `limit`; `offset` alone still triggers the cap (from `offset`).
  *   - `READ_OUTPUT_HARD_CAP_BYTES = 100 KB` applies regardless: above it, head+tail returned and full content persists to `tasks/sync/read/<id>.md` (mirrors exec_overflow).
@@ -29,7 +27,6 @@ import { safeNumber, formatErr } from '../utils/index.js';
 import { recordReadResult } from './file-state-manager.js';
 import { FILE_TOOL_AUDIT_EVENTS } from './audit-events.js';
 
-import { CLAWSPACE_DIR } from '../claw-paths.js';
 import { UUID_SHORT_LEN } from '../../constants.js';
 
 export const READ_TOOL_NAME = 'read' as const;
@@ -62,7 +59,7 @@ export const readTool: Tool = {
   profiles: ['full', 'readonly', 'subagent', 'miner'],
   group: 'fs-read',
   description: [
-    'Reads a file. Path resolves against your clawspace; use "../" to access claw root (e.g. "../MEMORY.md"). Pass `claw: "<id>"` to read another claw\'s file.',
+    'Reads a file. Path resolves against your clawspace; use "../" to access claw root (e.g. "../MEMORY.md").',
     '',
     'Default (no offset/limit): up to the first 200 lines.',
     '',
@@ -87,10 +84,6 @@ export const readTool: Tool = {
         type: 'number',
         description: 'Maximum lines to read. When set, overrides the 200-line default. Output still subject to the 100 KB byte cap.',
       },
-      claw: {
-        type: 'string',
-        description: 'Target claw ID. e.g. { "path": "../MEMORY.md", "claw": "claw1" }',
-      },
     },
     required: ['path'],
   },
@@ -102,7 +95,6 @@ export const readTool: Tool = {
     const filePath = args.path as string;
     const offset = safeNumber(args.offset);
     const limit = safeNumber(args.limit);
-    const clawParam = args.claw as string | undefined;
 
     const resolved = resolveWorkspacePath(ctx, filePath);
     if (resolved.startsWith('..') || resolved.startsWith('/')) {
@@ -119,70 +111,14 @@ export const readTool: Tool = {
     }
     checker.resolveAndCheck(resolved, 'read');
 
-    // Cross-claw read: specific target / 任意 callerType OK（D11 inter-claw 互访 align）
-    let content: string;
-    if (clawParam !== undefined) {
-      if (!ctx.fsFactory) {
-        return {
-          success: false,
-          content: 'Error: Cross-claw access not available in this context (fsFactory not injected)',
-        };
-      }
-      // Reject '*' explicitly — read does not implement broadcast (only search does).
-      // Without this, '*' silently falls through to ENOENT on <clawsDir>/*/clawspace.
-      if (clawParam === '*') {
-        return {
-          success: false,
-          content: 'Error: claw: "*" broadcast is not supported by read (only search supports it).',
-        };
-      }
-      // Validate clawParam (no path traversal)
-      if (clawParam.includes('/') || clawParam.includes('..') || clawParam === '' || clawParam === '.' || clawParam.startsWith('.')) {
-        return {
-          success: false,
-          content: `Error: Invalid claw ID: "${clawParam}"`,
-        };
-      }
-      // Resolve path relative to target claw's workspaceDir (clawspace), same contract as local read.
-      // "../" escapes clawspace to claw root, blocked from going beyond.
-      const clawsDir = ctx.clawsDir;
-      const targetClawDir = nodePath.join(clawsDir, clawParam);
-      const targetWorkspaceDir = nodePath.join(targetClawDir, CLAWSPACE_DIR);
-      const normalizedPath = nodePath.normalize(filePath);
-      const targetPath = nodePath.resolve(targetWorkspaceDir, normalizedPath);
-      if (targetPath !== targetClawDir && !targetPath.startsWith(targetClawDir + nodePath.sep)) {
-        return {
-          success: false,
-          content: `Error: Path escapes target claw root: "${filePath}"`,
-        };
-      }
-      // Cross-claw read: per-target NodeFileSystem scoped to target clawspace
-      try {
-        const targetFs = ctx.fsFactory(targetWorkspaceDir);
-        content = await targetFs.read(normalizedPath);
-      } catch (error) {
-        return {
-          success: false,
-          content: `Error reading file: ${formatErr(error)}`,
-        };
-      }
-    } else {
-      try {
-        content = await ctx.fs.read(resolved);
-      } catch (error) {
-        return {
-          success: false,
-          content: `Error reading file: ${formatErr(error)}\nTip: To read another claw's file, use the "claw" parameter: { "path": "../MEMORY.md", "claw": "<claw-id>" }`,
-        };
-      }
-    }
+    try {
+      const rawContent = await ctx.fs.read(resolved);
 
-    // Capture full file content for hash + future FileState write before slicing mutates it.
-    const fullFileContent = content;
+      // Capture full file content for hash + future FileState write before slicing mutates it.
+      const fullFileContent = rawContent;
 
-    // Same-claw: stat for mtime (used in FileState; cross-claw skips write entirely)
-    let fileMtime: number | undefined;
-    if (clawParam === undefined) {
+      // Stat for mtime (used in FileState)
+      let fileMtime: number | undefined;
       try {
         const stat = await ctx.fs.stat(resolved);
         fileMtime = stat.mtime.getTime();
@@ -190,9 +126,7 @@ export const readTool: Tool = {
         // silent: stat failure here means FileState cannot be written for this read;
         // downstream gate will reject overwrite (no isFullRead=true entry) — fail-safe.
       }
-    }
 
-    try {
       const totalLines = fullFileContent.split('\n').length;
 
       // Compute start (1-indexed; negative counts from end)
@@ -216,7 +150,7 @@ export const readTool: Tool = {
       }
 
       const fileLines = fullFileContent.split('\n');
-      content = fileLines.slice(start, end).join('\n');
+      let content = fileLines.slice(start, end).join('\n');
 
       // Line cap meta (appended only when truncation happened)
       if (lineCapTriggered) {
@@ -234,8 +168,8 @@ export const readTool: Tool = {
           : content.slice(0, READ_OUTPUT_HARD_CAP_BYTES) + '\n[truncated - overflow persist failed]';
       }
 
-      // readFileState write — same-claw only (cross-claw must not pollute caller's gate per §7.A.invariant)
-      if (clawParam === undefined && fileMtime !== undefined) {
+      // readFileState write — same-claw only
+      if (fileMtime !== undefined) {
         // phase 1444: isFullRead = "this read covered every current line of the file".
         // Decoupled from rangeRequested — an explicit `limit >= totalLines` read also counts.
         // (Removes the 200-line cliff that effectively banned overwrite of larger files.)

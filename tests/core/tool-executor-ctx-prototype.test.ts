@@ -61,31 +61,28 @@ describe('ToolExecutor: ctx prototype preservation across spread', () => {
     expect(result.content).toMatch(/Elapsed:\s*\d+ms/);
   });
 
-  it('read (motion chain): ctx.isMotionChain survives spread / cross-claw read NOT rejected', async () => {
-    // Create target claw directory structure: ../claws/other-claw/clawspace/note.md
-    const otherClawDir = path.join(tmpDir, '..', 'claws', 'other-claw', 'clawspace');
-    await fsp.mkdir(otherClawDir, { recursive: true });
-    await fsp.writeFile(path.join(otherClawDir, 'note.md'), 'cross-claw content');
+  it('read (motion chain): ctx.isMotionChain survives spread / same-claw read works', async () => {
+    await fsp.mkdir(path.join(tmpDir, 'clawspace'), { recursive: true });
+    await fsp.writeFile(path.join(tmpDir, 'clawspace', 'note.md'), 'same-claw content');
 
     const ctx = makeMotionCtx();
     const result = await executor.execute({
       toolName: 'read',
-      args: { path: 'note.md', claw: 'other-claw' },
+      args: { path: 'note.md' },
       ctx,
     });
     expect(result.success).toBe(true);
-    expect(result.content).toContain('cross-claw content');
+    expect(result.content).toBe('same-claw content');
   });
 
   it('ls (motion chain): isMotionChain check passes (not rejected)', async () => {
-    const otherClawDir = path.join(tmpDir, '..', 'claws', 'other-claw', 'clawspace');
-    await fsp.mkdir(otherClawDir, { recursive: true });
-    await fsp.writeFile(path.join(otherClawDir, 'file1.txt'), 'a');
+    await fsp.mkdir(path.join(tmpDir, 'clawspace'), { recursive: true });
+    await fsp.writeFile(path.join(tmpDir, 'clawspace', 'file1.txt'), 'a');
 
     const ctx = makeMotionCtx();
     const result = await executor.execute({
       toolName: 'ls',
-      args: { path: 'clawspace', claw: 'other-claw' },
+      args: { path: '.' },
       ctx,
     });
     expect(result.success).toBe(true);
@@ -93,23 +90,21 @@ describe('ToolExecutor: ctx prototype preservation across spread', () => {
   });
 
   it('search (motion chain): isMotionChain check passes', async () => {
-    const otherClawDir = path.join(tmpDir, '..', 'claws', 'other-claw', 'clawspace');
-    await fsp.mkdir(otherClawDir, { recursive: true });
-    await fsp.writeFile(path.join(otherClawDir, 'a.txt'), 'hello world');
+    await fsp.mkdir(path.join(tmpDir, 'clawspace'), { recursive: true });
+    await fsp.writeFile(path.join(tmpDir, 'clawspace', 'a.txt'), 'hello world');
 
     const ctx = makeMotionCtx();
     const result = await executor.execute({
       toolName: 'search',
-      args: { text: 'hello', path: 'clawspace', claw: 'other-claw' },
+      args: { text: 'hello', path: '.' },
       ctx,
     });
     expect(result.success).toBe(true);
   });
 
-  it('non-motion claw: read cross-claw correctly permitted (D11 align)', async () => {
-    const otherClawDir = path.join(tmpDir, '..', 'claws', 'other-claw', 'clawspace');
-    await fsp.mkdir(otherClawDir, { recursive: true });
-    await fsp.writeFile(path.join(otherClawDir, 'note.md'), 'cross-claw note');
+  it('non-motion claw: same-claw read correctly permitted', async () => {
+    await fsp.mkdir(path.join(tmpDir, 'clawspace'), { recursive: true });
+    await fsp.writeFile(path.join(tmpDir, 'clawspace', 'note.md'), 'same-claw note');
 
     const ctx = new ExecContextImpl({
       clawId: 'normal-claw',
@@ -123,10 +118,10 @@ describe('ToolExecutor: ctx prototype preservation across spread', () => {
     });
     const result = await executor.execute({
       toolName: 'read',
-      args: { path: 'note.md', claw: 'other-claw' },
+      args: { path: 'note.md' },
       ctx,
     });
     expect(result.success).toBe(true);
-    expect(result.content).toBe('cross-claw note');
+    expect(result.content).toBe('same-claw note');
   });
 });

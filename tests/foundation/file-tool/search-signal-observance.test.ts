@@ -1,7 +1,7 @@
 /**
- * Phase 1036 — search.ts walkNative signal observance reverse test
+ * Phase 1036 — search.ts walk signal observance reverse test
  *
- * Verify that an aborted AbortSignal interrupts walkNative recursion
+ * Verify that an aborted AbortSignal interrupts walk recursion
  * and causes graceful return (0 matches) instead of continuing the search.
  */
 
@@ -14,7 +14,7 @@ import { NodeFileSystem } from '../../../src/foundation/fs/index.js';
 import { createClawPermissionChecker } from '../../../src/core/permissions/claw-permissions.js';
 import { createTempDir, cleanupTempDir } from '../../utils/temp.js';
 
-describe('phase 1036: search.ts walkNative signal observance (F-4)', () => {
+describe('phase 1036: search.ts walk signal observance (F-4)', () => {
   let tempDir: string;
 
   beforeEach(async () => {
@@ -25,26 +25,24 @@ describe('phase 1036: search.ts walkNative signal observance (F-4)', () => {
     await cleanupTempDir(tempDir);
   });
 
-  it('walkNative finds matches without abort signal', async () => {
-    const mainClawDir = path.join(tempDir, '.chestnut', 'claws', 'main-claw');
-    const otherClawDir = path.join(tempDir, 'claws', 'other-claw', 'clawspace');
-    await fs.mkdir(otherClawDir, { recursive: true });
-    await fs.writeFile(path.join(otherClawDir, 'note.txt'), 'needle in haystack');
+  it('walk finds matches without abort signal', async () => {
+    const clawDir = path.join(tempDir, 'claw');
+    const clawspaceDir = path.join(clawDir, 'clawspace');
+    await fs.mkdir(clawspaceDir, { recursive: true });
+    await fs.writeFile(path.join(clawspaceDir, 'note.txt'), 'needle in haystack');
 
-    const mockFs = new NodeFileSystem({ baseDir: mainClawDir });
+    const mockFs = new NodeFileSystem({ baseDir: clawDir });
     const ctx = new ExecContextImpl({
-      clawId: 'main-claw',
-      clawDir: mainClawDir,
-      clawsDir: path.join(tempDir, 'claws'),
-      syncDir: path.join(mainClawDir, 'tasks/sync'),
+      clawId: 'claw',
+      clawDir,
+      syncDir: path.join(clawDir, 'tasks/sync'),
       profile: 'full',
       fs: mockFs,
-      fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir }),
-      permissionChecker: createClawPermissionChecker({ clawDir: mainClawDir, strict: true }),
+      permissionChecker: createClawPermissionChecker({ clawDir, strict: true }),
     });
 
     const result = await searchTool.execute(
-      { text: 'needle', path: 'clawspace', claw: 'other-claw' },
+      { text: 'needle', path: 'clawspace' },
       ctx,
     );
 
@@ -52,30 +50,28 @@ describe('phase 1036: search.ts walkNative signal observance (F-4)', () => {
     expect(result.content).toContain('needle');
   });
 
-  it('aborted signal interrupts walkNative recursion (反向 1)', async () => {
-    const mainClawDir = path.join(tempDir, '.chestnut', 'claws', 'main-claw');
-    const otherClawDir = path.join(tempDir, 'claws', 'other-claw', 'clawspace');
-    await fs.mkdir(otherClawDir, { recursive: true });
-    await fs.writeFile(path.join(otherClawDir, 'note.txt'), 'needle in haystack');
+  it('aborted signal interrupts walk recursion (反向 1)', async () => {
+    const clawDir = path.join(tempDir, 'claw');
+    const clawspaceDir = path.join(clawDir, 'clawspace');
+    await fs.mkdir(clawspaceDir, { recursive: true });
+    await fs.writeFile(path.join(clawspaceDir, 'note.txt'), 'needle in haystack');
 
     const controller = new AbortController();
     controller.abort();
 
-    const mockFs = new NodeFileSystem({ baseDir: mainClawDir });
+    const mockFs = new NodeFileSystem({ baseDir: clawDir });
     const ctx = new ExecContextImpl({
-      clawId: 'main-claw',
-      clawDir: mainClawDir,
-      clawsDir: path.join(tempDir, 'claws'),
-      syncDir: path.join(mainClawDir, 'tasks/sync'),
+      clawId: 'claw',
+      clawDir,
+      syncDir: path.join(clawDir, 'tasks/sync'),
       profile: 'full',
       fs: mockFs,
-      fsFactory: (dir: string) => new NodeFileSystem({ baseDir: dir }),
       signal: controller.signal,
-      permissionChecker: createClawPermissionChecker({ clawDir: mainClawDir, strict: true }),
+      permissionChecker: createClawPermissionChecker({ clawDir, strict: true }),
     });
 
     const result = await searchTool.execute(
-      { text: 'needle', path: 'clawspace', claw: 'other-claw' },
+      { text: 'needle', path: 'clawspace' },
       ctx,
     );
 

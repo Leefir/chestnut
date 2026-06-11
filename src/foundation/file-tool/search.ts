@@ -4,8 +4,6 @@
  *
  * phase 1422: design 落地（Q1 pattern + Q2 unified + Q3 skip 分类 + Q4 binary detect
  * + default exclude + Q5 全英 + Q6 全扫 / overflow 落盘 / 预览 20 + Q7 cross-claw prefix）。
- *
- * Cross-claw access: `claw: "<id>"` available to all agents; `claw: "*"` (broadcast) Motion-only (per D11).
  */
 
 import { randomUUID } from 'crypto';
@@ -267,15 +265,6 @@ function joinRel(base: string, rel: string): string {
   return `${base}/${rel}`;
 }
 
-function prefixPaths(result: WalkResult, prefix: string): WalkResult {
-  if (!prefix) return result;
-  return {
-    filenameMatches: result.filenameMatches.map(f => ({ path: prefix + f.path })),
-    contentMatches: result.contentMatches.map(c => ({ path: prefix + c.path, line: c.line, text: c.text })),
-    skips: result.skips.map(s => ({ path: prefix + s.path, reason: s.reason })),
-  };
-}
-
 function remapToWorkspace(result: WalkResult, searchPath: string): WalkResult {
   return {
     filenameMatches: result.filenameMatches.map(f => ({ path: joinRel(searchPath, f.path) })),
@@ -318,7 +307,7 @@ export const searchTool: Tool = {
   name: SEARCH_TOOL_NAME,
   profiles: ['full', 'readonly', 'subagent', 'miner'],
   group: 'fs-read',
-  description: 'Search LOCAL files (not web/network) for literal text in filenames AND contents (unified). Returns segmented [Filename matches] / [Content matches] / [Skipped]. Case-insensitive by default, no regex/glob. Full scan with no result cap; first 20 returned as preview, overflow saved to tasks/sync/search/<uuid>.md. Default base: clawspace. `claw: "<id>"` searches another claw\'s resources (read-only); `claw: "*"` broadcast across all claws is Motion-only.',
+  description: 'Search LOCAL files (not web/network) for literal text in filenames AND contents (unified). Returns segmented [Filename matches] / [Content matches] / [Skipped]. Case-insensitive by default, no regex/glob. Full scan with no result cap; first 20 returned as preview, overflow saved to tasks/sync/search/<uuid>.md. Default base: clawspace.',
   schema: {
     type: 'object',
     properties: {
@@ -333,10 +322,6 @@ export const searchTool: Tool = {
       caseSensitive: {
         type: 'boolean',
         description: 'Match case-sensitively. Default: false.',
-      },
-      claw: {
-        type: 'string',
-        description: 'Target claw ID (specific target: any agent; "*" broadcast: Motion only). Both prefix matches with [clawId]. Example: { text: "error", path: "logs/", claw: "*" }',
       },
       async: {
         type: 'boolean',
@@ -375,79 +360,6 @@ export const searchTool: Tool = {
     }
     checker.resolveAndCheck(searchPath, 'read');
 
-    const clawParam = args.claw as string | undefined;
-
-    // ── cross-claw branch ──────────────────────────────────────────────
-    if (clawParam !== undefined) {
-      if (!ctx.fsFactory) {
-        return { success: false, content: 'Error: Cross-claw access not available in this context (fsFactory not injected)' };
-      }
-
-      // claw: "*" broadcast
-      if (clawParam === '*') {
-        if (!ctx.isMotionChain) {
-          return { success: false, content: 'Error: claw: "*" broadcast is Motion-only. Use claw: "<id>" for specific claw access.' };
-        }
-        const clawsDir = ctx.clawsDir;
-        const chestnutFs = ctx.fsFactory(clawsDir);
-        let clawIds: string[];
-        try {
-          clawIds = chestnutFs.listSync('', { includeDirs: true })
-            .filter(e => e.isDirectory && !e.name.startsWith('.'))
-            .map(e => e.name)
-            .sort();
-        } catch {
-          return { success: true, content: `No matches for "${pattern}".` };
-        }
-
-        const aggregate: WalkResult = { filenameMatches: [], contentMatches: [], skips: [] };
-        const rawSearchPath = nodePath.normalize(pathArg);
-
-        for (const clawId of clawIds) {
-          if (ctx.signal?.aborted) break;
-          const clawFs = ctx.fsFactory(nodePath.join(clawsDir, clawId));
-          if (!clawFs.existsSync(rawSearchPath)) continue;
-
-          const perClaw: WalkResult = { filenameMatches: [], contentMatches: [], skips: [] };
-          try {
-            // baseDir = clawRoot, start walk inside rawSearchPath so paths come out as
-            // `<rawSearchPath>/...` keeping user's mental model (they typed path: 'clawspace/').
-            await walk(clawFs, '', rawSearchPath, pattern, caseSensitive, perClaw, rawSearchPath, ctx.signal);
-          } catch (err) {
-            if (!isFileNotFound(err)) {
-              ctx.auditWriter?.write('broadcast_claw_skipped', `claw=${clawId}`, `reason=${formatErr(err)}`);
-            }
-            continue;
-          }
-          const prefixed = prefixPaths(perClaw, `[${clawId}] `);
-          aggregate.filenameMatches.push(...prefixed.filenameMatches);
-          aggregate.contentMatches.push(...prefixed.contentMatches);
-          aggregate.skips.push(...prefixed.skips);
-        }
-
-        return await finalize(ctx, pattern, aggregate, null);
-      }
-
-      // claw: "<id>" specific target
-      if (clawParam.includes('/') || clawParam.includes('..') || clawParam === '' || clawParam === '.' || clawParam.startsWith('.')) {
-        return { success: false, content: `Error: Invalid claw ID: "${clawParam}"` };
-      }
-      const rawSearchPath = nodePath.normalize(pathArg);
-      const clawsDir = ctx.clawsDir;
-      const clawRoot = nodePath.join(clawsDir, clawParam);
-      const baseDir = nodePath.resolve(clawRoot, rawSearchPath);
-      if (baseDir !== clawRoot && !baseDir.startsWith(clawRoot + nodePath.sep)) {
-        return { success: false, content: `Error: Path escapes target claw root: "${rawSearchPath}"` };
-      }
-
-      const targetFs = ctx.fsFactory(clawRoot);
-      const result: WalkResult = { filenameMatches: [], contentMatches: [], skips: [] };
-      await walk(targetFs, '', rawSearchPath, pattern, caseSensitive, result, rawSearchPath, ctx.signal);
-
-      return await finalize(ctx, pattern, prefixPaths(result, `[${clawParam}] `), null);
-    }
-
-    // ── same-claw branch ───────────────────────────────────────────────
     const result: WalkResult = { filenameMatches: [], contentMatches: [], skips: [] };
     await walk(ctx.fs, searchPath, searchPath, pattern, caseSensitive, result, '', ctx.signal);
 
@@ -456,4 +368,3 @@ export const searchTool: Tool = {
     return await finalize(ctx, pattern, remapped, workspaceClawDirRel);
   },
 };
-
