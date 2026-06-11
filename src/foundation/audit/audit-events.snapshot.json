@@ -673,6 +673,7 @@
       "daemon_idle_timeout",
       "daemon_liveness_heartbeat",
       "daemon_llm_retry_state_invariant_violated",
+      "daemon_llm_retry_state_load_failed",
       "daemon_loop_fatal",
       "daemon_loop_interrupt",
       "daemon_loop_interrupt_poller_disabled",

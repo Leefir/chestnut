@@ -16,6 +16,7 @@
 import * as path from 'path';
 import { formatErr } from "../foundation/utils/index.js";
 import type { FileSystem } from '../foundation/fs/types.js';
+import { isFileNotFound } from '../foundation/fs/types.js';
 import type { IRuntimeDaemon } from '../core/runtime/index.js';
 import type { StreamWriter } from '../foundation/stream/index.js';
 import type { AuditLog } from '../foundation/audit/index.js';
@@ -136,14 +137,63 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
 
   // 启动时恢复（崩溃重启继续退避；clean stop 后跳过，保持默认值）
   if (!isCleanStop) {
+    let raw: string | undefined;
     try {
-      const saved = JSON.parse(agentFs.readSync(path.join(STATUS_SUBDIR, 'llm-retry-state.json')));
-      if (typeof saved.schema_version === 'number' && saved.schema_version === 1) {
-        if (typeof saved.llmRetryCount === 'number') llmRetryCount = saved.llmRetryCount;
-        if (typeof saved.llmRetryDelayMs === 'number') llmRetryDelayMs = saved.llmRetryDelayMs;
-        if (typeof saved.llmRetryPending === 'boolean') llmRetryPending = saved.llmRetryPending;
+      raw = agentFs.readSync(path.join(STATUS_SUBDIR, 'llm-retry-state.json'));
+    } catch (e) {
+      if (!isFileNotFound(e)) {
+        options.audit.write(
+          DAEMON_AUDIT_EVENTS.LLM_RETRY_STATE_LOAD_FAILED,
+          `reason=read_failed`,
+          `error=${formatErr(e)}`,
+        );
       }
-    } catch { /* silent: first start or corrupted file, use defaults */ }
+      // ENOENT = first start by-design, silent ok; others = audit emitted
+      raw = undefined;
+    }
+    if (raw !== undefined) {
+      let saved: unknown;
+      try {
+        saved = JSON.parse(raw);
+      } catch (e) {
+        options.audit.write(
+          DAEMON_AUDIT_EVENTS.LLM_RETRY_STATE_LOAD_FAILED,
+          `reason=parse_failed`,
+          `error=${formatErr(e)}`,
+        );
+        saved = undefined;
+      }
+      if (saved !== undefined) {
+        if (typeof saved !== 'object' || saved === null) {
+          options.audit.write(
+            DAEMON_AUDIT_EVENTS.LLM_RETRY_STATE_LOAD_FAILED,
+            `reason=schema_invalid`,
+            `actual=${typeof saved}`,
+          );
+        } else {
+          const s = saved as Record<string, unknown>;
+          if (s.schema_version !== 1) {
+            options.audit.write(
+              DAEMON_AUDIT_EVENTS.LLM_RETRY_STATE_LOAD_FAILED,
+              `reason=schema_version_mismatch`,
+              `actual=${String(s.schema_version)}`,
+              `expected=1`,
+            );
+          } else if (typeof s.llmRetryCount !== 'number' ||
+              typeof s.llmRetryDelayMs !== 'number' ||
+              typeof s.llmRetryPending !== 'boolean') {
+            options.audit.write(
+              DAEMON_AUDIT_EVENTS.LLM_RETRY_STATE_LOAD_FAILED,
+              `reason=field_type_mismatch`,
+            );
+          } else {
+            llmRetryCount = s.llmRetryCount;
+            llmRetryDelayMs = s.llmRetryDelayMs;
+            llmRetryPending = s.llmRetryPending;
+          }
+        }
+      }
+    }
   }
 
   const stop = () => { stopped = true; };
