@@ -13,6 +13,7 @@ import type { AuditLog } from '../audit/index.js';
 import { encodeOutbox } from './codec-outbox.js';
 import { emitOutboxSent, emitOutboxSendFailed } from './audit-emit.js';
 import { assertMessageShape } from './invariants.js';
+import { auditOutboxDedup } from './dedup-cross-source-audit.js';
 import { UUID_SHORT_LEN } from '../../constants.js';
 import type { ClawId } from '../../constants.js';
 
@@ -95,6 +96,9 @@ export class OutboxWriter {
         id: message.id,
         contractId: options.metadata?.contract_id,
       });
+      // phase 273 Step B: dedup CC-2 (fire-and-forget、不阻 write、Path #4)
+      void auditOutboxDedup(filename, this.outboxDir, this.fs, this.audit)
+        .catch(() => { /* self-defensive */ });
       return filePath;
     } catch (err) {
       emitOutboxSendFailed(this.audit, {
