@@ -33,6 +33,9 @@ export interface SummonStateStore {
 export function createSummonStateStore(fs: FileSystem, audit?: AuditLog): SummonStateStore {
   return {
     async write(decision) {
+      // phase 255 Step A: schema invariant（violation emit audit、不 throw、不阻 write、保 IO 错既有 throw 路径）
+      assertSummonDecisionShape(decision, audit, 'write');
+
       const relPath = `${SUMMON_STATE_SUBDIR}/${decision.taskId}.json`;
       try {
         await fs.writeAtomic(relPath, JSON.stringify({ ...decision, schema_version: 1 as const }));
@@ -46,7 +49,10 @@ export function createSummonStateStore(fs: FileSystem, audit?: AuditLog): Summon
       try {
         const content = await fs.read(relPath);
         const data = JSON.parse(content) as unknown;
-        assertSummonDecisionShape(data, audit);
+
+        // phase 255 Step A: schema invariant（violation emit audit、保 fallback 返 undefined / 返 parsed 既有语义）
+        assertSummonDecisionShape(data, audit, 'read');
+
         return data as SummonDecision;
       } catch (e) {
         if (isFileNotFound(e)) return undefined;

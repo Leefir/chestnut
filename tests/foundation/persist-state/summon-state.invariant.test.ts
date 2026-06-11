@@ -22,7 +22,7 @@ describe('assertSummonDecisionShape', () => {
       mode: 'shadow',
       dispatchedAt: '2024-01-01T00:00:00Z',
       schema_version: 1,
-    }, audit);
+    }, audit, 'read');
     expect(audit.entries).toHaveLength(0);
   });
 
@@ -33,17 +33,17 @@ describe('assertSummonDecisionShape', () => {
       verify: false,
       mode: 'mining',
       dispatchedAt: '2024-01-01T00:00:00Z',
-    }, audit);
+    }, audit, 'read');
     expect(audit.entries).toHaveLength(1);
     expect(audit.entries[0][0]).toBe('summon_state_legacy_v0_migrated');
   });
 
   it('emits INVARIANT_VIOLATED for non-object', () => {
     const audit = makeFakeAudit();
-    assertSummonDecisionShape('not-an-object', audit);
+    assertSummonDecisionShape('not-an-object', audit, 'read');
     expect(audit.entries).toHaveLength(1);
     expect(audit.entries[0][0]).toBe('summon_state_invariant_violated');
-    expect(audit.entries[0][1]).toContain('not_object');
+    expect(audit.entries[0][1]).toContain('decision_not_object');
   });
 
   it('emits INVARIANT_VIOLATED for invalid schema_version', () => {
@@ -54,7 +54,7 @@ describe('assertSummonDecisionShape', () => {
       mode: 'shadow',
       dispatchedAt: '2024-01-01T00:00:00Z',
       schema_version: 99,
-    }, audit);
+    }, audit, 'read');
     expect(audit.entries.some(e => e[0] === 'summon_state_invariant_violated' && e[1].includes('schema_version_mismatch'))).toBe(true);
   });
 
@@ -65,7 +65,7 @@ describe('assertSummonDecisionShape', () => {
       mode: 'shadow',
       dispatchedAt: '2024-01-01T00:00:00Z',
       schema_version: 1,
-    }, audit);
+    }, audit, 'read');
     expect(audit.entries.some(e => e[0] === 'summon_state_invariant_violated' && e[1].includes('taskId'))).toBe(true);
   });
 
@@ -77,8 +77,8 @@ describe('assertSummonDecisionShape', () => {
       mode: 'invalid',
       dispatchedAt: '2024-01-01T00:00:00Z',
       schema_version: 1,
-    }, audit);
-    expect(audit.entries.some(e => e[0] === 'summon_state_invariant_violated' && e[1].includes('mode_invalid'))).toBe(true);
+    }, audit, 'read');
+    expect(audit.entries.some(e => e[0] === 'summon_state_invariant_violated' && e[1].includes('mode_not_in_union'))).toBe(true);
   });
 
   it('emits INVARIANT_VIOLATED for non-ISO dispatchedAt', () => {
@@ -89,7 +89,7 @@ describe('assertSummonDecisionShape', () => {
       mode: 'shadow',
       dispatchedAt: 'not-a-date',
       schema_version: 1,
-    }, audit);
+    }, audit, 'read');
     expect(audit.entries.some(e => e[0] === 'summon_state_invariant_violated' && e[1].includes('dispatchedAt_not_iso'))).toBe(true);
   });
 
@@ -100,6 +100,6 @@ describe('assertSummonDecisionShape', () => {
       mode: 'shadow',
       dispatchedAt: '2024-01-01T00:00:00Z',
       schema_version: 1,
-    })).not.toThrow();
+    }, undefined, 'read')).not.toThrow();
   });
 });
