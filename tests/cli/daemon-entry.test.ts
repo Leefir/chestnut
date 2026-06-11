@@ -55,8 +55,8 @@ describe('daemon-entry shim audit', () => {
   afterAll(() => {
     process.argv = originalArgv;
     // 清本 file 注册 handler、保 vitest 原有
-    const isOurUncaught = (h: any) => h.toString().includes('daemon_uncaught_exception');
-    const isOurUnhandled = (h: any) => h.toString().includes('daemon_unhandled_rejection');
+    const isOurUncaught = (h: any) => h.toString().includes('UNCAUGHT_EXCEPTION');
+    const isOurUnhandled = (h: any) => h.toString().includes('UNHANDLED_REJECTION');
     const otherUncaught = process.listeners('uncaughtException').filter(h => !isOurUncaught(h));
     const otherUnhandled = process.listeners('unhandledRejection').filter(h => !isOurUnhandled(h));
     process.removeAllListeners('uncaughtException');
@@ -88,8 +88,12 @@ describe('daemon-entry shim audit', () => {
   });
 
   it('shim uncaughtException → audit daemon_uncaught_exception + console + exit(1)', () => {
+    // phase 274 patch: handler sentinel 用 const name 子串、稳跨 raw 与 const reference 两源。
+    // phase 272 Step B 把 daemon-entry.ts 'daemon_*' raw 迁 DAEMON_AUDIT_EVENTS.* const reference、
+    // 此 test 用 handler.toString().includes() 找 handler 必相应改 const name 子串
+    // (DAEMON_AUDIT_EVENTS.UNCAUGHT_EXCEPTION 中含 'UNCAUGHT_EXCEPTION' 子串)。
     const handler = process.listeners('uncaughtException').find(
-      h => h.toString().includes('daemon_uncaught_exception')
+      h => h.toString().includes('UNCAUGHT_EXCEPTION')
     );
     expect(handler).toBeDefined();
 
@@ -106,7 +110,7 @@ describe('daemon-entry shim audit', () => {
 
   it('shim unhandledRejection → audit daemon_unhandled_rejection + console + exit(1)', () => {
     const handler = process.listeners('unhandledRejection').find(
-      h => h.toString().includes('daemon_unhandled_rejection')
+      h => h.toString().includes('UNHANDLED_REJECTION')
     );
     expect(handler).toBeDefined();
 
@@ -126,7 +130,7 @@ describe('daemon-entry shim audit', () => {
     });
 
     const handler = process.listeners('uncaughtException').find(
-      h => h.toString().includes('daemon_uncaught_exception')
+      h => h.toString().includes('UNCAUGHT_EXCEPTION')
     );
     expect(handler).toBeDefined();
 
