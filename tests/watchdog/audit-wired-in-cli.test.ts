@@ -52,7 +52,6 @@ describe('audit wired in CLI', () => {
   });
 
   afterEach(() => {
-    setAuditWriter(null);
     console.error = originalConsoleError;
     vi.clearAllMocks();
     vi.restoreAllMocks();

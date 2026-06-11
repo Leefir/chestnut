@@ -36,10 +36,7 @@ describe('loadWatchdogState dual-code narrow (phase 1215)', () => {
   });
 
   afterEach(() => {
-    clawStateAPI.lastInactivityNotified.clear();
-    clawStateAPI.inactivityNotifyCount.clear();
-    clawStateAPI.clawPreviouslyAlive.clear();
-    clawStateAPI.everSpawned.clear();
+    // phase 254: cleanup migrated to beforeEach _resetWatchdogContextForTest()
   });
 
   it('reverse 1: FileNotFoundError → 0 audit emit + Maps empty', () => {

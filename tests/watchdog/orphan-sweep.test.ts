@@ -56,7 +56,6 @@ describe('watchdog orphan sweep', () => {
   });
 
   afterEach(() => {
-    setAuditWriter(null);
     vi.clearAllMocks();
     vi.restoreAllMocks();
     fs.rmSync(tmpDir, { recursive: true, force: true });

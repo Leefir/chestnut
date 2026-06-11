@@ -191,7 +191,6 @@ describe('logWithAudit — A1 clearance', () => {
   });
 
   afterEach(() => {
-    setAuditWriter(null);
     vi.clearAllMocks();
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
@@ -334,6 +333,7 @@ describe('getWatchdogPid', () => {
   let tmpDir: string;
 
   beforeEach(() => {
+    _resetWatchdogContextForTest();
     tmpDir = path.join(os.tmpdir(), `wd-pid-${randomUUID()}`);
     const chestnutDir = path.join(tmpDir, '.chestnut');
     fs.mkdirSync(chestnutDir, { recursive: true });
@@ -361,6 +361,7 @@ describe('isWatchdogAlive', () => {
   const originalRoot = process.env.CHESTNUT_ROOT;
 
   beforeEach(() => {
+    _resetWatchdogContextForTest();
     tmpDir = path.join(os.tmpdir(), `wd-alive-${randomUUID()}`);
     const chestnutDir = path.join(tmpDir, '.chestnut');
     fs.mkdirSync(chestnutDir, { recursive: true });
@@ -418,6 +419,7 @@ describe('startCommand', () => {
   let tmpDir: string;
 
   beforeEach(() => {
+    _resetWatchdogContextForTest();
     tmpDir = path.join(os.tmpdir(), `wd-start-${randomUUID()}`);
     const chestnutDir = path.join(tmpDir, '.chestnut');
     fs.mkdirSync(chestnutDir, { recursive: true });
@@ -470,6 +472,7 @@ describe('stopCommand', () => {
   let tmpDir: string;
 
   beforeEach(() => {
+    _resetWatchdogContextForTest();
     tmpDir = path.join(os.tmpdir(), `wd-stop-${randomUUID()}`);
     const chestnutDir = path.join(tmpDir, '.chestnut');
     fs.mkdirSync(chestnutDir, { recursive: true });
@@ -533,6 +536,7 @@ describe('runWatchdogLoop', () => {
   let capturedHandlers: Record<string, Function>;
 
   beforeEach(() => {
+    _resetWatchdogContextForTest();
     tmpDir = path.join(os.tmpdir(), `wd-loop-${randomUUID()}`);
     chestnutDir = path.join(tmpDir, '.chestnut');
     fs.mkdirSync(path.join(chestnutDir, 'motion', 'logs'), { recursive: true });
@@ -558,7 +562,6 @@ describe('runWatchdogLoop', () => {
   });
 
   afterEach(() => {
-    setAuditWriter(null);
     vi.clearAllMocks();
     vi.restoreAllMocks();
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -643,6 +646,7 @@ describe('maybeCronClawCrash — crash audit', () => {
   let writeSyncSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    _resetWatchdogContextForTest();
     tmpDir = path.join(os.tmpdir(), `wdcrash-${randomUUID()}`);
     const chestnutDir = path.join(tmpDir, '.chestnut');
     clawsDir = path.join(chestnutDir, 'claws');
@@ -736,6 +740,7 @@ describe('loadWatchdogState / saveWatchdogState — A2+A3+A4', () => {
   let chestnutDir: string;
 
   beforeEach(() => {
+    _resetWatchdogContextForTest();
     tmpDir = path.join(os.tmpdir(), `wd-state-${randomUUID()}`);
     chestnutDir = path.join(tmpDir, '.chestnut');
     fs.mkdirSync(chestnutDir, { recursive: true });
@@ -744,7 +749,6 @@ describe('loadWatchdogState / saveWatchdogState — A2+A3+A4', () => {
   });
 
   afterEach(() => {
-    setAuditWriter(null);
     vi.clearAllMocks();
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });

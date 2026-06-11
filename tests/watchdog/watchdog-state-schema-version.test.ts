@@ -42,11 +42,6 @@ describe('watchdog-state schema_version invariant — phase 1134', () => {
   });
 
   afterEach(() => {
-    setAuditWriter(null);
-    clawStateAPI.lastInactivityNotified.clear();
-    clawStateAPI.inactivityNotifyCount.clear();
-    clawStateAPI.clawPreviouslyAlive.clear();
-    clawStateAPI.everSpawned.clear();
     vi.clearAllMocks();
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });

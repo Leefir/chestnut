@@ -88,7 +88,6 @@ describe('watchdog notify dedup persist (phase 1269 sub-3)', () => {
   });
 
   afterEach(() => {
-    setAuditWriter(null);
     vi.clearAllMocks();
     vi.clearAllMocks();
     fs.rmSync(tmpDir, { recursive: true, force: true });

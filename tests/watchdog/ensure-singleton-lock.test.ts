@@ -66,7 +66,6 @@ describe('ensureWatchdog singleton lock', () => {
     } else {
       delete process.env.CHESTNUT_ROOT;
     }
-    setAuditWriter(null);
     vi.clearAllMocks();
     vi.restoreAllMocks();
     fs.rmSync(tmpDir, { recursive: true, force: true });
