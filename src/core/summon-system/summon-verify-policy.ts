@@ -4,7 +4,7 @@ import { ContractCreatePolicyViolationError } from '../contract/types.js';
 import { SUMMON_AUDIT_EVENTS } from './audit-events.js';
 import type { SummonStateStore } from './summon-state-store.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
-import type { TaskId } from '../async-task-system/types.js';
+import { makeTaskId } from '../async-task-system/types.js';
 
 // ============================================================================
 // Phase 230: SummonVerifyPolicy — ContractCreatePolicy implementation
@@ -29,7 +29,8 @@ export function createSummonVerifyPolicy(
 
       let decision;
       try {
-        decision = await deps.summonStateStore.read(subagentTaskId as TaskId);
+        // phase 276 Step A: makeTaskId SoT (ML#9 编译器可检) / 替 'subagentTaskId as TaskId' 直 cast
+        decision = await deps.summonStateStore.read(makeTaskId(subagentTaskId));
       } catch (err) {
         deps.auditWriter.write(
           SUMMON_AUDIT_EVENTS.SUMMON_STATE_READ_FAILED,

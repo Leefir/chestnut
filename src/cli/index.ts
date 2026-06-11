@@ -230,13 +230,14 @@ contractCmd
     } else if (opts.dir) {
       const motionClawDir = path.join(getChestnutRoot(), 'motion');
       const motionFs = fsFactory(motionClawDir);
-      const summonStateStore = createSummonStateStore(motionFs);
 
       // Phase 230: create ContractSystem + wire SummonVerifyPolicy
       const clawDir = getClawDir(opts.claw);
       const clawFs = fsFactory(clawDir);
       const chestnutRoot = resolveChestnutRoot(clawDir, /* isMotion */ false);
       const clawAudit = createSystemAudit(clawFs, clawDir);
+      // phase 276 Step A: audit 注入修 P0-4
+      const summonStateStore = createSummonStateStore(motionFs, clawAudit);
 
       // phase 257: wire ClawTopology 到 ContractSystem 的 ToolRegistry
       const toolRegistry = createToolRegistry();

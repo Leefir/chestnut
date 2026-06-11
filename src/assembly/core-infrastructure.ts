@@ -202,7 +202,8 @@ export async function createCoreInfrastructure(input: CoreInfraInput): Promise<C
       // mining path 用 ctx.registry 取 miner profile 工具）。不再走 Runtime
       // initialize() 内反向 import + new + register「结构性循环依赖妥协」。
       // phase 108 Step B: 注入 SummonStateStore（motion clawDir 下 .chestnut/summon-state/）
-      const summonStateStore = createSummonStateStore(systemFs);
+      // phase 276 Step A: audit 注入修 P0-4 (auditWriter 让 SUMMON_STATE_*_FAILED 真 emit)
+      const summonStateStore = createSummonStateStore(systemFs, auditWriter);
       toolRegistry.register(new SummonTool(summonStateStore));
 
       // phase378 后 exec 业务归 CommandTool L2 / 不再经 registerBuiltinTools / Assembly 显式注册
@@ -248,7 +249,8 @@ export async function createCoreInfrastructure(input: CoreInfraInput): Promise<C
     }
 
     // Phase 230: wire SummonVerifyPolicy into ContractSystem
-    const summonStateStore = createSummonStateStore(systemFs);
+    // phase 276 Step A: audit 注入
+    const summonStateStore = createSummonStateStore(systemFs, auditWriter);
     const summonVerifyPolicy = createSummonVerifyPolicy({ summonStateStore, auditWriter: auditWriter });
     contractManager.registerCreatePolicy('summon-verify', summonVerifyPolicy);
 

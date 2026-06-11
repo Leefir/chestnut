@@ -396,7 +396,11 @@
       "random_dream_wait_timeout"
     ],
     "core_permissions_audit-events": [
-      "permission_strict_disabled"
+      "permission_strict_disabled",
+      "permission_read_path_outside_claw_space",
+      "permission_write_path_outside_claw_space",
+      "permission_write_system_readonly",
+      "permission_write_outside_allowlist"
     ],
     "core_heartbeat_audit-events": [
       "heartbeat_checklist_read_failed",

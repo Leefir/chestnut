@@ -187,6 +187,11 @@ function checkReadPermission(
   }
 
   // Denied
+  options.audit?.write(
+    PERMISSION_AUDIT_EVENTS.READ_PATH_OUTSIDE_CLAW_SPACE,
+    `path=${targetPath}`,
+    `clawDir=${clawDir}`,
+  );
   throw new PathNotInClawSpaceError(targetPath, clawDir);
 }
 
@@ -225,6 +230,10 @@ function checkWritePermission(
 
     // Check system paths (read-only)
     if (isSystemPath) {
+      options.audit?.write(
+        PERMISSION_AUDIT_EVENTS.WRITE_SYSTEM_READONLY,
+        `path=${targetPath}`,
+      );
       throw new WriteOperationForbiddenError(targetPath, 'system_readonly');
     }
 
@@ -235,6 +244,10 @@ function checkWritePermission(
 
     // fallthrough: deny by default (explicit allow list)
     if (!isSystemPath && !isWritablePath) {
+      options.audit?.write(
+        PERMISSION_AUDIT_EVENTS.WRITE_OUTSIDE_ALLOWLIST,
+        `path=${targetPath}`,
+      );
       throw new WriteOperationForbiddenError(targetPath, 'outside_allowlist');
     }
 
@@ -242,6 +255,11 @@ function checkWritePermission(
   }
 
   // Denied
+  options.audit?.write(
+    PERMISSION_AUDIT_EVENTS.WRITE_PATH_OUTSIDE_CLAW_SPACE,
+    `path=${targetPath}`,
+    `clawDir=${clawDir}`,
+  );
   throw new PathNotInClawSpaceError(targetPath, clawDir);
 }
 
