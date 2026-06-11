@@ -3,6 +3,9 @@ import * as path from 'path';
 import { auditLookupCommand } from '../../src/cli/commands/audit-lookup.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import type { FileSystem } from '../../src/foundation/fs/types.js';
+import { getClawDir } from '../../src/foundation/config/index.js';  // phase 271: hoist 7 dyn imports
+import * as fsNative from 'fs';  // phase 283: hoist 22 require('fs') calls
+import { createHash } from 'crypto';  // phase 284
 
 const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });
 
@@ -23,14 +26,14 @@ describe('audit lookup', () => {
   beforeEach(() => {
     stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
     stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
-    tempDir = require('fs').mkdtempSync('/tmp/chestnut-test-');
-    require('fs').mkdirSync(path.join(tempDir, 'claws', 'test-claw'), { recursive: true });
+    tempDir = fsNative.mkdtempSync('/tmp/chestnut-test-');
+    fsNative.mkdirSync(path.join(tempDir, 'claws', 'test-claw'), { recursive: true });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
     try {
-      require('fs').rmSync(tempDir, { recursive: true, force: true });
+      fsNative.rmSync(tempDir, { recursive: true, force: true });
     } catch { /* ignore */ }
   });
 
@@ -44,8 +47,8 @@ describe('audit lookup', () => {
 
   it('current hit → exit 0 + stdout with Source/content', async () => {
     const clawDir = path.join(tempDir, 'claws', 'test-claw');
-    require('fs').mkdirSync(path.join(clawDir, 'dialog'), { recursive: true });
-    require('fs').writeFileSync(path.join(clawDir, 'audit.tsv'), '');
+    fsNative.mkdirSync(path.join(clawDir, 'dialog'), { recursive: true });
+    fsNative.writeFileSync(path.join(clawDir, 'audit.tsv'), '');
     const session = {
       version: 2,
       clawId: 'test-claw',
@@ -59,9 +62,8 @@ describe('audit lookup', () => {
       ],
       toolsForLLM: [],
     };
-    require('fs').writeFileSync(path.join(clawDir, 'dialog', 'current.json'), JSON.stringify(session));
+    fsNative.writeFileSync(path.join(clawDir, 'dialog', 'current.json'), JSON.stringify(session));
 
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(clawDir);
 
     await auditLookupCommand({ fsFactory }, 'call_00_xxx', { claw: 'test-claw', file: 'audit' });
@@ -74,8 +76,8 @@ describe('audit lookup', () => {
 
   it('archive hit → exit 0 + stdout with Archived at + content', async () => {
     const clawDir = path.join(tempDir, 'claws', 'test-claw');
-    require('fs').mkdirSync(path.join(clawDir, 'dialog', 'archive'), { recursive: true });
-    require('fs').writeFileSync(path.join(clawDir, 'audit.tsv'), '');
+    fsNative.mkdirSync(path.join(clawDir, 'dialog', 'archive'), { recursive: true });
+    fsNative.writeFileSync(path.join(clawDir, 'audit.tsv'), '');
     const session = {
       version: 2,
       clawId: 'test-claw',
@@ -88,12 +90,11 @@ describe('audit lookup', () => {
       ],
       toolsForLLM: [],
     };
-    require('fs').writeFileSync(
+    fsNative.writeFileSync(
       path.join(clawDir, 'dialog', 'archive', '20240101000000_abc.json'),
       JSON.stringify(session),
     );
 
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(clawDir);
 
     await auditLookupCommand({ fsFactory }, 'call_00_xxx', { claw: 'test-claw', file: 'audit' });
@@ -106,10 +107,10 @@ describe('audit lookup', () => {
 
   it('archive + content-hash match → exit 0 + Hash verified: yes', async () => {
     const clawDir = path.join(tempDir, 'claws', 'test-claw');
-    require('fs').mkdirSync(path.join(clawDir, 'dialog', 'archive'), { recursive: true });
-    require('fs').writeFileSync(path.join(clawDir, 'audit.tsv'), '');
+    fsNative.mkdirSync(path.join(clawDir, 'dialog', 'archive'), { recursive: true });
+    fsNative.writeFileSync(path.join(clawDir, 'audit.tsv'), '');
     const content = 'archived content for hash';
-    const hash = require('crypto').createHash('sha256').update(content).digest('hex').slice(0, 8);
+    const hash = createHash('sha256').update(content).digest('hex').slice(0, 8);
     const session = {
       version: 2,
       clawId: 'test-claw',
@@ -122,12 +123,11 @@ describe('audit lookup', () => {
       ],
       toolsForLLM: [],
     };
-    require('fs').writeFileSync(
+    fsNative.writeFileSync(
       path.join(clawDir, 'dialog', 'archive', '20240101000000_abc.json'),
       JSON.stringify(session),
     );
 
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(clawDir);
 
     await auditLookupCommand({ fsFactory }, 'call_00_xxx', { claw: 'test-claw', file: 'audit', contentHash: hash });
@@ -139,8 +139,8 @@ describe('audit lookup', () => {
 
   it('archive + content-hash mismatch → exit 3 + stderr reason=hash_mismatch', async () => {
     const clawDir = path.join(tempDir, 'claws', 'test-claw');
-    require('fs').mkdirSync(path.join(clawDir, 'dialog', 'archive'), { recursive: true });
-    require('fs').writeFileSync(path.join(clawDir, 'audit.tsv'), '');
+    fsNative.mkdirSync(path.join(clawDir, 'dialog', 'archive'), { recursive: true });
+    fsNative.writeFileSync(path.join(clawDir, 'audit.tsv'), '');
     const content = 'archived content for hash mismatch';
     const session = {
       version: 2,
@@ -154,12 +154,11 @@ describe('audit lookup', () => {
       ],
       toolsForLLM: [],
     };
-    require('fs').writeFileSync(
+    fsNative.writeFileSync(
       path.join(clawDir, 'dialog', 'archive', '20240101000000_abc.json'),
       JSON.stringify(session),
     );
 
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(clawDir);
 
     await auditLookupCommand({ fsFactory }, 'call_00_xxx', { claw: 'test-claw', file: 'audit', contentHash: '00000000' });
@@ -172,11 +171,10 @@ describe('audit lookup', () => {
 
   it('all failed → exit 3 + stderr reason=all_failed', async () => {
     const clawDir = path.join(tempDir, 'claws', 'test-claw');
-    require('fs').mkdirSync(clawDir, { recursive: true });
-    require('fs').writeFileSync(path.join(clawDir, 'audit.tsv'), '');
+    fsNative.mkdirSync(clawDir, { recursive: true });
+    fsNative.writeFileSync(path.join(clawDir, 'audit.tsv'), '');
     // no dialog dir
 
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(clawDir);
 
     await auditLookupCommand({ fsFactory }, 'call_99_nonexistent', { claw: 'test-claw', file: 'audit' });
@@ -189,8 +187,8 @@ describe('audit lookup', () => {
 
   it('--json outputs LookupResult discriminated union', async () => {
     const clawDir = path.join(tempDir, 'claws', 'test-claw');
-    require('fs').mkdirSync(path.join(clawDir, 'dialog'), { recursive: true });
-    require('fs').writeFileSync(path.join(clawDir, 'audit.tsv'), '');
+    fsNative.mkdirSync(path.join(clawDir, 'dialog'), { recursive: true });
+    fsNative.writeFileSync(path.join(clawDir, 'audit.tsv'), '');
     const session = {
       version: 2,
       clawId: 'test-claw',
@@ -203,9 +201,8 @@ describe('audit lookup', () => {
       ],
       toolsForLLM: [],
     };
-    require('fs').writeFileSync(path.join(clawDir, 'dialog', 'current.json'), JSON.stringify(session));
+    fsNative.writeFileSync(path.join(clawDir, 'dialog', 'current.json'), JSON.stringify(session));
 
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(clawDir);
 
     await auditLookupCommand({ fsFactory }, 'call_00_xxx', { claw: 'test-claw', file: 'audit', json: true });
@@ -219,10 +216,9 @@ describe('audit lookup', () => {
 
   it('--json + unavailable → JSON with source unavailable + exit 3', async () => {
     const clawDir = path.join(tempDir, 'claws', 'test-claw');
-    require('fs').mkdirSync(clawDir, { recursive: true });
-    require('fs').writeFileSync(path.join(clawDir, 'audit.tsv'), '');
+    fsNative.mkdirSync(clawDir, { recursive: true });
+    fsNative.writeFileSync(path.join(clawDir, 'audit.tsv'), '');
 
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(clawDir);
 
     await auditLookupCommand({ fsFactory }, 'call_99_nonexistent', { claw: 'test-claw', file: 'audit', json: true });

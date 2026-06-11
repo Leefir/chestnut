@@ -18,6 +18,9 @@ vi.mock('../../../src/core/async-task-system/result-delivery.js', () => ({
   SENT_MARKER: (taskId: string) => `tasks/queues/results/${taskId}/result.txt.sent`,
 }));
 
+// phase 260: hoist; 4 tests previously did `await import` for the same module per call.
+import { sendFallbackError } from '../../../src/core/async-task-system/result-delivery.js';
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function makeMockAudit(): { audit: AuditLog; events: Array<[string, ...(string | number)[]]> } {
@@ -45,7 +48,6 @@ describe('phase 556: race + dead-letter cluster fix', () => {
     beforeEach(async () => {
       vi.restoreAllMocks();
 
-      const { sendFallbackError } = await import('../../../src/core/async-task-system/result-delivery.js');
       vi.mocked(sendFallbackError).mockRejectedValue(new Error('fallback failed'));
 
       mockFs = {
@@ -71,7 +73,7 @@ describe('phase 556: race + dead-letter cluster fix', () => {
     });
 
     afterEach(async () => {
-      await system.shutdown(100).catch(() => {});
+      await system.shutdown(1).catch(() => {});
     });
 
     it('cancel during _ingestPendingFile fs.read await must prevent dispatch', async () => {
@@ -143,7 +145,6 @@ describe('phase 556: race + dead-letter cluster fix', () => {
   // ─── C2: dead-letter cluster ───────────────────────────────────────────────
   describe('C2: dead-letter cluster', () => {
     beforeEach(async () => {
-      const { sendFallbackError } = await import('../../../src/core/async-task-system/result-delivery.js');
       vi.mocked(sendFallbackError).mockRejectedValue(new Error('fallback failed'));
     });
 
@@ -263,7 +264,6 @@ describe('phase 556: race + dead-letter cluster fix', () => {
     beforeEach(async () => {
       vi.restoreAllMocks();
 
-      const { sendFallbackError } = await import('../../../src/core/async-task-system/result-delivery.js');
       vi.mocked(sendFallbackError).mockRejectedValue(new Error('fallback failed'));
 
       mockFs = {
@@ -289,7 +289,7 @@ describe('phase 556: race + dead-letter cluster fix', () => {
     });
 
     afterEach(async () => {
-      await system.shutdown(100).catch(() => {});
+      await system.shutdown(1).catch(() => {});
     });
 
     it('prevents double push 同 taskId on concurrent ingest', async () => {
@@ -398,7 +398,6 @@ describe('phase 556: race + dead-letter cluster fix', () => {
   // ─── P1.8: retryCount<MAX retry pending (phase 612) ──────────────────────────
   describe('P1.8 retryCount<MAX retry pending (phase 612)', () => {
     beforeEach(async () => {
-      const { sendFallbackError } = await import('../../../src/core/async-task-system/result-delivery.js');
       vi.mocked(sendFallbackError).mockRejectedValue(new Error('fallback failed'));
     });
 

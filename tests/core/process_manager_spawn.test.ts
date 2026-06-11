@@ -36,6 +36,7 @@ vi.mock('child_process', async (importOriginal) => {
 import { ProcessManager } from '../../src/foundation/process-manager/index.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { makeAudit } from '../helpers/audit.js';
+import { spawnSync, spawn } from 'child_process';  // phase 274: hoist 4 dyn imports (vi.mock above hoisted)
 
 let tempDir: string;
 let nodeFs: NodeFileSystem;
@@ -48,7 +49,6 @@ beforeEach(async () => {
   // Mock isReady so spawn poll passes without a real daemon writing ready marker
   vi.spyOn(ProcessManager.prototype, 'isReady').mockReturnValue(true);
   // Restore default: pgrep no match
-  const { spawnSync, spawn } = await import('child_process');
   vi.mocked(spawnSync).mockReturnValue({ status: 1, stdout: '', stderr: '' } as any);
   vi.mocked(spawn).mockReturnValue({ pid: process.pid, unref: vi.fn() } as any);
 });
@@ -60,7 +60,6 @@ afterEach(async () => {
 
 describe('ProcessManager.spawn() - Phase 19 daemon-entry.js', () => {
   it('should call spawnSync pgrep with options.args pattern', async () => {
-    const { spawnSync } = await import('child_process');
     const { audit } = makeAudit();
     const pm = new ProcessManager(nodeFs, tempDir, audit);
     const clawId = 'p19-claw';
@@ -83,7 +82,6 @@ describe('ProcessManager.spawn() - Phase 19 daemon-entry.js', () => {
   });
 
   it('should SIGTERM orphaned processes found by pgrep', async () => {
-    const { spawnSync, spawn } = await import('child_process');
     const orphanPid = 99991;
 
     // pgrep returns one orphan PID
@@ -110,7 +108,6 @@ describe('ProcessManager.spawn() - Phase 19 daemon-entry.js', () => {
   });
 
   it('should warn and continue when stale empty PID file exists', async () => {
-    const { spawnSync, spawn } = await import('child_process');
     vi.mocked(spawnSync).mockReturnValue({ status: 1, stdout: '', stderr: '' } as any);
     vi.mocked(spawn).mockReturnValue({ pid: process.pid, unref: vi.fn() } as any);
 

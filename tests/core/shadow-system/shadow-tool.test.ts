@@ -26,6 +26,7 @@ import { createMockTaskSystem } from '../../helpers/task-system.js';
 import type { DialogStore } from '../../../src/foundation/dialog-store/index.js';
 import { SHADOW_AUDIT_EVENTS } from '../../../src/core/summon-system/internal/shadow/audit-events.js';
 import { DONE_TOOL_NAME } from '../../../src/core/subagent/tools/done.js';
+import { ToolTimeoutError } from '../../../src/foundation/errors.js';  // phase 262: hoist
 
 const { mockRunSubagent } = vi.hoisted(() => ({
   mockRunSubagent: vi.fn(),
@@ -254,7 +255,6 @@ describe('shadow tool (phase 767)', () => {
     });
 
     it('classifies ToolTimeoutError as timeout', async () => {
-      const { ToolTimeoutError } = await import('../../../src/foundation/errors.js');
       mockRunSubagent.mockRejectedValue(new ToolTimeoutError('read', 5000));
 
       const result = await shadowTool.execute({ task: 'timeout test', async: false }, baseCtx);

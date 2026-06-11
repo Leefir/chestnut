@@ -276,6 +276,22 @@ vi.mock('../../src/foundation/llm-orchestrator/config-adapter.js', () => ({
   buildLLMConfig: vi.fn(() => ({ provider: 'mock' })),
 }));
 
+// phase 265: hoist 14 dynamic imports below. vitest hoists all vi.mock(...) above
+// to the top of the file, so these static imports resolve to the mocked
+// modules (or real ones if not mocked) just as the per-test `await import`
+// did, without paying the per-invocation resolution cost.
+import { createStreamWriter } from '../../src/foundation/stream/index.js';
+import { CronRunner } from '../../src/core/cron/runner.js';
+import { buildLLMConfig } from '../../src/foundation/llm-orchestrator/config-adapter.js';
+import { createAgentProcessManager } from '../../src/foundation/process-manager/agent-factory.js';
+import { createSnapshot } from '../../src/foundation/snapshot/index.js';
+import { createRuntime, Heartbeat } from '../../src/core/runtime/index.js';
+import { runDiskMonitor } from '../../src/core/cron/jobs/disk-monitor.js';
+import { runLlmStats } from '../../src/core/cron/jobs/llm-stats.js';
+import { createMemorySystem } from '../../src/core/memory/index.js';
+import { runContractObserver } from '../../src/core/contract/jobs/contract-observer.js';
+import { runGitGcWeekly } from '../../src/core/cron/jobs/git-gc-weekly.js';
+
 
 // ============================================================================
 // Tests
@@ -435,7 +451,6 @@ describe('assemble', () => {
   });
 
   it('StreamWriter 构造失败 → assemble_failed + 抛 Error', async () => {
-    const { createStreamWriter } = await import('../../src/foundation/stream/index.js');
     (createStreamWriter as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
       throw new Error('stream fail');
     });
@@ -452,7 +467,6 @@ describe('assemble', () => {
   });
 
   it('CronRunner 构造失败 → assemble_failed + 抛 Error', async () => {
-    const { CronRunner } = await import('../../src/core/cron/runner.js');
     (CronRunner as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
       throw new Error('cron fail');
     });
@@ -496,7 +510,6 @@ describe('assemble', () => {
   });
 
   it('buildLLMConfig 失败 → assemble_failed module=llm_config + 抛 Error', async () => {
-    const { buildLLMConfig } = await import('../../src/foundation/llm-orchestrator/config-adapter.js');
     (buildLLMConfig as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
       throw new Error('llm cfg boom');
     });
@@ -524,7 +537,6 @@ describe('assemble', () => {
   });
 
   it('ProcessManager 构造失败 → assemble_failed + 抛 Error', async () => {
-    const { createAgentProcessManager } = await import('../../src/foundation/process-manager/agent-factory.js');
     (createAgentProcessManager as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
       throw new Error('pm fail');
     });
@@ -541,7 +553,6 @@ describe('assemble', () => {
   });
 
   it('Snapshot 构造失败 → assemble_failed + 抛 Error', async () => {
-    const { createSnapshot } = await import('../../src/foundation/snapshot/index.js');
     (createSnapshot as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
       throw new Error('snapshot fail');
     });
@@ -558,7 +569,6 @@ describe('assemble', () => {
   });
 
   it('Runtime 构造失败 → assemble_failed + 抛 Error', async () => {
-    const { createRuntime } = await import('../../src/core/runtime/index.js');
     (createRuntime as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
       throw new Error('runtime fail');
     });
@@ -575,7 +585,6 @@ describe('assemble', () => {
   });
 
   it('Heartbeat 构造失败 → assemble_failed + 抛 Error', async () => {
-    const { Heartbeat } = await import('../../src/core/runtime/index.js');
     (Heartbeat as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
       throw new Error('heartbeat fail');
     });
@@ -593,7 +602,6 @@ describe('assemble', () => {
 
   it('所有 CronRunner job handlers 应正确引用对应的 cron jobs', async () => {
     await assemble(baseConfig, { createSkillSystem: mockSkillFactory });
-    const { CronRunner } = await import('../../src/core/cron/runner.js');
     const jobs = (CronRunner as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0];
 
     for (const job of jobs) {
@@ -602,11 +610,6 @@ describe('assemble', () => {
       }
     }
 
-    const { runDiskMonitor } = await import('../../src/core/cron/jobs/disk-monitor.js');
-    const { runLlmStats } = await import('../../src/core/cron/jobs/llm-stats.js');
-    const { createMemorySystem } = await import('../../src/core/memory/index.js');
-    const { runContractObserver } = await import('../../src/core/contract/jobs/contract-observer.js');
-    const { runGitGcWeekly } = await import('../../src/core/cron/jobs/git-gc-weekly.js');
 
     expect(runDiskMonitor).toHaveBeenCalled();
     expect(runLlmStats).toHaveBeenCalled();

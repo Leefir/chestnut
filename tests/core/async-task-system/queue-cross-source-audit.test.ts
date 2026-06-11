@@ -338,7 +338,7 @@ describe('async-task queue cross-source audit (phase 239 Step B)', () => {
       const mismatch = events.filter(e => e[0] === TASK_AUDIT_EVENTS.ASYNC_TASK_QUEUE_CROSS_SOURCE_MISMATCH);
       expect(mismatch).toHaveLength(0);
 
-      await system.shutdown(100).catch(() => {});
+      await system.shutdown(1).catch(() => {});
     });
 
     it('手动制造内存/磁盘 mismatch → audit emit', async () => {
@@ -396,7 +396,7 @@ describe('async-task queue cross-source audit (phase 239 Step B)', () => {
         expect.stringContaining('kind=qc1_pending_memory_ne_disk'),
       ]));
 
-      await system.shutdown(100).catch(() => {});
+      await system.shutdown(1).catch(() => {});
     });
 
     it('fire-and-forget 模式：主路径不 throw 不阻塞', async () => {

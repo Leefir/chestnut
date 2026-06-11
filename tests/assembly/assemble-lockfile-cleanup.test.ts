@@ -6,6 +6,7 @@ const { mockSkillFactory } = vi.hoisted(() => ({
 import { assemble } from '../../src/assembly/assemble.js';
 import { LockConflictError } from '../../src/assembly/index.js';
 import { buildTestGlobalConfig } from '../helpers/global-config.js';
+import { buildLLMConfig } from '../../src/foundation/llm-orchestrator/config-adapter.js';  // phase 280: hoist 2 dyn
 
 // ============================================================================
 // Shared mocks
@@ -250,7 +251,6 @@ describe('Assembly — lockfile cleanup on throw (F-r72-asm-P0-1 / γ)', () => {
   });
 
   it('releases lockfile when assembly throws after acquireLock', async () => {
-    const { buildLLMConfig } = await import('../../src/foundation/llm-orchestrator/config-adapter.js');
     (buildLLMConfig as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
       throw new Error('simulated assembly failure');
     });
@@ -276,7 +276,6 @@ describe('Assembly — lockfile cleanup on throw (F-r72-asm-P0-1 / γ)', () => {
   });
 
   it('audits releaseLock failure during cleanup but rethrows original error', async () => {
-    const { buildLLMConfig } = await import('../../src/foundation/llm-orchestrator/config-adapter.js');
     (buildLLMConfig as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
       throw new Error('simulated assembly failure');
     });

@@ -10,6 +10,10 @@ import * as path from 'path';
 import { listCommand } from '../../../src/cli/commands/claw-list.js';
 import { FAKE_LIVE_PID } from '../../helpers/test-pids.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
+// phase 270: hoist 7 dynamic imports of 3 unique modules
+import { loadGlobalConfig, getGlobalConfigPath } from '../../../src/foundation/config/index.js';
+import { createProcessManagerForCLI } from '../../../src/foundation/process-manager/factories.js';
+import { formatRelativeTime, getLastActiveMs } from '../../../src/cli/commands/claw-shared.js';
 
 const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });
 
@@ -54,17 +58,14 @@ describe('claw-list', () => {
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const { loadGlobalConfig, getGlobalConfigPath } = await import('../../../src/foundation/config/index.js');
     vi.mocked(loadGlobalConfig).mockReturnValue({} as any);
     vi.mocked(getGlobalConfigPath).mockReturnValue('/tmp/chestnut/config.yaml');
 
-    const { createProcessManagerForCLI } = await import('../../../src/foundation/process-manager/factories.js');
     vi.mocked(createProcessManagerForCLI).mockReturnValue({
       isAlive: vi.fn().mockReturnValue(false),
       readPid: vi.fn().mockResolvedValue(null),
     } as any);
 
-    const { formatRelativeTime, getLastActiveMs } = await import('../../../src/cli/commands/claw-shared.js');
     vi.mocked(formatRelativeTime).mockImplementation((ms: number) => `${Math.floor(ms / 60000)}m`);
     vi.mocked(getLastActiveMs).mockResolvedValue(Date.now() - 300_000);
   });
@@ -74,7 +75,6 @@ describe('claw-list', () => {
   });
 
   it('lists all claws with status', async () => {
-    const { createProcessManagerForCLI } = await import('../../../src/foundation/process-manager/factories.js');
     vi.mocked(createProcessManagerForCLI).mockReturnValue({
       isAlive: vi.fn((name: string) => name === 'claw-a'),
       readPid: vi.fn().mockResolvedValue({ pid: FAKE_LIVE_PID }),
@@ -117,7 +117,6 @@ describe('claw-list', () => {
   });
 
   it('throws when loadGlobalConfig throws (outside try-catch)', async () => {
-    const { loadGlobalConfig } = await import('../../../src/foundation/config/index.js');
     vi.mocked(loadGlobalConfig).mockImplementation(() => {
       throw new Error('config corrupt');
     });
@@ -126,7 +125,6 @@ describe('claw-list', () => {
   });
 
   it('reports contract status and outbox count', async () => {
-    const { createProcessManagerForCLI } = await import('../../../src/foundation/process-manager/factories.js');
     vi.mocked(createProcessManagerForCLI).mockReturnValue({
       isAlive: vi.fn().mockReturnValue(true),
       readPid: vi.fn().mockResolvedValue({ pid: 9999 }),
@@ -172,7 +170,6 @@ describe('claw-list', () => {
   });
 
   it('outputs JSON when --json flag is passed', async () => {
-    const { createProcessManagerForCLI } = await import('../../../src/foundation/process-manager/factories.js');
     vi.mocked(createProcessManagerForCLI).mockReturnValue({
       isAlive: vi.fn((name: string) => name === 'claw-a'),
       readPid: vi.fn().mockResolvedValue({ pid: FAKE_LIVE_PID }),

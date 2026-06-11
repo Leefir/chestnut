@@ -14,6 +14,11 @@ import * as os from 'os';
 import * as fs from 'fs';
 import { randomUUID } from 'crypto';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
+// phase 266: hoist 17 dynamic imports of 5 unique modules below.
+import { sendCommand } from '../../src/cli/commands/claw-send.js';
+import { getGlobalConfigPath } from '../../src/foundation/config/index.js';
+import { createProcessManagerForCLI } from '../../src/foundation/process-manager/index.js';
+import { formatClawStatusHint, formatNoActiveContractHint } from '../../src/cli/commands/claw-shared.js';
 
 const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });
 
@@ -60,9 +65,6 @@ describe('cli claw send status hint (phase 232)', () => {
   });
 
   it('console.log 含 hint when target claw not alive', async () => {
-    const { sendCommand } = await import('../../src/cli/commands/claw-send.js');
-    const { getGlobalConfigPath } = await import('../../src/foundation/config/index.js');
-    const { createProcessManagerForCLI } = await import('../../src/foundation/process-manager/index.js');
 
     vi.mocked(getGlobalConfigPath).mockReturnValue(path.join(tmpRoot, '.chestnut', 'config.yaml'));
     vi.mocked(createProcessManagerForCLI).mockReturnValue({
@@ -79,9 +81,6 @@ describe('cli claw send status hint (phase 232)', () => {
   });
 
   it('console.log 不含 hint when target claw alive', async () => {
-    const { sendCommand } = await import('../../src/cli/commands/claw-send.js');
-    const { getGlobalConfigPath } = await import('../../src/foundation/config/index.js');
-    const { createProcessManagerForCLI } = await import('../../src/foundation/process-manager/index.js');
 
     vi.mocked(getGlobalConfigPath).mockReturnValue(path.join(tmpRoot, '.chestnut', 'config.yaml'));
     vi.mocked(createProcessManagerForCLI).mockReturnValue({
@@ -98,9 +97,6 @@ describe('cli claw send status hint (phase 232)', () => {
   });
 
   it('uses notifyClaw wrapper — file written to target inbox', async () => {
-    const { sendCommand } = await import('../../src/cli/commands/claw-send.js');
-    const { getGlobalConfigPath } = await import('../../src/foundation/config/index.js');
-    const { createProcessManagerForCLI } = await import('../../src/foundation/process-manager/index.js');
 
     vi.mocked(getGlobalConfigPath).mockReturnValue(path.join(tmpRoot, '.chestnut', 'config.yaml'));
     vi.mocked(createProcessManagerForCLI).mockReturnValue({
@@ -119,7 +115,6 @@ describe('cli claw send status hint (phase 232)', () => {
   });
 
   it('uses same formatClawStatusHint helper as notify_claw tool (M#1)', async () => {
-    const { formatClawStatusHint } = await import('../../src/cli/commands/claw-shared.js');
 
     expect(formatClawStatusHint('my-claw', false)).toBe(
       'Note: claw "my-claw" is not running. Start it with: chestnut claw my-claw daemon',
@@ -128,9 +123,6 @@ describe('cli claw send status hint (phase 232)', () => {
   });
 
   it('console.log 含 contract hint when no active contract (phase 241)', async () => {
-    const { sendCommand } = await import('../../src/cli/commands/claw-send.js');
-    const { getGlobalConfigPath } = await import('../../src/foundation/config/index.js');
-    const { createProcessManagerForCLI } = await import('../../src/foundation/process-manager/index.js');
 
     vi.mocked(getGlobalConfigPath).mockReturnValue(path.join(tmpRoot, '.chestnut', 'config.yaml'));
     vi.mocked(createProcessManagerForCLI).mockReturnValue({
@@ -147,9 +139,6 @@ describe('cli claw send status hint (phase 232)', () => {
   });
 
   it('console.log 不含 contract hint when has active contract (phase 241)', async () => {
-    const { sendCommand } = await import('../../src/cli/commands/claw-send.js');
-    const { getGlobalConfigPath } = await import('../../src/foundation/config/index.js');
-    const { createProcessManagerForCLI } = await import('../../src/foundation/process-manager/index.js');
 
     // 模拟有 active contract
     fs.mkdirSync(path.join(tmpRoot, '.chestnut', 'claws', 'test-claw', 'contract', 'active', 'contract-1'), { recursive: true });
@@ -169,7 +158,6 @@ describe('cli claw send status hint (phase 232)', () => {
   });
 
   it('uses formatNoActiveContractHint helper (phase 241)', async () => {
-    const { formatNoActiveContractHint } = await import('../../src/cli/commands/claw-shared.js');
 
     expect(formatNoActiveContractHint('my-claw')).toBe(
       'No active contract for "my-claw". Ask claw to reply via send tool in message body.',

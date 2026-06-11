@@ -5,6 +5,7 @@ import { auditInfoCommand } from '../../src/cli/commands/audit-info.js';
 import { auditLookupCommand } from '../../src/cli/commands/audit-lookup.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import type { FileSystem } from '../../src/foundation/fs/types.js';
+import * as fsNative from 'fs';  // phase 283: hoist 8 require('fs') calls
 
 const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });
 
@@ -24,7 +25,7 @@ describe('audit CLI motion-aware adaptation (phase 167)', () => {
   beforeEach(() => {
     stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
     stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
-    tempDir = require('fs').mkdtempSync('/tmp/chestnut-test-');
+    tempDir = fsNative.mkdtempSync('/tmp/chestnut-test-');
     originalChestnutRoot = process.env.CHESTNUT_ROOT;
     process.env.CHESTNUT_ROOT = tempDir;
   });
@@ -37,14 +38,14 @@ describe('audit CLI motion-aware adaptation (phase 167)', () => {
       process.env.CHESTNUT_ROOT = originalChestnutRoot;
     }
     try {
-      require('fs').rmSync(tempDir, { recursive: true, force: true });
+      fsNative.rmSync(tempDir, { recursive: true, force: true });
     } catch { /* ignore */ }
   });
 
   function writeMotionAudit(content: string, fileName = 'audit.tsv') {
     const dir = path.join(tempDir, '.chestnut', 'motion');
-    require('fs').mkdirSync(dir, { recursive: true });
-    require('fs').writeFileSync(path.join(dir, fileName), content);
+    fsNative.mkdirSync(dir, { recursive: true });
+    fsNative.writeFileSync(path.join(dir, fileName), content);
   }
 
   // ── audit query motion-aware ──
@@ -100,8 +101,8 @@ describe('audit CLI motion-aware adaptation (phase 167)', () => {
 
   it('audit lookup -c motion resolves to motion dialog/current.json', async () => {
     const motionDir = path.join(tempDir, '.chestnut', 'motion');
-    require('fs').mkdirSync(path.join(motionDir, 'dialog'), { recursive: true });
-    require('fs').writeFileSync(path.join(motionDir, 'audit.tsv'), '');
+    fsNative.mkdirSync(path.join(motionDir, 'dialog'), { recursive: true });
+    fsNative.writeFileSync(path.join(motionDir, 'audit.tsv'), '');
     const session = {
       version: 2,
       clawId: 'motion',
@@ -115,7 +116,7 @@ describe('audit CLI motion-aware adaptation (phase 167)', () => {
       ],
       toolsForLLM: [],
     };
-    require('fs').writeFileSync(path.join(motionDir, 'dialog', 'current.json'), JSON.stringify(session));
+    fsNative.writeFileSync(path.join(motionDir, 'dialog', 'current.json'), JSON.stringify(session));
 
     await auditLookupCommand({ fsFactory }, 'call_00_xxx', { claw: 'motion', file: 'audit' });
     const output = stdoutSpy.mock.calls.map(c => c[0] as string).join('');

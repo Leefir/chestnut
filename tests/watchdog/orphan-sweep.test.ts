@@ -9,6 +9,7 @@ import { setAuditWriter, _resetWatchdogContextForTest } from '../../src/watchdog
 import { WATCHDOG_AUDIT_EVENTS } from '../../src/watchdog/audit-events.js';
 import { AuditWriter } from '../../src/foundation/audit/writer.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
+import { sweepOrphanWatchdogs } from '../../src/watchdog/orphan-sweep.js';  // phase 276: hoist 4 dyn imports
 const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });
 
 const mockFindProcesses = vi.hoisted(() => vi.fn().mockReturnValue([]));
@@ -64,7 +65,6 @@ describe('watchdog orphan sweep', () => {
   it('sweep kills orphan watchdogs excluding pid-file one + audits ORPHAN_SWEEP_KILLED', async () => {
     vi.useFakeTimers();
     try {
-      const { sweepOrphanWatchdogs } = await import('../../src/watchdog/orphan-sweep.js');
 
       const pidFile = path.join(chestnutDir, 'watchdog.pid');
       fs.writeFileSync(pidFile, JSON.stringify({ pid: 1000, root: '/test/root' }));
@@ -93,7 +93,6 @@ describe('watchdog orphan sweep', () => {
   it('excludePid=null kills all including pid-file one', async () => {
     vi.useFakeTimers();
     try {
-      const { sweepOrphanWatchdogs } = await import('../../src/watchdog/orphan-sweep.js');
 
       mockFindProcesses.mockReturnValue([1000, 2000]);
 
@@ -110,7 +109,6 @@ describe('watchdog orphan sweep', () => {
   });
 
   it('findProcesses throws → audit ORPHAN_SWEEP_FAILED phase=find + return []', async () => {
-    const { sweepOrphanWatchdogs } = await import('../../src/watchdog/orphan-sweep.js');
 
     mockFindProcesses.mockImplementation(() => {
       throw new Error('pgrep failed');
@@ -129,7 +127,6 @@ describe('watchdog orphan sweep', () => {
   it('SIGTERM failure on one pid audits failure + continues killing others', async () => {
     vi.useFakeTimers();
     try {
-      const { sweepOrphanWatchdogs } = await import('../../src/watchdog/orphan-sweep.js');
 
       mockFindProcesses.mockReturnValue([2000, 3000]);
       mockKill.mockImplementation((pid: number) => {

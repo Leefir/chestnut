@@ -185,8 +185,8 @@ describe('FileWatcher', () => {
       },
     );
 
-    // sleep: async error trigger; no deterministic signal
-    await new Promise(r => setTimeout(r, 500));
+    // sleep: async error trigger; no deterministic signal (phase 288: 500ms → 100ms)
+    await new Promise(r => setTimeout(r, 100));
     await watcher.close();
 
     // onError throwing should not cause infinite loop or unhandled rejection

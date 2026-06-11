@@ -59,19 +59,27 @@ describe('audit wired in CLI', () => {
   });
 
   it('sweepOrphanWatchdogs auto-wires audit when not previously set and writes ORPHAN_SWEEP_KILLED', async () => {
-    const { sweepOrphanWatchdogs } = await import('../../src/watchdog/orphan-sweep.js');
+    // phase 287: fake timers skip the 1000ms SWEEP_GRACE_MS wait inside orphan-sweep
+    vi.useFakeTimers();
+    try {
+      const { sweepOrphanWatchdogs } = await import('../../src/watchdog/orphan-sweep.js');
 
-    mockFindProcesses.mockReturnValue([2000]);
+      mockFindProcesses.mockReturnValue([2000]);
 
-    const killed = await sweepOrphanWatchdogs(fsFactory, { excludePid: null }, { kill: mockKill });
+      const sweepPromise = sweepOrphanWatchdogs(fsFactory, { excludePid: null }, { kill: mockKill });
+      await vi.advanceTimersByTimeAsync(1001);
+      const killed = await sweepPromise;
 
-    expect(killed).toEqual([2000]);
-    expect(getAuditWriter()).not.toBeNull();
+      expect(killed).toEqual([2000]);
+      expect(getAuditWriter()).not.toBeNull();
 
-    const auditPath = path.join(chestnutDir, 'audit.tsv');
-    expect(fs.existsSync(auditPath)).toBe(true);
-    const content = fs.readFileSync(auditPath, 'utf8');
-    expect(content).toContain(WATCHDOG_AUDIT_EVENTS.ORPHAN_SWEEP_KILLED);
+      const auditPath = path.join(chestnutDir, 'audit.tsv');
+      expect(fs.existsSync(auditPath)).toBe(true);
+      const content = fs.readFileSync(auditPath, 'utf8');
+      expect(content).toContain(WATCHDOG_AUDIT_EVENTS.ORPHAN_SWEEP_KILLED);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('daemon process: existing audit writer is preserved by ensureAuditWired', () => {

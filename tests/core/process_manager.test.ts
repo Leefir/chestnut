@@ -28,6 +28,7 @@ import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { createTempDir, cleanupTempDir } from '../utils/temp.js';
 import { makeAudit } from '../helpers/audit.js';
 import { waitFor } from '../helpers/wait-for.js';
+import { spawnSync, spawn } from 'child_process';  // phase 273: hoist 5 dyn imports (vi.mock above hoisted by vitest)
 import { DEAD_PID_STRING } from '../helpers/dead-pid.js';
 
 describe('ProcessManager', () => {
@@ -38,7 +39,6 @@ describe('ProcessManager', () => {
     tempDir = await createTempDir();
     nodeFs = new NodeFileSystem({ baseDir: tempDir });
     // 重装 vi.mock factory default（restoreAllMocks 后 chained mockImplementation 失效）
-    const { spawnSync, spawn } = await import('child_process');
     vi.mocked(spawnSync).mockImplementation(() =>
       ({ status: 1, stdout: Buffer.from(''), stderr: Buffer.from('') }) as ReturnType<typeof import('child_process').spawnSync>
     );
@@ -205,7 +205,6 @@ describe('ProcessManager', () => {
       const logFile = path.join(clawDir, 'logs', 'daemon.log');
 
       // Use a dead PID so event-driven readiness loop fast-fails instead of hanging
-      const { spawn } = await import('child_process');
       vi.mocked(spawn).mockReturnValue({ pid: 99999, unref: vi.fn() } as unknown as ReturnType<typeof import('child_process').spawn>);
 
       // Pre-create an EMPTY PID file (simulates in-progress spawn by another process)
@@ -227,7 +226,6 @@ describe('ProcessManager', () => {
     it('should throw ProcessListUnavailable when spawnSync throws (e.g. ENOENT)', async () => {
       const { audit } = makeAudit();
       const pm = new ProcessManager(nodeFs, tempDir, audit);
-      const { spawnSync } = await import('child_process');
       vi.mocked(spawnSync).mockImplementation(() => {
         const err = Object.assign(new Error('ENOENT: pgrep not found'), { code: 'ENOENT' });
         throw err;
@@ -239,7 +237,6 @@ describe('ProcessManager', () => {
     it('should throw ProcessListUnavailable when pgrep exits with non-0/non-1 status', async () => {
       const { audit } = makeAudit();
       const pm = new ProcessManager(nodeFs, tempDir, audit);
-      const { spawnSync } = await import('child_process');
       vi.mocked(spawnSync).mockImplementation(() => ({
         status: 2,
         stdout: Buffer.from(''),
@@ -252,7 +249,6 @@ describe('ProcessManager', () => {
     it('should return empty array when pgrep exits 1 (no match)', async () => {
       const { audit } = makeAudit();
       const pm = new ProcessManager(nodeFs, tempDir, audit);
-      const { spawnSync } = await import('child_process');
       vi.mocked(spawnSync).mockImplementation(() => ({
         status: 1,
         stdout: '',

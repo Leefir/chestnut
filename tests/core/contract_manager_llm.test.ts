@@ -85,6 +85,7 @@ import { InboxWriter } from '../../src/foundation/messaging/index.js';
 
 import { DEFAULT_MAX_STEPS } from '../../src/core/agent-executor/index.js';
 import { makeContractYaml } from '../helpers/contract-yaml.js';
+import * as yaml from 'js-yaml';  // phase 258: hoist; was per-call dynamic in writeContractFiles helper.
 import { createToolRegistry } from '../../src/foundation/tools/index.js';
 import { WAIT_FOR_DEFAULT_BUDGET_MS } from '../helpers/test-timeouts.js';
 
@@ -101,7 +102,6 @@ async function setupContract(
   await fs.mkdir(contractDir, { recursive: true });
 
   // Write contract.yaml
-  const yaml = await import('js-yaml');
   await fs.writeFile(path.join(contractDir, 'contract.yaml'), yaml.dump(contractYaml));
 
   // Write progress.json

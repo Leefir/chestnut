@@ -13,6 +13,7 @@ import * as path from 'path';
 import { spawnShadowSubagent } from '../../../src/core/summon-system/internal/shadow/index.js';
 import { ExecContextImpl } from '../../../src/foundation/tools/context.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/index.js';
+import { promises as fsp } from 'fs';  // phase 281: hoist 2 dyn fs imports
 import { makeAudit } from '../../helpers/audit.js';
 import { createTempDir, cleanupTempDir } from '../../utils/temp.js';
 import type { Message, ToolDefinition } from '../../../src/foundation/llm-provider/types.js';
@@ -23,8 +24,8 @@ import { createMockTaskSystem } from '../../helpers/task-system.js';
 async function readPendingTasks(baseDir: string): Promise<Array<Record<string, unknown>>> {
   const dir = path.join(baseDir, TASKS_QUEUES_PENDING_DIR);
   try {
-    const files = (await import('fs').then(m => m.promises.readdir(dir))).filter(f => f.endsWith('.json'));
-    return Promise.all(files.map(async f => JSON.parse(await import('fs').then(m => m.promises.readFile(path.join(dir, f), 'utf-8')))));
+    const files = (await fsp.readdir(dir)).filter(f => f.endsWith('.json'));
+    return Promise.all(files.map(async f => JSON.parse(await fsp.readFile(path.join(dir, f), 'utf-8'))));
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
     return [];

@@ -4,6 +4,9 @@ import * as os from 'os';
 import * as fs from 'fs';
 import { randomUUID } from 'crypto';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
+// phase 278: hoist 3 dyn imports
+import { sendCommand } from '../../src/cli/commands/claw-send.js';
+import { getGlobalConfigPath } from '../../src/foundation/config/index.js';
 
 const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });
 
@@ -43,9 +46,6 @@ describe('claw-send — confinement baseDir vs root (P0.2 phase 611)', () => {
   });
 
   it('claw-send writes inbox via clawDir-confined NodeFileSystem (not baseDir=/)', async () => {
-    const { sendCommand } = await import('../../src/cli/commands/claw-send.js');
-    const { NodeFileSystem } = await import('../../src/foundation/fs/node-fs.js');
-    const { getGlobalConfigPath } = await import('../../src/foundation/config/index.js');
 
     vi.mocked(getGlobalConfigPath).mockReturnValue(path.join(tmpRoot, '.chestnut', 'config.yaml'));
 

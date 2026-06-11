@@ -5,6 +5,9 @@ const { mockSkillFactory } = vi.hoisted(() => ({
 }));
 import { assemble } from '../../src/assembly/assemble.js';
 import { buildTestGlobalConfig } from '../helpers/global-config.js';
+// phase 279: hoist 3 dyn imports
+import { createMemorySystem } from '../../src/core/memory/index.js';
+import { CronRunner } from '../../src/core/cron/runner.js';
 
 // ============================================================================
 // Shared mocks
@@ -259,12 +262,10 @@ describe('Assembly — dream-trigger handler memorySystem guard (F-r72-asm-P0-2)
   });
 
   it('handler returns early when memorySystem is undefined (non-motion claw)', async () => {
-    const { createMemorySystem } = await import('../../src/core/memory/index.js');
     (createMemorySystem as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(undefined);
 
     await assemble(baseConfig, { createSkillSystem: mockSkillFactory });
 
-    const { CronRunner } = await import('../../src/core/cron/runner.js');
     const jobs = (CronRunner as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0];
     const dreamJob = jobs.find((j: any) => j.name === 'dream-trigger');
     expect(dreamJob).toBeDefined();
@@ -279,7 +280,6 @@ describe('Assembly — dream-trigger handler memorySystem guard (F-r72-asm-P0-2)
   it('handler invokes memorySystem methods when motion claw assembles', async () => {
     await assemble(baseConfig, { createSkillSystem: mockSkillFactory });
 
-    const { CronRunner } = await import('../../src/core/cron/runner.js');
     const jobs = (CronRunner as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0];
     const dreamJob = jobs.find((j: any) => j.name === 'dream-trigger');
     expect(dreamJob).toBeDefined();

@@ -5,6 +5,7 @@ import { auditLookupCommand } from '../../src/cli/commands/audit-lookup.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import type { FileSystem } from '../../src/foundation/fs/types.js';
 import { getClawDir } from '../../src/foundation/config/index.js';
+import * as fsNative from 'fs';  // phase 283: hoist 6 require('fs') calls
 
 const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });
 
@@ -25,9 +26,9 @@ let stdoutSpy: ReturnType<typeof vi.spyOn>;
 let stderrSpy: ReturnType<typeof vi.spyOn>;
 
 function buildFixture() {
-  const tmpDir = require('fs').mkdtempSync('/tmp/phase152-cross-cli-');
+  const tmpDir = fsNative.mkdtempSync('/tmp/phase152-cross-cli-');
   const clawDir = path.join(tmpDir, 'claws', 'test-claw');
-  require('fs').mkdirSync(clawDir, { recursive: true });
+  fsNative.mkdirSync(clawDir, { recursive: true });
 
   // audit.tsv: 5 tool rows + 3 lifecycle rows
   const auditRows = [
@@ -38,10 +39,10 @@ function buildFixture() {
     '2026-06-07T10:00:04.000Z\tseq=5\ttool_result\texec\tcall_01_yyy\tok\tsummary=exec done…\ttool_use_id=call_01_yyy\tstep=2\tcontract_id=c1\tcontent_size=150\ttrace_id=t1',
     '2026-06-07T10:00:05.000Z\tseq=6\tturn_end\ttrace_id=t1',
   ];
-  require('fs').writeFileSync(path.join(clawDir, 'audit.tsv'), auditRows.join('\n') + '\n');
+  fsNative.writeFileSync(path.join(clawDir, 'audit.tsv'), auditRows.join('\n') + '\n');
 
   // dialog/current.json: SessionData with ToolUseBlock/ToolResultBlock
-  require('fs').mkdirSync(path.join(clawDir, 'dialog'), { recursive: true });
+  fsNative.mkdirSync(path.join(clawDir, 'dialog'), { recursive: true });
   const session = {
     version: 2,
     clawId: 'test-claw',
@@ -57,14 +58,14 @@ function buildFixture() {
     ],
     toolsForLLM: [],
   };
-  require('fs').writeFileSync(path.join(clawDir, 'dialog', 'current.json'), JSON.stringify(session));
+  fsNative.writeFileSync(path.join(clawDir, 'dialog', 'current.json'), JSON.stringify(session));
 
   return {
     tmpDir,
     clawDir,
     tearDown: () => {
       try {
-        require('fs').rmSync(tmpDir, { recursive: true, force: true });
+        fsNative.rmSync(tmpDir, { recursive: true, force: true });
       } catch { /* ignore */ }
     },
   };

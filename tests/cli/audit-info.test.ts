@@ -3,6 +3,7 @@ import * as path from 'path';
 import { auditInfoCommand } from '../../src/cli/commands/audit-info.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import type { FileSystem } from '../../src/foundation/fs/types.js';
+import * as fsNative from 'fs';  // phase 282: hoist require('fs') calls in beforeEach/afterEach/writeAudit
 
 const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });
 
@@ -13,27 +14,32 @@ vi.mock('../../src/foundation/config/index.js', () => ({
   getClawConfigPath: vi.fn((claw: string) => `/tmp/chestnut-test/claws/${claw}/config.yaml`),
 }));
 
+// phase 256: hoist the dynamic import that 6 tests do — vi.mock guarantees this
+// resolves to the mocked module, so a top-level import is just as safe and
+// avoids the per-test `await import(...)` overhead.
+import { getClawDir } from '../../src/foundation/config/index.js';
+
 describe('audit info', () => {
   let stdoutSpy: ReturnType<typeof vi.spyOn>;
   let tempDir: string;
 
   beforeEach(() => {
     stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-    tempDir = require('fs').mkdtempSync('/tmp/chestnut-test-');
-    require('fs').mkdirSync(path.join(tempDir, 'claws', 'test-claw'), { recursive: true });
+    tempDir = fsNative.mkdtempSync('/tmp/chestnut-test-');
+    fsNative.mkdirSync(path.join(tempDir, 'claws', 'test-claw'), { recursive: true });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
     try {
-      require('fs').rmSync(tempDir, { recursive: true, force: true });
+      fsNative.rmSync(tempDir, { recursive: true, force: true });
     } catch { /* ignore */ }
   });
 
   function writeAudit(claw: string, content: string, fileName = 'audit.tsv') {
     const dir = path.join(tempDir, 'claws', claw);
-    require('fs').mkdirSync(dir, { recursive: true });
-    require('fs').writeFileSync(path.join(dir, fileName), content);
+    fsNative.mkdirSync(dir, { recursive: true });
+    fsNative.writeFileSync(path.join(dir, fileName), content);
   }
 
   it('claw not found → throws CliError', async () => {
@@ -45,7 +51,6 @@ describe('audit info', () => {
 
   it('default output includes claw name and files section', async () => {
     writeAudit('test-claw', 'content\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditInfoCommand({ fsFactory }, { claw: 'test-claw' });
@@ -59,7 +64,6 @@ describe('audit info', () => {
 
   it('--json output has correct schema', async () => {
     writeAudit('test-claw', 'content\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditInfoCommand({ fsFactory }, { claw: 'test-claw', json: true });
@@ -75,7 +79,6 @@ describe('audit info', () => {
 
   it('owner_modules includes all modules for audit file', async () => {
     writeAudit('test-claw', 'content\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditInfoCommand({ fsFactory }, { claw: 'test-claw', json: true });
@@ -89,7 +92,6 @@ describe('audit info', () => {
   it('multi-file aware: lists tick.tsv alongside audit.tsv', async () => {
     writeAudit('test-claw', 'content\n', 'audit.tsv');
     writeAudit('test-claw', 'content\n', 'tick.tsv');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditInfoCommand({ fsFactory }, { claw: 'test-claw', json: true });
@@ -105,7 +107,6 @@ describe('audit info', () => {
   it('business main star mark on audit file', async () => {
     writeAudit('test-claw', 'content\n', 'audit.tsv');
     writeAudit('test-claw', 'content\n', 'tick.tsv');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditInfoCommand({ fsFactory }, { claw: 'test-claw' });
@@ -116,7 +117,6 @@ describe('audit info', () => {
 
   it('schema_routing available true when fileRouting present (phase 159)', async () => {
     writeAudit('test-claw', 'content\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditInfoCommand({ fsFactory }, { claw: 'test-claw', json: true });

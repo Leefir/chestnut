@@ -23,9 +23,11 @@ describe('step-executor messages persist ref (phase 224)', () => {
 
   it('budget 超时（trim 触发）、push 仍落 caller 原引用', async () => {
     // 构造多条 messages：中间一条超大 assistant 可被 trim、首尾 user 受保护
+    // phase 255 → phase 286: shrink further (30000 → 22000) — still > 64k tokens which
+    // exceeds the deepseek-chat budget, trim still triggers.
     const bigAssistant: Message = {
       role: 'assistant',
-      content: [{ type: 'text', text: 'hello world '.repeat(65000) }],
+      content: [{ type: 'text', text: 'hello world '.repeat(22000) }],
     };
     const messages: Message[] = [
       { role: 'user', content: 'hi' },
@@ -37,7 +39,7 @@ describe('step-executor messages persist ref (phase 224)', () => {
         yield { type: 'text_delta' as const, delta: 'short' };
         yield { type: 'done' as const, stopReason: 'end_turn' as const, usage: { inputTokens: 1, outputTokens: 1 } };
       },
-      getProviderInfo: () => ({ model: 'volc-ds4pro', name: 'volc-ds4pro' }),
+      getProviderInfo: () => ({ model: 'deepseek-chat', name: 'deepseek-chat' }),
     };
     await executeStep({
       messages, systemPrompt: 's', llm: mockLLM as any, tools: [],

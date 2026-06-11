@@ -18,6 +18,7 @@ import { formatUserChat } from '../../../src/core/gateway/index.js';
 import { formatCrashNotification } from '../../../src/watchdog/inbox-formatter.js';
 import { createHeartbeatInboxFormatter } from '../../../src/core/heartbeat/index.js';
 import { RUNTIME_AUDIT_EVENTS } from '../../../src/core/runtime/runtime-audit-events.js';
+import { registerAsyncTaskSystemFormatters } from '../../../src/core/async-task-system/inbox-formatter.js';  // phase 264: hoist
 
 class TestRuntime extends Runtime {
   async testFormatInboxMessage(type: string, from: string, body: string, timestamp?: string): Promise<string> {
@@ -130,7 +131,6 @@ describe('phase 1414 Runtime.formatInboxMessage via FormatterRegistry', () => {
   it('task_result → [system message ...] body（phase 9: was generic "message" → typed task_result）', async () => {
     const audit = { write: vi.fn() , preview: vi.fn((s: string) => s), message: vi.fn((s: string) => s), summary: vi.fn((s: string) => s)};
     const registry = createMessageFormatterRegistry();
-    const { registerAsyncTaskSystemFormatters } = await import('../../../src/core/async-task-system/inbox-formatter.js');
     registerAsyncTaskSystemFormatters(registry);
     const runtime = build({ audit, formatterRegistry: registry });
 

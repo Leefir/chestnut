@@ -48,7 +48,7 @@ describe('phase 859 r111 H fork: cancel path promise reject audit (Sa.2)', () =>
   });
 
   afterEach(async () => {
-    await system.shutdown(100).catch(() => {});
+    await system.shutdown(1).catch(() => {});
   });
 
   // 反向 1（关键路径 reject → audit emit）

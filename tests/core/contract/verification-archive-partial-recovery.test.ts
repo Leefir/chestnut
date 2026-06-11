@@ -13,6 +13,7 @@ import { createToolRegistry } from '../../../src/foundation/tools/index.js';
 import { makeContractYaml } from '../../helpers/contract-yaml.js';
 import { makeAudit, waitForAuditEvent } from '../../helpers/audit.js';
 import { CONTRACT_AUDIT_EVENTS } from '../../../src/core/contract/audit-events.js';
+import { archiveAndEmit } from '../../../src/core/contract/verification-lifecycle.js';  // phase 263: hoist
 
 let tmpDir: string;
 let clawDir: string;
@@ -81,7 +82,6 @@ describe('archiveAndEmit partial recovery (phase 1371 sub-2)', () => {
     });
 
     // Call archiveAndEmit indirectly via the private _verificationCtx -> archiveAndEmit
-    const { archiveAndEmit } = await import('../../../src/core/contract/verification-lifecycle.js');
     await archiveAndEmit(
       (manager as any)._verificationCtx(),
       contractId,

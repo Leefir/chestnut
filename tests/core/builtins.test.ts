@@ -5,6 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as path from 'path';
 import { promises as fs } from 'fs';
+import * as fsNative from 'fs';  // phase 257: hoist; 7 it() bodies previously did `await import('fs')` per invocation.
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
 
@@ -381,7 +382,6 @@ describe('Builtin Tools', () => {
 
       // external process modifies the file (advance mtime + change content)
       await new Promise(r => setTimeout(r, 15));
-      const fsNative = await import('fs');
       fsNative.writeFileSync(path.join(tempDir, 'clawspace/stale.txt'), 'v2 external content');
 
       const writeResult = await writeTool.execute({
@@ -1136,7 +1136,6 @@ describe('Builtin Tools', () => {
 
     it('execTool 默认 cwd = ctx.workspaceDir（主 claw = clawspace）', async () => {
       // ensure clawspace subdir exists in tempDir (some tests may not have it)
-      const fsNative = await import('fs');
       fsNative.mkdirSync(path.join(tempDir, 'clawspace'), { recursive: true });
 
       const result = await execTool.execute({ command: 'pwd' }, ctx);
@@ -1146,7 +1145,6 @@ describe('Builtin Tools', () => {
     });
 
     it('execTool subagent 默认 cwd = clawspace (shared with caller / phase 518)', async () => {
-      const fsNative = await import('fs');
       fsNative.mkdirSync(path.join(tempDir, 'clawspace'), { recursive: true });
       const subagentCtx = new ExecContextImpl({
         clawsDir: path.join(tempDir, 'claws'),
@@ -1166,7 +1164,6 @@ describe('Builtin Tools', () => {
     });
 
     it('subagent 显式用 cwd 写 dedicated temp dir (phase 519: ../ prefix)', async () => {
-      const fsNative = await import('fs');
       const subagentTempDir = path.join(tempDir, 'tasks/subagents/phase518-test');
       fsNative.mkdirSync(subagentTempDir, { recursive: true });
       fsNative.mkdirSync(path.join(tempDir, 'clawspace'), { recursive: true });
@@ -1193,7 +1190,6 @@ describe('Builtin Tools', () => {
     });
 
     it('subagent default write 落 clawspace (与 caller 共享)', async () => {
-      const fsNative = await import('fs');
       fsNative.mkdirSync(path.join(tempDir, 'clawspace'), { recursive: true });
       const subagentCtx = new ExecContextImpl({
         clawsDir: path.join(tempDir, 'claws'),
@@ -1218,7 +1214,6 @@ describe('Builtin Tools', () => {
     });
 
     it('execTool args.cwd 相对路径以 workspaceDir 为基准 resolve (phase 519)', async () => {
-      const fsNative = await import('fs');
       fsNative.mkdirSync(path.join(tempDir, 'clawspace', 'build'), { recursive: true });
 
       const result = await execTool.execute({ command: 'pwd', cwd: 'build' }, ctx);
@@ -1237,7 +1232,6 @@ describe('Builtin Tools', () => {
     });
 
     it('should write file content without heredoc issues (phase 1321)', async () => {
-      const fsNative = await import('fs');
       fsNative.mkdirSync(path.join(tempDir, 'clawspace'), { recursive: true });
 
       const result = await execTool.execute({

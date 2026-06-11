@@ -5,6 +5,7 @@ const { mockSkillFactory } = vi.hoisted(() => ({
 }));
 import { assemble } from '../../src/assembly/assemble.js';
 import { buildTestGlobalConfig } from '../helpers/global-config.js';
+import { createEvolutionSystem } from '../../src/core/evolution-system/index.js';  // phase 280: hoist 2 dyn
 
 // ============================================================================
 // Shared mocks
@@ -273,7 +274,6 @@ describe('contractManager onContractCompleted NPE guard (phase 620)', () => {
   });
 
   it('does not throw when evolutionSystem missing (defensive guard)', async () => {
-    const { createEvolutionSystem } = await import('../../src/core/evolution-system/index.js');
     (createEvolutionSystem as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(undefined);
 
     await expect(assemble(baseConfig, { createSkillSystem: mockSkillFactory })).resolves.toBeDefined();
@@ -281,7 +281,6 @@ describe('contractManager onContractCompleted NPE guard (phase 620)', () => {
 
   it('still calls runRetroForContract when evolutionSystem present (regression)', async () => {
     const mockRunRetro = vi.fn().mockResolvedValue(undefined);
-    const { createEvolutionSystem } = await import('../../src/core/evolution-system/index.js');
     (createEvolutionSystem as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce({
       runRetroForContract: mockRunRetro,
       init: vi.fn().mockResolvedValue(undefined),

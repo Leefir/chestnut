@@ -3,6 +3,10 @@ import * as path from 'path';
 import { auditQueryCommand, collectColFilter } from '../../src/cli/commands/audit-query.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import type { FileSystem } from '../../src/foundation/fs/types.js';
+// phase 267: hoist 17 dynamic imports of 2 unique modules.
+import { getClawDir } from '../../src/foundation/config/index.js';
+import { parseIntOption } from '../../src/cli/parse-int-option.js';
+import * as fsNative from 'fs';  // phase 283: hoist 5 require('fs') calls
 
 const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });
 
@@ -24,21 +28,21 @@ describe('audit query', () => {
   beforeEach(() => {
     stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
     stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
-    tempDir = require('fs').mkdtempSync('/tmp/chestnut-test-');
-    require('fs').mkdirSync(path.join(tempDir, 'claws', 'test-claw'), { recursive: true });
+    tempDir = fsNative.mkdtempSync('/tmp/chestnut-test-');
+    fsNative.mkdirSync(path.join(tempDir, 'claws', 'test-claw'), { recursive: true });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
     try {
-      require('fs').rmSync(tempDir, { recursive: true, force: true });
+      fsNative.rmSync(tempDir, { recursive: true, force: true });
     } catch { /* ignore */ }
   });
 
   function writeAudit(claw: string, content: string, fileName = 'audit.tsv') {
     const dir = path.join(tempDir, 'claws', claw);
-    require('fs').mkdirSync(dir, { recursive: true });
-    require('fs').writeFileSync(path.join(dir, fileName), content);
+    fsNative.mkdirSync(dir, { recursive: true });
+    fsNative.writeFileSync(path.join(dir, fileName), content);
   }
 
   it('claw not found → throws CliError', async () => {
@@ -50,7 +54,6 @@ describe('audit query', () => {
 
   it('basic read yields all rows as TSV', async () => {
     writeAudit('test-claw', '2024-01-01T00:00:00Z\tseq=1\ta\tcol1\n2024-01-01T00:00:01Z\tseq=2\tb\tcol2\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditQueryCommand({ fsFactory }, { claw: 'test-claw', file: 'audit' });
@@ -62,7 +65,6 @@ describe('audit query', () => {
 
   it('--json yields JSON lines', async () => {
     writeAudit('test-claw', '2024-01-01T00:00:00Z\tseq=1\ta\tcol1\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditQueryCommand({ fsFactory }, { claw: 'test-claw', file: 'audit', json: true });
@@ -76,7 +78,6 @@ describe('audit query', () => {
 
   it('--type filter', async () => {
     writeAudit('test-claw', '2024-01-01T00:00:00Z\tseq=1\tcron_tick\n2024-01-01T00:00:01Z\tseq=2\tother\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditQueryCommand({ fsFactory }, { claw: 'test-claw', file: 'audit', type: 'cron_*' });
@@ -88,7 +89,6 @@ describe('audit query', () => {
 
   it('--from-seq filter', async () => {
     writeAudit('test-claw', '2024-01-01T00:00:00Z\tseq=1\ta\n2024-01-01T00:00:01Z\tseq=3\tb\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditQueryCommand({ fsFactory }, { claw: 'test-claw', file: 'audit', fromSeq: 3 });
@@ -100,7 +100,6 @@ describe('audit query', () => {
 
   it('--trace filter', async () => {
     writeAudit('test-claw', '2024-01-01T00:00:00Z\tseq=1\ta\tcol1\ttrace_id=abc\n2024-01-01T00:00:01Z\tseq=2\tb\tcol1\ttrace_id=def\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditQueryCommand({ fsFactory }, { claw: 'test-claw', file: 'audit', trace: 'abc' });
@@ -112,7 +111,6 @@ describe('audit query', () => {
 
   it('--limit filter', async () => {
     writeAudit('test-claw', '2024-01-01T00:00:00Z\tseq=1\ta\n2024-01-01T00:00:01Z\tseq=2\tb\n2024-01-01T00:00:02Z\tseq=3\tc\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditQueryCommand({ fsFactory }, { claw: 'test-claw', file: 'audit', limit: 2 });
@@ -124,7 +122,6 @@ describe('audit query', () => {
   it('--all-files yields from multiple files', async () => {
     writeAudit('test-claw', '2024-01-01T00:00:00Z\tseq=1\ta\n', 'audit.tsv');
     writeAudit('test-claw', '2024-01-01T00:00:01Z\tseq=1\ttick_event\n', 'tick.tsv');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditQueryCommand({ fsFactory }, { claw: 'test-claw', file: 'audit', allFiles: true });
@@ -164,7 +161,6 @@ describe('audit query', () => {
 
   it('--tool-use-id filter', async () => {
     writeAudit('test-claw', '2024-01-01T00:00:00Z\tseq=1\ttool_call_input\tsubmit_subtask\tcall_00_xxx\ttool_use_id=call_00_xxx\tstep=1\n2024-01-01T00:00:01Z\tseq=2\ttool_result\texec\tcall_01_yyy\ttool_use_id=call_01_yyy\tstep=2\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditQueryCommand({ fsFactory }, { claw: 'test-claw', file: 'audit', toolUseId: 'call_00_xxx' });
@@ -177,7 +173,6 @@ describe('audit query', () => {
 
   it('--step filter', async () => {
     writeAudit('test-claw', '2024-01-01T00:00:00Z\tseq=1\ttool_call_input\tsubmit_subtask\tcall_00_xxx\ttool_use_id=call_00_xxx\tstep=1\n2024-01-01T00:00:01Z\tseq=2\ttool_result\texec\tcall_01_yyy\ttool_use_id=call_01_yyy\tstep=2\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditQueryCommand({ fsFactory }, { claw: 'test-claw', file: 'audit', step: 1 });
@@ -190,7 +185,6 @@ describe('audit query', () => {
 
   it('--contract-id filter', async () => {
     writeAudit('test-claw', '2024-01-01T00:00:00Z\tseq=1\ttool_call_input\tsubmit_subtask\tcall_00_xxx\ttool_use_id=call_00_xxx\tstep=1\tcontract_id=c1\n2024-01-01T00:00:01Z\tseq=2\ttool_result\texec\tcall_01_yyy\ttool_use_id=call_01_yyy\tstep=2\tcontract_id=c2\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditQueryCommand({ fsFactory }, { claw: 'test-claw', file: 'audit', contractId: 'c1' });
@@ -203,7 +197,6 @@ describe('audit query', () => {
 
   it('typed flag combination (--step + --contract-id) AND semantics', async () => {
     writeAudit('test-claw', '2024-01-01T00:00:00Z\tseq=1\ttool_call_input\tsubmit_subtask\tcall_00_xxx\ttool_use_id=call_00_xxx\tstep=1\tcontract_id=c1\n2024-01-01T00:00:01Z\tseq=2\ttool_result\texec\tcall_01_yyy\ttool_use_id=call_01_yyy\tstep=2\tcontract_id=c1\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditQueryCommand({ fsFactory }, { claw: 'test-claw', file: 'audit', step: 1, contractId: 'c1' });
@@ -216,7 +209,6 @@ describe('audit query', () => {
 
   it('typed flag + --col coexist AND semantics', async () => {
     writeAudit('test-claw', '2024-01-01T00:00:00Z\tseq=1\ttool_call_input\tsubmit_subtask\tcall_00_xxx\ttool_use_id=call_00_xxx\tstep=1\tcontract_id=c1\n2024-01-01T00:00:01Z\tseq=2\ttool_result\texec\tcall_01_yyy\ttool_use_id=call_01_yyy\tstep=1\tcontract_id=c2\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditQueryCommand({ fsFactory }, { claw: 'test-claw', file: 'audit', step: 1, col: { contract_id: 'c1' } });
@@ -232,7 +224,6 @@ describe('audit query', () => {
     await expect(
       (async () => {
         // simulate what parseIntOption would do
-        const { parseIntOption } = await import('../../src/cli/parse-int-option.js');
         parseIntOption('abc', '--step must be a number');
       })()
     ).rejects.toThrow('--step must be a number');
@@ -240,7 +231,6 @@ describe('audit query', () => {
 
   it('JSON output includes typed fields for tool rows', async () => {
     writeAudit('test-claw', '2024-01-01T00:00:00Z\tseq=1\ttool_result\tsubmit_subtask\tcall_00_xxx\tok\tsummary=accepted…\ttool_use_id=call_00_xxx\tstep=1\tcontract_id=c1\tcontent_size=200\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditQueryCommand({ fsFactory }, { claw: 'test-claw', file: 'audit', json: true });
@@ -256,7 +246,6 @@ describe('audit query', () => {
 
   it('human-readable tool row ends with jump hint', async () => {
     writeAudit('test-claw', '2024-01-01T00:00:00Z\tseq=1\ttool_result\tsubmit_subtask\tcall_00_xxx\tok\tsummary=accepted…\ttool_use_id=call_00_xxx\tstep=1\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditQueryCommand({ fsFactory }, { claw: 'test-claw', file: 'audit' });
@@ -267,7 +256,6 @@ describe('audit query', () => {
 
   it('human-readable non-tool row has no jump hint', async () => {
     writeAudit('test-claw', '2024-01-01T00:00:00Z\tseq=1\tcron_tick\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditQueryCommand({ fsFactory }, { claw: 'test-claw', file: 'audit' });
@@ -278,7 +266,6 @@ describe('audit query', () => {
 
   it('JSON output does not contain jump hint', async () => {
     writeAudit('test-claw', '2024-01-01T00:00:00Z\tseq=1\ttool_result\tsubmit_subtask\tcall_00_xxx\tok\tsummary=accepted…\ttool_use_id=call_00_xxx\tstep=1\n');
-    const { getClawDir } = await import('../../src/foundation/config/index.js');
     vi.mocked(getClawDir).mockReturnValue(path.join(tempDir, 'claws', 'test-claw'));
 
     await auditQueryCommand({ fsFactory }, { claw: 'test-claw', file: 'audit', json: true });

@@ -277,7 +277,7 @@ describe('Tools', () => {
         profiles: ['full'],
         readonly: true,
         execute: async () => {
-          await new Promise(r => setTimeout(r, 500)); // sleep: mock slow tool execution
+          await new Promise(r => setTimeout(r, 200)); // sleep: mock slow tool execution (phase 293: 500→200; timeoutMs=50)
           return { success: true, content: '' };
         },
       });

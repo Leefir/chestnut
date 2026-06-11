@@ -19,6 +19,9 @@ import type { StreamChunk } from '../../src/foundation/llm-orchestrator/types.js
 import { AnthropicAdapter } from '../../src/foundation/llm-provider/anthropic.js';
 import { CustomAnthropicAdapter } from '../../src/foundation/llm-provider/custom-anthropic.js';
 import { OpenAIAdapter } from '../../src/foundation/llm-provider/openai.js';
+// phase 272: hoist gemini adapter + 3 anthropic errors (5 dyn imports → static)
+import { GeminiAdapter } from '../../src/foundation/llm-provider/gemini.js';
+import { RateLimitError, APIConnectionTimeoutError, APIUserAbortError } from '@anthropic-ai/sdk';
 import { LLMOrchestratorImpl } from '../../src/foundation/llm-orchestrator/orchestrator.js';
 import { createLLMOrchestrator } from '../../src/foundation/llm-orchestrator/index.js';
 import {
@@ -250,7 +253,6 @@ describe('LLM Service', () => {
     });
 
     it('should throw LLMRateLimitError on 429', async () => {
-      const { RateLimitError } = await import('@anthropic-ai/sdk');
       mockMessagesCreate.mockRejectedValue(
         new RateLimitError('rate_limited', new Map([['retry-after', '10']]) as unknown as Headers)
       );
@@ -262,7 +264,6 @@ describe('LLM Service', () => {
     });
 
     it('should throw LLMTimeoutError on AbortError', async () => {
-      const { APIConnectionTimeoutError } = await import('@anthropic-ai/sdk');
       mockMessagesCreate.mockRejectedValue(new APIConnectionTimeoutError());
 
       const adapter = new AnthropicAdapter(config);
@@ -276,7 +277,6 @@ describe('LLM Service', () => {
       const controller = new AbortController();
       controller.abort();
 
-      const { APIUserAbortError } = await import('@anthropic-ai/sdk');
       mockMessagesCreate.mockRejectedValue(new APIUserAbortError());
 
       const adapter = new AnthropicAdapter(config);
@@ -1429,7 +1429,7 @@ describe('GeminiAdapter — Phase 98 fixes', () => {
     };
 
     const chunks: StreamChunk[] = [];
-    for await (const c of new (await import('../../src/foundation/llm-provider/gemini.js')).GeminiAdapter(cfg).stream({ messages: [{ role: 'user', content: 'hi' }] })) {
+    for await (const c of new GeminiAdapter(cfg).stream({ messages: [{ role: 'user', content: 'hi' }] })) {
       chunks.push(c);
     }
 
@@ -1452,7 +1452,7 @@ describe('GeminiAdapter — Phase 98 fixes', () => {
     };
 
     const chunks: StreamChunk[] = [];
-    for await (const c of new (await import('../../src/foundation/llm-provider/gemini.js')).GeminiAdapter(cfg).stream({ messages: [{ role: 'user', content: 'hi' }] })) {
+    for await (const c of new GeminiAdapter(cfg).stream({ messages: [{ role: 'user', content: 'hi' }] })) {
       chunks.push(c);
     }
 
@@ -1477,7 +1477,7 @@ describe('GeminiAdapter — Phase 98 fixes', () => {
       apiFormat: 'gemini' as const,
     };
 
-    const res = await new (await import('../../src/foundation/llm-provider/gemini.js')).GeminiAdapter(cfg).call({
+    const res = await new GeminiAdapter(cfg).call({
       messages: [{ role: 'user', content: 'hi' }],
     });
     expect(res.stop_reason).toBe('content_filter');
@@ -1497,7 +1497,7 @@ describe('GeminiAdapter — Phase 98 fixes', () => {
     };
 
     await expect(async () => {
-      for await (const _ of new (await import('../../src/foundation/llm-provider/gemini.js')).GeminiAdapter(cfg).stream({
+      for await (const _ of new GeminiAdapter(cfg).stream({
         messages: [{ role: 'user', content: 'hi' }],
       })) { /* drain */ }
     }).rejects.toThrow('INVALID_ARGUMENT: Model not found');
@@ -1517,7 +1517,7 @@ describe('GeminiAdapter — Phase 98 fixes', () => {
     };
 
     await expect(async () => {
-      for await (const _ of new (await import('../../src/foundation/llm-provider/gemini.js')).GeminiAdapter(cfg).stream({
+      for await (const _ of new GeminiAdapter(cfg).stream({
         messages: [{ role: 'user', content: 'hi' }],
       })) { /* drain */ }
     }).rejects.toThrow(LLMRateLimitError);

@@ -115,7 +115,7 @@ describe('StreamReader', () => {
     }, audit);
     reader.start();
 
-    await new Promise(r => setTimeout(r, 300)); // sleep: let reader finish probe pattern
+    await new Promise(r => setTimeout(r, 150)); // sleep: let reader finish probe pattern (phase 290: 300→150)
 
     writer.write({ ts: 1, type: 'first' });
     writer.write({ ts: 2, type: 'second' });

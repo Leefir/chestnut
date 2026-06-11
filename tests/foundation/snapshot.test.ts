@@ -12,6 +12,7 @@ import { Snapshot } from '../../src/foundation/snapshot/index.js';
 import { SNAPSHOT_IGNORE_PATTERNS } from '../../src/foundation/snapshot/index.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { SNAPSHOT_AUDIT_EVENTS } from '../../src/foundation/snapshot/audit-events.js';
+import * as processExecMod from '../../src/foundation/process-exec/index.js';  // phase 275: hoist 5 dyn imports
 import { makeMockAudit } from '../helpers/audit.js';
 
 // git 必须可用才能跑这些测试
@@ -545,8 +546,8 @@ describe.skipIf(!gitAvailable)('Snapshot', () => {
     });
 
     it('init returns Result.err on expected failure and cleans up .git', async () => {
-    const { exec: processExec } = await import('../../src/foundation/process-exec/index.js');
-    const execSpy = vi.spyOn(await import('../../src/foundation/process-exec/index.js'), 'exec');
+    const processExec = processExecMod.exec;
+    const execSpy = vi.spyOn(processExecMod, 'exec');
     let initCalled = false;
     execSpy.mockImplementation(async (cmd: string, args: string[], opts: any) => {
       const fullCmd = `${cmd} ${args.join(' ')}`;
@@ -581,7 +582,7 @@ describe.skipIf(!gitAvailable)('Snapshot', () => {
     });
 
     it('init throws on unexpected failure (ENOENT)', async () => {
-    const execSpy = vi.spyOn(await import('../../src/foundation/process-exec/index.js'), 'exec');
+    const execSpy = vi.spyOn(processExecMod, 'exec');
     execSpy.mockImplementation(async (cmd: string, args: string[], opts: any) => {
       const err = new Error('ENOENT: git not found') as any;
       err.code = 'ENOENT';
@@ -593,8 +594,8 @@ describe.skipIf(!gitAvailable)('Snapshot', () => {
     });
 
     it('init returns Result.err even when cleanup itself fails (best-effort cleanup)', async () => {
-    const { exec: processExec } = await import('../../src/foundation/process-exec/index.js');
-    const execSpy = vi.spyOn(await import('../../src/foundation/process-exec/index.js'), 'exec');
+    const processExec = processExecMod.exec;
+    const execSpy = vi.spyOn(processExecMod, 'exec');
     let initCalled = false;
     execSpy.mockImplementation(async (cmd: string, args: string[], opts: any) => {
       const fullCmd = `${cmd} ${args.join(' ')}`;

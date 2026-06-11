@@ -15,6 +15,7 @@ import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
 import type { VerificationContext } from '../../../src/core/contract/verification-types.js';
 import { createToolRegistry } from '../../../src/foundation/tools/index.js';
 import { notifyClaw } from '../../../src/foundation/messaging/index.js';
+import * as verificationNotifyMod from '../../../src/core/contract/verification-notify.js';  // phase 263: hoist
 
 function makeMinimalCtx(clawDir: string, clawId: string, nodeFs: NodeFileSystem, chestnutRoot: string): VerificationContext {
   const audit = { write: () => {} , preview: (s: string) => s, message: (s: string) => s, summary: (s: string) => s} as any;
@@ -99,7 +100,6 @@ describe('phase 1405 Fix 1: writeForceAcceptInbox', () => {
   });
 
   it('reverse: helper exported from verification-notify barrel', async () => {
-    const mod = await import('../../../src/core/contract/verification-notify.js');
-    expect(typeof mod.writeForceAcceptInbox).toBe('function');
+    expect(typeof verificationNotifyMod.writeForceAcceptInbox).toBe('function');
   });
 });

@@ -15,6 +15,9 @@ import * as fs from 'fs';
 import { subagentListCommand } from '../../../src/cli/commands/subagent-list.js';
 import { subagentStepsCommand, subagentStepCommand } from '../../../src/cli/commands/subagent-steps.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
+// phase 277: hoist 4 dyn imports of 2 unique modules
+import { resolveClawDir } from '../../../src/cli/commands/subagent-helpers.js';
+import { loadSessionFromFile, parseMessagesFromSession, renderSteps, renderStepFull } from '../../../src/cli/commands/_message-renderer.js';
 
 const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });
 
@@ -71,7 +74,6 @@ describe('subagent-list', () => {
     consoleErrSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.clearAllMocks();
     vi.mocked(fs.existsSync).mockReturnValue(true);
-    const { resolveClawDir } = await import('../../../src/cli/commands/subagent-helpers.js');
     vi.mocked(resolveClawDir).mockReturnValue('/tmp/claws/test-claw');
   });
 
@@ -104,10 +106,8 @@ describe('subagent steps --json', () => {
     vi.restoreAllMocks();
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-    const { resolveClawDir } = await import('../../../src/cli/commands/subagent-helpers.js');
     vi.mocked(resolveClawDir).mockReturnValue('/tmp/claws/test-claw');
 
-    const { loadSessionFromFile, parseMessagesFromSession, renderSteps, renderStepFull } = await import('../../../src/cli/commands/_message-renderer.js');
     vi.mocked(loadSessionFromFile).mockReturnValue({ messages: [] });
     vi.mocked(parseMessagesFromSession).mockReturnValue([
       {
@@ -176,7 +176,6 @@ describe('subagent steps --json', () => {
 
   it('outputs empty JSON when no turns (steps)', async () => {
     vi.mocked(fs.existsSync).mockReturnValue(true);
-    const { parseMessagesFromSession } = await import('../../../src/cli/commands/_message-renderer.js');
     vi.mocked(parseMessagesFromSession).mockReturnValue([]);
 
     await subagentStepsCommand({ fsFactory }, 'task-1', 'test-claw', { json: true });

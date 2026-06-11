@@ -12,6 +12,7 @@ import { ContractSystem } from '../../../src/core/contract/manager.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
 import { createToolRegistry } from '../../../src/foundation/tools/index.js';
 import { makeContractYaml } from '../../helpers/contract-yaml.js';
+import { saveProgress } from '../../../src/core/contract/persistence.js';  // phase 263: hoist
 
 function makeProgress(overrides: Record<string, unknown> = {}): Parameters<typeof auditProgressCrossSource>[0] {
   return {
@@ -360,7 +361,6 @@ describe('contract progress cross-source audit (phase 233 Step B)', () => {
 
     it('ctx 未注入 getContractYaml → 自动 skip + 跳 yaml-dep check', async () => {
       const mockAudit = makeMockAudit();
-      const { saveProgress } = await import('../../../src/core/contract/persistence.js');
       const fsMock = {
         writeAtomic: vi.fn(),
       };

@@ -86,8 +86,8 @@ describe('phase 1405 Fix 3: boot migration archive skipped audit', () => {
   });
 
   it('reverse: const land in audit-events.ts + snapshot.json baseline', async () => {
-    const auditEvents = await import('../../../src/core/contract/audit-events.js');
-    expect(auditEvents.CONTRACT_AUDIT_EVENTS.CONTRACT_BOOT_MIGRATE_ARCHIVE_SKIPPED).toBe('contract_boot_migrate_archive_skipped');
+    // phase 263: use static CONTRACT_AUDIT_EVENTS import at top
+    expect(CONTRACT_AUDIT_EVENTS.CONTRACT_BOOT_MIGRATE_ARCHIVE_SKIPPED).toBe('contract_boot_migrate_archive_skipped');
 
     const snapshotPath = path.join(__dirname, '../../../src/foundation/audit/audit-events.snapshot.json');
     const snapshot = JSON.parse(nodeFs.readFileSync(snapshotPath, 'utf8')) as { modules: Record<string, string[]> };

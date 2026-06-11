@@ -220,7 +220,7 @@ describe('phase 541: silent catch fixes', () => {
     });
 
     afterEach(async () => {
-      await system.shutdown(100).catch(() => {});
+      await system.shutdown(1).catch(() => {});
       capturedWatcherCallback = undefined;
     });
 

@@ -10,6 +10,10 @@ import * as path from 'path';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
 import { fileURLToPath } from 'url';
+// phase 281: hoist 3 dyn imports
+import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
+import { createSystemAudit } from '../../src/foundation/audit/index.js';
+import { CLI_AUDIT_EVENTS } from '../../src/cli/audit-events.js';
 import { FAKE_LIVE_PID, FAKE_LIVE_PID_STRING } from '../helpers/test-pids.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -74,9 +78,6 @@ describe('chat-viewport CRASH audit (phase 816 B1)', () => {
     });
 
     it('createSystemAudit sync write 产生 audit.tsv row', async () => {
-      const { NodeFileSystem } = await import('../../src/foundation/fs/node-fs.js');
-      const { createSystemAudit } = await import('../../src/foundation/audit/index.js');
-      const { CLI_AUDIT_EVENTS } = await import('../../src/cli/audit-events.js');
 
       const shimFs = new NodeFileSystem({ baseDir: tempDir });
       const shim = createSystemAudit(shimFs, tempDir);

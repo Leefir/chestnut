@@ -9,6 +9,7 @@ import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
 import { createTempDir, cleanupTempDir } from '../../utils/temp.js';
 import { makeContractYaml } from '../../helpers/contract-yaml.js';
 import { createToolRegistry } from '../../../src/foundation/tools/index.js';
+import { acquireLock, releaseLock } from '../../../src/core/contract/lock.js';  // phase 262: hoist
 
 vi.mock('../../../src/core/contract/constants.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../src/core/contract/constants.js')>();
@@ -102,7 +103,6 @@ describe('moveContractToArchive lock acquire (phase 860 / P0-B)', () => {
 
     // Verify lock is truly released: a new acquire on the same path succeeds
     const nodeFs = new NodeFileSystem({ baseDir: clawDir });
-    const { acquireLock, releaseLock } = await import('../../../src/core/contract/lock.js');
     const ctx = { fs: nodeFs, audit: { write: () => {} , preview: (s: string) => s, message: (s: string) => s, summary: (s: string) => s} };
     await acquireLock(ctx, archiveLockPath);
     await releaseLock(ctx, archiveLockPath);
@@ -128,7 +128,6 @@ describe('moveContractToArchive lock acquire (phase 860 / P0-B)', () => {
     await manager.moveToArchive(contractId);
 
     // Second call should early-return without acquiring lock
-    const { acquireLock } = await import('../../../src/core/contract/lock.js');
     const acquireSpy = vi.fn(acquireLock);
     // Since the early return happens before any lock call, simply re-invoking must not throw
     await expect(manager.moveToArchive(contractId)).resolves.toBeUndefined();

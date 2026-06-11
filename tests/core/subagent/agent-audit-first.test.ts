@@ -222,7 +222,7 @@ describe('subagent onToolResult emit ordering (phase 1122 audit-first)', () => {
       async (opts: {
         onToolResult?: (name: string, toolUseId: string, result: any, step: number, maxSteps: number) => void;
       }) => {
-        await new Promise((resolve) => setTimeout(resolve, 500)); // sleep: mock runReact timeout delay
+        await new Promise((resolve) => setTimeout(resolve, 200)); // sleep: mock runReact timeout delay (phase 294: 500→200; timeoutMs=50)
         opts.onToolResult?.('ghost_tool', 'gt1', { success: true, content: 'ghost' }, 0, 5);
         return { finalText: 'done', stopReason: 'end_turn' };
       },

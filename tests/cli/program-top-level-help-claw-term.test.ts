@@ -18,9 +18,19 @@ import * as path from 'node:path';
 
 const CLI_ENTRY = path.resolve(__dirname, '../../dist/cli.js');
 
+// phase 285: cache `node CLI --help` output. 6 tests share 2 args combos
+// (`--help` x5, `motion --help` x1); each spawn was ~1s, so caching brings
+// the file from ~7.8s down to ~2s by going from 6 spawns to 2.
+const helpCache = new Map<string, string>();
 function runHelp(args: string[]): string {
-  const r = spawnSync('node', [CLI_ENTRY, ...args], { encoding: 'utf8' });
-  return (r.stdout || '') + (r.stderr || '');
+  const key = args.join(' ');
+  let cached = helpCache.get(key);
+  if (cached === undefined) {
+    const r = spawnSync('node', [CLI_ENTRY, ...args], { encoding: 'utf8' });
+    cached = (r.stdout || '') + (r.stderr || '');
+    helpCache.set(key, cached);
+  }
+  return cached;
 }
 
 describe('chestnut top-level help (phase 1488)', () => {

@@ -65,7 +65,7 @@ describe('executor race-loser audit (phase 816 B2)', () => {
     expect(result.content).toMatch(/timed out/);
 
     const auditPath = path.join(tempDir, 'audit.tsv');
-    await new Promise(r => setTimeout(r, 300)); // sleep: let race loser audit write
+    await new Promise(r => setTimeout(r, 150)); // sleep: let race loser audit write (phase 291: 300→150)
 
     const auditContent = await fs.readFile(auditPath, 'utf-8').catch(() => '');
     const rows = auditContent.trim().split('\n');

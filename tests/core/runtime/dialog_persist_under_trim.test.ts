@@ -5,9 +5,12 @@ import type { Message } from '../../../src/foundation/llm-provider/types.js';
 describe('runtime/step-executor dialog persist invariant under trim (phase 224)', () => {
   it('trim 触发条件下 step 完成后、caller 持引用应含本步 assistant 内容', async () => {
     // 构造多条 messages：中间一条超大 assistant 可被 trim、首尾 user 受保护
+    // phase 255 → phase 286: shrink further (30000 → 22000) — still > 64k tokens which
+    // exceeds the deepseek-chat budget, so trim still triggers; tiktoken encodes ~265k
+    // chars instead of ~390k.
     const bigAssistant: Message = {
       role: 'assistant',
-      content: [{ type: 'text', text: 'hello world '.repeat(65000) }],
+      content: [{ type: 'text', text: 'hello world '.repeat(22000) }],
     };
     const messages: Message[] = [
       { role: 'user', content: 'hi' },
@@ -21,7 +24,7 @@ describe('runtime/step-executor dialog persist invariant under trim (phase 224)'
         yield { type: 'text_delta' as const, delta: 'ok' };
         yield { type: 'done' as const, stopReason: 'end_turn' as const, usage: { inputTokens: 100, outputTokens: 5 } };
       },
-      getProviderInfo: () => ({ model: 'volc-ds4pro', name: 'volc-ds4pro' }),
+      getProviderInfo: () => ({ model: 'deepseek-chat', name: 'deepseek-chat' }),
     };
 
     await executeStep({

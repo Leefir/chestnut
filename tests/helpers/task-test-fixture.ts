@@ -44,7 +44,7 @@ export const test = base.extend<{ ctx: TaskTestCtx }>({
 
     await use(ctx);
 
-    await currentSystem.shutdown(1000);
+    await currentSystem.shutdown(200);
     await cleanupTempDir(tempDir);
   },
 });

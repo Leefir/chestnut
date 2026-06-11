@@ -13,6 +13,7 @@ import { ContractSystem } from '../../src/core/contract/manager.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
 import { CONTRACT_AUDIT_EVENTS } from '../../src/core/contract/audit-events.js';
 import { waitFor } from '../helpers/wait-for.js';
+import { ToolTimeoutError } from '../../src/foundation/errors.js';  // phase 261: hoist (no vi.mock in this file)
 import { makeContractYaml } from '../helpers/contract-yaml.js';
 import { createToolRegistry } from '../../src/foundation/tools/index.js';
 import { makeMockAudit } from '../helpers/audit.js';
@@ -157,7 +158,6 @@ describe('ContractSystem - fire-and-forget 失败状态机 (phase 468 / feedback
     });
 
     it('subagent timeout → cause=subagent_timeout + reset todo', async () => {
-      const { ToolTimeoutError } = await import('../../src/foundation/errors.js');
       const mockAudit = makeMockAudit();
       const testManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory,
     clawsDir: '/tmp/test/claws',
@@ -304,7 +304,6 @@ describe('ContractSystem - fire-and-forget 失败状态机 (phase 468 / feedback
     });
 
     it('retry_count 跨多次失败递增', async () => {
-      const { ToolTimeoutError } = await import('../../src/foundation/errors.js');
       const mockAudit = makeMockAudit();
       const testManager = new ContractSystem({ clawDir, clawId: 'test-claw', fs: nodeFs, audit: mockAudit, toolRegistry: createToolRegistry(), fsFactory,
     clawsDir: '/tmp/test/claws',

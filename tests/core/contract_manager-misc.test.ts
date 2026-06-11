@@ -17,6 +17,7 @@ import { waitFor } from '../helpers/wait-for.js';
 import { makeContractYaml } from '../helpers/contract-yaml.js';
 import { createToolRegistry } from '../../src/foundation/tools/index.js';
 import { makeMockAudit } from '../helpers/audit.js';
+import { DEFAULT_MAX_STEPS } from '../../src/core/agent-executor/index.js';  // phase 262: hoist
 
 let testDir: string;
 let clawDir: string;
@@ -103,7 +104,6 @@ describe('ContractSystem - misc (LLM verification + escalation + phase239 audit)
 
     it('should use DEFAULT_MAX_STEPS=1000 for verifier', async () => {
       // Verify the verifier uses the default max steps (unified with other subagents)
-      const { DEFAULT_MAX_STEPS } = await import('../../src/core/agent-executor/index.js');
       expect(DEFAULT_MAX_STEPS).toBe(1000);
     });
   });
