@@ -20,11 +20,13 @@ import { type CallerType, callerTypeToProfile, CALLER_TYPE_TO_GROUPS } from '../
 import type { DialogStore } from '../../foundation/dialog-store/index.js';
 import { DEFAULT_SUBAGENT_SYSTEM_PROMPT } from '../../prompts/index.js';
 import type { PermissionChecker } from '../../foundation/tool-protocol/permission.js';
+import type { ToolUseId } from '../../foundation/tool-protocol/index.js';
 import { createTimeoutController } from './timeout-controller.js';
 import { createStreamCallbacks } from './stream-callbacks.js';
 import { classifyAndAuditError } from './error-classifier.js';
 import { assertStepsEntryShape } from './invariants.js';
 import { auditSubagentArtifactCompleteness } from './artifact-cross-source-audit.js';
+import { commitTurnEvent, type TurnEventCommitDeps } from '../runtime/turn-event-commit.js';
 
 
 
@@ -84,11 +86,8 @@ export class SubAgent {
   private auditWriter: AuditLog;
   private permissionChecker?: PermissionChecker;
 
-  // phase 270 Step B: cross-source artifact completeness counters
-  private turnStartCount = 0;
-  private turnEndCount = 0;
+  // phase 283: textEndCount retained for AC-4; other counters dropped (by-construction equal via commitTurnEvent)
   private textEndCount = 0;
-  private auditStepCount = 0;
 
   constructor(options: SubAgentOptions) {
     this.agentId = options.agentId;
@@ -143,7 +142,6 @@ export class SubAgent {
     // Turn start: written before any potentially-throwing init so catch always pairs it
     stream.safeSwWrite({ ts: Date.now(), type: AGENT_STREAM_EVENTS.TURN_START });
     this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_START);
-    this.turnStartCount++;   // phase 270 Step B
 
     try {
       const callerType = this.callerType ?? 'subagent';
@@ -186,6 +184,26 @@ export class SubAgent {
       // (collectStreamResponse) 也消费 ctx.signal，fetch/SDK 会实际取消请求
       // (见 src/foundation/llm-provider/abort-helper.ts)。race 保留为最外层保险：若某
       // provider 未正确响应 signal，timeout 胜出时 timeoutPromise 立即抛 ToolTimeoutError。
+      // Phase 283: turn event commit unified entry (subagent reuses runtime helper)
+      const emitDeps = adaptSubagentCallbacks(stream.callbacks);
+
+      /** Adapter: subagent PrimitiveStreamCallbacks → TurnEventCommitDeps. */
+      function adaptSubagentCallbacks(
+        callbacks: {
+          onTextEnd: () => void;
+          onToolCall: (name: string, toolUseId: ToolUseId) => void;
+          onToolResult: (name: string, toolUseId: ToolUseId, result: { success: boolean; content?: string }, step: number, maxSteps: number) => void;
+        },
+      ): TurnEventCommitDeps {
+        return {
+          onTextEnd: callbacks.onTextEnd,
+          onToolCall: callbacks.onToolCall,
+          onToolResult: (name, toolUseId, result, step, maxSteps) => {
+            callbacks.onToolResult(name, toolUseId, result, step, maxSteps);
+          },
+        };
+      }
+
       const result = await Promise.race([
         runReact({
           messages,
@@ -218,15 +236,20 @@ export class SubAgent {
           onBeforeLLMCall: stream.callbacks.onBeforeLLMCall,
           onTextDelta: (delta: string) => { timeout.resetIdle?.(); stream.callbacks.onTextDelta(delta); },
           onThinkingDelta: (delta: string) => { timeout.resetIdle?.(); stream.callbacks.onThinkingDelta(delta); },
-          onTextEnd: () => { this.textEndCount++; stream.callbacks.onTextEnd(); },
+          onTextEnd: () => {
+            this.textEndCount++;
+            commitTurnEvent({ kind: 'text_end' }, emitDeps);
+          },
           onToolCall: async (name, toolUseId) => {
             timeout.resetIdle?.();
-            stream.callbacks.onToolCall(name, toolUseId);
+            commitTurnEvent({ kind: 'tool_call', name, toolUseId }, emitDeps);
             auditStepTools.push(name);
             await this.appendToLog(`Tool called: ${name}\n`);
           },
           onToolCallInput: stream.callbacks.onToolCallInput,
-          onToolResult: stream.callbacks.onToolResult,
+          onToolResult: (name, toolUseId, result, step, maxSteps) => {
+            commitTurnEvent({ kind: 'tool_result', name, toolUseId, result, step, maxSteps }, emitDeps);
+          },
           onUnparseableToolUse: () => {},
           onStepComplete: async () => {
             try {
@@ -263,7 +286,6 @@ export class SubAgent {
               // 不 throw — 持久化失败不终止任务
             }
             auditStep++;
-            this.auditStepCount++;   // phase 270 Step B
             auditStepTools = [];
             auditStepStart = Date.now();
           },
@@ -279,7 +301,6 @@ export class SubAgent {
 
       stream.safeSwWrite({ ts: Date.now(), type: AGENT_STREAM_EVENTS.TURN_END });
       this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_END);
-      this.turnEndCount++;   // phase 270 Step B
       stream.markTurnEnded();
 
       // Extract final text result
@@ -305,7 +326,6 @@ export class SubAgent {
       if (!stream.isTurnEnded()) {
         stream.safeSwWrite({ ts: Date.now(), type: AGENT_STREAM_EVENTS.TURN_END });
         this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_END);
-        this.turnEndCount++;   // phase 270 Step B
         stream.closeSw();
       }
       // 持久化 messages — finally 保证超时/中断/正常结束都落盘（best-effort）
@@ -328,10 +348,7 @@ export class SubAgent {
         {
           agentId: this.agentId,
           resultDir: this.resultDir,
-          turnStartCount: this.turnStartCount,
-          turnEndCount: this.turnEndCount,
           textEndCount: this.textEndCount,
-          auditStepCount: this.auditStepCount,
         },
         { fs: this.fs, messageStore: this.messageStore },
         this.auditWriter,

@@ -24,7 +24,7 @@ import { loadReadFileState, clearReadFileState } from '../../foundation/file-too
 import { runReact } from '../agent-executor/index.js';
 import { summarizeLastExit } from './last-exit-summary.js';
 import { IdleTimeoutSignal, PriorityInboxInterrupt, UserInterrupt } from '../signals.js';
-import type { ToolResult, CallerSnapshot } from '../../foundation/tool-protocol/index.js';
+import type { CallerSnapshot } from '../../foundation/tool-protocol/index.js';
 import { RUNTIME_AUDIT_EVENTS, REACT_LOOP_AUDIT_EVENTS } from './runtime-audit-events.js';
 // phase 71: writeErrorResponse 消（error-response.ts 整删）
 import { TASK_AUDIT_EVENTS } from '../async-task-system/audit-events.js';
@@ -59,7 +59,7 @@ import { formatTimeAgo } from './utils.js';
 import type { ToolUseId } from '../../foundation/tool-protocol/index.js';
 import type { TraceId } from './types/trace-id.js';
 import { makeTraceId } from './types/trace-id.js';
-import { auditTurnCompleteness, type TurnStreamCounts } from './turn-completeness.js';
+import { commitTurnEvent, type TurnEventCommitDeps } from './turn-event-commit.js';
 
 function auditError(
   audit: AuditLog,
@@ -547,27 +547,21 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon {
       }
     };
 
-    // Wrap onToolResult to write audit event
-    const origOnToolResult = callbacks?.onToolResult;
-    const auditOnToolResult = (
-      name: string, toolUseId: ToolUseId,
-      result: ToolResult, step: number, maxSteps: number
-    ) => {
-      const content = result.content ?? '';
-      const preview = this.auditWriter.summary(content);
-      this.auditWriter.write(
-        RUNTIME_AUDIT_EVENTS.TOOL_RESULT,
-        name,
-        `tool_use_id=${String(toolUseId)}`,
-        `step=${step}`,
-        `contract_id=`,
-        `trace_id=${String(this.execContext.trace_id ?? '')}`,
-        `status=${result.success ? 'ok' : 'err'}`,
-        `content_size=${Buffer.byteLength(content, 'utf-8')}`,
-        `summary=${preview}`,
-      );
-      origOnToolResult?.(name, toolUseId, result, step, maxSteps);
-    };
+    // Phase 283: turn event commit deps (stream emit unified entry)
+    const emitDeps = adaptRuntimeCallbacks(callbacks);
+
+    /** Adapter: runtime StreamCallbacks → TurnEventCommitDeps. */
+    function adaptRuntimeCallbacks(callbacks?: StreamCallbacks): TurnEventCommitDeps {
+      return {
+        onTextEnd: callbacks?.onTextEnd,
+        onToolCall: callbacks?.onToolCall,
+        onToolResult: callbacks?.onToolResult
+          ? (name, toolUseId, result, step, maxSteps) => {
+              callbacks.onToolResult!(name, toolUseId, result, step, maxSteps);
+            }
+          : undefined,
+      };
+    }
 
     // phase 1411 (reframe of phase 1409): emit `tool_call_input` index row
     // (name + tool_use_id + args_size). args body 0 入 audit / dialog 是权威源 /
@@ -618,11 +612,26 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon {
             }
           },
           onTextDelta: (d) => { emitProviderInfoOnce(); callbacks?.onTextDelta?.(d); },
-          onTextEnd: callbacks?.onTextEnd,
+          onTextEnd: () => commitTurnEvent({ kind: 'text_end' }, emitDeps),
           onThinkingDelta: (d) => { emitProviderInfoOnce(); callbacks?.onThinkingDelta?.(d); },
-          onToolCall: (n, id) => { callbacks?.onToolCall?.(n, id); },
+          onToolCall: (n, id) => commitTurnEvent({ kind: 'tool_call', name: n, toolUseId: id }, emitDeps),
           onToolCallInput: auditOnToolCallInput,
-          onToolResult: auditOnToolResult,
+          onToolResult: (name, toolUseId, result, step, maxSteps) => {
+            const content = result.content ?? '';
+            const preview = this.auditWriter.summary(content);
+            this.auditWriter.write(
+              RUNTIME_AUDIT_EVENTS.TOOL_RESULT,
+              name,
+              `tool_use_id=${String(toolUseId)}`,
+              `step=${step}`,
+              `contract_id=`,
+              `trace_id=${String(this.execContext.trace_id ?? '')}`,
+              `status=${result.success ? 'ok' : 'err'}`,
+              `content_size=${Buffer.byteLength(content, 'utf-8')}`,
+              `summary=${preview}`,
+            );
+            commitTurnEvent({ kind: 'tool_result', name, toolUseId, result, step, maxSteps }, emitDeps);
+          },
           onBeforeLLMCall: () => { callbacks?.onBeforeLLMCall?.(); },
           onReset: (provider, timeoutMs) => {
             providerInfoEmitted = false;
@@ -761,29 +770,7 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon {
         trace_id: traceId,
       });
 
-      // phase 227: turn-level stream counter for cross-source completeness audit
-      const turnStartMessagesLength = messages.length;
-      const turnStreamCounts: TurnStreamCounts = {
-        textEnd: 0,
-        toolCall: 0,
-        toolResult: 0,
-      };
-      const wrappedCallbacks: StreamCallbacks = {
-        ...callbacks,
-        onTextEnd: () => { turnStreamCounts.textEnd++; callbacks?.onTextEnd?.(); },
-        onToolCall: (n, id) => { turnStreamCounts.toolCall++; callbacks?.onToolCall?.(n, id); },
-        onToolResult: (n, id, r, s, ms) => { turnStreamCounts.toolResult++; callbacks?.onToolResult?.(n, id, r, s, ms); },
-      };
-
-      await this._runReact(messages, wrappedCallbacks);
-
-      // phase 227: cross-source completeness audit
-      auditTurnCompleteness(
-        turnStreamCounts,
-        messages.slice(turnStartMessagesLength),
-        this.auditWriter,
-        this.currentTraceId,
-      );
+      await this._runReact(messages, callbacks);
 
       // Turn completed normally
       callbacks?.onTurnEnd?.();
@@ -928,29 +915,7 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon {
     this.currentAbortController = abortController;
     this.execContext.signal = abortController.signal;
     try {
-      // phase 227: turn-level stream counter for cross-source completeness audit
-      const turnStartMessagesLength = messages.length;
-      const turnStreamCounts: TurnStreamCounts = {
-        textEnd: 0,
-        toolCall: 0,
-        toolResult: 0,
-      };
-      const wrappedCallbacks: StreamCallbacks = {
-        ...callbacks,
-        onTextEnd: () => { turnStreamCounts.textEnd++; callbacks?.onTextEnd?.(); },
-        onToolCall: (n, id) => { turnStreamCounts.toolCall++; callbacks?.onToolCall?.(n, id); },
-        onToolResult: (n, id, r, s, ms) => { turnStreamCounts.toolResult++; callbacks?.onToolResult?.(n, id, r, s, ms); },
-      };
-
-      await this._runReact(messages, wrappedCallbacks);
-
-      // phase 227: cross-source completeness audit
-      auditTurnCompleteness(
-        turnStreamCounts,
-        messages.slice(turnStartMessagesLength),
-        this.auditWriter,
-        this.currentTraceId,
-      );
+      await this._runReact(messages, callbacks);
 
       this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_END);
     } catch (err) {
@@ -1014,29 +979,7 @@ export class Runtime implements IRuntimeLifecycle, IRuntimeDaemon {
     this.currentAbortController = abortController;
     this.execContext.signal = abortController.signal;
     try {
-      // phase 227: turn-level stream counter for cross-source completeness audit
-      const turnStartMessagesLength = retryMessages.length;
-      const turnStreamCounts: TurnStreamCounts = {
-        textEnd: 0,
-        toolCall: 0,
-        toolResult: 0,
-      };
-      const wrappedCallbacks: StreamCallbacks = {
-        ...callbacks,
-        onTextEnd: () => { turnStreamCounts.textEnd++; callbacks?.onTextEnd?.(); },
-        onToolCall: (n, id) => { turnStreamCounts.toolCall++; callbacks?.onToolCall?.(n, id); },
-        onToolResult: (n, id, r, s, ms) => { turnStreamCounts.toolResult++; callbacks?.onToolResult?.(n, id, r, s, ms); },
-      };
-
-      await this._runReact(retryMessages, wrappedCallbacks);
-
-      // phase 227: cross-source completeness audit
-      auditTurnCompleteness(
-        turnStreamCounts,
-        retryMessages.slice(turnStartMessagesLength),
-        this.auditWriter,
-        this.currentTraceId,
-      );
+      await this._runReact(retryMessages, callbacks);
 
       callbacks?.onTurnEnd?.();
       this.auditWriter.write(REACT_LOOP_AUDIT_EVENTS.TURN_END);
