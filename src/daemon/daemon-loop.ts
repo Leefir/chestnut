@@ -113,6 +113,7 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
     try {
       agentFs.ensureDirSync(STATUS_SUBDIR);
       agentFs.writeAtomicSync(path.join(STATUS_SUBDIR, 'llm-retry-state.json'), JSON.stringify({
+        schema_version: 1,
         llmRetryCount,
         llmRetryDelayMs,
         llmRetryPending,
@@ -137,9 +138,11 @@ export function startDaemonLoop(options: DaemonLoopOptions): {
   if (!isCleanStop) {
     try {
       const saved = JSON.parse(agentFs.readSync(path.join(STATUS_SUBDIR, 'llm-retry-state.json')));
-      if (typeof saved.llmRetryCount === 'number') llmRetryCount = saved.llmRetryCount;
-      if (typeof saved.llmRetryDelayMs === 'number') llmRetryDelayMs = saved.llmRetryDelayMs;
-      if (typeof saved.llmRetryPending === 'boolean') llmRetryPending = saved.llmRetryPending;
+      if (typeof saved.schema_version === 'number' && saved.schema_version === 1) {
+        if (typeof saved.llmRetryCount === 'number') llmRetryCount = saved.llmRetryCount;
+        if (typeof saved.llmRetryDelayMs === 'number') llmRetryDelayMs = saved.llmRetryDelayMs;
+        if (typeof saved.llmRetryPending === 'boolean') llmRetryPending = saved.llmRetryPending;
+      }
     } catch { /* silent: first start or corrupted file, use defaults */ }
   }
 

@@ -114,6 +114,7 @@ export const CONTRACT_AUDIT_EVENTS = {
   // phase 233 Step B: saveProgress 入口 cross-source mismatch
   CONTRACT_PROGRESS_CROSS_SOURCE_MISMATCH: 'contract_progress_cross_source_mismatch',
   CONTRACT_PROGRESS_CROSS_SOURCE_SKIPPED: 'contract_progress_cross_source_skipped',
+  CONTRACT_OBSERVER_STATE_INVARIANT_VIOLATED: 'contract_observer_state_invariant_violated',
 } as const;
 
 /**
@@ -218,4 +219,5 @@ export const CONTRACT_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
   contract_progress_invariant_violated: 'audit',
   contract_progress_cross_source_mismatch: 'audit',
   contract_progress_cross_source_skipped: 'audit',
+  contract_observer_state_invariant_violated: 'audit',
 } as const;

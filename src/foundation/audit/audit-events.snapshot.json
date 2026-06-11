@@ -173,6 +173,7 @@
       "contract_notify_failed",
       "contract_observer_bootstrap_done",
       "contract_observer_event_failed",
+      "contract_observer_state_invariant_violated",
       "contract_observer_state_load_failed",
       "contract_observer_state_parse_failed",
       "contract_onboarding_progress_parse_failed",
@@ -671,6 +672,7 @@
       "daemon_fork_failed",
       "daemon_idle_timeout",
       "daemon_liveness_heartbeat",
+      "daemon_llm_retry_state_invariant_violated",
       "daemon_loop_fatal",
       "daemon_loop_interrupt",
       "daemon_loop_interrupt_poller_disabled",
@@ -719,6 +721,7 @@
     "foundation_file-tool_audit-events": [
       "file_tool_backup_failed",
       "overwrite_gate_rejected",
+      "read_file_state_invariant_violated",
       "read_file_state_loaded",
       "read_file_state_persist_failed",
       "read_file_state_recorded",

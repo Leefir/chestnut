@@ -22,4 +22,6 @@ export const FILE_TOOL_AUDIT_EVENTS = {
 
   /** write 工具 overwrite gate 拒绝、payload: path=<resolved> reason=not-read|partial|stale|verify-failed (phase 1443) */
   OVERWRITE_GATE_REJECTED: 'overwrite_gate_rejected',
+  READ_FILE_STATE_INVARIANT_VIOLATED: 'read_file_state_invariant_violated',
+  read_file_state_invariant_violated: 'audit',
 } as const;
