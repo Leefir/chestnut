@@ -24,6 +24,9 @@ export const SUBAGENT_AUDIT_EVENTS = {
   // 详 design/modules/l3_subagent.md §A.phase1409-on-tool-call-args-emit
   // (amended-by phase 1411)。
   TOOL_CALL_INPUT: 'tool_call_input',
+  SUBAGENT_STEPS_INVARIANT_VIOLATED: 'subagent_steps_invariant_violated',
+  SUBAGENT_ARTIFACT_CROSS_SOURCE_MISMATCH: 'subagent_artifact_cross_source_mismatch',
+  SUBAGENT_ARTIFACT_CROSS_SOURCE_SKIPPED: 'subagent_artifact_cross_source_skipped',
 } as const;
 
 export function emitToolCallInput(audit: AuditLog, opts: {
@@ -78,4 +81,7 @@ export const SUBAGENT_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
   turn_error: 'audit',
   llm_call: 'audit',
   llm_error: 'audit',
+  subagent_steps_invariant_violated: 'audit',
+  subagent_artifact_cross_source_mismatch: 'audit',
+  subagent_artifact_cross_source_skipped: 'audit',
 } as const;

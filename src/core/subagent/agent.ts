@@ -23,6 +23,7 @@ import type { PermissionChecker } from '../../foundation/tool-protocol/permissio
 import { createTimeoutController } from './timeout-controller.js';
 import { createStreamCallbacks } from './stream-callbacks.js';
 import { classifyAndAuditError } from './error-classifier.js';
+import { assertStepsEntryShape } from './invariants.js';
 
 
 
@@ -222,12 +223,14 @@ export class SubAgent {
           onUnparseableToolUse: () => {},
           onStepComplete: async () => {
             try {
-              const entry = JSON.stringify({
+              const entryData = {
                 step: auditStep,
                 ts: new Date().toISOString(),
                 tools: auditStepTools,
                 elapsedMs: Date.now() - auditStepStart,
-              });
+              };
+              assertStepsEntryShape(entryData, this.auditWriter, this.agentId);
+              const entry = JSON.stringify(entryData);
               await this.fs.append(stepsLogPath, entry + '\n');
             } catch (err) {
               this.auditWriter.write(
