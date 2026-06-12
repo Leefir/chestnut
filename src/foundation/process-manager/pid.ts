@@ -35,7 +35,7 @@ export async function readPid(ctx: ProcessManagerContext, clawId: ClawId): Promi
     } catch {
       /* silent: JSON parse fail, fall through to legacy int parse */
     }
-    // Legacy raw int format (phase 1023 PID file format JSON migration / SUNSET per phase 1180: 30 天 audit PID_FILE_LEGACY_FORMAT 0 触发 → r130+ phase 删本 fallback)
+    // Legacy raw int format (phase 1023 PID file format JSON migration)
     const legacyPid = parseInt(content, 10);
     if (Number.isFinite(legacyPid)) {
       ctx.audit.write(PROCESS_MANAGER_AUDIT_EVENTS.PID_FILE_LEGACY_FORMAT, `claw=${clawId}`, `pid=${legacyPid}`);

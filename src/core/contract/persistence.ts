@@ -88,7 +88,6 @@ export async function loadContractYaml(
     return null;
   }
   // Backwards-compat: old yaml used the legacy field, now renamed to `verification`
-  // SUNSET per phase 1257 r134 C fork: 30 天 audit `CONTRACT_YAML_LEGACY_ACCEPTANCE_FIELD` 0 触发 → r135+ phase 删本 fallback
   const data = parsed as Record<string, unknown>;
   if (Array.isArray(data.acceptance) && !Array.isArray(data.verification)) {
     ctx.audit.write(
@@ -101,7 +100,6 @@ export async function loadContractYaml(
   delete data.acceptance;
 
   // NEW phase 1399: escalation.max_retries → verification_attempts 30 天兼容
-  // SUNSET: 监控 CONTRACT_YAML_LEGACY_ESCALATION_FIELD audit 0 触发后 phase 1430+ 删 fallback
   if (
     typeof data.escalation === 'object' && data.escalation !== null &&
     typeof (data.escalation as Record<string, unknown>).max_retries === 'number' &&

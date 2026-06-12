@@ -77,10 +77,6 @@ const subAgentTaskDiscriminatedUnion = z.discriminatedUnion('mode', [
  * 1. old pendingTask files may lack `mode` field. Preprocess injects `mode: 'standard'`.
  * 2. old shadow task files may use `intentPreview` field (phase 218 renamed to `intent`).
  *    Preprocess renames `intentPreview` → `intent` for shadow tasks.
- *
- * SUNSET per phase 1258: 30 天 audit LEGACY_PENDING_TASK_NO_MODE 0 触发
- * → r+ phase 删 preprocess hook + cascade reader (sunset-monitor cron job 周期 query)
- * Original TODO(phase 1186+) 过期 64 phase / replaced by sunset trigger metadata.
  */
 export const SubAgentTaskSchema = z.preprocess(
   (val) => {

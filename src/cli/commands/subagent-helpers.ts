@@ -57,7 +57,6 @@ export function inferKind(deps: { fsFactory: (baseDir: string) => FileSystem }, 
         if (task.systemPrompt?.includes('RANDOM_DREAM') || intentText?.includes('[DREAM_OUTPUT]')) {
           return 'random_dream';
         }
-        // SUNSET (per phase 1180): 'dispatch-contract-extract' branch 与 assemble.ts:295 sibling、同步删 if audit 0 触发 30 天
         if (task.callerType === SUMMON_CALLER_TYPES.SHADOW || task.callerType === SUMMON_CALLER_TYPES.MINER || task.postProcessor === SUMMON_CONTRACT_EXTRACT_POSTPROCESSOR_NAME || task.postProcessor === 'dispatch-contract-extract') {
           return 'summon';
         }
