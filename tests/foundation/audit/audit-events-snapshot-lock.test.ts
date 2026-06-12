@@ -332,7 +332,7 @@ function collectAuditConstMap(root: string): Map<string, string> {
   walk(root, (file) => {
     if (!file.endsWith('audit-events.ts')) return;
     const content = fs.readFileSync(file, 'utf-8');
-    const matches = Array.from(content.matchAll(/([A-Z_][A-Z0-9_]*)\s*:\s*['"]([a-z0-9_]+)['"]/g));
+    const matches = Array.from(content.matchAll(/([A-Z_][A-Z0-9_]*)\s*:\s*['"]([a-z0-9_.]+)['"]/g));
     for (const m of matches) {
       map.set(m[1], m[2]);
     }
@@ -417,7 +417,7 @@ function collectAuditEventsFromSrc(root: string): Record<string, string[]> {
   walk(root, (file) => {
     if (!file.endsWith('audit-events.ts')) return;
     const content = fs.readFileSync(file, 'utf-8');
-    const matches = Array.from(content.matchAll(/[A-Z_][A-Z0-9_]*\s*[:=]\s*'([a-z0-9_]+)'/g));
+    const matches = Array.from(content.matchAll(/[A-Z_][A-Z0-9_]*\s*[:=]\s*'([a-z0-9_.]+)'/g));
     if (matches.length > 0) {
       const moduleName = path.relative(root, file).replace(/\.ts$/, '').replace(/\//g, '_');
       result[moduleName] = matches.map(m => m[1]).sort();

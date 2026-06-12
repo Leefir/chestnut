@@ -24,6 +24,7 @@ export const LLM_AUDIT_EVENTS = {
   STREAM_IDLE_PROBE_SUCCEEDED: 'llm_stream_idle_probe_succeeded',
   HEDGE_STARTED: 'llm.hedge.started',
   HEDGE_PRIMARY_RECOVERED: 'llm.hedge.primary_recovered',
+  HEDGE_PRIMARY_POST_FIRST_CHUNK_FAILURE: 'llm.hedge.primary_post_first_chunk_failure', // phase 289 Step A
   HEDGE_FALLBACK_COMMITTED: 'llm.hedge.fallback_committed',
   HEDGE_PRIMARY_SUCCEEDED_AFTER_RACE_LOST: 'llm.hedge.primary_succeeded_after_race_lost',
   CONTEXT_EXCEEDED_FAILOVER: 'llm_context_exceeded_failover',
@@ -55,6 +56,7 @@ export const ASSEMBLY_LLM_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
   llm_idle_failover_triggered: 'audit',
   llm_stream_idle_probe_attempted: 'audit',
   llm_stream_idle_probe_succeeded: 'audit',
+  'llm.hedge.primary_post_first_chunk_failure': 'audit', // phase 289 Step A
   llm_context_exceeded_failover: 'audit',
   llm_permanent_skip_retry: 'audit',
   llm_all_providers_context_exceeded: 'audit',

@@ -97,7 +97,15 @@ export async function removeDir(dirPath: string): Promise<void> {
  * Move/rename a file or directory (atomic on same filesystem)
  */
 export async function moveFile(src: string, dst: string): Promise<void> {
-  await fs.rename(src, dst);
+  try {
+    await fs.rename(src, dst);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'EXDEV') throw err;
+    // phase 289 Step B: cross-filesystem fallback (mirror `mv` behavior)
+    // atomicity is lost across fs boundaries, but business paths stay intact
+    await fs.copyFile(src, dst);
+    await fs.unlink(src);
+  }
 }
 
 /**

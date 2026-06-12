@@ -396,7 +396,14 @@ export class NodeFileSystem implements FileSystem {
       const fromAbsolute = this.resolveAndCheck(fromPath);
       const toAbsolute = this.resolveAndCheck(toPath);
       fsSync.mkdirSync(path.dirname(toAbsolute), { recursive: true });
-      fsSync.renameSync(fromAbsolute, toAbsolute);
+      try {
+        fsSync.renameSync(fromAbsolute, toAbsolute);
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'EXDEV') throw err;
+        // phase 289 Step B: cross-filesystem fallback (mirror `mv` behavior)
+        fsSync.copyFileSync(fromAbsolute, toAbsolute);
+        fsSync.unlinkSync(fromAbsolute);
+      }
     });
   }
 

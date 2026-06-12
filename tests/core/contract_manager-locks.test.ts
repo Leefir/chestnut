@@ -142,14 +142,15 @@ describe('ContractSystem - lock retry (phase 1351 split)', () => {
         .rejects.toThrow(/Failed to acquire lock after/);
 
       // 每次重试走 unlinkStaleLock 失败路径 → audit 至少一次
-      const cleanupCalls = mockAudit.write.mock.calls.filter(
-        (c: any[]) => c[0] === 'contract_lock_cleanup_failed'
+      // phase 289 Step C: unlinkStaleLock 仅 emit UNLINK_FAILED（去 CLEANUP_FAILED dual emit）
+      const unlinkFailedCalls = mockAudit.write.mock.calls.filter(
+        (c: any[]) => c[0] === 'contract_lock_unlink_failed'
       );
-      expect(cleanupCalls.length).toBeGreaterThan(0); // at least 1; exact count is retry-dependent
-      // 参数：type, reason, code, message
-      expect(cleanupCalls[0][1]).toBe(`stale_pid_${deadPid}`);
-      expect(cleanupCalls[0][2]).toBe('EACCES');
-      expect(cleanupCalls[0][3]).toContain('permission denied');
+      expect(unlinkFailedCalls.length).toBeGreaterThan(0); // at least 1; exact count is retry-dependent
+      // 参数：type, reason, error
+      expect(unlinkFailedCalls[0][1]).toBe(`reason=stale_pid_${deadPid}`);
+      expect(unlinkFailedCalls[0][2]).toContain('error=');
+      expect(unlinkFailedCalls[0][2]).toContain('permission denied');
     } finally {
       unlinkSpy.mockRestore();
     }

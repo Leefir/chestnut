@@ -77,6 +77,13 @@ export function createLLMAuditSink(audit: AuditLog): LLMEventSink {
               `cache_creation_input_tokens=${event.cacheCreationInputTokens ?? 0}`,
               `cache_read_input_tokens=${event.cacheReadInputTokens ?? 0}`);
             break;
+          case 'hedge_primary_post_first_chunk_failure':
+            audit.write(
+              LLM_AUDIT_EVENTS.HEDGE_PRIMARY_POST_FIRST_CHUNK_FAILURE,
+              `provider=${event.provider}`,
+              `error=${event.error.message}`,
+            );
+            break;
           case 'hedge_fallback_committed':
             audit.write(LLM_AUDIT_EVENTS.HEDGE_FALLBACK_COMMITTED,
               `winner=${event.winnerProvider}`, `primary=${event.primaryProvider}`,

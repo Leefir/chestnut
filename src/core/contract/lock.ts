@@ -14,7 +14,6 @@ import { LOCK_MAX_RETRIES, LOCK_RETRY_DELAY_MS, LOCK_STALE_TIMEOUT_MS } from './
 import {
   emitContractLockSchemaInvalid,
   emitContractLockCleared,
-  emitContractLockCleanupFailed,
   emitContractLockUnlinkFailed,
   emitContractLockRetry,
 } from './audit-emit.js';
@@ -119,14 +118,9 @@ export async function unlinkStaleLock(ctx: LockContext, lockPath: string, reason
     return true;
   } catch (err: unknown) {
     if (err instanceof FileNotFoundError) return true;
-    emitContractLockCleanupFailed(
-      ctx.audit,
-      {
-        reason,
-        code: (err as NodeJS.ErrnoException)?.code ?? 'unknown',
-        error: formatErr(err),
-      },
-    );
+    // phase 289 Step C: drop emitContractLockCleanupFailed to avoid dual emit;
+    // keep only emitContractLockUnlinkFailed (symmetric with sibling callers
+    // line 151/169/184) so a single failure produces a single audit row.
     emitContractLockUnlinkFailed(
       ctx.audit,
       { reason, error: formatErr(err) },
