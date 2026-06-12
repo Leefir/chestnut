@@ -323,7 +323,6 @@ export class DialogStore {
       toolsForLLM: ToolDefinition[];
       trace_id?: TraceId;
     },
-    _cacheHints?: { cacheControlMarkerIndex?: number },
   ): Promise<void> {
     const doSave = async (): Promise<void> => {
       // phase 227: schema invariant check（违例 emit audit、不 throw、不阻 save）
@@ -358,10 +357,6 @@ export class DialogStore {
         toolsForLLM: snapshot.toolsForLLM,
         ...(snapshot.trace_id && { trace_id: snapshot.trace_id }),
       };
-
-      // Phase 186: cacheHints received from ContextManager (cacheControlMarkerIndex used for stable prefix persistence)
-      // TODO: persist cacheHints when SessionData schema supports it (phase TBD)
-      void _cacheHints;
 
       try {
         await this.fs.writeAtomic(this.currentPath, JSON.stringify(data, null, 2));
