@@ -10,10 +10,14 @@
  *     (start at line 1 AND limit window reaches totalLines) AND output not byte-cap truncated.
  *     phase 1444 reframe: explicit `limit >= totalLines` reads also qualify (was previously
  *     "no offset/limit at all" — the 200-line cliff banned overwrite of larger files).
+ *
+ * phase 305: Zod schema 作为 SoT，JSON schema / TypeScript type 均 derive；strict mode
+ * 在 runtime 拒绝含 cwd 等未声明字段的输入。
  */
 
 import * as nodePath from 'path';
 import { randomUUID } from 'crypto';
+import { z } from 'zod';
 import type { Tool, ExecContext } from '../tools/index.js';
 import type { ToolResult } from '../tool-protocol/index.js';
 import {
@@ -26,10 +30,25 @@ import { resolveWorkspacePath } from './resolve-path.js';
 import { safeNumber, formatErr } from '../utils/index.js';
 import { recordReadResult } from './file-state-manager.js';
 import { FILE_TOOL_AUDIT_EVENTS } from './audit-events.js';
+import { defineFileToolSchema } from './_zod-helper.js';
 
 import { UUID_SHORT_LEN } from '../../constants.js';
 
 export const READ_TOOL_NAME = 'read' as const;
+
+const ReadInputSchema = z.object({
+  path: z.string().describe(
+    'File path (workspace-relative, "../" allowed for claw root access)'
+  ),
+  offset: z.number().optional().describe(
+    'Starting line number (1-indexed). Negative counts from end of file (-10 = 10 lines before end).'
+  ),
+  limit: z.number().optional().describe(
+    'Maximum lines to read. When set, overrides the 200-line default. Output still subject to the 100 KB byte cap.'
+  ),
+}).strict();
+
+type ReadInput = z.infer<typeof ReadInputSchema>;
 
 const HEAD_LIMIT = 600;
 const TAIL_LIMIT = 1400;
@@ -69,30 +88,27 @@ export const readTool: Tool = {
     '',
     'Overwrite via `write` is rejected unless this read covered every current line of the file (start at line 1 with limit >= totalLines, no byte-cap truncation) and the file is unchanged since. For files where one read can\'t cover everything (>100 KB output), modify via `edit`/`multi_edit` (range-based, no full-read requirement) or use `write` with `append: true` (bypasses the gate).',
   ].join('\n'),
-  schema: {
-    type: 'object',
-    properties: {
-      path: {
-        type: 'string',
-        description: 'File path (workspace-relative, "../" allowed for claw root access)',
-      },
-      offset: {
-        type: 'number',
-        description: 'Starting line number (1-indexed). Negative counts from end of file (-10 = 10 lines before end).',
-      },
-      limit: {
-        type: 'number',
-        description: 'Maximum lines to read. When set, overrides the 200-line default. Output still subject to the 100 KB byte cap.',
-      },
-    },
-    required: ['path'],
-  },
+  schema: defineFileToolSchema(ReadInputSchema),
   readonly: true,
   idempotent: true,
   supportsAsync: false,
 
-  async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
-    const filePath = args.path as string;
+  async execute(rawArgs: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
+    let args: ReadInput;
+    try {
+      args = ReadInputSchema.parse(rawArgs);
+    } catch (err) {
+      ctx.auditWriter?.write(
+        FILE_TOOL_AUDIT_EVENTS.INPUT_VALIDATION_FAILED,
+        `tool=read error=${formatErr(err)}`,
+      );
+      return {
+        success: false,
+        content: `read tool input validation failed: ${(err as Error).message}`,
+      };
+    }
+
+    const { path: filePath } = args;
     const offset = safeNumber(args.offset);
     const limit = safeNumber(args.limit);
 

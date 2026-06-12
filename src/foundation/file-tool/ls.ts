@@ -4,37 +4,53 @@
  */
 
 import * as nodePath from 'path';
+import { z } from 'zod';
 import { formatErr } from "../utils/index.js";
 import type { Tool, ExecContext } from '../tools/index.js';
 import type { ToolResult } from '../tool-protocol/index.js';
 import { LS_MAX_ENTRIES } from './constants.js';
 
 import { resolveWorkspacePath } from './resolve-path.js';
+import { defineFileToolSchema } from './_zod-helper.js';
+import { FILE_TOOL_AUDIT_EVENTS } from './audit-events.js';
 
 
 export const LS_TOOL_NAME = 'ls' as const;
+
+const LsInputSchema = z.object({
+  path: z.string().optional().describe(
+    'Directory path (workspace-relative, "../" allowed for claw root access)'
+  ),
+}).strict();
+
+type LsInput = z.infer<typeof LsInputSchema>;
 
 export const lsTool: Tool = {
   name: LS_TOOL_NAME,
   profiles: ['full', 'readonly', 'subagent', 'miner'],
   group: 'fs-read',
   description: 'List files. Path resolves against your clawspace; use "../" to access claw root subdirs (e.g. "../memory").',
-  schema: {
-    type: 'object',
-    properties: {
-      path: {
-        type: 'string',
-        description: 'Directory path (workspace-relative, "../" allowed for claw root access)',
-      },
-    },
-    required: [],
-  },
+  schema: defineFileToolSchema(LsInputSchema),
   readonly: true,
   idempotent: true,
   supportsAsync: false,
 
-  async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
-    const pathArg = (args.path as string) ?? '.';
+  async execute(rawArgs: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
+    let args: LsInput;
+    try {
+      args = LsInputSchema.parse(rawArgs);
+    } catch (err) {
+      ctx.auditWriter?.write(
+        FILE_TOOL_AUDIT_EVENTS.INPUT_VALIDATION_FAILED,
+        `tool=ls error=${formatErr(err)}`,
+      );
+      return {
+        success: false,
+        content: `ls tool input validation failed: ${(err as Error).message}`,
+      };
+    }
+
+    const pathArg = args.path ?? '.';
     // From constants.ts: pagination limit
 
     const resolved = resolveWorkspacePath(ctx, pathArg);

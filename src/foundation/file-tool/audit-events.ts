@@ -25,6 +25,9 @@ export const FILE_TOOL_AUDIT_EVENTS = {
   READ_FILE_STATE_INVARIANT_VIOLATED: 'read_file_state_invariant_violated',
   // NEW phase 272 Step B: raw audit emit migration to const SoT
   SEARCH_OVERFLOW_PERSIST_FAILED: 'search_overflow_persist_failed',
+
+  /** Zod strict parse 拒绝非法 tool input、payload: tool=<name> error=<msg> (phase 305) */
+  INPUT_VALIDATION_FAILED: 'file_tool_input_validation_failed',
 } as const;
 
 /**

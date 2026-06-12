@@ -11,9 +11,11 @@
  *   - L2 stale: reject "File modified since read; read it again before overwriting."
  */
 
+import { z } from 'zod';
 import type { Tool, ExecContext } from '../tools/index.js';
 import { formatErr } from "../utils/index.js";
 import type { ToolResult } from '../tool-protocol/index.js';
+import { defineFileToolSchema } from './_zod-helper.js';
 
 import { backupToSync } from './sync-backup.js';
 import { resolveWorkspacePath } from './resolve-path.js';
@@ -23,36 +25,44 @@ import { enforceFullReadGate } from './fullread-gate.js';
 
 export const WRITE_TOOL_NAME = 'write' as const;
 
+const WriteInputSchema = z.object({
+  path: z.string().describe(
+    'File path (workspace-relative, "../" allowed for claw root access)'
+  ),
+  content: z.string().describe('Content to write'),
+  append: z.boolean().optional().describe(
+    'If true, append to file instead of overwriting (bypasses the overwrite gate).'
+  ),
+}).strict();
+
+type WriteInput = z.infer<typeof WriteInputSchema>;
+
 export const writeTool: Tool = {
   name: WRITE_TOOL_NAME,
   profiles: ['full', 'subagent', 'miner'],
   group: 'fs-write',
   description: 'Write a file. Path resolves against your clawspace; use "../" to access claw root (e.g. "../MEMORY.md", "../memory/notes.md"). Set append: true to append. Overwrite (no append) requires a prior `read` that covered every current line of the file (no byte-cap truncation) and the file unchanged since that read.',
-  schema: {
-    type: 'object',
-    properties: {
-      path: {
-        type: 'string',
-        description: 'File path (workspace-relative, "../" allowed for claw root access)',
-      },
-      content: {
-        type: 'string',
-        description: 'Content to write',
-      },
-      append: {
-        type: 'boolean',
-        description: 'If true, append to file instead of overwriting (bypasses the overwrite gate).',
-      },
-    },
-    required: ['path', 'content'],
-  },
+  schema: defineFileToolSchema(WriteInputSchema),
   readonly: false,
   idempotent: false,
 
-  async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
-    const filePath = args.path as string;
-    const content = args.content as string;
-    const append = args.append === true;
+  async execute(rawArgs: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
+    let args: WriteInput;
+    try {
+      args = WriteInputSchema.parse(rawArgs);
+    } catch (err) {
+      ctx.auditWriter?.write(
+        FILE_TOOL_AUDIT_EVENTS.INPUT_VALIDATION_FAILED,
+        `tool=write error=${formatErr(err)}`,
+      );
+      return {
+        success: false,
+        content: `write tool input validation failed: ${(err as Error).message}`,
+      };
+    }
+
+    const { path: filePath, content, append: appendArg } = args;
+    const append = appendArg === true;
 
     const resolved = resolveWorkspacePath(ctx, filePath);
     if (resolved.startsWith('..') || resolved.startsWith('/')) {

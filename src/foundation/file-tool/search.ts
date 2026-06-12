@@ -8,11 +8,13 @@
 
 import { randomUUID } from 'crypto';
 import * as nodePath from 'path';
+import { z } from 'zod';
 import { isFileNotFound, type FileSystem } from '../fs/types.js';
 import type { Tool, ExecContext } from '../tools/index.js';
 import type { ToolResult } from '../tool-protocol/index.js';
 
 import { resolveWorkspacePath } from './resolve-path.js';
+import { defineFileToolSchema } from './_zod-helper.js';
 
 import { formatErr } from '../utils/index.js';
 import { FILE_TOOL_AUDIT_EVENTS } from './audit-events.js';
@@ -304,40 +306,46 @@ async function finalize(
 
 export const SEARCH_TOOL_NAME = 'search' as const;
 
+const SearchInputSchema = z.object({
+  text: z.string().describe(
+    'Literal text to search for (case-insensitive by default, no regex/glob — searched as substring). Non-empty, length <= 1024.'
+  ),
+  path: z.string().optional().describe(
+    'Directory to search in, relative to clawspace. Use ".." to escape clawspace to claw root (e.g. path: "../memory"). Default: clawspace root.'
+  ),
+  caseSensitive: z.boolean().optional().describe('Match case-sensitively. Default: false.'),
+  async: z.boolean().optional().describe('If true, run in background. Result delivered to inbox when complete.'),
+}).strict();
+
+type SearchInput = z.infer<typeof SearchInputSchema>;
+
 export const searchTool: Tool = {
   name: SEARCH_TOOL_NAME,
   profiles: ['full', 'readonly', 'subagent', 'miner'],
   group: 'fs-read',
   description: 'Search LOCAL files (not web/network) for literal text in filenames AND contents (unified). Returns segmented [Filename matches] / [Content matches] / [Skipped]. Case-insensitive by default, no regex/glob. Full scan with no result cap; first 20 returned as preview, overflow saved to tasks/sync/search/<uuid>.md. Default base: clawspace.',
-  schema: {
-    type: 'object',
-    properties: {
-      text: {
-        type: 'string',
-        description: 'Literal text to search for (case-insensitive by default, no regex/glob — searched as substring). Non-empty, length <= 1024.',
-      },
-      path: {
-        type: 'string',
-        description: 'Directory to search in, relative to clawspace. Use ".." to escape clawspace to claw root (e.g. path: "../memory"). Default: clawspace root.',
-      },
-      caseSensitive: {
-        type: 'boolean',
-        description: 'Match case-sensitively. Default: false.',
-      },
-      async: {
-        type: 'boolean',
-        description: 'If true, run in background. Result delivered to inbox when complete.',
-      },
-    },
-    required: ['text'],
-  },
+  schema: defineFileToolSchema(SearchInputSchema),
   readonly: true,
   idempotent: true,
   supportsAsync: true,
 
-  async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
-    const rawText = args.text as string;
-    if (typeof rawText !== 'string' || rawText.length === 0) {
+  async execute(rawArgs: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
+    let args: SearchInput;
+    try {
+      args = SearchInputSchema.parse(rawArgs);
+    } catch (err) {
+      ctx.auditWriter?.write(
+        FILE_TOOL_AUDIT_EVENTS.INPUT_VALIDATION_FAILED,
+        `tool=search error=${formatErr(err)}`,
+      );
+      return {
+        success: false,
+        content: `search tool input validation failed: ${(err as Error).message}`,
+      };
+    }
+
+    const rawText = args.text;
+    if (rawText.length === 0) {
       return { success: false, content: 'Error: text must be a non-empty string' };
     }
     if (rawText.length > PATTERN_MAX_LEN) {
@@ -346,7 +354,7 @@ export const searchTool: Tool = {
     const pattern = rawText;
     const caseSensitive = args.caseSensitive === true;
 
-    const pathArg = (args.path as string) ?? '.';
+    const pathArg = args.path ?? '.';
     const searchPath = resolveWorkspacePath(ctx, pathArg);
     if (searchPath.startsWith('..') || searchPath.startsWith('/')) {
       return {

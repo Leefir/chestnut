@@ -11,15 +11,34 @@
  * - Success returns ±3-line context diff (formatEditDiff)
  */
 
+import { z } from 'zod';
 import type { Tool, ExecContext } from '../tools/index.js';
 import type { ToolResult } from '../tool-protocol/index.js';
+import { formatErr } from '../utils/index.js';
 
 import { backupToSync } from './sync-backup.js';
 import { resolveWorkspacePath } from './resolve-path.js';
 import { recordEditResult } from './file-state-manager.js';
 import { enforceFullReadGate } from './fullread-gate.js';
+import { FILE_TOOL_AUDIT_EVENTS } from './audit-events.js';
+import { defineFileToolSchema } from './_zod-helper.js';
 import { formatEditDiff, lineDelta, findNearMatches, findAllMatchLines } from './edit-text-utils.js';
 export const EDIT_TOOL_NAME = 'edit' as const;
+
+const EditInputSchema = z.object({
+  path: z.string().describe(
+    'File path (workspace-relative, "../" allowed for claw root access)'
+  ),
+  oldText: z.string().describe(
+    'Exact text to replace (must uniquely match by default; preserve whitespace / newlines / indentation literally)'
+  ),
+  newText: z.string().describe('Replacement text (empty string deletes the matched range)'),
+  replaceAll: z.boolean().optional().describe(
+    'If true, replace all occurrences instead of just the first'
+  ),
+}).strict();
+
+type EditInput = z.infer<typeof EditInputSchema>;
 
 function countMatches(s: string, pattern: string): number {
   if (!pattern) return 0;
@@ -37,36 +56,26 @@ export const editTool: Tool = {
   profiles: ['full', 'subagent', 'miner'],
   group: 'fs-write',
   description: 'Edit a file by exact string replace. Path resolves against your clawspace; use "../" to access claw root (e.g. "../MEMORY.md"). oldText must uniquely match by default; set replaceAll=true for batch. File must exist (use write to create).',
-  schema: {
-    type: 'object',
-    properties: {
-      path: {
-        type: 'string',
-        description: 'File path (workspace-relative, "../" allowed for claw root access)',
-      },
-      oldText: {
-        type: 'string',
-        description: 'Exact text to replace (must uniquely match by default; preserve whitespace / newlines / indentation literally)',
-      },
-      newText: {
-        type: 'string',
-        description: 'Replacement text (empty string deletes the matched range)',
-      },
-      replaceAll: {
-        type: 'boolean',
-        description: 'If true, replace all occurrences instead of just the first',
-      },
-    },
-    required: ['path', 'oldText', 'newText'],
-  },
+  schema: defineFileToolSchema(EditInputSchema),
   readonly: false,
   idempotent: false,
 
-  async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
-    const filePath = args.path as string;
-    const oldText = args.oldText as string;
-    const newText = args.newText as string;
-    const replaceAll = args.replaceAll === true;
+  async execute(rawArgs: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
+    let args: EditInput;
+    try {
+      args = EditInputSchema.parse(rawArgs);
+    } catch (err) {
+      ctx.auditWriter?.write(
+        FILE_TOOL_AUDIT_EVENTS.INPUT_VALIDATION_FAILED,
+        `tool=edit error=${formatErr(err)}`,
+      );
+      return {
+        success: false,
+        content: `edit tool input validation failed: ${(err as Error).message}`,
+      };
+    }
+
+    const { path: filePath, oldText, newText, replaceAll } = args;
 
     const resolved = resolveWorkspacePath(ctx, filePath);
     if (resolved.startsWith('..') || resolved.startsWith('/')) {

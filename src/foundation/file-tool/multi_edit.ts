@@ -11,15 +11,38 @@
  * - Success returns Applied summary + First edit preview (formatEditDiff)
  */
 
+import { z } from 'zod';
 import type { Tool, ExecContext } from '../tools/index.js';
 import type { ToolResult } from '../tool-protocol/index.js';
+import { formatErr } from '../utils/index.js';
 
 import { backupToSync } from './sync-backup.js';
 import { resolveWorkspacePath } from './resolve-path.js';
 import { recordEditResult } from './file-state-manager.js';
 import { enforceFullReadGate } from './fullread-gate.js';
+import { FILE_TOOL_AUDIT_EVENTS } from './audit-events.js';
+import { defineFileToolSchema } from './_zod-helper.js';
 import { findFirstMatchLine, formatEditDiff, lineDelta, findNearMatches, findAllMatchLines } from './edit-text-utils.js';
 export const MULTI_EDIT_TOOL_NAME = 'multi_edit' as const;
+
+const MultiEditInputSchema = z.object({
+  path: z.string().describe(
+    'File path (workspace-relative, "../" allowed for claw root access)'
+  ),
+  edits: z.array(
+    z.object({
+      oldText: z.string().describe('Exact text to replace'),
+      newText: z.string().describe('Replacement text (empty string deletes the matched range)'),
+      replaceAll: z.boolean().optional().describe(
+        'If true, replace all occurrences instead of just the first'
+      ),
+    }).strict()
+  ).describe(
+    'Array of edits to apply in order. Each edit takes oldText (exact match) + newText, optional replaceAll. Note: edits[i].oldText must match the file AFTER edits[0..i-1] have been applied — order-sensitive. Line numbers in the Applied summary reflect the file state BEFORE that specific edit was applied (subsequent edits may shift positions).'
+  ),
+}).strict();
+
+type MultiEditInput = z.infer<typeof MultiEditInputSchema>;
 
 function countMatches(s: string, pattern: string): number {
   if (!pattern) return 0;
@@ -37,44 +60,26 @@ export const multiEditTool: Tool = {
   profiles: ['full', 'subagent', 'miner'],
   group: 'fs-write',
   description: 'Apply multiple sequential edits to a file atomically. Path resolves against your clawspace; use "../" to access claw root. Edits apply in order; any failure rolls all back (0 fs write). Single backup before all edits. File must exist.',
-  schema: {
-    type: 'object',
-    properties: {
-      path: {
-        type: 'string',
-        description: 'File path (workspace-relative, "../" allowed for claw root access)',
-      },
-      edits: {
-        type: 'array',
-        description: 'Array of edits to apply in order. Each edit takes oldText (exact match) + newText, optional replaceAll. Note: edits[i].oldText must match the file AFTER edits[0..i-1] have been applied — order-sensitive. Line numbers in the Applied summary reflect the file state BEFORE that specific edit was applied (subsequent edits may shift positions).',
-        items: {
-          type: 'object',
-          properties: {
-            oldText: {
-              type: 'string',
-              description: 'Exact text to replace',
-            },
-            newText: {
-              type: 'string',
-              description: 'Replacement text (empty string deletes the matched range)',
-            },
-            replaceAll: {
-              type: 'boolean',
-              description: 'If true, replace all occurrences instead of just the first',
-            },
-          },
-          required: ['oldText', 'newText'],
-        },
-      },
-    },
-    required: ['path', 'edits'],
-  },
+  schema: defineFileToolSchema(MultiEditInputSchema),
   readonly: false,
   idempotent: false,
 
-  async execute(args: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
-    const filePath = args.path as string;
-    const edits = args.edits as Array<{ oldText: string; newText: string; replaceAll?: boolean }>;
+  async execute(rawArgs: Record<string, unknown>, ctx: ExecContext): Promise<ToolResult> {
+    let args: MultiEditInput;
+    try {
+      args = MultiEditInputSchema.parse(rawArgs);
+    } catch (err) {
+      ctx.auditWriter?.write(
+        FILE_TOOL_AUDIT_EVENTS.INPUT_VALIDATION_FAILED,
+        `tool=multi_edit error=${formatErr(err)}`,
+      );
+      return {
+        success: false,
+        content: `multi_edit tool input validation failed: ${(err as Error).message}`,
+      };
+    }
+
+    const { path: filePath, edits } = args;
 
     const resolved = resolveWorkspacePath(ctx, filePath);
     if (resolved.startsWith('..') || resolved.startsWith('/')) {
