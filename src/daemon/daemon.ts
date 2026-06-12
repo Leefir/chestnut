@@ -11,7 +11,8 @@
 import * as path from 'path';
 import { createHash } from 'node:crypto';
 import { formatErr } from '../foundation/utils/index.js';
-import { loadGlobalConfig, loadClawConfig, getClawDir, getNamedSubrootDir, getClawConfigPath } from '../foundation/config/index.js';
+import { loadGlobalConfig, loadClawConfig } from '../assembly/config-load.js';
+import { getClawDir, getNamedSubrootDir, getClawConfigPath } from '../foundation/config/index.js';
 import { MOTION_CLAW_ID } from '../constants.js';
 
 import { startDaemonLoop } from './daemon-loop.js';

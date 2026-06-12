@@ -7,7 +7,7 @@ import type { StreamLog } from '../../../foundation/stream/index.js';
 import { CLAWSPACE_DIR } from '../../../foundation/claw-paths.js';
 import type { CronJob } from '../runner.js';
 import { parseSchedule } from '../runner.js';
-import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
+import type { CronJobGlobalConfig } from '../runner.js';
 import type { ClawTopology } from '../../../core/claw-topology/index.js';
 import { MOTION_CLAW_ID } from '../../../constants.js';
 
@@ -113,7 +113,7 @@ export function __resetDiskMonitorState(): void {
 
 export function createDiskMonitorJob(
   deps: DiskMonitorJobDeps,
-  globalConfig: ClawGlobalConfig,
+  globalConfig: CronJobGlobalConfig<'disk_monitor'>,
 ): CronJob {
   return {
     name: 'disk-monitor',

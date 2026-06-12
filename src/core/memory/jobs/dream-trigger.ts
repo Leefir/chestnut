@@ -1,6 +1,6 @@
 import type { CronJob } from '../../cron/runner.js';
 import { parseSchedule } from '../../cron/runner.js';
-import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
+import type { CronJobGlobalConfig } from '../../cron/runner.js';
 import type { MemorySystem } from '../index.js';
 
 /**
@@ -17,7 +17,7 @@ export interface DreamTriggerJobDeps {
 
 export function createDreamTriggerJob(
   deps: DreamTriggerJobDeps,
-  globalConfig: ClawGlobalConfig,
+  globalConfig: CronJobGlobalConfig<'dream_trigger'>,
 ): CronJob {
   return {
     name: 'dream-trigger',

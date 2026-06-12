@@ -15,6 +15,19 @@ vi.mock('../../src/foundation/config/index.js', () => ({
   getClawDir: vi.fn((claw: string) => path.join(shared.baseDir, 'claws', claw)),
   getClawConfigPath: vi.fn((claw: string) => path.join(shared.baseDir, 'claws', claw, 'config.yaml')),
 }));
+vi.mock('../../src/assembly/config-load.js', async () => {
+  const foundation = await import('../../src/foundation/config/index.js');
+  return {
+    loadGlobalConfig: foundation.loadGlobalConfig,
+    isInitialized: vi.fn(),
+    saveGlobalConfig: vi.fn(),
+    loadClawConfig: vi.fn(),
+    patchGlobalConfigPrimary: vi.fn(),
+    saveClawConfig: vi.fn(),
+    clawExists: foundation.clawExists,
+    buildLLMConfig: vi.fn(),
+  };
+});
 
 function makeMockFs(baseDir: string): FileSystem {
   return new NodeFileSystem({ baseDir }) as FileSystem;

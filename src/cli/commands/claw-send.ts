@@ -5,9 +5,8 @@
 
 import * as path from 'path';
 
-import {
-  loadGlobalConfig, clawExists, getGlobalConfigPath, getClawConfigPath,
-} from '../../foundation/config/index.js';
+import { loadGlobalConfig, clawExists } from '../../assembly/config-load.js';
+import { getGlobalConfigPath, getClawConfigPath } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import { notifyClaw } from '../../foundation/messaging/notify.js';

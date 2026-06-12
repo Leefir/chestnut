@@ -80,6 +80,13 @@ export interface CronJob {
   timeoutMs?: number;
 }
 
+/** Narrow config slice used by cron job factories; avoids L5 → L6 reverse type import. */
+export interface CronJobGlobalConfig<JobName extends string> {
+  cron: {
+    jobs: Record<JobName, { enabled: boolean; schedule: string }>;
+  };
+}
+
 const CANCELLING_STUCK_TICKS = 10; // timeout 后 N ticks 仍 cancelling 视为 handler 永挂
 
 /**

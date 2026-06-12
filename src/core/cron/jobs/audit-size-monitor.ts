@@ -19,7 +19,7 @@ import type { StreamLog } from '../../../foundation/stream/index.js';
 import { AUDIT_SIZE_MONITOR_AUDIT_EVENTS } from './audit-size-monitor-audit-events.js';
 import type { CronJob } from '../runner.js';
 import { parseSchedule } from '../runner.js';
-import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
+import type { CronJobGlobalConfig } from '../runner.js';
 
 /**
  * Cron job timeout (ms) / 防 stuck handler 占 cron tick.
@@ -117,7 +117,7 @@ export function __resetAuditSizeMonitorState(): void {
 
 export function createAuditSizeMonitorJob(
   deps: AuditSizeMonitorJobDeps,
-  globalConfig: ClawGlobalConfig,
+  globalConfig: CronJobGlobalConfig<'audit_size_monitor'>,
 ): CronJob {
   return {
     name: 'audit-size-monitor',

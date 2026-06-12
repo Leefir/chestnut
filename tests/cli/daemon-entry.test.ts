@@ -24,6 +24,19 @@ vi.mock('../../src/foundation/config/index.js', () => ({
   getClawDir: vi.fn(() => '/tmp/test-claw'),
   getNamedSubrootDir: vi.fn(() => '/tmp/test-motion'),
 }));
+vi.mock('../../src/assembly/config-load.js', async () => {
+  const foundation = await import('../../src/foundation/config/index.js');
+  return {
+    loadGlobalConfig: vi.fn(),
+    isInitialized: vi.fn(),
+    saveGlobalConfig: vi.fn(),
+    loadClawConfig: vi.fn(),
+    patchGlobalConfigPrimary: vi.fn(),
+    saveClawConfig: vi.fn(),
+    clawExists: vi.fn(() => true),
+    buildLLMConfig: vi.fn(),
+  };
+});
 
 vi.mock('../../src/daemon/daemon.js', () => ({
   createDaemonCommand: vi.fn(() => vi.fn().mockResolvedValue(undefined)),

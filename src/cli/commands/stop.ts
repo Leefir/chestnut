@@ -4,7 +4,8 @@
 
 import * as path from 'path';
 import { formatErr } from "../../foundation/utils/index.js";
-import { loadGlobalConfig, getGlobalConfigPath, getNamedSubrootDir } from '../../foundation/config/index.js';
+import { loadGlobalConfig } from '../../assembly/config-load.js';
+import { getGlobalConfigPath, getNamedSubrootDir } from '../../foundation/config/index.js';
 import { MOTION_CLAW_ID } from '../../constants.js';
 import { createAuditWriter } from '../../foundation/audit/index.js';
 import { getChestnutFs, getGlobalConfig, setAuditWriter as setWatchdogAuditWriter } from '../../watchdog/watchdog-context.js';

@@ -14,9 +14,8 @@
  * 24h 上限：超出 → CLI reject + audit emit (CLAW_WATCH_REJECTED)
  */
 
-import {
-  loadGlobalConfig, clawExists, getChestnutRoot, getClawConfigPath,
-} from '../../foundation/config/index.js';
+import { loadGlobalConfig, clawExists } from '../../assembly/config-load.js';
+import { getChestnutRoot, getClawConfigPath } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import type { AuditLog } from '../../foundation/audit/index.js';
 import { CLI_AUDIT_EVENTS } from '../audit-events.js';

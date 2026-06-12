@@ -15,7 +15,8 @@
 
 import { resolveChestnutRoot } from '../../foundation/install-paths.js';
 import * as path from 'path';
-import { loadGlobalConfig, clawExists, getClawDir, getClawConfigPath } from '../../foundation/config/index.js';
+import { loadGlobalConfig, clawExists } from '../../assembly/config-load.js';
+import { getClawDir, getClawConfigPath } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import { createSystemAudit } from '../../foundation/audit/index.js';
 // CLAWS_DIR removed: phase 263

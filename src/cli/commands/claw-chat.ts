@@ -4,9 +4,8 @@
 
 import { getWorkspaceRoot } from '../../foundation/install-paths.js';
 import * as path from 'path';
-import {
-  loadGlobalConfig, clawExists, getClawDir, getClawConfigPath,
-} from '../../foundation/config/index.js';
+import { loadGlobalConfig, clawExists } from '../../assembly/config-load.js';
+import { getClawDir, getClawConfigPath } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import { runChatViewport } from './chat-viewport.js';
 import { createDirContext } from '../../foundation/audit/index.js';

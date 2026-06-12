@@ -8,7 +8,7 @@ import { MOTION_CLAW_ID } from '../../../constants.js';
 import { GIT_GC_WEEKLY_AUDIT_EVENTS } from './git-gc-weekly-audit-events.js';
 import type { CronJob } from '../runner.js';
 import { parseSchedule } from '../runner.js';
-import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
+import type { CronJobGlobalConfig } from '../runner.js';
 
 /**
  * Cron job timeout (ms) / 防 stuck handler 占 cron tick.
@@ -59,7 +59,7 @@ export async function runGitGcWeekly(opts: GitGcWeeklyOptions): Promise<void> {
 
 export function createGitGcWeeklyJob(
   deps: GitGcWeeklyJobDeps,
-  globalConfig: ClawGlobalConfig,
+  globalConfig: CronJobGlobalConfig<'git_gc_weekly'>,
 ): CronJob {
   return {
     name: 'git-gc-weekly',

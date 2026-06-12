@@ -12,18 +12,11 @@ module.exports = {
       comment: [
         'L4/L5 core + L1/L2 foundation modules 不应反向 import L6 Assembly (ML#5 strict)。',
         'phase 238 + 242 真治后 imports 已 cleared、rule 立 strict 防 future drift。',
-        'pathNot: 3 file 遗留 compose-config import = accepted-stable (real-治 推 phase 278 audit V12 §10 续候选)、非 install-paths。',
+        'phase 298 V12 real-治：wrapper 反向迁 assembly/config-load、type-only import 改源 compose-config (assembly own)、allowlist 0 例外。',
       ].join(' '),
       severity: 'error',
       from: {
         path: '^src/(core|foundation)/',
-        pathNot: [
-          // accepted-stable: compose-config 仍 L6 own、3 file 遗留 import (per phase 278 audit V12)
-          // 真治候选 a (compose-config 整迁 foundation) / b (特定 wrapper 反向迁 assembly) 推 §10 续 phase
-          '^src/foundation/config/crud\\.ts$',
-          '^src/foundation/config/index\\.ts$',
-          '^src/foundation/llm-orchestrator/config-adapter\\.ts$',
-        ],
       },
       to: { path: '^src/assembly/' },
     },

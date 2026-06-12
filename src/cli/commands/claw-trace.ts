@@ -8,9 +8,8 @@
 import * as path from 'path';
 import type { FileSystem } from '../../foundation/fs/types.js';
 import * as yaml from 'js-yaml';
-import {
-  loadGlobalConfig, clawExists, getClawDir, getClawConfigPath,
-} from '../../foundation/config/index.js';
+import { loadGlobalConfig, clawExists } from '../../assembly/config-load.js';
+import { getClawDir, getClawConfigPath } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import { CONTRACT_DIR, CONTRACT_ARCHIVE_DIR } from '../../core/contract/index.js';
 import { DIALOG_DIR, DIALOG_ARCHIVE_DIR } from '../../foundation/dialog-store/index.js';

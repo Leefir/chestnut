@@ -15,7 +15,8 @@ import { randomUUID } from 'crypto';
 import { maybeCronClawCrash } from '../../src/watchdog/watchdog-cron.js';
 import { clawStateAPI, _resetWatchdogContextForTest } from '../../src/watchdog/watchdog-context.js';
 import { WATCHDOG_AUDIT_EVENTS } from '../../src/watchdog/audit-events.js';
-import { getNamedSubrootDir, loadGlobalConfig } from '../../src/foundation/config/index.js';
+import { getNamedSubrootDir } from '../../src/foundation/config/index.js';
+import { loadGlobalConfig } from '../../src/assembly/config-load.js';
 import { clawHasContract, clawHasActiveContract, gatherClawSnapshot } from '../../src/watchdog/watchdog-utils.js';
 import { notifyClaw } from '../../src/foundation/messaging/index.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';
@@ -29,6 +30,19 @@ vi.mock('../../src/foundation/config/index.js', async (importOriginal) => {
     ...actual,
     getNamedSubrootDir: vi.fn(),
     loadGlobalConfig: vi.fn(),
+  };
+});
+vi.mock('../../src/assembly/config-load.js', async () => {
+  const foundation = await import('../../src/foundation/config/index.js');
+  return {
+    loadGlobalConfig: foundation.loadGlobalConfig,
+    isInitialized: vi.fn(),
+    saveGlobalConfig: vi.fn(),
+    loadClawConfig: vi.fn(),
+    patchGlobalConfigPrimary: vi.fn(),
+    saveClawConfig: vi.fn(),
+    clawExists: vi.fn(() => true),
+    buildLLMConfig: vi.fn(),
   };
 });
 

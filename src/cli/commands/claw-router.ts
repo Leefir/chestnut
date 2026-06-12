@@ -35,7 +35,8 @@ import {
 } from './claw.js';
 import { CliError } from '../errors.js';
 import { createDirContext } from '../../foundation/audit/index.js';
-import { getClawDir, loadGlobalConfig } from '../../foundation/config/index.js';
+import { getClawDir } from '../../foundation/config/index.js';
+import { loadGlobalConfig } from '../../assembly/config-load.js';
 import { parseIntOption } from '../parse-int-option.js';
 import { makeContractId } from '../../core/contract/types.js';
 import type { FileSystem } from '../../foundation/fs/types.js';

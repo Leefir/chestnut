@@ -3,8 +3,8 @@
  *
  * 应然：M#5 单向。L1 primitive + L2 基础设施 + L3 通用 + L4 业务都不上引 L6。
  *
- * 当前实然 20 file allow-list = tech debt (主因 ChestnutRoot brand + getClawDir helper +
- * install-paths 仍 L6 own、L1-L4 反向 import 取 brand/helper)、留 design-gap。
+ * phase 298 后: L1-L4 → L6 assembly import 已清 0 (foundation/config/crud/index +
+ * llm-orchestrator/config-adapter 反向迁 assembly/config-load 完成)。
  * 新增 hit → 测 fail = ratchet 守。
  *
  * 后续 cluster 治理目标: 清空 allow-list (brand vocabulary 物理迁 L1 vocabulary file 或
@@ -18,10 +18,7 @@ import path from 'node:path';
 const ASSEMBLY_IMPORT_PATTERN = /from\s+['"][^'"]*\/assembly\/[^'"]*['"]/;
 
 const BASELINE_ALLOW_LIST = new Set([
-  // L1 foundation/ (3) — compose-config 仍 L6 own、待 phase 240 cluster 治理
-  'src/foundation/config/crud.ts',
-  'src/foundation/config/index.ts',
-  'src/foundation/llm-orchestrator/config-adapter.ts',
+  // phase 298: V12 real-治后 0 entry。ratchet 防未来新增 L1-L4 → L6 import。
 ]);
 
 function walk(dir: string): string[] {

@@ -15,6 +15,19 @@ vi.mock('../../src/foundation/config/index.js', () => ({
   getClawDir: vi.fn((claw: string) => `/tmp/chestnut-test/claws/${claw}`),
   getClawConfigPath: vi.fn((claw: string) => `/tmp/chestnut-test/claws/${claw}/config.yaml`),
 }));
+vi.mock('../../src/assembly/config-load.js', async () => {
+  const foundation = await import('../../src/foundation/config/index.js');
+  return {
+    loadGlobalConfig: foundation.loadGlobalConfig,
+    isInitialized: vi.fn(),
+    saveGlobalConfig: vi.fn(),
+    loadClawConfig: vi.fn(),
+    patchGlobalConfigPrimary: vi.fn(),
+    saveClawConfig: vi.fn(),
+    clawExists: foundation.clawExists,
+    buildLLMConfig: vi.fn(),
+  };
+});
 
 describe('audit CLI motion-aware adaptation (phase 167)', () => {
   let stdoutSpy: ReturnType<typeof vi.spyOn>;

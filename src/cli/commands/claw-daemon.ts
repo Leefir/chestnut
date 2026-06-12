@@ -9,9 +9,8 @@
 
 import { getWorkspaceRoot } from '../../foundation/install-paths.js';
 import * as path from 'path';
-import {
-  loadGlobalConfig, clawExists, getClawDir, getGlobalConfigPath, getClawConfigPath,
-} from '../../foundation/config/index.js';
+import { loadGlobalConfig, clawExists } from '../../assembly/config-load.js';
+import { getClawDir, getGlobalConfigPath, getClawConfigPath } from '../../foundation/config/index.js';
 import { createSystemAudit } from '../../foundation/audit/index.js';
 import { createAgentProcessManager } from '../../foundation/process-manager/index.js';
 import { makeClawId } from '../../constants.js';

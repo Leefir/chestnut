@@ -5,7 +5,7 @@ import { LLM_STATS_AUDIT_EVENTS } from './llm-stats-audit-events.js';
 import { MOTION_CLAW_ID } from '../../../constants.js';
 import type { CronJob } from '../runner.js';
 import { parseSchedule } from '../runner.js';
-import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
+import type { CronJobGlobalConfig } from '../runner.js';
 import type { ClawTopology } from '../../../core/claw-topology/index.js';
 
 
@@ -217,7 +217,7 @@ function aggregate(entries: ParsedLlmRow[], targetDate: string, signal?: AbortSi
 
 export function createLlmStatsJob(
   deps: LlmStatsJobDeps,
-  globalConfig: ClawGlobalConfig,
+  globalConfig: CronJobGlobalConfig<'llm_stats'>,
 ): CronJob {
   return {
     name: 'llm-stats',

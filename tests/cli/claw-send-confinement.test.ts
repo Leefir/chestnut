@@ -29,6 +29,19 @@ vi.mock('../../src/foundation/config/index.js', async (importOriginal) => {
     clawExists: vi.fn(() => true),
   };
 });
+vi.mock('../../src/assembly/config-load.js', async () => {
+  const foundation = await import('../../src/foundation/config/index.js');
+  return {
+    loadGlobalConfig: foundation.loadGlobalConfig,
+    isInitialized: vi.fn(),
+    saveGlobalConfig: vi.fn(),
+    loadClawConfig: vi.fn(),
+    patchGlobalConfigPrimary: vi.fn(),
+    saveClawConfig: vi.fn(),
+    clawExists: foundation.clawExists,
+    buildLLMConfig: vi.fn(),
+  };
+});
 
 describe('claw-send — confinement baseDir vs root (P0.2 phase 611)', () => {
   let tmpRoot: string;

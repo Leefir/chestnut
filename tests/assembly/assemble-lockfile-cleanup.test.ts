@@ -6,7 +6,7 @@ const { mockSkillFactory } = vi.hoisted(() => ({
 import { assemble } from '../../src/assembly/assemble.js';
 import { LockConflictError } from '../../src/assembly/index.js';
 import { buildTestGlobalConfig } from '../helpers/global-config.js';
-import { buildLLMConfig } from '../../src/foundation/llm-orchestrator/config-adapter.js';  // phase 280: hoist 2 dyn
+import { buildLLMConfig } from '../../src/assembly/config-load.js';  // phase 280: hoist 2 dyn
 
 // ============================================================================
 // Shared mocks
@@ -215,7 +215,7 @@ vi.mock('../../src/foundation/dialog-store/index.js', () => ({
   DIALOG_ARCHIVE_DIR: 'dialog/archive',
 }));
 
-vi.mock('../../src/foundation/llm-orchestrator/config-adapter.js', () => ({
+vi.mock('../../src/assembly/config-load.js', () => ({
   buildLLMConfig: vi.fn(() => ({ provider: 'mock' })),
 }));
 

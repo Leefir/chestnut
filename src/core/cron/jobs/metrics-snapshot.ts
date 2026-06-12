@@ -3,7 +3,7 @@ import type { AuditLog } from '../../../foundation/audit/index.js';
 import { METRICS_SNAPSHOT_AUDIT_EVENTS } from './metrics-snapshot-audit-events.js';
 import type { CronJob } from '../runner.js';
 import { parseSchedule } from '../runner.js';
-import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
+import type { CronJobGlobalConfig } from '../runner.js';
 
 /**
  * Cron job timeout (ms) / 防 stuck handler 占 cron tick.
@@ -62,7 +62,7 @@ export async function runMetricsSnapshot(opts: MetricsSnapshotOptions): Promise<
 
 export function createMetricsSnapshotJob(
   deps: MetricsSnapshotJobDeps,
-  globalConfig: ClawGlobalConfig,
+  globalConfig: CronJobGlobalConfig<'metrics_snapshot'>,
 ): CronJob {
   return {
     name: 'metrics-snapshot',

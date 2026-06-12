@@ -8,7 +8,8 @@
  */
 
 import * as path from 'path';
-import { loadGlobalConfig, clawExists, getClawDir, getClawConfigPath } from '../../foundation/config/index.js';
+import { loadGlobalConfig, clawExists } from '../../assembly/config-load.js';
+import { getClawDir, getClawConfigPath } from '../../foundation/config/index.js';
 import { CLAWSPACE_DIR } from '../../foundation/claw-paths.js';
 import { CliError } from '../errors.js';
 import type { FileSystem, StatInfo } from '../../foundation/fs/types.js';

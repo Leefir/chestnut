@@ -23,6 +23,19 @@ vi.mock('../../../src/foundation/config/index.js', () => ({
   getClawDir: vi.fn(),
   getClawConfigPath: vi.fn(),
 }));
+vi.mock('../../../src/assembly/config-load.js', async () => {
+  const foundation = await import('../../../src/foundation/config/index.js');
+  return {
+    loadGlobalConfig: foundation.loadGlobalConfig,
+    isInitialized: vi.fn(),
+    saveGlobalConfig: vi.fn(),
+    loadClawConfig: vi.fn(),
+    patchGlobalConfigPrimary: vi.fn(),
+    saveClawConfig: vi.fn(),
+    clawExists: foundation.clawExists,
+    buildLLMConfig: vi.fn(),
+  };
+});
 
 describe('claw-status (phase 1472 Step C)', () => {
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;

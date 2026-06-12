@@ -10,7 +10,8 @@ import * as path from 'path';
 import { healthCommand } from '../../../src/cli/commands/claw-health.js';
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
 // phase 268: hoist 11 dynamic imports of 2 unique modules
-import { loadGlobalConfig, clawExists, getClawDir, getGlobalConfigPath, getClawConfigPath } from '../../../src/foundation/config/index.js';
+import { loadGlobalConfig, clawExists } from '../../../src/assembly/config-load.js';
+import { getClawDir, getGlobalConfigPath, getClawConfigPath } from '../../../src/foundation/config/index.js';
 import { createProcessManagerForCLI } from '../../../src/foundation/process-manager/factories.js';
 
 const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });
@@ -35,6 +36,19 @@ vi.mock('../../../src/foundation/config/index.js', () => ({
   getGlobalConfigPath: vi.fn(),
   getClawConfigPath: vi.fn(),
 }));
+vi.mock('../../../src/assembly/config-load.js', async () => {
+  const foundation = await import('../../../src/foundation/config/index.js');
+  return {
+    loadGlobalConfig: foundation.loadGlobalConfig,
+    isInitialized: vi.fn(),
+    saveGlobalConfig: vi.fn(),
+    loadClawConfig: vi.fn(),
+    patchGlobalConfigPrimary: vi.fn(),
+    saveClawConfig: vi.fn(),
+    clawExists: foundation.clawExists,
+    buildLLMConfig: vi.fn(),
+  };
+});
 
 vi.mock('../../../src/foundation/audit/index.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../src/foundation/audit/index.js')>()),

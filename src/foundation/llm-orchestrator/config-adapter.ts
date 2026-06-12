@@ -3,12 +3,11 @@
  *
  * 业务归 LLM、本模块 own LLM yaml schema ↔ runtime ProviderConfig 转换。
  * Content 与 foundation/config/adapters.ts 等同（迁不改）、import path 改自家。
+ * phase 298: buildLLMConfig 迁 assembly/config-load.ts (root config 装配业务归 L6 Assembly)。
  */
-import type { LLMOrchestratorConfig } from './index.js';
 import type { ProviderConfig } from '../llm-provider/types.js';
 import { resolvePreset } from '../llm-provider/presets.js';
 import type { LLMProviderConfig } from './llm-provider-config-schema.js';
-import type { ClawGlobalConfig, ClawConfig } from '../../assembly/compose-config.js';
 
 // Convert snake_case to camelCase, resolve preset
 export function toProviderConfig(p: LLMProviderConfig): ProviderConfig {
@@ -43,33 +42,5 @@ export function toProviderConfig(p: LLMProviderConfig): ProviderConfig {
     dropThinkingBlocks: p.drop_thinking_blocks,
     apiFormat: preset.apiFormat,
     reasoningEffort: p.reasoning_effort,
-  };
-}
-
-// Build LLMOrchestratorConfig from global + claw config
-export function buildLLMConfig(
-  globalConfig: ClawGlobalConfig,
-  clawConfig?: ClawConfig
-): LLMOrchestratorConfig {
-  // Use claw's primary if provided, otherwise use global's primary
-  const primaryProvider = clawConfig?.llm?.primary
-    ? toProviderConfig(clawConfig.llm.primary)
-    : toProviderConfig(globalConfig.llm.primary);
-
-  const fallbackList = globalConfig.llm.fallbacks ?? [];
-
-  // Circuit breaker config
-  const cb = globalConfig.llm.circuit_breaker;
-
-  return {
-    primary: primaryProvider,
-    fallbacks: fallbackList.map(toProviderConfig),
-    maxAttempts: globalConfig.llm.retry_attempts,
-    retryDelayMs: globalConfig.llm.retry_delay_ms,
-    events: { emit: () => {} },
-    circuitBreaker: cb ? {
-      failureThreshold: cb.failure_threshold,
-      resetTimeoutMs: cb.reset_timeout_ms,
-    } : undefined,
   };
 }

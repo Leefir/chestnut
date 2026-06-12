@@ -13,7 +13,8 @@ import * as path from 'path';
 import { formatErr } from "../../foundation/utils/index.js";
 import * as readline from 'readline';
 
-import { isInitialized, getNamedSubrootDir } from '../../foundation/config/index.js';
+import { isInitialized } from '../../assembly/config-load.js';
+import { getNamedSubrootDir } from '../../foundation/config/index.js';
 import { initCommand } from './init.js';
 import {
   initCommand as motionInitCommand,

@@ -7,7 +7,7 @@ import { cleanupExpiredTaskFiles } from '../../async-task-system/index.js';
 import { cleanupArchives } from '../../../foundation/dialog-store/index.js';
 import type { CronJob } from '../runner.js';
 import { parseSchedule } from '../runner.js';
-import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
+import type { CronJobGlobalConfig } from '../runner.js';
 
 /**
  * Cron job timeout (ms) / 防 stuck handler 占 cron tick.
@@ -60,7 +60,7 @@ export async function runRetentionCleanup(opts: RetentionCleanupOptions): Promis
 
 export function createRetentionCleanupJob(
   deps: RetentionCleanupJobDeps,
-  globalConfig: ClawGlobalConfig,
+  globalConfig: CronJobGlobalConfig<'retention_cleanup'>,
 ): CronJob {
   return {
     name: 'retention-cleanup',

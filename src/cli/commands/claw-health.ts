@@ -4,9 +4,8 @@
  */
 
 import * as path from 'path';
-import {
-  loadGlobalConfig, clawExists, getClawDir, getGlobalConfigPath, getClawConfigPath,
-} from '../../foundation/config/index.js';
+import { loadGlobalConfig, clawExists } from '../../assembly/config-load.js';
+import { getClawDir, getGlobalConfigPath, getClawConfigPath } from '../../foundation/config/index.js';
 import { CliError } from '../errors.js';
 import { createDirContext } from '../../foundation/audit/index.js';
 import { createProcessManagerForCLI } from '../../foundation/process-manager/index.js';

@@ -4,7 +4,8 @@ import * as path from 'path';
 import * as os from 'os';
 import { randomUUID } from 'crypto';
 
-import { getNamedSubrootDir, loadGlobalConfig } from '../../src/foundation/config/index.js';
+import { getNamedSubrootDir } from '../../src/foundation/config/index.js';
+import { loadGlobalConfig } from '../../src/assembly/config-load.js';
 import { ensureWatchdog } from '../../src/watchdog/ensure.js';
 import { setAuditWriter, _resetWatchdogContextForTest } from '../../src/watchdog/watchdog-context.js';
 import { WATCHDOG_AUDIT_EVENTS } from '../../src/watchdog/audit-events.js';
@@ -20,6 +21,19 @@ vi.mock('../../src/foundation/config/index.js', async (importOriginal) => {
     ...actual,
     getNamedSubrootDir: vi.fn(),
     loadGlobalConfig: vi.fn(),
+  };
+});
+vi.mock('../../src/assembly/config-load.js', async () => {
+  const foundation = await import('../../src/foundation/config/index.js');
+  return {
+    loadGlobalConfig: foundation.loadGlobalConfig,
+    isInitialized: vi.fn(),
+    saveGlobalConfig: vi.fn(),
+    loadClawConfig: vi.fn(),
+    patchGlobalConfigPrimary: vi.fn(),
+    saveClawConfig: vi.fn(),
+    clawExists: vi.fn(() => true),
+    buildLLMConfig: vi.fn(),
   };
 });
 

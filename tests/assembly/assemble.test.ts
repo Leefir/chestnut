@@ -272,7 +272,7 @@ vi.mock('../../src/foundation/dialog-store/index.js', () => ({
   DIALOG_ARCHIVE_DIR: 'dialog/archive',
 }));
 
-vi.mock('../../src/foundation/llm-orchestrator/config-adapter.js', () => ({
+vi.mock('../../src/assembly/config-load.js', () => ({
   buildLLMConfig: vi.fn(() => ({ provider: 'mock' })),
 }));
 
@@ -282,7 +282,7 @@ vi.mock('../../src/foundation/llm-orchestrator/config-adapter.js', () => ({
 // did, without paying the per-invocation resolution cost.
 import { createStreamWriter } from '../../src/foundation/stream/index.js';
 import { CronRunner } from '../../src/core/cron/runner.js';
-import { buildLLMConfig } from '../../src/foundation/llm-orchestrator/config-adapter.js';
+import { buildLLMConfig } from '../../src/assembly/config-load.js';
 import { createAgentProcessManager } from '../../src/foundation/process-manager/agent-factory.js';
 import { createSnapshot } from '../../src/foundation/snapshot/index.js';
 import { createRuntime, Heartbeat } from '../../src/core/runtime/index.js';

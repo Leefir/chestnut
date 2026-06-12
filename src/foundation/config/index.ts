@@ -2,21 +2,13 @@
  * Configuration barrel re-export / phase 500 A.3 functional split
  *
  * 3 sub-file:
- * - schemas.ts (zod schemas + types)
- * - crud.ts (load/save/exists)
- * - adapters.ts (toProviderConfig + buildLLMConfig)
+ * - loader.ts (generic yaml CRUD)
+ * - global-config-path.ts (getGlobalConfigPath path primitive)
+ * - (crud.ts removed in phase 298: business wrappers moved to assembly/config-load.ts)
  *
- * Path getters live in foundation/paths.ts; getGlobalConfigPath own here (phase 73).
+ * Path getters live in foundation/install-paths.ts; getGlobalConfigPath own here (phase 73).
+ * Specific root-config business wrappers now live in assembly/config-load.ts (phase 298).
  */
-
-// Types (schemas.ts deleted in phase 10 Step D)
-export type {
-  ClawGlobalConfig,
-  ClawGlobalConfigInput,
-  ClawConfig,
-} from '../../assembly/compose-config.js';
-// Note: LLMProviderConfig moved to llm-orchestrator/llm-provider-config-schema.ts (phase 10)
-// Note: FORMAT_MAP moved to llm-orchestrator/llm-provider-config-schema.ts (phase 10)
 
 // Path getters + shared constants (canonical owner: L6 Assembly)
 export {
@@ -28,18 +20,7 @@ export {
 } from '../install-paths.js';
 export { getGlobalConfigPath } from './global-config-path.js';
 
-// CRUD
-export {
-  loadGlobalConfig,
-  isInitialized,
-  saveGlobalConfig,
-  loadClawConfig,
-  patchGlobalConfigPrimary,
-  saveClawConfig,
-  clawExists,
-} from './crud.js';
-
-// Phase 10 Step B: new thin loader
+// Phase 10 Step B: new thin loader (generic L2a API)
 export {
   loadYamlConfig,
   writeYamlConfig,

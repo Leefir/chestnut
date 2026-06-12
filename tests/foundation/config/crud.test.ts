@@ -7,7 +7,7 @@ import { randomUUID } from 'crypto';
 import { NodeFileSystem } from '../../../src/foundation/fs/node-fs.js';
 import { getClawConfigPath } from '../../../src/foundation/config/index.js';
 
-const { loadGlobalConfig, loadClawConfig, patchGlobalConfigPrimary } = await import('../../../src/foundation/config/crud.js');
+const { loadGlobalConfig, loadClawConfig, patchGlobalConfigPrimary } = await import('../../../src/assembly/config-load.js');
 
 const fsFactory = (dir: string) => new NodeFileSystem({ baseDir: dir });
 
@@ -24,7 +24,7 @@ function teardownTempDir() {
   fs.rmSync(tempDir, { recursive: true, force: true });
 }
 
-describe('loadGlobalConfig', () => {
+describe('assembly/config-load: loadGlobalConfig', () => {
   beforeEach(setupTempDir);
   afterEach(teardownTempDir);
 
@@ -63,7 +63,7 @@ llm:
   });
 });
 
-describe('loadClawConfig', () => {
+describe('assembly/config-load: loadClawConfig', () => {
   beforeEach(setupTempDir);
   afterEach(teardownTempDir);
 
@@ -91,7 +91,7 @@ llm:
   });
 });
 
-describe('patchGlobalConfig', () => {
+describe('assembly/config-load: patchGlobalConfig', () => {
   beforeEach(setupTempDir);
   afterEach(teardownTempDir);
 

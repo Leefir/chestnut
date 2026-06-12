@@ -28,6 +28,19 @@ vi.mock('../../src/foundation/config/index.js', () => ({
   getNamedSubrootDir: vi.fn(() => '/tmp/test-motion'),
   getClawConfigPath: vi.fn(() => '/tmp/test-claw/config.yaml'),
 }));
+vi.mock('../../src/assembly/config-load.js', async () => {
+  const foundation = await import('../../src/foundation/config/index.js');
+  return {
+    loadGlobalConfig: foundation.loadGlobalConfig,
+    isInitialized: vi.fn(),
+    saveGlobalConfig: vi.fn(),
+    loadClawConfig: foundation.loadClawConfig,
+    patchGlobalConfigPrimary: vi.fn(),
+    saveClawConfig: vi.fn(),
+    clawExists: vi.fn(() => true),
+    buildLLMConfig: vi.fn(),
+  };
+});
 
 vi.mock('../../src/foundation/process-manager/index.js', () => ({
   createAgentProcessManager: vi.fn(() => ({

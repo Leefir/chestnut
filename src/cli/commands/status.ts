@@ -10,7 +10,8 @@
  */
 
 import * as path from 'path';
-import { loadGlobalConfig, getNamedSubrootDir } from '../../foundation/config/index.js';
+import { loadGlobalConfig } from '../../assembly/config-load.js';
+import { getNamedSubrootDir } from '../../foundation/config/index.js';
 import { createProcessManagerForCLI } from '../../foundation/process-manager/index.js';
 import { resolveDaemonEntry } from '../../assembly/spawn-entry.js';
 import {

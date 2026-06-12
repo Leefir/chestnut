@@ -6,14 +6,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { createTempDir, cleanupTempDirSync } from '../utils/temp.js';
-import {
-  loadGlobalConfig,
-  saveGlobalConfig,
-  isInitialized,
-  clawExists,
-  getGlobalConfigPath,
-  getClawDir,
-} from '../../src/foundation/config/index.js';
+import { loadGlobalConfig, saveGlobalConfig, isInitialized, clawExists } from '../../src/assembly/config-load.js';
+import { getGlobalConfigPath, getClawDir } from '../../src/foundation/config/index.js';
 import { toProviderConfig } from '../../src/foundation/llm-orchestrator/config-adapter.js';
 import { listCommand } from '../../src/cli/commands/claw.js';
 import { NodeFileSystem } from '../../src/foundation/fs/node-fs.js';

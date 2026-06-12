@@ -12,7 +12,7 @@ import { emitContractArchiveRecoveryPendingObserved } from '../audit-emit.js';
 export type NotifyMotionFn = (message: InboxMessageOptionsBase) => void;
 import type { CronJob } from '../../cron/runner.js';
 import { parseSchedule } from '../../cron/runner.js';
-import type { ClawGlobalConfig } from '../../../foundation/config/index.js';
+import type { CronJobGlobalConfig } from '../../cron/runner.js';
 import { makeClawId, MOTION_CLAW_ID } from '../../../constants.js';
 
 
@@ -268,7 +268,7 @@ export async function runContractObserver(options: ContractObserverOptions): Pro
 
 export function createContractObserverJob(
   deps: ContractObserverJobDeps,
-  globalConfig: ClawGlobalConfig,
+  globalConfig: CronJobGlobalConfig<'contract_observer'>,
 ): CronJob {
   return {
     name: 'contract-observer',

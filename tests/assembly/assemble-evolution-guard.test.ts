@@ -238,7 +238,7 @@ vi.mock('../../src/foundation/dialog-store/index.js', () => ({
   DIALOG_ARCHIVE_DIR: 'dialog/archive',
 }));
 
-vi.mock('../../src/foundation/llm-orchestrator/config-adapter.js', () => ({
+vi.mock('../../src/assembly/config-load.js', () => ({
   buildLLMConfig: vi.fn(() => ({ provider: 'mock' })),
 }));
 

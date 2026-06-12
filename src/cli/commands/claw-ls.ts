@@ -20,7 +20,8 @@
 
 import * as path from 'path';
 import { formatErr } from "../../foundation/utils/index.js";
-import { loadGlobalConfig, clawExists, getClawDir, getClawConfigPath } from '../../foundation/config/index.js';
+import { loadGlobalConfig, clawExists } from '../../assembly/config-load.js';
+import { getClawDir, getClawConfigPath } from '../../foundation/config/index.js';
 import { CLAWSPACE_DIR } from '../../foundation/claw-paths.js';
 import { resolveWorkspacePath } from '../../foundation/file-tool/resolve-path.js';
 import { CliError } from '../errors.js';

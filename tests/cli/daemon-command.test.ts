@@ -85,6 +85,19 @@ vi.mock('../../src/foundation/config/index.js', () => ({
   getClawConfigPath: vi.fn((name: string) => `/tmp/test-root/claws/${name}/config.yaml`),
   resolveAgentDir: vi.fn((id: string) => id === 'motion' ? '/tmp/test-root/motion' : `/tmp/test-root/claws/${id}`),
 }));
+vi.mock('../../src/assembly/config-load.js', async () => {
+  const foundation = await import('../../src/foundation/config/index.js');
+  return {
+    loadGlobalConfig: foundation.loadGlobalConfig,
+    isInitialized: vi.fn(),
+    saveGlobalConfig: vi.fn(),
+    loadClawConfig: foundation.loadClawConfig,
+    patchGlobalConfigPrimary: vi.fn(),
+    saveClawConfig: vi.fn(),
+    clawExists: vi.fn(() => true),
+    buildLLMConfig: vi.fn(),
+  };
+});
 
 // node 内置 mock
 vi.mock('fs', async () => {

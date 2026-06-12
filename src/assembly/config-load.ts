@@ -1,6 +1,10 @@
 /**
- * Phase 10 Step C: facade re-implemented on loader + composer.
- * Public function signatures preserved (callers unchanged except for removing `defaults` param).
+ * Assembly config load module
+ * phase 298: V12 (b) real-治、wrapper 反向迁 foundation → assembly
+ *
+ * Owns: root config wrapper (load/save/exists/patch) + LLM merge
+ * Generic yaml CRUD remains in foundation/config/loader.ts
+ * path primitive remains in foundation/config/global-config-path.ts
  */
 import * as path from 'path';
 import {
@@ -9,17 +13,17 @@ import {
   type ClawGlobalConfig,
   type ClawGlobalConfigInput,
   type ClawConfig,
-} from '../../assembly/compose-config.js';
+} from './compose-config.js';
 import {
   loadYamlConfig,
   writeYamlConfig,
   patchYamlConfig,
   configExists,
-} from './loader.js';
-// phase 81: API reframe — crud.ts 0 知 chestnut path 约定、纯 yaml CRUD generic、M#1 SRP 真守。
-// caller (L6) 自调 getClawConfigPath(name) 然后传 configPath、M#5 守。
-import { getGlobalConfigPath } from './global-config-path.js';
-import type { FileSystem } from '../fs/types.js';
+} from '../foundation/config/loader.js';
+import { getGlobalConfigPath } from '../foundation/config/global-config-path.js';
+import { toProviderConfig } from '../foundation/llm-orchestrator/config-adapter.js';
+import type { LLMOrchestratorConfig } from '../foundation/llm-orchestrator/types.js';
+import type { FileSystem } from '../foundation/fs/types.js';
 
 export function loadGlobalConfig(deps: { fsFactory: (baseDir: string) => FileSystem }): ClawGlobalConfig {
   const configPath = getGlobalConfigPath();
@@ -130,5 +134,30 @@ export function clawExists(deps: { fsFactory: (baseDir: string) => FileSystem },
   return fs.existsSync(path.basename(configPath));
 }
 
-// Re-export type for caller convenience
-export type { ClawGlobalConfig, ClawConfig };
+// Build LLMOrchestratorConfig from global + claw config
+export function buildLLMConfig(
+  globalConfig: ClawGlobalConfig,
+  clawConfig?: ClawConfig
+): LLMOrchestratorConfig {
+  // Use claw's primary if provided, otherwise use global's primary
+  const primaryProvider = clawConfig?.llm?.primary
+    ? toProviderConfig(clawConfig.llm.primary)
+    : toProviderConfig(globalConfig.llm.primary);
+
+  const fallbackList = globalConfig.llm.fallbacks ?? [];
+
+  // Circuit breaker config
+  const cb = globalConfig.llm.circuit_breaker;
+
+  return {
+    primary: primaryProvider,
+    fallbacks: fallbackList.map(toProviderConfig),
+    maxAttempts: globalConfig.llm.retry_attempts,
+    retryDelayMs: globalConfig.llm.retry_delay_ms,
+    events: { emit: () => {} },
+    circuitBreaker: cb ? {
+      failureThreshold: cb.failure_threshold,
+      resetTimeoutMs: cb.reset_timeout_ms,
+    } : undefined,
+  };
+}

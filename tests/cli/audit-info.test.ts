@@ -13,6 +13,19 @@ vi.mock('../../src/foundation/config/index.js', () => ({
   getClawDir: vi.fn((claw: string) => `/tmp/chestnut-test/claws/${claw}`),
   getClawConfigPath: vi.fn((claw: string) => `/tmp/chestnut-test/claws/${claw}/config.yaml`),
 }));
+vi.mock('../../src/assembly/config-load.js', async () => {
+  const foundation = await import('../../src/foundation/config/index.js');
+  return {
+    loadGlobalConfig: foundation.loadGlobalConfig,
+    isInitialized: vi.fn(),
+    saveGlobalConfig: vi.fn(),
+    loadClawConfig: vi.fn(),
+    patchGlobalConfigPrimary: vi.fn(),
+    saveClawConfig: vi.fn(),
+    clawExists: foundation.clawExists,
+    buildLLMConfig: vi.fn(),
+  };
+});
 
 // phase 256: hoist the dynamic import that 6 tests do — vi.mock guarantees this
 // resolves to the mocked module, so a top-level import is just as safe and

@@ -73,7 +73,7 @@ afterEach(() => {
 });
 
 const { initCommand } = await import('../../src/cli/commands/init.js');
-const { loadGlobalConfig } = await import('../../src/foundation/config/index.js');
+const { loadGlobalConfig } = await import('../../src/assembly/config-load.js');
 
 let tempDir: string;
 

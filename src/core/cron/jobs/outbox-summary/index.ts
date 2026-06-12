@@ -18,7 +18,7 @@ import { OUTBOX_SUMMARY_AUDIT_EVENTS } from './audit-events.js';
 import { runOutboxSummaryTick } from './tick.js';
 import type { CronJob } from '../../runner.js';
 import { parseSchedule } from '../../runner.js';
-import type { ClawGlobalConfig } from '../../../../foundation/config/index.js';
+import type { CronJobGlobalConfig } from '../../runner.js';
 
 /** Cron job timeout per M#2 (per-module business decides). 5s 充裕：dedup scan = meta parse only. */
 export const OUTBOX_SUMMARY_CRON_TIMEOUT_MS = 5_000;
@@ -76,7 +76,7 @@ export async function runOutboxSummary(opts: OutboxSummaryJobOptions): Promise<v
 
 export function createOutboxSummaryJob(
   deps: OutboxSummaryJobDeps,
-  globalConfig: ClawGlobalConfig,
+  globalConfig: CronJobGlobalConfig<'outbox_summary'>,
 ): CronJob {
   return {
     name: 'outbox-summary',
