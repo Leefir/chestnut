@@ -45,4 +45,5 @@ export const SNAPSHOT_FILE_ROUTING: Readonly<Record<string, 'audit'>> = {
   snapshot_state_invariant_violated: 'audit',
   snapshot_state_cross_source_mismatch: 'audit',
   snapshot_state_cross_source_skipped: 'audit',
+  snapshot_legacy_schema_migrated: 'audit',
 } as const;
