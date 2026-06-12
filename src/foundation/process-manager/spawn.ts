@@ -184,7 +184,7 @@ async function writePidExclusive(
   await ensureStatusDir(ctx, clawId);
 
   try {
-    ctx.fs.writeExclusiveSync(pidFile, String(process.pid));
+    ctx.fs.writeExclusiveSync(pidFile, JSON.stringify({ pid: process.pid }));
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
     await handlePidFileConflict(ctx, clawId, pidFile);
@@ -267,7 +267,7 @@ async function handlePidFileConflict(
       `reason=${formatErr(err)}`,
     );
   });
-  ctx.fs.writeExclusiveSync(pidFile, String(process.pid));
+  ctx.fs.writeExclusiveSync(pidFile, JSON.stringify({ pid: process.pid }));
 }
 
 /**

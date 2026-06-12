@@ -15,7 +15,7 @@ const CURRENT_WATCHDOG_SCHEMA_VERSION = 2;
 interface WatchdogState {
   schema_version?: number;  // v1 current; legacy read
   /** legacy fallback (pre-phase-1134 watchdog-state schema_version invariant land)、
-   *  by-design 永留 backward-compat。立 `WATCHDOG_STATE_LEGACY_VERSION_FALLBACK` audit const + emit 真治推 V10+V13 §10 候选 */
+   *  by-design 永留 backward-compat。立 `STATE_LEGACY_VERSION_FALLBACK` audit const + emit 真治推 V10+V13 §10 候选 */
   version?: number;
   lastInactivityNotified: Record<string, number>;
   inactivityNotifyCount: Record<string, number>;
@@ -40,6 +40,13 @@ export function loadWatchdogState(fsFactory: (baseDir: string) => FileSystem): v
     const raw = fs.readSync('watchdog-state.json');
     const state = JSON.parse(raw) as WatchdogState;
     const stateVersion = state.schema_version ?? state.version;
+    // phase 310: legacy version fallback emit (DP1/2/3/5 + 编码规范错误/测试)
+    if (state.schema_version === undefined && state.version !== undefined) {
+      getAuditWriter()?.write(
+        WATCHDOG_AUDIT_EVENTS.STATE_LEGACY_VERSION_FALLBACK,
+        `legacy_version=${state.version}`,
+      );
+    }
     if (stateVersion !== undefined &&
         (typeof stateVersion !== 'number' || stateVersion > CURRENT_WATCHDOG_SCHEMA_VERSION)) {
       throw new WatchdogSchemaError(stateVersion, CURRENT_WATCHDOG_SCHEMA_VERSION);

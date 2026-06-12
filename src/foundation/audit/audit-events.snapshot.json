@@ -896,6 +896,7 @@
       "watchdog_pid_foreign_workspace",
       "watchdog_pid_read_failed",
       "watchdog_pid_stale_auto_cleaned",
+      "watchdog_state_legacy_version_fallback",
       "watchdog_state_load_failed",
       "watchdog_state_schema_invalid",
       "watchdog_start",

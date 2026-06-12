@@ -57,7 +57,7 @@ export function acquireLock(ctx: ProcessManagerContext, clawId: ClawId): void {
   const lockFile = getLockFile(ctx, clawId);
   ctx.fs.ensureDirSync(path.dirname(lockFile));
   try {
-    ctx.fs.writeExclusiveSync(lockFile, String(process.pid));
+    ctx.fs.writeExclusiveSync(lockFile, JSON.stringify({ pid: process.pid }));
     ctx.audit.write(PROCESS_MANAGER_AUDIT_EVENTS.LOCK_ACQUIRED, `claw=${clawId}`, `pid=${process.pid}`);
     return;
   } catch (err) {
@@ -96,7 +96,7 @@ export function acquireLock(ctx: ProcessManagerContext, clawId: ClawId): void {
     }
   }
   try {
-    ctx.fs.writeExclusiveSync(lockFile, String(process.pid));
+    ctx.fs.writeExclusiveSync(lockFile, JSON.stringify({ pid: process.pid }));
     ctx.audit.write(
       PROCESS_MANAGER_AUDIT_EVENTS.LOCK_ACQUIRED,
       `claw=${clawId}`,
