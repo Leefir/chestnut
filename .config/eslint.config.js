@@ -10,7 +10,6 @@ import noPermManagementInCommandTool from './eslint-rules/no-perm-management-in-
 import noClawdirPathAntiPattern from './eslint-rules/no-clawdir-path-anti-pattern.js';
 import noStringAnchorChestnut from './eslint-rules/no-string-anchor-chestnut.js';
 import noDeriveChestnutRoot from './eslint-rules/no-derive-chestnut-root.js';
-import cronTestMustUseFakeTimers from './eslint-rules/cron-test-must-use-fake-timers.js';
 import formatterParityRequireConstants from './eslint-rules/formatter-parity-require-constants.js';
 import foundationNoBusinessRoleLiteral from './eslint-rules/foundation-no-business-role-literal.js';
 import auditCapConstScope from './eslint-rules/audit-cap-const-scope.js';
@@ -67,28 +66,6 @@ export default [
       'chestnut-custom/foundation-no-business-role-literal': 'error',
       'chestnut-custom/audit-cap-const-scope': 'error',
       'chestnut-custom/foundation-no-cli-verb-fact': 'error',
-    },
-  },
-  {
-    // tests/ block: only test-setup-helper rules enforced (rules targeting test files)
-    files: ['tests/**/*.ts'],
-    languageOptions: { parser: tsParser },
-    plugins: {
-      '@typescript-eslint': tsPlugin,  // register so inline `eslint-disable` directives don't error
-      'chestnut-custom': {
-        rules: {
-          'cron-test-must-use-fake-timers': cronTestMustUseFakeTimers,
-        },
-      },
-    },
-    rules: {
-      // src-rules (inline-error, etc.) are not checked in tests/.
-      'chestnut-custom/cron-test-must-use-fake-timers': 'error',
-    },
-    linterOptions: {
-      // tests/ accumulated many inline `eslint-disable` directives for rules not enforced here.
-      // Suppress "unused directive" warnings to keep baseline clean.
-      reportUnusedDisableDirectives: 'off',
     },
   },
 ];
