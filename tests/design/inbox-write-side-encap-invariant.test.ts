@@ -25,15 +25,8 @@ describe('inbox write-side encap invariant (phase 1334 r138 E fork)', () => {
     expect(lines.length).toBe(0);
   });
 
-  it('cross-module hardcoded path.join inbox+pending baseline ratchet = 0 outside allowlist', () => {
-    // allowlist: daemon (read/delete paths, no writes) + watchdog-utils (countMd read-only)
-    const out = safeGrep(
-      `grep -rn "path.join.*inbox.*pending" src/ --include='*.ts' | grep -v test | grep -v 'foundation/messaging' | grep -v 'assembly/' | grep -v 'cli/' | grep -v 'daemon/' | grep -v 'watchdog-utils'`,
-      REPO_CWD,
-    );
-    const lines = out.trim().split('\n').filter(Boolean);
-    expect(lines.length).toBe(0);
-  });
+  // phase 315 Step A: path.join inbox+pending hardcoded ratchet 已迁移为
+  // ESLint custom rule `no-hardcoded-inbox-path`。本 grep invariant 删除。
 
   it('non-deprecated callers use notifyClaw or writeInboxAsync (deep-dream = notifyInbox self-notify exception)', () => {
     const outNotify = execSync(
