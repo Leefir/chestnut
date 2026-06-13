@@ -11,6 +11,7 @@
 
 import type { Tool, ExecContext, ExecutionControl } from '../../../foundation/tools/index.js';
 import type { ToolResult } from '../../../foundation/tool-protocol/index.js';
+import { SUBAGENT_AUDIT_EVENTS } from '../audit-events.js';
 export const DONE_TOOL_NAME = 'done' as const;
 
 /**
@@ -66,6 +67,21 @@ export function createDoneTool(): Tool & CapturableTool<{ result: string }> {
       const result = String(args.result ?? '');
       if (!result) {
         return { success: false, content: 'done: result is required', error: 'missing result' };
+      }
+      // phase 337 M5 (review-2026-06-13): 拒第二次 done 调用、防 LLM 自相矛盾的
+      // result 静默覆盖首次。第一次 result 保留为权威；二次调返 tool error + audit。
+      if (tool.capturedResult !== undefined) {
+        ctx.auditWriter?.write(
+          SUBAGENT_AUDIT_EVENTS.DONE_TOOL_DUPLICATE_CALL,
+          `tool_use_id=${ctx.currentToolUseId ?? ''}`,
+          `first_result_len=${tool.capturedResult.result.length}`,
+          `second_result_len=${result.length}`,
+        );
+        return {
+          success: false,
+          content: 'done() already called; second call rejected. First result is preserved; subagent will exit.',
+          error: 'duplicate done call',
+        };
       }
       // 存 capturedResult 给 runSubagent 取
       tool.capturedResult = { result };

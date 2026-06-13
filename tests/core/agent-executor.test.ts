@@ -107,12 +107,12 @@ describe('AgentExecutor', () => {
     expect(res.stepsUsed).toBe(1);
   });
 
-  it('onStepComplete：在 continue 步调、max_tokens_tool_use 不调', async () => {
+  it('onStepComplete：在 continue 步调、max_tokens_tool_use 步调（phase 337 M4）', async () => {
     let callCount = 0;
     const llm = makeMockLLM([
-      { content: [{ type: 'tool_use', id: 'a', name: 'foo', input: {} }], stop_reason: 'max_tokens' },  // 不触发
+      { content: [{ type: 'tool_use', id: 'a', name: 'foo', input: {} }], stop_reason: 'max_tokens' },  // phase 337 M4: 现也触发
       { content: [{ type: 'tool_use', id: 'b', name: 'foo', input: {} }], stop_reason: 'tool_use' },   // 触发
-      { content: [{ type: 'text', text: 'end' }], stop_reason: 'end_turn' },                           // 不触发
+      { content: [{ type: 'text', text: 'end' }], stop_reason: 'end_turn' },                           // 不触发（final 分支）
     ]);
     await runReact({
       messages: [], systemPrompt: '', llm, tools: [],
@@ -121,7 +121,9 @@ describe('AgentExecutor', () => {
       ctx: makeCtx(),
       onStepComplete: async () => { callCount++; },
     });
-    expect(callCount).toBe(1);
+    // phase 337 M4 (review-2026-06-13): max_tokens_tool_use 分支现也调 onAfterStep（→ onStepComplete）
+    // 修前期望 1，修后期望 2（max_tokens_tool_use + tool_use 共 2 次）
+    expect(callCount).toBe(2);
   });
 
   it('stepCount 达 maxSteps 抛 MaxStepsExceededError', async () => {
@@ -137,7 +139,7 @@ describe('AgentExecutor', () => {
     })).rejects.toThrow(MaxStepsExceededError);
   });
 
-  it('max_tokens_tool_use：stepCount++、不调 onStepComplete', async () => {
+  it('max_tokens_tool_use：stepCount++、调 onStepComplete（phase 337 M4）', async () => {
     let callCount = 0;
     const llm = makeMockLLM([
       { content: [{ type: 'tool_use', id: 'a', name: 'foo', input: {} }], stop_reason: 'max_tokens' },
@@ -151,7 +153,9 @@ describe('AgentExecutor', () => {
       onStepComplete: async () => { callCount++; },
     });
     expect(res.stepsUsed).toBe(1);
-    expect(callCount).toBe(0);
+    // phase 337 M4 (review-2026-06-13): max_tokens_tool_use 分支 onAfterStep 与其他
+    // 分支对齐；修前 callCount=0 是 bug（session save / contract auditor 该步全跳）。
+    expect(callCount).toBe(1);
   });
 });
 

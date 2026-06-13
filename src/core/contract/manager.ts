@@ -804,6 +804,25 @@ export class ContractSystem {
       });
       // verify rollback succeeded
       if (await this.fs.exists(`${this.activeDir}/${contractId}`)) {
+        // phase 337 M3 (review-2026-06-13): 写 .rollback-incomplete sentinel
+        // 到 dir 内、让 ops + 未来 boot reconcile 一眼可见这是 stale 失败 rollback、
+        // 不是合法 active contract。dir 仍在但已 marked。audit 单独 emit。
+        const sentinelPath = `${this.activeDir}/${contractId}/.rollback-incomplete`;
+        const sentinelBody = JSON.stringify({
+          contract_id: contractId,
+          failed_at: new Date().toISOString(),
+          original_error: formatErr(err),
+          message: 'Contract.create rollback failed — dir is stale; ops should remove manually',
+        }, null, 2);
+        await this.fs.writeAtomic(sentinelPath, sentinelBody).catch((sentinelErr) => {
+          emitContractRollbackFailed(
+            this.audit,
+            {
+              contractId,
+              error: `sentinel write failed: ${formatErr(sentinelErr)}`,
+            },
+          );
+        });
         emitContractRollbackIncomplete(
           this.audit,
           {

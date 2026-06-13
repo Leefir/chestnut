@@ -204,9 +204,13 @@ export class SubAgent {
         };
       }
 
-      const result = await Promise.race([
-        runReact({
-          messages,
+      // phase 337 M6 (review-2026-06-13): 显式持 runReact promise、timeout 赢 race 时
+      // await 其结束。否则 runReact 内部 tool/agent loop 在 subagent "returned" 后继续跑、
+      // tool 结果写盘形成 orphan write、违 phase 805 sub-3「subagent workspace 0 创建」.
+      // signal 已通过 timeout.signal 抛 turn_timeout / idle_timeout、runReact 会感知 abort、
+      // 我们等其自然 settle、再抛 race 的 timeout error 出。
+      const runReactPromise: Promise<{ finalText?: string; stopReason: string }> = runReact({
+        messages,
           systemPrompt,
           llm: this.llm,
           executor,
@@ -289,9 +293,22 @@ export class SubAgent {
             auditStepTools = [];
             auditStepStart = Date.now();
           },
-        }),
-        timeout.timeoutPromise,
-      ]);
+        });
+      let result;
+      try {
+        result = await Promise.race([runReactPromise, timeout.timeoutPromise]);
+      } catch (raceErr) {
+        // phase 337 M6: timeout / abort 赢了 race。有界等待 runReact 自然 settle
+        // （signal 已 abort、合作的 runReact 会立即抛出）、让 in-flight tool / disk
+        // write 收尾。上限 RUNREACT_ABORT_SETTLE_MS 防非合作 runReact 无限阻塞
+        // subagent shutdown；超 cap 则交给 phase 538 ghost-callback 机制兜底。
+        const RUNREACT_ABORT_SETTLE_MS = 100;
+        await Promise.race([
+          runReactPromise.catch(() => { /* silent: runReact 多半会因 signal abort 拒绝、err 已通过 raceErr 反映上抛 */ }),
+          new Promise<void>((resolve) => setTimeout(resolve, RUNREACT_ABORT_SETTLE_MS)),
+        ]);
+        throw raceErr;
+      }
 
       // Log completion
       const duration = Date.now() - startTime;

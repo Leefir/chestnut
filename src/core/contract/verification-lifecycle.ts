@@ -73,24 +73,47 @@ export async function archiveAndEmit(
       });
     } catch (revertErr) {
       // phase 1371 sub-2: rollback failure → explicit partial recovery state machine
+      // phase 337 M2 (review-2026-06-13): 不覆盖显式终态 cancelled/crashed。
+      // 若另一路径（如 cancelContract / markCrashed）在 archive 失败窗口里把 status
+      // 推到 cancelled/crashed，pending_recovery 不该重写显式终点。
+      // 'completed' 不在守集——它就是 archive 入口的合法起点（archive 失败 → 应 retry）。
+      const TERMINAL = new Set<string>(['cancelled', 'crashed']);
       try {
+        let skipped: { reason: string; observedStatus: string } | null = null;
         await ctx.withProgressLock(contractId, async () => {
           const progress = await ctx.getProgress(contractId);
           if (!progress) {
             throw new ToolError(`Contract "${contractId}" progress unavailable: schema corruption`);
           }
+          if (TERMINAL.has(progress.status)) {
+            skipped = { reason: 'terminal_status', observedStatus: progress.status };
+            return;
+          }
           progress.status = 'archive_pending_recovery';
           await ctx.saveProgress(contractId, progress);
         });
-        emitContractArchivePartialRecoveryFailed(
-          ctx.audit,
-          {
-            contractId,
-            context: contextLabel,
-            message: 'archive failed and rollback to running also failed; set archive_pending_recovery for boot reconcile',
-            error: formatErr(revertErr),
-          },
-        );
+        if (skipped !== null) {
+          const s = skipped as { reason: string; observedStatus: string };
+          emitContractArchivePartialRecoveryFailed(
+            ctx.audit,
+            {
+              contractId,
+              context: `${contextLabel}.skippedPendingRecovery`,
+              message: `archive failed and rollback failed; refused to overwrite ${s.observedStatus} status with archive_pending_recovery`,
+              error: formatErr(revertErr),
+            },
+          );
+        } else {
+          emitContractArchivePartialRecoveryFailed(
+            ctx.audit,
+            {
+              contractId,
+              context: contextLabel,
+              message: 'archive failed and rollback to running also failed; set archive_pending_recovery for boot reconcile',
+              error: formatErr(revertErr),
+            },
+          );
+        }
       } catch (stateErr) {
         emitContractArchivePartialRecoveryFailed(
           ctx.audit,

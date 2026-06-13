@@ -153,6 +153,14 @@ export async function runAgent(input: AgentInput): Promise<AgentResult> {
       }
       ctx.incrementStep();
       stepCount = ctx.stepNumber;
+
+      // phase 337 M4 (review-2026-06-13): max_tokens_tool_use 分支也调 onAfterStep
+      // 与 'continue' 分支对齐。否则该步 session save / contract auditor maybeAuditStep
+      // / inbox check 全跳、违 DP「运行中信息不丢弃」。
+      if (onAfterStep) {
+        await onAfterStep(result.meta);
+      }
+
       continue;
     }
 

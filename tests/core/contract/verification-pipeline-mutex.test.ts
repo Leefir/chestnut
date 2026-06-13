@@ -58,16 +58,16 @@ describe('verification pipeline mutex (phase 1371 sub-3)', () => {
     // Mock runScriptVerification to delay so pipeline stays active
     vi.spyOn(manager as any, 'runScriptVerification').mockImplementation(() => new Promise(() => {}));
 
-    // First call completes the synchronous phase (acquire mutex → withProgressLock
-    // sets in_progress → release mutex → fire background verification).
-    // await ensures we're past the mutex-protected critical section.
+    // phase 337 M1 (review-2026-06-13): mutex 现 hold 到 background work 结束 finally。
+    // 第一次 await 返后、background work 仍跑（mocked 死锁 promise）、mutex 仍 hold。
+    // 第二次 completeSubtask 在 mutex.acquire 处即被拒、抛 "already active — concurrent attempt rejected"
+    // 而非进 in-progress 状态守。两条都是合法 reject 路径、仅 wording 不同；
+    // 修后期望第一种 wording。
     await manager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'e1' });
 
-    // Second call should be rejected by in_progress status guard
-    // (mutex was released after withProgressLock, per phase 1391 fix)
     await expect(
       manager.completeSubtask({ contractId, subtaskId: 't1', evidence: 'e2' })
-    ).rejects.toThrow('already in progress');
+    ).rejects.toThrow(/already active — concurrent attempt rejected/);
   });
 
 

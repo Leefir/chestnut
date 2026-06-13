@@ -302,13 +302,11 @@ export async function runVerificationPipeline(
     emitContractVerificationStarted(ctx.audit, { contractId, subtaskId });
   });
 
-  // Mutex served its purpose: prevent concurrent sync+async path entry
-  // before the status is set to in_progress (line 257). Now that
-  // withProgressLock has committed in_progress, the status check
-  // (line 249-251) blocks re-entry. Release early so the next
-  // completeSubtask call doesn't hit a stale held mutex.
-  ctx.verificationMutex.release(contractId, subtaskId);
-
+  // phase 337 M1 / review-2026-06-13: mutex hold must span the background
+  // work lifetime, not just the in-progress mark commit. Earlier early-release
+  // (削 phase 1371 sub-3 闭环) let a second completeSubtask reach background-
+  // work concurrently with the first when status briefly flipped during
+  // archiveAndEmit / rollback windows. Release in .finally() of the bg promise.
   runVerificationInBackground(ctx, params, contractYaml, verificationConfig)
     .catch(err => {
       if (isProgrammingBug(err)) {
@@ -346,6 +344,12 @@ export async function runVerificationPipeline(
           },
         );
       });
+    })
+    .finally(() => {
+      // phase 337 M1: 释放 mutex 必须在 background work 全 settle 后、
+      // 覆盖整个 hold-window。否则第二个 completeSubtask 会在 archiveAndEmit
+      // 或 rollback 窗口里 race 进入 background。
+      ctx.verificationMutex.release(contractId, subtaskId);
     });
 
   return { passed: false, feedback: '', async: true };

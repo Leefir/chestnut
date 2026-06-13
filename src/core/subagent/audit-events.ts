@@ -27,6 +27,8 @@ export const SUBAGENT_AUDIT_EVENTS = {
   SUBAGENT_STEPS_INVARIANT_VIOLATED: 'subagent_steps_invariant_violated',
   SUBAGENT_ARTIFACT_CROSS_SOURCE_MISMATCH: 'subagent_artifact_cross_source_mismatch',
   SUBAGENT_ARTIFACT_CROSS_SOURCE_SKIPPED: 'subagent_artifact_cross_source_skipped',
+  // phase 337 M5 (review-2026-06-13): done tool 二次调被拒、防 LLM 自相矛盾 result 静默覆盖。
+  DONE_TOOL_DUPLICATE_CALL: 'subagent_done_tool_duplicate_call',
 } as const;
 
 export function emitToolCallInput(audit: AuditLog, opts: {
